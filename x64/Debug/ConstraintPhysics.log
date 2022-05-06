@@ -1,2 +1,8 @@
-﻿  main.cpp
+﻿  PhysicsEngine.cpp
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Physics\RigidBody.h(44,25): warning C4099:  'ConvexPoly': type name first seen using 'struct' now seen using 'class'
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Physics\RigidBody.h(17): message :  see declaration of 'ConvexPoly'
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Physics\RigidBody.h(61,25): warning C4099:  'ConvexPoly': type name first seen using 'struct' now seen using 'class'
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Physics\RigidBody.h(17): message :  see declaration of 'ConvexPoly'
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Physics\PhysicsEngine.cpp(6,24): warning C4267:  'initializing': conversion from 'size_t' to 'int', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Physics\PhysicsEngine.cpp(63,32): warning C4267:  'initializing': conversion from 'size_t' to 'int', possible loss of data
   ConstraintPhysics.vcxproj -> D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\x64\Debug\ConstraintPhysics.exe

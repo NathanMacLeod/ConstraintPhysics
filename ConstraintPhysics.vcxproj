@@ -126,12 +126,14 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Math\Mat3.cpp" />
     <ClCompile Include="Math\Vec3.cpp" />
+    <ClCompile Include="Physics\PhysicsEngine.cpp" />
     <ClCompile Include="Physics\RigidBody.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Math\Mat3.h" />
     <ClInclude Include="Math\Quaternion.h" />
     <ClInclude Include="Math\Vec3.h" />
+    <ClInclude Include="Physics\PhysicsEngine.h" />
     <ClInclude Include="Physics\RigidBody.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

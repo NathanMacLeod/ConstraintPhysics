@@ -40,6 +40,10 @@ public:
 		return x * v.x + y * v.y + z * v.z;
 	}
 
+	bool operator==(const Vec3 v) {
+		return x == v.x && y == v.y && z == v.z; //need to be carful using == with floats
+	}
+
 	Vec3 operator+(const Vec3 v) {
 		return Vec3(x + v.x, y + v.y, z + v.z);
 	}
