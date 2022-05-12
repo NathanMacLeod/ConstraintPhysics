@@ -29,7 +29,7 @@ int main() {
 
 	geometry[0].SAT(geometry[0]);*/
 
-	PhysicsEngine p;
+	phyz::PhysicsEngine p;
 	p.foo();
 
 	/*Quaternion q1 = Quaternion(3.141592/4.0, Vec3(0, 0, 1));

@@ -1,5 +1,10 @@
 #pragma once
-class PhysicsEngine {
-public:
-	void foo();
-};
+
+namespace phyz {
+
+	class PhysicsEngine {
+	public:
+		void foo();
+	};
+
+}
