@@ -1,0 +1,18 @@
+﻿  PhysicsEngine.cpp
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(52,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(129,33): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(183,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(206,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(210,23): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(211,23): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(398,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(399,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  Generating Code...
+  Compiling...
+  RigidBody.cpp
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(69,3): warning C4091: 'static ': ignored on left of 'phyz::IntrgVals' when no variable is declared
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(71,30): warning C4091: 'static ': ignored on left of 'phyz::Axis' when no variable is declared
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(72,36): warning C4091: 'static ': ignored on left of 'phyz::MappedAxis' when no variable is declared
+  Generating Code...
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(104): warning C4715: 'phyz::getAxisVal': not all control paths return a value
+  ConstraintPhysics.vcxproj -> D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\x64\Debug\ConstraintPhysics.lib
