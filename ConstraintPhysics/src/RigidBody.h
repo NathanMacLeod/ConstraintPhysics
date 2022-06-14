@@ -11,7 +11,8 @@ namespace phyz {
 	class RigidBody {
 	public:
 		RigidBody(const std::vector<ConvexPoly>& geometry, double density, int id);
-		void applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position, mthz::Mat3* invTensor = nullptr);
+		mthz::Vec3 getVelOfPoint(mthz::Vec3 p) const;
+		void applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position);
 		void updateGeometry();
 
 		int id;
@@ -20,8 +21,9 @@ namespace phyz {
 		mthz::Vec3 vel;
 		mthz::Vec3 ang_vel;
 
-		mthz::Mat3 tensor;
+		mthz::Mat3 invTensor;
 		double mass;
+
 		double radius;
 		bool fixed;
 

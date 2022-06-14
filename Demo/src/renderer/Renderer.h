@@ -21,7 +21,8 @@ namespace rndr {
 	};
 
 	int init(int width, int height, const std::string& name);
-	int getKey(int key);
+	bool getKeyDown(int key);
+	bool getKeyPresed(int key);
 	void clear(color c);
 	void draw(const VertexArray& va, const IndexBuffer& ib, const Shader& s);
 	bool render_loop(float* fElapsedTime_out);

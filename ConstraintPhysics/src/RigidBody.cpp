@@ -11,13 +11,14 @@ namespace phyz {
 		: geometry(geometry), reference_geometry(geometry), vel(0, 0, 0), ang_vel(0, 0, 0)
 	{
 		this->id = id;
-		calculateMassProperties(geometry, density, &this->com, &this->tensor, &this->mass);
+		fixed = false;
+		calculateMassProperties(geometry, density, &this->com, &this->invTensor, &this->mass);
 
 		radius = 0;
 		for (ConvexPoly& c : reference_geometry) {
-			c.interior_point = c.interior_point - com;
+			c.interior_point -= com;
 			for (mthz::Vec3& p : c.points) {
-				p = p - com;
+				p -= com;
 				double r = p.magSqrd();
 				if (r > radius) {
 					radius = r;
@@ -27,7 +28,11 @@ namespace phyz {
 		radius = sqrt(radius);
 	}
 
-	void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position, mthz::Mat3* invTensor) {
+	mthz::Vec3 RigidBody::getVelOfPoint(mthz::Vec3 p) const {
+		return vel + ang_vel.cross(p - com);
+	}
+
+	void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
 		if (fixed) {
 			return;
 		}
@@ -35,12 +40,8 @@ namespace phyz {
 		vel += impulse / mass;
 
 		static mthz::Mat3 mat;
-		if (invTensor == nullptr) {
-			mat = orientation.getRotMatrix() * (tensor.inverse()) * orientation.conjugate().getRotMatrix();
-			invTensor = &mat;
-		}
 
-		ang_vel += *invTensor * ((position - com).cross(impulse));
+		ang_vel += invTensor * ((position - com).cross(impulse));
 
 	}
 
@@ -236,6 +237,8 @@ namespace phyz {
 		tensor->v[2][0] = tensor->v[0][2];
 		tensor->v[2][1] = tensor->v[1][2];
 
+		//inverse tensor is almost always used so we store that instead
+		*tensor = tensor->inverse();
 	}
 
 }

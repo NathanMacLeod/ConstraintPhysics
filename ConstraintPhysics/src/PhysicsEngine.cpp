@@ -1,10 +1,71 @@
 #include "PhysicsEngine.h"
 #include "RigidBody.h"
 #include <vector>
+#include <algorithm>
 
-#define M_PI 3.14159265358979323846
+static const double M_PI = 3.14159265358979323846;
+static const int COS_TOL = 0.00015; //~1 degree
+static const int SIN_TOL = 0.015; //~1 degree
 
 namespace phyz {
+
+	Manifold merge_manifold(const Manifold& m1, const Manifold& m2) {
+		Manifold out = { std::vector<mthz::Vec3>(m1.points.size() + m2.points.size()), mthz::Vec3(), -1 };
+		if (m1.pen_depth > m2.pen_depth) {
+			out.normal = m1.normal;
+			out.pen_depth = m1.pen_depth;
+		}
+		else {
+			out.normal = m2.normal;
+			out.pen_depth = m2.pen_depth;
+		}
+
+		for (int i = 0; i < m1.points.size(); i++) {
+			out.points[i] = m1.points[i];
+		}
+		int off = m1.points.size();
+		for (int i = 0; i < m2.points.size(); i++) {
+			out.points[i+off] = m2.points[i];
+		}
+
+		return out;
+	}
+	Manifold cull_manifold(const Manifold& m, int new_size) {
+		if (new_size >= m.points.size()) {
+			return m;
+		}
+		Manifold out = { std::vector<mthz::Vec3>(new_size), m.normal, m.pen_depth };
+		std::vector<bool> p_available(m.points.size(), true);
+
+		const mthz::Vec3 axis1 = mthz::Vec3(1, 0, 0), axis2 = mthz::Vec3(0, 1, 0);
+		mthz::Vec3 u = (abs(m.normal.dot(axis1)) < abs(m.normal.dot(axis2))) ? m.normal.cross(axis1).normalize() : m.normal.cross(axis2).normalize();
+		mthz::Vec3 w = m.normal.cross(u);
+
+		for (int i = 0; i < new_size; i++) {
+			double vu = cos(2 * M_PI * i / new_size);
+			double vw = sin(2 * M_PI * i / new_size);
+			mthz::Vec3 target_dir = u * vu + w * vw;
+
+			mthz::Vec3 max_p;
+			int max_indx;
+			double max_v = -std::numeric_limits<double>::infinity();
+			for (int j = 0; j < m.points.size(); j++) {
+				if (p_available[j]) {
+					mthz::Vec3 p = m.points[j];
+					double val = p.dot(target_dir);
+					if (val > max_v) {
+						max_v = val;
+						max_p = p;
+						max_indx = j;
+					}
+				}
+			}
+			out.points[i] = max_p;
+			p_available[max_indx] = false;
+		}
+
+		return out;
+	}
 
 	void PhysicsEngine::timeStep() {
 		for (RigidBody* b : bodies) {
@@ -17,13 +78,34 @@ namespace phyz {
 			if (!b1->fixed) {
 				for (RigidBody* b2 : bodies) {
 					if (b1 != b2 && (b1->com - b2->com).mag() < b1->radius + b2->radius) {
+						std::vector<Manifold> manifolds;
 						for (const ConvexPoly& c1 : b1->geometry) {
 							for (const ConvexPoly& c2 : b2->geometry) {
-								Manifold man = SAT(c1, c2, 4);
+								Manifold man = SAT(c1, c2);
 								if (man.pen_depth > 0) {
-									resolve_collision(b1, b2, man, 0.6);
+									manifolds.push_back(man);
+									//resolve_collision(b1, b2, man, 0.6);
+									//resolve_penetration(b1, b2, man, 0.5);
 								}
 							}
+						}
+						if (manifolds.size() > 0) {
+							int max_indx = 0;
+							for (int i = 1; i < manifolds.size(); i++) {
+								if (manifolds[i].pen_depth > manifolds[max_indx].pen_depth) {
+									max_indx = i;
+								}
+							}
+							for (int i = 0; i < manifolds.size(); i++) {
+								if (i != max_indx) {
+									double v = manifolds[max_indx].normal.dot(manifolds[i].normal);
+									if (1 - v < COS_TOL) {
+										manifolds[max_indx] = merge_manifold(manifolds[0], manifolds[1]);
+									}
+								}
+							}
+							resolve_collision(b1, b2, manifolds[max_indx], 0.6);
+							resolve_penetration(b1, b2, manifolds[max_indx], 0.5);
 						}
 					}
 				}
@@ -49,7 +131,19 @@ namespace phyz {
 	}
 
 	static std::vector<double> gj_solve(std::vector<std::vector<double>>* matrix, std::vector<double>* target) {
+		const double CUTOFF_MAG = 0.0000000000001;
+		const bool DEBUG_PRINT = true;
 		int n = matrix->size();
+
+		if (DEBUG_PRINT) {
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < n; j++) {
+					printf("%5f ", matrix->at(i)[j]);
+				}
+				printf("| %5f\n", target->at(i));
+			}
+			printf("\n");
+		}
 
 		std::vector<int> piv_picks = std::vector<int>(n);
 		std::vector<int> piv_choices = std::vector<int>(n);
@@ -69,6 +163,9 @@ namespace phyz {
 
 			piv_choices[chosen_indx] = -1;
 			piv_picks[i] = piv_pick;
+			if (abs(matrix->at(piv_pick)[i]) < CUTOFF_MAG) {
+				continue; //variable probably zero, and divding by this will cause high innacuracy
+			}
 
 			for (int j = 0; j < n; j++) {
 				if (j != piv_pick) {
@@ -82,20 +179,28 @@ namespace phyz {
 			}
 		}
 
-		/*for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				printf("%f ", matrix->at(i)[j]);
+		if (DEBUG_PRINT) {
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < n; j++) {
+					printf("%5f ", matrix->at(i)[j]);
+				}
+				printf("| %5f\n", target->at(i));
 			}
-			printf("| %f\n", target->at(i));
-		}
 
-		printf("\nanswer:\n");*/
+			printf("\nanswer:\n");
+		}
 
 		std::vector<double> out = std::vector<double>(n);
 		for (int i = 0; i < n; i++) {
-			out[i] = target->at(piv_picks[i]) / matrix->at(piv_picks[i])[i];
+			if (abs(target->at(piv_picks[i])) < CUTOFF_MAG) { //counter innacuracy
+				out[i] = 0;
+			}
+			else {
+				out[i] = target->at(piv_picks[i]) / matrix->at(piv_picks[i])[i];
+			}
 			//printf("%f ", out[i]);
 		}
+		//printf("\n\n");
 
 		return out;
 
@@ -111,11 +216,9 @@ namespace phyz {
 		std::vector<double> target;
 		for (int i = 0; i < manifold.points.size(); i++) {
 			mthz::Vec3 p = manifold.points[i];
-			mthz::Vec3 rA = p - a->com;
-			mthz::Vec3 rB = p - b->com;
 
-			mthz::Vec3 vPa = a->vel + a->ang_vel.cross(rA);
-			mthz::Vec3 vPb = b->vel + b->ang_vel.cross(rB);
+			mthz::Vec3 vPa = a->getVelOfPoint(p);
+			mthz::Vec3 vPb = b->getVelOfPoint(p);
 			double rel_vel = (vPa - vPb).dot(norm);
 			if (rel_vel > 0) {
 				target.push_back((1 + restitution)*rel_vel);
@@ -131,8 +234,8 @@ namespace phyz {
 			return; //bodies aren't colliding, nothing to do
 		}
 
-		mthz::Mat3 aI = (a->fixed) ? mthz::Mat3::zero() : a->orientation.getRotMatrix() * (a->tensor.inverse()) * a->orientation.conjugate().getRotMatrix();
-		mthz::Mat3 bI = (b->fixed) ? mthz::Mat3::zero() : b->orientation.getRotMatrix() * (b->tensor.inverse()) * b->orientation.conjugate().getRotMatrix();
+		mthz::Mat3 aI = (a->fixed) ? mthz::Mat3::zero() : a->orientation.getRotMatrix() * a->invTensor * a->orientation.conjugate().getRotMatrix();
+		mthz::Mat3 bI = (b->fixed) ? mthz::Mat3::zero() : b->orientation.getRotMatrix() * b->invTensor * b->orientation.conjugate().getRotMatrix();
 		double a_invM = (a->fixed) ? 0 : a->mass;
 		double b_invM = (b->fixed) ? 0 : b->mass;
 
@@ -161,13 +264,73 @@ namespace phyz {
 			}
 		}
 
-
 		std::vector<double> impulses = gj_solve(&matrix, &target);
+		
 		for (int i = 0; i < impulses.size(); i++) {
 			a->applyImpulse(-impulses[i] * norm, manifold.points[i]);
 			b->applyImpulse(impulses[i] * norm, manifold.points[i]);
 		}
-		int banana = 1 + 2;
+
+		double total_impulse = 0;
+		std::vector<mthz::Vec3> drift_dir(n);
+		for (int i = 0; i < n; i++) {
+			total_impulse += impulses[i];
+
+			mthz::Vec3 p = manifold.points[i];
+			mthz::Vec3 vel_rel = a->getVelOfPoint(p) - b->getVelOfPoint(p);
+			drift_dir[i] = vel_rel - norm * norm.dot(vel_rel);
+		}
+		for (int i = 0; i < n; i++) {
+			if (drift_dir[i].magSqrd() > 0) {
+				double frict_coeff = 0.5;//temp
+
+				mthz::Vec3 p = manifold.points[i];
+				mthz::Vec3 rA = p - a->com;
+				mthz::Vec3 rB = p - b->com;
+
+			
+				mthz::Vec3 dd_norm = drift_dir[i].normalize();
+				double frict_imp = 2 * (impulses[i] / total_impulse) * drift_dir[i].dot(dd_norm) / (a_invM + b_invM +
+					(aI * (rA.cross(dd_norm))).cross(rA).dot(dd_norm) + (bI * (rB.cross(dd_norm))).cross(rB).dot(dd_norm));
+
+				if (frict_imp > impulses[i] * frict_coeff) {
+					frict_imp = impulses[i] * frict_coeff;
+				}
+
+				a->applyImpulse(-frict_imp * dd_norm, p);
+				b->applyImpulse(frict_imp * dd_norm, p);
+			}
+		}
+	}
+
+	void PhysicsEngine::resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack) {
+		double a_mr;
+		double b_mr;
+		if (a->fixed && b->fixed) {
+			return;
+		}
+		else if (a->fixed) {
+			a_mr = 1;
+			b_mr = 0;
+		}
+		else if (b->fixed) {
+			a_mr = 0;
+			b_mr = 1;
+		}
+		else {
+			a_mr = a->mass / (a->mass + b->mass);
+			b_mr = 1 - a_mr;
+		}
+
+		if (!a->fixed) {
+			a->com -= manifold.normal * slack * b_mr * manifold.pen_depth;
+			a->updateGeometry();
+		}
+		if (!b->fixed) {
+			b->com += manifold.normal * slack * a_mr * manifold.pen_depth;
+			b->updateGeometry();
+		}
+		
 	}
 
 	static struct ExtremaInfo {
@@ -207,8 +370,6 @@ namespace phyz {
 
 	//kinda brute forcey might redo later
 	static std::vector<ProjP> findContactArea(const ConvexPoly& c, mthz::Vec3 n, mthz::Vec3 p, mthz::Vec3 u, mthz::Vec3 w) {
-		const int COS_TOL = 0.00015; //~1 degree
-		const int SIN_TOL = 0.015; //~1 degree
 
 		std::vector<ProjP> out;
 
@@ -323,7 +484,7 @@ namespace phyz {
 		}
 	}
 
-	Manifold PhysicsEngine::SAT(const ConvexPoly& a, const ConvexPoly& b, int max_man_size) const {
+	Manifold PhysicsEngine::SAT(const ConvexPoly& a, const ConvexPoly& b) const {
 		Manifold out;
 		bool sepr_axis = false; //assumed false at first
 		bool first_check = true;
@@ -377,8 +538,8 @@ namespace phyz {
 
 		//generate manifold
 		//make arbitrary perp vector
-		const mthz::Vec3 temp1 = mthz::Vec3(1, 0, 0), temp2 = mthz::Vec3(0, 1, 0);
-		mthz::Vec3 u = (abs(norm.dot(temp1)) < abs(norm.dot(temp2))) ? norm.cross(temp1).normalize() : norm.cross(temp2).normalize();
+		const mthz::Vec3 axis1 = mthz::Vec3(1, 0, 0), axis2 = mthz::Vec3(0, 1, 0);
+		mthz::Vec3 u = (abs(norm.dot(axis1)) < abs(norm.dot(axis2))) ? norm.cross(axis1).normalize() : norm.cross(axis2).normalize();
 		mthz::Vec3 w = norm.cross(u);
 		std::vector<ProjP> a_contact = findContactArea(a, norm, a_maxP, u, w);
 		std::vector<ProjP> b_contact = findContactArea(b, norm * (-1), b_maxP, u, w);
@@ -416,7 +577,7 @@ namespace phyz {
 		mthz::Vec3 n_offset = norm * a_maxP.dot(norm);
 
 
-		if (man_pool.size() > max_man_size) {
+		/*if (man_pool.size() > max_man_size) {
 			for (int i = 0; i < max_man_size; i++) {
 				double vu = cos(2 * M_PI * i / max_man_size);
 				double vw = sin(2 * M_PI * i / max_man_size);
@@ -436,13 +597,13 @@ namespace phyz {
 				out.points.push_back(u * max.u + w * max.w + n_offset);
 				man_pool.erase(man_pool.begin() + max_i); //delete to prevent same point from being selected twice
 			}
-		}
-		else {
+		}*/
+		//else {
 			for (ProjP p : man_pool) {
 				out.points.push_back(u * p.u + w * p.w + n_offset);
 			}
 
-		}
+		//}
 
 		return out;
 	}

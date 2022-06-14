@@ -6,7 +6,7 @@
 namespace phyz {
 
 	ConvexPoly::ConvexPoly(const ConvexPoly& c)
-		: points(c.points)
+		: points(c.points), interior_point(c.interior_point)
 	{
 		for (int i = 0; i < c.surfaces.size(); i++) {
 			surfaces.push_back(Surface(c.surfaces[i], this));

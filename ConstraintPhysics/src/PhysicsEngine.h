@@ -9,6 +9,9 @@ namespace phyz {
 		double pen_depth;
 	};
 
+	Manifold merge_manifold(const Manifold& m1, const Manifold& m2);
+	Manifold cull_manifold(const Manifold& m, int new_size);
+
 	class PhysicsEngine {
 	public:
 		void timeStep();
@@ -18,7 +21,8 @@ namespace phyz {
 		double step_time;
 	private:
 		void resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution);
-		Manifold SAT(const ConvexPoly& a, const ConvexPoly& b, int max_man_size) const;
+		void resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack = 1);
+		Manifold SAT(const ConvexPoly& a, const ConvexPoly& b) const;
 
 		int next_ID = 0;
 		std::vector<RigidBody*> bodies;

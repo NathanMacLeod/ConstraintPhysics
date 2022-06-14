@@ -19,10 +19,6 @@ struct Vertex {
 };
 
 static struct Mesh {
-	~Mesh() {
-		delete va;
-		delete ib;
-	}
 	rndr::VertexArray* va;
 	rndr::IndexBuffer* ib;
 };
@@ -65,22 +61,32 @@ static Mesh rect(float x, float y, float z, float w, float h, float d) {
 	return { new rndr::VertexArray(verticies.data(), verticies.size() * sizeof(Vertex), layout), new rndr::IndexBuffer(indices, 36) };
 }
 
+struct PhysBod {
+	std::vector<Mesh> meshes;
+	phyz::RigidBody* r;
+};
+
 int main() {
 
 	phyz::PhysicsEngine p;
 
 	rndr::init(960, 960, "Hello World");
 
-	Mesh m1 = rect(0, 0, 0, 1, 1, 1);
+	std::vector<PhysBod> bodies;
+
+	double s = 35;
+	std::vector<Mesh> m2 = { rect(0, 0, 0, s, 2, s) };
+	std::vector<phyz::ConvexPoly> geom2;
+	geom2.push_back(phyz::ConvexPoly::genRect(-s/2, -3, -s/2, s, 2, s));
+	phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
+	bodies.push_back({m2, r2});
+
+	/*Mesh m1 = rect(0, 0, 0, 1, 1, 1);
 	std::vector<phyz::ConvexPoly> geom1;
 	geom1.push_back(phyz::ConvexPoly::genRect(0, 2, 0, 1, 1, 1));
 	phyz::RigidBody* r1 = p.createRigidBody(geom1);
-	r1->ang_vel = mthz::Vec3(0, 1, 15);
-
-	Mesh m2 = rect(0, 0, 0, 6, 0.1, 6);
-	std::vector<phyz::ConvexPoly> geom2;
-	geom2.push_back(phyz::ConvexPoly::genRect(-3, -1, -3, 6, 0.1, 6));
-	phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
+	r1->ang_vel = mthz::Vec3(0, 0, 0);*/
+	//r1->orientation = mthz::Quaternion(3.1415926563 / 4, mthz::Vec3(0, 0, 1)) * mthz::Quaternion(3.1415926563 / 4, mthz::Vec3(0, 1, 0));
 
 	rndr::Shader shader("resources/shaders/Basic.shader");
 
@@ -95,39 +101,62 @@ int main() {
 	double rot_speed = 1;
 
 	double phyz_time = 0;
-	double timestep = 1 / 60.0;
+	double timestep = 1 / 90.0;
 	p.step_time = timestep;
-	p.gravity = mthz::Vec3(0, -1.0, 0);
+	p.gravity = mthz::Vec3(0, -2.0, 0);
 
 	while (rndr::render_loop(&fElapsedTime)) {
 
-		if (rndr::getKey(GLFW_KEY_W)) {
+		if (rndr::getKeyDown(GLFW_KEY_W)) {
 			pos += orient.applyRotation(mthz::Vec3(0, 0, -1) * fElapsedTime * mv_speed);
 		}
-		else if (rndr::getKey(GLFW_KEY_S)) {
+		else if (rndr::getKeyDown(GLFW_KEY_S)) {
 			pos += orient.applyRotation(mthz::Vec3(0, 0, 1) * fElapsedTime * mv_speed);
 		}
-		if (rndr::getKey(GLFW_KEY_A)) {
+		if (rndr::getKeyDown(GLFW_KEY_A)) {
 			pos += orient.applyRotation(mthz::Vec3(-1, 0, 0) * fElapsedTime * mv_speed);
 		}
-		else if (rndr::getKey(GLFW_KEY_D)) {
+		else if (rndr::getKeyDown(GLFW_KEY_D)) {
 			pos += orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
 		}
 
-		if (rndr::getKey(GLFW_KEY_UP)) {
+		if (rndr::getKeyDown(GLFW_KEY_UP)) {
 			orient = orient * mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
 		}
-		else if (rndr::getKey(GLFW_KEY_DOWN)) {
+		else if (rndr::getKeyDown(GLFW_KEY_DOWN)) {
 			orient = orient * mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
 		}
-		if (rndr::getKey(GLFW_KEY_LEFT)) {
+		if (rndr::getKeyDown(GLFW_KEY_LEFT)) {
 			orient = mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
 		}
-		else if (rndr::getKey(GLFW_KEY_RIGHT)) {
+		else if (rndr::getKeyDown(GLFW_KEY_RIGHT)) {
 			orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
 		}
 
 		t += fElapsedTime;
+		//square
+		if (rndr::getKeyPresed(GLFW_KEY_K)) {
+			std::vector<Mesh> m1 = { rect(0, 0, 0, 1, 1, 1) };
+			std::vector<phyz::ConvexPoly> geom1;
+			geom1.push_back(phyz::ConvexPoly::genRect(0, 10, 0, 1, 1, 1));
+			phyz::RigidBody* r1 = p.createRigidBody(geom1);
+			//r1->ang_vel = mthz::Vec3(0, 10, 0.1);
+			//r1->vel = mthz::Vec3(1, 0, 0);
+			bodies.push_back({ m1, r1 });
+		}
+		//top
+		if (rndr::getKeyPresed(GLFW_KEY_J)) {
+			double h1 = 1.6, w1 = 0.2, h2 = 0.2, w2 = 1.33;
+			std::vector<Mesh> m1 = { rect(0, 0, 0, w1, h1, w1), rect(0, -h1/6, 0, w2, h2, w2)};
+			std::vector<phyz::ConvexPoly> geom1;
+			geom1.push_back(phyz::ConvexPoly::genRect(-w1/2, -h1/2, -w1/2, w1, h1, w1));
+			geom1.push_back(phyz::ConvexPoly::genRect(-w2/2, -h2/2 - h1/2 + h1/3, -w2/2, w2, h2, w2));
+			phyz::RigidBody* r1 = p.createRigidBody(geom1);
+			r1->com = mthz::Vec3(0, 10, 0);
+			//r1->ang_vel = mthz::Vec3(0, 10, 0.1);
+			//r1->vel = mthz::Vec3(1, 0, 0);
+			bodies.push_back({ m1, r1 });
+		}
 
 		phyz_time += fElapsedTime;
 		while (phyz_time > timestep) {
@@ -138,14 +167,11 @@ int main() {
 
 		rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));
 
-		shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0)* rndr::Mat4::cam_view(pos, orient) * rndr::Mat4::model(r1->com, r1->orientation));
-		rndr::draw(*m1.va, *m1.ib, shader);
-
-		shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(pos, orient) * rndr::Mat4::model(r2->com, r2->orientation));
-		rndr::draw(*m2.va, *m2.ib, shader);
-
-		if (r1->com.y < -3) {
-			r1->com = mthz::Vec3(0, 3, 0);
+		for (const PhysBod& b : bodies) {
+			for (const Mesh& m : b.meshes) {
+				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(pos, orient) * rndr::Mat4::model(b.r->com, b.r->orientation));
+				rndr::draw(*m.va, *m.ib, shader);
+			}
 		}
 	}
 
