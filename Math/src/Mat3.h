@@ -20,6 +20,19 @@ namespace mthz {
 			return out;
 		}
 
+		static Mat3 cross_mat(mthz::Vec3 v) {
+			Mat3 out;
+			out.v[0][0] =    0; out.v[0][1] = -v.z; out.v[0][2] =  v.y;
+			out.v[1][0] =  v.z; out.v[1][1] =    0; out.v[1][2] = -v.x;
+			out.v[2][0] = -v.y; out.v[2][1] =  v.x; out.v[2][2] =    0;
+			return out;
+		}
+
+		double det() const {
+			double a = v[0][0], b = v[0][1], c = v[0][2], d = v[1][0], e = v[1][1], f = v[1][2], g = v[2][0], h = v[2][1], i = v[2][2];
+			return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+		}
+
 		//https://ardoris.wordpress.com/2008/07/18/general-formula-for-the-inverse-of-a-3x3-matrix/
 		Mat3 inverse() const {
 			Mat3 out;
@@ -40,7 +53,7 @@ namespace mthz {
 				v[2][0] * w.x + v[2][1] * w.y + v[2][2] * w.z);
 		}
 
-		Mat3 operator*(const Mat3 m) const {
+		Mat3 operator*(const Mat3& m) const {
 			Mat3 out;
 			for (int i = 0; i < 3; i++) {
 				for (int j = 0; j < 3; j++) {
@@ -52,7 +65,7 @@ namespace mthz {
 			return out;
 		}
 
-		void operator*=(const Mat3 m) {
+		void operator*=(const Mat3& m) {
 			double out[3][3] = { {0, 0, 0}, {0, 0, 0}, {0, 0, 0} };
 			for (int i = 0; i < 3; i++) {
 				for (int j = 0; j < 3; j++) {
@@ -87,8 +100,10 @@ namespace mthz {
 
 	};
 
-	Mat3 operator*(const double d, const Mat3 m);
-	Mat3 operator*(const Mat3 m, const double d);
-	Mat3 operator/(const Mat3 m, const double d);
+	Mat3 operator*(const double d, const Mat3& m);
+	Mat3 operator*(const Mat3& m, const double d);
+	Mat3 operator/(const Mat3& m, const double d);
+	Mat3 operator+(const Mat3& m1, const Mat3& m2);
+	Mat3 operator-(const Mat3& m1, const Mat3& m2);
 
 }

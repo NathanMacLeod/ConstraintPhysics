@@ -4,8 +4,12 @@
 #include <algorithm>
 
 static const double M_PI = 3.14159265358979323846;
-static const int COS_TOL = 0.00015; //~1 degree
-static const int SIN_TOL = 0.015; //~1 degree
+static const double COS_TOL = 0.00001523; //~1 degree
+static const double SIN_TOL = 0.0174; //~1 degree
+const double CUTOFF_MAG = 0.00000001;
+
+//static const double COS_TOL = 0.00001523; //~1 degree
+//static const double SIN_TOL = 0.0174; //~1 degree
 
 namespace phyz {
 
@@ -71,6 +75,7 @@ namespace phyz {
 		for (RigidBody* b : bodies) {
 			if (!b->fixed) {
 				b->vel += gravity * step_time;
+				b->applyGyroAccel(step_time);
 			}
 		}
 		
@@ -100,12 +105,15 @@ namespace phyz {
 								if (i != max_indx) {
 									double v = manifolds[max_indx].normal.dot(manifolds[i].normal);
 									if (1 - v < COS_TOL) {
-										manifolds[max_indx] = merge_manifold(manifolds[0], manifolds[1]);
+										manifolds[max_indx] = merge_manifold(manifolds[max_indx], manifolds[i]);
 									}
 								}
 							}
-							resolve_collision(b1, b2, manifolds[max_indx], 0.6);
-							resolve_penetration(b1, b2, manifolds[max_indx], 0.5);
+
+							//printf("n manifolds: %d, final manifold size: %d\n", manifolds.size(), manifolds[max_indx].points.size());
+
+							bool collision_occured = resolve_collision(b1, b2, manifolds[max_indx], 0.33);
+							resolve_penetration(b1, b2, manifolds[max_indx], 0.75);
 						}
 					}
 				}
@@ -131,16 +139,15 @@ namespace phyz {
 	}
 
 	static std::vector<double> gj_solve(std::vector<std::vector<double>>* matrix, std::vector<double>* target) {
-		const double CUTOFF_MAG = 0.0000000000001;
-		const bool DEBUG_PRINT = true;
+		const bool DEBUG_PRINT = false;
 		int n = matrix->size();
 
 		if (DEBUG_PRINT) {
 			for (int i = 0; i < n; i++) {
 				for (int j = 0; j < n; j++) {
-					printf("%5f ", matrix->at(i)[j]);
+					printf(" % .5f ", matrix->at(i)[j]);
 				}
-				printf("| %5f\n", target->at(i));
+				printf("| % .5f\n", target->at(i));
 			}
 			printf("\n");
 		}
@@ -182,9 +189,9 @@ namespace phyz {
 		if (DEBUG_PRINT) {
 			for (int i = 0; i < n; i++) {
 				for (int j = 0; j < n; j++) {
-					printf("%5f ", matrix->at(i)[j]);
+					printf("% .5f ", matrix->at(i)[j]);
 				}
-				printf("| %5f\n", target->at(i));
+				printf("| % .5f\n", target->at(i));
 			}
 
 			printf("\nanswer:\n");
@@ -198,9 +205,13 @@ namespace phyz {
 			else {
 				out[i] = target->at(piv_picks[i]) / matrix->at(piv_picks[i])[i];
 			}
-			//printf("%f ", out[i]);
+			if (DEBUG_PRINT) {
+				printf("%f ", out[i]);
+			}
 		}
-		//printf("\n\n");
+		if (DEBUG_PRINT) {
+			printf("\n\n");
+		}
 
 		return out;
 
@@ -209,7 +220,12 @@ namespace phyz {
 
 
 	//manifold should be genereated with norm away from a, (meaning A makes call to SAT)
-	void PhysicsEngine::resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution) {
+	bool PhysicsEngine::resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution) {
+
+		if (!a->fixed && !b->fixed) {
+			int a = 1;
+		}
+
 		//Need to cull points from manifold where the bodies are separating, not collding
 		//both this and the rhs of linear system need relative velocity of points so doing both at once
 		mthz::Vec3 norm = manifold.normal;
@@ -231,13 +247,25 @@ namespace phyz {
 
 		int n = manifold.points.size();
 		if (n == 0) {
-			return; //bodies aren't colliding, nothing to do
+			return false; //bodies aren't colliding, nothing to do
 		}
+
+		/*printf("\nrel_vel before:\n");
+
+		for (int i = 0; i < manifold.points.size(); i++) {
+			mthz::Vec3 p = manifold.points[i];
+
+			mthz::Vec3 vPa = a->getVelOfPoint(p);
+			mthz::Vec3 vPb = b->getVelOfPoint(p);
+			double rel_vel = (vPa - vPb).dot(norm);
+			printf("%f ", rel_vel);
+		}
+		printf("\n");*/
 
 		mthz::Mat3 aI = (a->fixed) ? mthz::Mat3::zero() : a->orientation.getRotMatrix() * a->invTensor * a->orientation.conjugate().getRotMatrix();
 		mthz::Mat3 bI = (b->fixed) ? mthz::Mat3::zero() : b->orientation.getRotMatrix() * b->invTensor * b->orientation.conjugate().getRotMatrix();
-		double a_invM = (a->fixed) ? 0 : a->mass;
-		double b_invM = (b->fixed) ? 0 : b->mass;
+		double a_invM = (a->fixed) ? 0 : 1.0 / a->mass;
+		double b_invM = (b->fixed) ? 0 : 1.0 / b->mass;
 
 		std::vector<mthz::Vec3> v_as = std::vector<mthz::Vec3>(n);
 		std::vector<mthz::Vec3> v_bs = std::vector<mthz::Vec3>(n);
@@ -271,17 +299,29 @@ namespace phyz {
 			b->applyImpulse(impulses[i] * norm, manifold.points[i]);
 		}
 
+		/*printf("\nrel_vel after:\n");
+
+		for (int i = 0; i < manifold.points.size(); i++) {
+			mthz::Vec3 p = manifold.points[i];
+
+			mthz::Vec3 vPa = a->getVelOfPoint(p);
+			mthz::Vec3 vPb = b->getVelOfPoint(p);
+			double rel_vel = (vPa - vPb).dot(norm);
+			printf("%f ", rel_vel);
+		}
+		printf("\n");*/
+
 		double total_impulse = 0;
 		std::vector<mthz::Vec3> drift_dir(n);
 		for (int i = 0; i < n; i++) {
-			total_impulse += impulses[i];
+			total_impulse += abs(impulses[i]);
 
 			mthz::Vec3 p = manifold.points[i];
 			mthz::Vec3 vel_rel = a->getVelOfPoint(p) - b->getVelOfPoint(p);
 			drift_dir[i] = vel_rel - norm * norm.dot(vel_rel);
 		}
 		for (int i = 0; i < n; i++) {
-			if (drift_dir[i].magSqrd() > 0) {
+			if (drift_dir[i].magSqrd() > CUTOFF_MAG) {
 				double frict_coeff = 0.5;//temp
 
 				mthz::Vec3 p = manifold.points[i];
@@ -290,17 +330,21 @@ namespace phyz {
 
 			
 				mthz::Vec3 dd_norm = drift_dir[i].normalize();
-				double frict_imp = 2 * (impulses[i] / total_impulse) * drift_dir[i].dot(dd_norm) / (a_invM + b_invM +
+				double frict_imp = 2 * (abs(impulses[i]) / total_impulse) * drift_dir[i].dot(dd_norm) / (a_invM + b_invM +
 					(aI * (rA.cross(dd_norm))).cross(rA).dot(dd_norm) + (bI * (rB.cross(dd_norm))).cross(rB).dot(dd_norm));
 
-				if (frict_imp > impulses[i] * frict_coeff) {
-					frict_imp = impulses[i] * frict_coeff;
+				if (frict_imp > abs(impulses[i]) * frict_coeff) {
+					frict_imp = abs(impulses[i]) * frict_coeff;
 				}
 
 				a->applyImpulse(-frict_imp * dd_norm, p);
 				b->applyImpulse(frict_imp * dd_norm, p);
 			}
 		}
+
+		
+
+		return true;
 	}
 
 	void PhysicsEngine::resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack) {
@@ -599,10 +643,9 @@ namespace phyz {
 			}
 		}*/
 		//else {
-			for (ProjP p : man_pool) {
-				out.points.push_back(u * p.u + w * p.w + n_offset);
-			}
-
+		for (ProjP p : man_pool) {
+			out.points.push_back(u * p.u + w * p.w + n_offset);
+		}
 		//}
 
 		return out;

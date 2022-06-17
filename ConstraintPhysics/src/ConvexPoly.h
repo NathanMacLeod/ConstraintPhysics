@@ -15,6 +15,7 @@ namespace phyz {
 		ConvexPoly() {}
 
 		static ConvexPoly genRect(double x, double y, double z, double dx, double dy, double dz);
+		static ConvexPoly genTetra(double x, double y, double z, double r);
 
 		void rotate(const mthz::Quaternion q, mthz::Vec3 pivot_point);
 		void translate(mthz::Vec3 t);

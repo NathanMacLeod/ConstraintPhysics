@@ -12,7 +12,8 @@ namespace phyz {
 	{
 		this->id = id;
 		fixed = false;
-		calculateMassProperties(geometry, density, &this->com, &this->invTensor, &this->mass);
+		calculateMassProperties(geometry, density, &this->com, &this->tensor, &this->mass);
+		invTensor = tensor.inverse();
 
 		radius = 0;
 		for (ConvexPoly& c : reference_geometry) {
@@ -26,6 +27,19 @@ namespace phyz {
 			}
 		}
 		radius = sqrt(radius);
+	}
+
+	RigidBody::PKey RigidBody::track_point(mthz::Vec3 p) {
+		mthz::Vec3 r = p - com;
+		track_p.push_back(orientation.conjugate().applyRotation(r));
+		return track_p.size() - 1;
+	}
+
+	mthz::Vec3 RigidBody::getTrackedP(PKey pk) {
+		if (pk < 0 || pk >= track_p.size()) {
+			return mthz::Vec3(-1, -1, -1);
+		}
+		return com + orientation.applyRotation(track_p[pk]);
 	}
 
 	mthz::Vec3 RigidBody::getVelOfPoint(mthz::Vec3 p) const {
@@ -43,6 +57,40 @@ namespace phyz {
 
 		ang_vel += invTensor * ((position - com).cross(impulse));
 
+	}
+
+	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical
+	void RigidBody::applyGyroAccel(float fElapsedTime, int n_substeps) {
+		const int CUTOFF_MAG = 0.00000000001;
+		const int NEWTON_STEPS = 1;
+		if (ang_vel.magSqrd() == 0) {
+			return;
+		}
+
+		mthz::Vec3 w_local = orientation.conjugate().applyRotation(ang_vel);
+		mthz::Vec3 w_old = w_local;
+		mthz::Vec3 w_new = w_local;
+
+		//n_itr is number of sub-timesteps
+		float t_step = fElapsedTime / n_substeps;
+		for (int i = 0; i < n_substeps; i++) {
+			w_new = w_old; //initial guess
+
+			//using newtons method to approximate result of implicit integration
+			for (int i = 0; i < NEWTON_STEPS; i++) {
+				mthz::Vec3 f = t_step * w_new.cross(tensor * w_new) - tensor * (w_local - w_new);
+				mthz::Mat3 jacobian = tensor + t_step * (mthz::Mat3::cross_mat(w_new) * tensor - mthz::Mat3::cross_mat(tensor * w_new));
+				//printf("det: %f\n", jacobian.det());
+				if (abs(jacobian.det()) > CUTOFF_MAG) {
+					w_new = w_new - jacobian.inverse() * f;
+				}
+			}
+
+			w_old = w_new; //for next iteration
+		}
+		
+
+		ang_vel = orientation.applyRotation(w_new);
 	}
 
 	void RigidBody::updateGeometry() {
@@ -236,9 +284,6 @@ namespace phyz {
 		tensor->v[1][0] = tensor->v[0][1];
 		tensor->v[2][0] = tensor->v[0][2];
 		tensor->v[2][1] = tensor->v[1][2];
-
-		//inverse tensor is almost always used so we store that instead
-		*tensor = tensor->inverse();
 	}
 
 }

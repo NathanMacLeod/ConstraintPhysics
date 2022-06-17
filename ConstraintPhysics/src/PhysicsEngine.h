@@ -20,7 +20,7 @@ namespace phyz {
 		mthz::Vec3 gravity;
 		double step_time;
 	private:
-		void resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution);
+		bool resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution);
 		void resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack = 1);
 		Manifold SAT(const ConvexPoly& a, const ConvexPoly& b) const;
 

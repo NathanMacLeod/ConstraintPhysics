@@ -119,6 +119,40 @@ namespace phyz {
 		return out;
 	}
 
+	ConvexPoly ConvexPoly::genTetra(double x, double y, double z, double r) {
+		ConvexPoly out;
+
+		const double rt3 = sqrt(3.0);
+
+		out.points = std::vector<mthz::Vec3>(4);
+		out.surfaces = std::vector<Surface>(4);
+
+		out.points[0] = (mthz::Vec3(x + 3*r/4, y - r/3, z - rt3*r/4)); //0
+		out.points[1] = (mthz::Vec3(x, y - r/3, z + rt3*r/2)); //1
+		out.points[2] = (mthz::Vec3(x - 3*r/4, y - r/3, z - rt3*r/4)); //2
+		out.points[3] = (mthz::Vec3(x, y + r, z)); //3
+
+		mthz::Vec3 mid = mthz::Vec3(x, y, z);
+		std::vector<int> indexes = std::vector<int>(3);
+
+		indexes[0] = 0; indexes[1] = 1; indexes[2] = 2;
+		out.surfaces[0] = (Surface(indexes, &out, mid));
+
+		indexes[0] = 0; indexes[1] = 3; indexes[2] = 1;
+		out.surfaces[1] = (Surface(indexes, &out, mid));
+
+		indexes[0] = 0; indexes[1] = 2; indexes[2] = 3;
+		out.surfaces[2] = (Surface(indexes, &out, mid));
+
+		indexes[0] = 2; indexes[1] = 1; indexes[2] = 3;
+		out.surfaces[3] = (Surface(indexes, &out, mid));
+
+		out.interior_point = mid;
+		out.compute_edges();
+
+		return out;
+	}
+
 	Edge::Edge(int p1_indx, int p2_indx, ConvexPoly* poly) {
 		this->poly = poly;
 		this->p1_indx = p1_indx;

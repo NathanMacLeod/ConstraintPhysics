@@ -1,0 +1,112 @@
+﻿  main.cpp
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(14,24): warning C4244: '=': conversion from 'const double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(32,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(33,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(34,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(41,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(42,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(43,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(64,52): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(65,21): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,65): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(96,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(24,2): warning C4091: 'static ': ignored on left of 'Mesh' when no variable is declared
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(61,93): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(65,12): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(84,93): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(102,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(102,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(187,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(187,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(187,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(187,84): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(187,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(187,76): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(187,69): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,84): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,124): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,120): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,116): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\main.cpp(202,108): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+  main_old.cpp
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(14,24): warning C4244: '=': conversion from 'const double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(32,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(33,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(34,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(41,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(42,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(43,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(64,52): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(65,21): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,65): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(96,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+  Renderer.cpp
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(14,24): warning C4244: '=': conversion from 'const double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(32,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(33,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(34,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(41,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(42,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(43,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(64,52): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(65,21): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,65): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(96,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Renderer.cpp(12,57): warning C4091: 'static ': ignored on left of 'rndr::KeyState' when no variable is declared
+  Shader.cpp
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(14,24): warning C4244: '=': conversion from 'const double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(32,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(33,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(34,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(41,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(42,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(43,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(64,52): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(65,21): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,65): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\Demo\src\renderer\Mat4.h(96,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+  Generating code
+  28 of 1402 functions ( 2.0%) were compiled, the rest were copied from previous compilation.
+    7 functions were new in current compilation
+    25 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+glew32s.lib(glew.obj) : warning LNK4099: PDB 'vc120.pdb' was not found with 'glew32s.lib(glew.obj)' or at 'D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\x64\Release\vc120.pdb'; linking object as if no debug info
+LINK : warning LNK4286: symbol '__glewDeleteBuffers' defined in 'glew32s.lib(glew.obj)' is imported by 'IndexBuffer.obj'
+LINK : warning LNK4286: symbol '__glewGenBuffers' defined in 'glew32s.lib(glew.obj)' is imported by 'IndexBuffer.obj'
+LINK : warning LNK4286: symbol '__glewBufferData' defined in 'glew32s.lib(glew.obj)' is imported by 'IndexBuffer.obj'
+LINK : warning LNK4286: symbol '__glewBindBuffer' defined in 'glew32s.lib(glew.obj)' is imported by 'IndexBuffer.obj'
+LINK : warning LNK4286: symbol 'glewInit' defined in 'glew32s.lib(glew.obj)' is imported by 'Renderer.obj'
+LINK : warning LNK4286: symbol '__glewDebugMessageCallback' defined in 'glew32s.lib(glew.obj)' is imported by 'Renderer.obj'
+LINK : warning LNK4286: symbol '__glewUniform4f' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewLinkProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewDeleteShader' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewUniformMatrix4fv' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewShaderSource' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewDeleteProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewAttachShader' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewGetUniformLocation' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewValidateProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewGetShaderInfoLog' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewUniform1i' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewCreateProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewCreateShader' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewCompileShader' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewGetShaderiv' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewUseProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj'
+LINK : warning LNK4286: symbol '__glewGenVertexArrays' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj'
+LINK : warning LNK4286: symbol '__glewDeleteVertexArrays' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj'
+LINK : warning LNK4286: symbol '__glewVertexAttribPointer' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj'
+LINK : warning LNK4286: symbol '__glewBindVertexArray' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj'
+LINK : warning LNK4286: symbol '__glewEnableVertexAttribArray' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj'
+  Demo.vcxproj -> D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\x64\Release\Demo.exe
