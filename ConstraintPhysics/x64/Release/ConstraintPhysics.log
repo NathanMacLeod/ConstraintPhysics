@@ -1,23 +1,12 @@
-﻿  ConvexPoly.cpp
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(26,3): warning C4091: 'static ': ignored on left of 'phyz::Pair' when no variable is declared
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(31,34): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(61,37): warning C4244: 'argument': conversion from 'unsigned __int64' to 'const double', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(215,30): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(221,11): warning C4477: 'printf' : format string '%d' requires an argument of type 'int', but variadic argument 2 has type 'unsigned __int64'
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(221,11): message : consider using '%zd' in the format string
-  PhysicsEngine.cpp
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(30,29): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(78,23): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(143,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(248,33): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(390,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(413,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(603,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(604,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-  RigidBody.cpp
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(35,28): warning C4267: 'return': conversion from 'size_t' to 'phyz::RigidBody::PKey', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(64,26): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(118,3): warning C4091: 'static ': ignored on left of 'phyz::IntrgVals' when no variable is declared
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(120,30): warning C4091: 'static ': ignored on left of 'phyz::Axis' when no variable is declared
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(121,36): warning C4091: 'static ': ignored on left of 'phyz::MappedAxis' when no variable is declared
-  ConstraintPhysics.vcxproj -> D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\x64\Release\ConstraintPhysics.lib
+﻿  PhysicsEngine.cpp
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(30,29): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(78,23): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(147,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(254,33): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(390,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(413,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(616,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(617,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(715,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(716,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  ConstraintPhysics.vcxproj -> C:\dev\ConstraintPhysics\x64\Release\ConstraintPhysics.lib

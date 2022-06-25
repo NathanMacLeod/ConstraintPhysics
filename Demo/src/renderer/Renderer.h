@@ -22,7 +22,7 @@ namespace rndr {
 
 	int init(int width, int height, const std::string& name);
 	bool getKeyDown(int key);
-	bool getKeyPresed(int key);
+	bool getKeyPressed(int key);
 	void clear(color c);
 	void draw(const VertexArray& va, const IndexBuffer& ib, const Shader& s);
 	bool render_loop(float* fElapsedTime_out);

@@ -1,10 +1,12 @@
 ﻿  PhysicsEngine.cpp
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(30,29): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(78,23): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(143,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(248,33): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(390,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(413,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(603,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(604,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-  ConstraintPhysics.vcxproj -> D:\DiskDocuments\VisualStudiosProjects\ConstraintPhysics\x64\Debug\ConstraintPhysics.lib
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(32,29): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(81,23): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(155,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(328,33): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(491,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(514,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(717,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(718,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(816,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(817,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  ConstraintPhysics.vcxproj -> C:\dev\ConstraintPhysics\x64\Debug\ConstraintPhysics.lib

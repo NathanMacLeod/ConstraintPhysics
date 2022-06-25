@@ -26,6 +26,12 @@ namespace phyz {
 				}
 			}
 		}
+
+		for (const ConvexPoly& c : reference_geometry) {
+			reference_gauss_maps.push_back(computeGaussMap(c));
+		}
+		gauss_maps = reference_gauss_maps;
+
 		radius = sqrt(radius);
 	}
 
@@ -97,10 +103,43 @@ namespace phyz {
 		mthz::Mat3 rot = orientation.getRotMatrix();
 		for (int i = 0; i < reference_geometry.size(); i++) {
 			for (int j = 0; j < reference_geometry[i].points.size(); j++) {
-				geometry[i].points[j] = com + rot*reference_geometry[i].points[j];
+				geometry[i].points[j] = com + rot * reference_geometry[i].points[j];
 			}
 			geometry[i].interior_point = com + rot * reference_geometry[i].interior_point;
 		}
+		for (int i = 0; i < reference_gauss_maps.size(); i++) {
+			for (int j = 0; j < reference_gauss_maps[i].face_verts.size(); j++) {
+				gauss_maps[i].face_verts[j] = rot * reference_gauss_maps[i].face_verts[j];
+			}
+		}
+	}
+
+	//brute forcy but only happens once per convex poly
+	RigidBody::GaussMap RigidBody::computeGaussMap(const ConvexPoly& c) {
+		GaussMap g;
+		for (int i = 0; i < c.surfaces.size(); i++) {
+			const Surface& s1 = c.surfaces[i];
+			g.face_verts.push_back(s1.normal());
+
+			for (int j = i + 1; j < c.surfaces.size(); j++) {
+				const Surface& s2 = c.surfaces[j];
+
+				for (int k = 0; k < s1.n_points(); k++) {
+					for (int w = 0; w < s2.n_points(); w++) {
+						mthz::Vec3 x1 = s1.getPointI(k);
+						mthz::Vec3 x2 = s1.getPointI((k + 1) % s1.n_points());
+						mthz::Vec3 y1 = s2.getPointI(w);
+						mthz::Vec3 y2 = s2.getPointI((w + 1) % s2.n_points());
+
+						//if si and sj share an edge, there exists an arc between v1 and v2 on the gauss map
+						if ((x1 == y1 && x2 == y2) || (x1 == y2 && x2 == y1)) {
+							g.arcs.push_back({ (unsigned int)i, (unsigned int)j });
+						}
+					}
+				}
+			}
+		}
+		return g;
 	}
 
 	static struct IntrgVals {

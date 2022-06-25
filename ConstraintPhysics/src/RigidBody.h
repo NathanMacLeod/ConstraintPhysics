@@ -8,11 +8,20 @@
 
 namespace phyz {
 
-	
-
 	class RigidBody {
 	public:
 		typedef int PKey;
+
+		struct GaussArc {
+			unsigned int v1_indx;
+			unsigned int v2_indx;
+		};
+
+		struct GaussMap {
+			std::vector<mthz::Vec3> face_verts;
+			std::vector<GaussArc> arcs;
+		};
+
 
 		RigidBody(const std::vector<ConvexPoly>& geometry, double density, int id);
 		PKey track_point(mthz::Vec3 p); //track the movement of p which is on the body b. P given in world coordinates
@@ -37,8 +46,13 @@ namespace phyz {
 
 		friend class PhysicsEngine;
 	private:
+
+		GaussMap computeGaussMap(const ConvexPoly& c);
+
 		std::vector<ConvexPoly> geometry;
 		std::vector<ConvexPoly> reference_geometry;
+		std::vector<GaussMap> gauss_maps;
+		std::vector<GaussMap> reference_gauss_maps;
 		
 		std::vector<mthz::Vec3> track_p;
 	};

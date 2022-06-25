@@ -76,7 +76,7 @@ namespace rndr {
         return keys[key] != KeyState::KEY_UP;
     }
 
-    bool getKeyPresed(int key) {
+    bool getKeyPressed(int key) {
         if (key >= 0 && key < N_KEYS && keys[key] == KeyState::KEY_PRESSED) {
             keys[key] = KeyState::KEY_DOWN;
             return true;

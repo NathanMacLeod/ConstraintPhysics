@@ -53,6 +53,16 @@ namespace mthz {
 				v[2][0] * w.x + v[2][1] * w.y + v[2][2] * w.z);
 		}
 
+		Mat3 operator-() const {
+			Mat3 out;
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					out.v[i][j] = -v[i][j];
+				}
+			}
+			return out;
+		}
+
 		Mat3 operator*(const Mat3& m) const {
 			Mat3 out;
 			for (int i = 0; i < 3; i++) {

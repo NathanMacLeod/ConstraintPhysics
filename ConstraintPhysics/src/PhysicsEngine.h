@@ -22,6 +22,7 @@ namespace phyz {
 	private:
 		bool resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution);
 		void resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack = 1);
+		Manifold gaussSAT(const ConvexPoly& a, const RigidBody::GaussMap& ag, const ConvexPoly& b, const RigidBody::GaussMap bg) const;
 		Manifold SAT(const ConvexPoly& a, const ConvexPoly& b) const;
 
 		int next_ID = 0;
