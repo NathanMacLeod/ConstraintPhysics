@@ -15,6 +15,9 @@
     <ClCompile Include="src\ConvexPoly.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\CollisionDetect.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\PhysicsEngine.h">
@@ -24,6 +27,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\ConvexPoly.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\CollisionDetect.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

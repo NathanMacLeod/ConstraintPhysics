@@ -1,19 +1,13 @@
 #pragma once
 #include "RigidBody.h"
+#include "CollisionDetect.h"
 
 namespace phyz {
 
-	struct Manifold {
-		std::vector<mthz::Vec3> points;
-		mthz::Vec3 normal;
-		double pen_depth;
-	};
-
-	Manifold merge_manifold(const Manifold& m1, const Manifold& m2);
-	Manifold cull_manifold(const Manifold& m, int new_size);
-
 	class PhysicsEngine {
 	public:
+		//PhysicsEngine() { init_multithreaded_sat(); }
+
 		void timeStep();
 		RigidBody* createRigidBody(const std::vector<ConvexPoly>& geometry, bool fixed=false, double density=1.0);
 
@@ -22,8 +16,6 @@ namespace phyz {
 	private:
 		bool resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution);
 		void resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack = 1);
-		Manifold gaussSAT(const ConvexPoly& a, const RigidBody::GaussMap& ag, const ConvexPoly& b, const RigidBody::GaussMap bg) const;
-		Manifold SAT(const ConvexPoly& a, const ConvexPoly& b) const;
 
 		int next_ID = 0;
 		std::vector<RigidBody*> bodies;

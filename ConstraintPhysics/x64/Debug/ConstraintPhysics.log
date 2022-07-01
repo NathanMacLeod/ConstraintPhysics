@@ -1,12 +1,17 @@
-﻿  PhysicsEngine.cpp
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(32,29): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(81,23): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(155,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(328,33): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(491,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(514,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(717,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(718,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(816,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(817,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+﻿  CollisionDetect.cpp
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(12,3): warning C4091: 'static ': ignored on left of 'phyz::CheckNormResults' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(23,3): warning C4091: 'static ': ignored on left of 'phyz::NormCheckJob' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(109,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(218,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(293,10): warning C4477: 'printf' : format string '%d' requires an argument of type 'int', but variadic argument 1 has type 'unsigned __int64'
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(293,10): message : consider using '%zd' in the format string
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(297,52): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(366,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(367,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(537,29): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  PhysicsEngine.cpp
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(15,23): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(98,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(271,33): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  Generating Code...
   ConstraintPhysics.vcxproj -> C:\dev\ConstraintPhysics\x64\Debug\ConstraintPhysics.lib
