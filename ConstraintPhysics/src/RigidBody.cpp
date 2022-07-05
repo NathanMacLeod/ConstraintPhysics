@@ -33,6 +33,27 @@ namespace phyz {
 		gauss_maps = reference_gauss_maps;
 
 		radius = sqrt(radius);
+		aabb = genAABB(geometry);
+	}
+
+	AABB RigidBody::genAABB(const std::vector<ConvexPoly>& geometry) {
+		const double inf = std::numeric_limits<double>::infinity();
+		mthz::Vec3 min(inf, inf, inf);
+		mthz::Vec3 max(-inf, -inf, -inf);
+
+		for (const ConvexPoly& c : geometry) {
+			for (mthz::Vec3 p : c.points) {
+				min.x = std::min<double>(min.x, p.x);
+				min.y = std::min<double>(min.y, p.y);
+				min.z = std::min<double>(min.z, p.z);
+
+				max.x = std::max<double>(max.x, p.x);
+				max.y = std::max<double>(max.y, p.y);
+				max.z = std::max<double>(max.z, p.z);
+			}
+		}
+
+		return { min, max };
 	}
 
 	RigidBody::PKey RigidBody::track_point(mthz::Vec3 p) {
@@ -112,6 +133,7 @@ namespace phyz {
 				gauss_maps[i].face_verts[j] = rot * reference_gauss_maps[i].face_verts[j];
 			}
 		}
+		aabb = genAABB(geometry);
 	}
 
 	//brute forcy but only happens once per convex poly

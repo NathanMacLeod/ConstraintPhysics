@@ -2,78 +2,73 @@
 #include "RigidBody.h"
 #include <vector>
 #include <algorithm>
+#include "Octree.h"
 
-//static const double COS_TOL = 0.00001523; //~1 degree
-//static const double SIN_TOL = 0.0174; //~1 degree
+static const double FLATTENING_BIAS_MAG = 0;
+static const double FLAT_ENOUGH = cos(3.1415926535 * 0.1 / 180.0);
 
 namespace phyz {
 
 	void PhysicsEngine::timeStep() {
+
+		Octree<RigidBody> octree(mthz::Vec3(0, 0, 0), 1000, 1);
+
 		for (RigidBody* b : bodies) {
+			b->updateGeometry();
+			octree.insert(*b, b->aabb);
 			if (!b->fixed) {
 				b->vel += gravity * step_time;
 				b->applyGyroAccel(step_time);
 			}
 		}
 		
-		//for (int i = 0; i < 5; i++) {
+		std::set<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
+		for (Octree<RigidBody>::Pair p : possible_intersections) {
+			RigidBody* b1 = p.t1;
+			RigidBody* b2 = p.t2;
 
-		for (RigidBody* b1 : bodies) {
-			if (b1->fixed) {
+			if (b1->fixed && b2->fixed) {
 				continue;
 			}
-			for (RigidBody* b2 : bodies) {
-				if (b1 == b2 || (b1->com - b2->com).mag() > b1->radius + b2->radius) {
-					continue;
-				}
-				std::vector<Manifold> manifolds;
-				for (int i = 0; i < b1->geometry.size(); i++) {
-					for (int j = 0; j < b2->geometry.size(); j++) {
-						Manifold man = SAT(b1->geometry[i], b1->gauss_maps[i], b2->geometry[j], b2->gauss_maps[j]);
 
-						if (man.pen_depth > 0) {
-							manifolds.push_back(man);
-						}
+			std::vector<Manifold> manifolds;
+			for (int i = 0; i < b1->geometry.size(); i++) {
+				for (int j = 0; j < b2->geometry.size(); j++) {
+					Manifold man = SAT(b1->geometry[i], b1->gauss_maps[i], b2->geometry[j], b2->gauss_maps[j]);
+
+					if (man.pen_depth > 0) {
+						manifolds.push_back(man);
 					}
 				}
-				if (manifolds.size() > 0) {
+			}
+			if (manifolds.size() > 0) {
 
-					int max_indx = 0;
-					for (int i = 1; i < manifolds.size(); i++) {
-						if (manifolds[i].pen_depth > manifolds[max_indx].pen_depth) {
-							max_indx = i;
+				int max_indx = 0;
+				for (int i = 1; i < manifolds.size(); i++) {
+					if (manifolds[i].pen_depth > manifolds[max_indx].pen_depth) {
+						max_indx = i;
+					}
+				}
+				for (int i = 0; i < manifolds.size(); i++) {
+					if (i != max_indx) {
+						double v = manifolds[max_indx].normal.dot(manifolds[i].normal);
+						if (1 - v < COS_TOL) {
+							manifolds[max_indx] = merge_manifold(manifolds[max_indx], manifolds[i]);
 						}
 					}
-					for (int i = 0; i < manifolds.size(); i++) {
-						if (i != max_indx) {
-							double v = manifolds[max_indx].normal.dot(manifolds[i].normal);
-							if (1 - v < COS_TOL) {
-								manifolds[max_indx] = merge_manifold(manifolds[max_indx], manifolds[i]);
-							}
-						}
-					}
 
-					Manifold man = cull_manifold(manifolds[max_indx], 4);
+				}
+				Manifold man = cull_manifold(manifolds[max_indx], 4);
 
-					/*printf("n manifolds: %d, ", manifolds.size());
-					int i = 0;
-					for (const Manifold& m : manifolds) {
-						printf("s%d.n_points: %d ", i++, m.points.size());
-					}
-					printf("final manifold size: %d, culled_size : %d\n", manifolds.size(), manifolds[max_indx].points.size(), man.points.size());*/
+				//printf("n manifolds: %d, ", manifolds.size());
+				//printf("final manifold size: %d\n", man.points.size());
 
-					if (man.points.size() == 4 && manifolds.size() == 2) {
-						bool peenut = true;
-					}
-
-					bool collision_occured = resolve_collision(b1, b2, man, 0.33);
-					if (collision_occured) {
-						resolve_penetration(b1, b2, manifolds[max_indx], 0.25);
-					}
+				bool collision_occured = resolve_collision(b1, b2, man, 0.33);
+				if (collision_occured) {
+					resolve_penetration(b1, b2, man, 0.55);
 				}
 			}
 		}
-		//}
 
 		for (RigidBody* b : bodies) {
 			if (!b->fixed) {
@@ -81,7 +76,6 @@ namespace phyz {
 				if (b->ang_vel.magSqrd() != 0) {
 					b->orientation = mthz::Quaternion(step_time * b->ang_vel.mag(), b->ang_vel) * b->orientation;
 				}
-				b->updateGeometry();
 			}
 		}
 	}
@@ -315,7 +309,7 @@ namespace phyz {
 		}
 
 		if (suction_exists) {
-			Manifold new_man = { std::vector<mthz::Vec3>(0), manifold.normal, manifold.pen_depth };
+			Manifold new_man = { std::vector<mthz::Vec3>(0), manifold.normal, manifold.pen_depth, manifold.flatness };
 			for (int i = 0; i < manifold.points.size(); i++) {
 				if (impulses[i] > -CUTOFF_MAG) {
 					new_man.points.push_back(manifold.points[i]);
@@ -325,9 +319,8 @@ namespace phyz {
 			return resolve_collision(a, b, new_man, restitution);
 		}
 		else {
-
 			//apply flattening bias to encourage objects to sit more perfectly flat
-			/*if (n >= 2) {
+			if (n >= 2 && manifold.flatness < FLAT_ENOUGH) {
 				std::vector<double> n_axis_depth(n);
 				double avg_depth = 0.0;
 				double min_depth = std::numeric_limits<double>::infinity();
@@ -346,10 +339,11 @@ namespace phyz {
 				if (depth_range > CUTOFF_MAG) {
 					for (int i = 0; i < n; i++) {
 						double depth_diff = n_axis_depth[i] - avg_depth;
-						impulses[i] *= 1 - FLATTENING_BIAS_MAG * depth_diff / (depth_range);
+						impulses[i] *= 1 - (1 - manifold.flatness) * FLATTENING_BIAS_MAG * depth_diff / (depth_range);
+						//impulses[i] *= 1 - FLATTENING_BIAS_MAG * depth_diff / (depth_range);
 					}
 				}
-			}*/
+			}
 
 			//apply bounce impulses
 			for (int i = 0; i < impulses.size(); i++) {

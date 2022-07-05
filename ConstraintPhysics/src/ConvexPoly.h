@@ -61,4 +61,5 @@ namespace phyz {
 		std::vector<int> point_indexes;
 		int normalDirection;
 	};
+
 }

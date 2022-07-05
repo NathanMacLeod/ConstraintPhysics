@@ -6,7 +6,6 @@ namespace phyz {
 
 	class PhysicsEngine {
 	public:
-		//PhysicsEngine() { init_multithreaded_sat(); }
 
 		void timeStep();
 		RigidBody* createRigidBody(const std::vector<ConvexPoly>& geometry, bool fixed=false, double density=1.0);

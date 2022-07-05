@@ -1,10 +1,58 @@
-﻿  CollisionDetect.cpp
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(12,3): warning C4091: 'static ': ignored on left of 'phyz::CheckNormResults' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(23,3): warning C4091: 'static ': ignored on left of 'phyz::NormCheckJob' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(109,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(218,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(305,52): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(374,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(375,66): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(545,29): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+﻿  PhysicsEngine.cpp
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(21,23): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(92,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(265,33): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(13,1): warning C4311: 'type cast': pointer truncation from 'T *' to 'int'
+          with
+          [
+              T=phyz::RigidBody
+          ]
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(11): message : while compiling class template member function 'Octree<phyz::RigidBody>::Pair::Pair(T *,T *)'
+          with
+          [
+              T=phyz::RigidBody
+          ]
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(111): message : see reference to function template instantiation 'Octree<phyz::RigidBody>::Pair::Pair(T *,T *)' being compiled
+          with
+          [
+              T=phyz::RigidBody
+          ]
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(26): message : see reference to class template instantiation 'Octree<phyz::RigidBody>::Pair' being compiled
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(13,1): warning C4302: 'type cast': truncation from 'T *' to 'int'
+          with
+          [
+              T=phyz::RigidBody
+          ]
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(28,1): warning C4311: 'type cast': pointer truncation from 'T *const ' to 'int'
+          with
+          [
+              T=phyz::RigidBody
+          ]
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(27): message : while compiling class template member function 'bool Octree<phyz::RigidBody>::Pair::operator <(const Octree<phyz::RigidBody>::Pair &) const'
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.32.31326\include\xstddef(117): message : see reference to function template instantiation 'bool Octree<phyz::RigidBody>::Pair::operator <(const Octree<phyz::RigidBody>::Pair &) const' being compiled
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(28,1): warning C4302: 'type cast': truncation from 'T *const ' to 'int'
+          with
+          [
+              T=phyz::RigidBody
+          ]
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(31,1): warning C4311: 'type cast': pointer truncation from 'T *const ' to 'int'
+          with
+          [
+              T=phyz::RigidBody
+          ]
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(31,1): warning C4302: 'type cast': truncation from 'T *const ' to 'int'
+          with
+          [
+              T=phyz::RigidBody
+          ]
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(35,1): warning C4311: 'type cast': pointer truncation from 'T *const ' to 'int'
+          with
+          [
+              T=phyz::RigidBody
+          ]
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(35,1): warning C4302: 'type cast': truncation from 'T *const ' to 'int'
+          with
+          [
+              T=phyz::RigidBody
+          ]
   ConstraintPhysics.vcxproj -> C:\dev\ConstraintPhysics\x64\Release\ConstraintPhysics.lib

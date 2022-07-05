@@ -4,6 +4,7 @@
 #include "../../Math/src/Quaternion.h"
 #include "../../Math/src/Mat3.h"
 #include "ConvexPoly.h"
+#include "AABB.h"
 #include <Vector>
 
 namespace phyz {
@@ -22,6 +23,7 @@ namespace phyz {
 			std::vector<GaussArc> arcs;
 		};
 
+		GaussMap computeGaussMap(const ConvexPoly& c);
 
 		RigidBody(const std::vector<ConvexPoly>& geometry, double density, int id);
 		PKey track_point(mthz::Vec3 p); //track the movement of p which is on the body b. P given in world coordinates
@@ -30,6 +32,8 @@ namespace phyz {
 		void applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position);
 		void applyGyroAccel(float fElapsedTime, int n_itr = 1);
 		void updateGeometry();
+
+		static AABB genAABB(const std::vector<ConvexPoly>& geometry);
 
 		int id;
 		mthz::Quaternion orientation;
@@ -41,13 +45,12 @@ namespace phyz {
 		mthz::Mat3 tensor;
 		double mass;
 
+		AABB aabb;
 		double radius;
 		bool fixed;
 
 		friend class PhysicsEngine;
 	private:
-
-		GaussMap computeGaussMap(const ConvexPoly& c);
 
 		std::vector<ConvexPoly> geometry;
 		std::vector<ConvexPoly> reference_geometry;
