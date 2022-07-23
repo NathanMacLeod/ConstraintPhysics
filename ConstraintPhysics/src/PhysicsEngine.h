@@ -16,8 +16,8 @@ namespace phyz {
 		double step_time;
 	private:
 
-		bool resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution);
-		void resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack = 1);
+		//bool resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution);
+		//void resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack = 1);
 
 		int next_ID = 0;
 		std::vector<RigidBody*> bodies;

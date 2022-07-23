@@ -13,6 +13,13 @@ namespace phyz {
 	int n_culled = 0;
 	int n_total = 0;
 
+	struct ContactConstraintTrio {
+		ContactConstraint* c;
+		FrictionConstraint* f1;
+		FrictionConstraint* f2;
+		MagicID magic;
+	};
+
 	void PhysicsEngine::timeStep() {
 
 		Octree<RigidBody> octree(mthz::Vec3(0, 0, 0), 1000, 1);
@@ -27,6 +34,7 @@ namespace phyz {
 		}
 		
 		std::vector<Constraint*> constraints;
+		std::vector<ContactConstraintTrio> contacts;
 		std::set<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
 		for (Octree<RigidBody>::Pair p : possible_intersections) {
 			RigidBody* b1 = p.t1;
@@ -52,7 +60,7 @@ namespace phyz {
 
 					Manifold man = SAT(c1, b1->gauss_maps[i], c2, b2->gauss_maps[j]);
 
-					if (man.pen_depth > 0) {
+					if (man.max_pen_depth > 0) {
 						manifolds.push_back(man);
 					}
 				}
@@ -61,7 +69,7 @@ namespace phyz {
 
 				int max_indx = 0;
 				for (int i = 1; i < manifolds.size(); i++) {
-					if (manifolds[i].pen_depth > manifolds[max_indx].pen_depth) {
+					if (manifolds[i].max_pen_depth > manifolds[max_indx].max_pen_depth) {
 						max_indx = i;
 					}
 				}
@@ -78,17 +86,19 @@ namespace phyz {
 
 				mthz::Vec3 u, w;
 				man.normal.getPerpendicularBasis(&u, &w);
-				std::vector<Constraint*> cs = contact_cache.getWarmedConstraints(b1, b2, man, 0.33, 0.5, 3.5);
-				for (Constraint* c : cs) {
+				for (int i = 0; i < man.points.size(); i++) {
+					const ContactP& p = man.points[i];
+					ContactCache::CacheQuery q = contact_cache.checkCache(p.magicID);
+					ContactCache::ContactImpulses warm_start = q.cache_hit? q.impulses : ContactCache::ContactImpulses{0, 0, 0};
+
+					ContactConstraint* c = new ContactConstraint(b1, b2, man.normal, p.pos, 0.33, p.pen_depth, 3.5, warm_start.c_imp);
+					FrictionConstraint* f1 = new FrictionConstraint(b1, b2, u, p.pos, 0.5, man.points.size(), c, warm_start.f1_imp);
+					FrictionConstraint* f2 = new FrictionConstraint(b1, b2, w, p.pos, 0.5, man.points.size(), c, warm_start.f2_imp);
 					constraints.push_back(c);
+					constraints.push_back(f1);
+					constraints.push_back(f2);
+					contacts.push_back(ContactConstraintTrio{c, f1, f2, p.magicID});
 				}
-				/*for (const mthz::Vec3& p : man.points) {
-					
-					ContactConstraint* c = new ContactConstraint(b1, b2, man.normal, p, 0.33, man.pen_depth, 3.5, 0);
-					constraints.push_back(c);
-					constraints.push_back(new FrictionConstraint(b1, b2, u, p, 0.5, man.points.size(), c, 0));
-					constraints.push_back(new FrictionConstraint(b1, b2, w, p, 0.5, man.points.size(), c, 0));
-				}*/
 
 				//printf("n manifolds: %d, ", manifolds.size());
 				//printf("final manifold size: %d\n", man.points.size());
@@ -103,7 +113,14 @@ namespace phyz {
 		if (constraints.size() > 0) {
 			PGS_solve(constraints);
 		}
-		contact_cache.cleanUnusedContacts();
+		contact_cache.clear();
+
+		for (ContactConstraintTrio c : contacts) {
+			contact_cache.CacheImpulse(c.magic, c.c->impulse, c.f1->impulse, c.f2->impulse);
+			delete c.c;
+			delete c.f1;
+			delete c.f2;
+		}
 
 		for (RigidBody* b : bodies) {
 			if (!b->fixed) {
@@ -126,7 +143,7 @@ namespace phyz {
 		return r;
 	}
 
-	static std::vector<double> gj_solve(std::vector<std::vector<double>>* matrix, std::vector<double>* target, bool positive_sol_bias=true) {
+	/*static std::vector<double> gj_solve(std::vector<std::vector<double>>* matrix, std::vector<double>* target, bool positive_sol_bias = true) {
 		const bool DEBUG_PRINT = false;
 		int n = matrix->size();
 		int n_free_var = 0;
@@ -271,9 +288,9 @@ namespace phyz {
 
 		return out;
 
-	}
+	}*/
 
-	bool PhysicsEngine::resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution) {
+	/*bool PhysicsEngine::resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution) {
 
 		if (!a->fixed && !b->fixed) {
 			int a = 1;
@@ -427,9 +444,9 @@ namespace phyz {
 
 			return true;
 		}
-	}
+	}*/
 
-	void PhysicsEngine::resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack) {
+	/*void PhysicsEngine::resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack) {
 		double a_mr;
 		double b_mr;
 		if (a->fixed && b->fixed) {
@@ -457,6 +474,6 @@ namespace phyz {
 			b->updateGeometry();
 		}
 		
-	}
+	}*/
 
 }

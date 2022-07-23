@@ -2,9 +2,15 @@
 
 namespace phyz {
 
+	bool operator==(const MagicID& m1, const MagicID& m2) {
+		return m1.bID == m2.bID && m1.cID == m2.cID;
+	}
+
 	static struct CheckNormResults {
 		mthz::Vec3 a_maxP;
 		mthz::Vec3 b_maxP;
+		int a_maxPID;
+		int b_maxPID;
 		mthz::Vec3 norm;
 		double pen_depth;
 
@@ -16,24 +22,29 @@ namespace phyz {
 		double w;
 	};
 
-	//kinda brute forcey might redo later
-	static std::vector<ProjP> findContactArea(const ConvexPoly& c, mthz::Vec3 n, mthz::Vec3 p, mthz::Vec3 u, mthz::Vec3 w, double* flatness_out=nullptr) {
+	static struct ContactArea {
+		std::vector<ProjP> ps;
+		std::vector<int> p_IDs;
+		int surfaceID;
+	};
 
-		std::vector<ProjP> out;
+	//kinda brute forcey might redo later
+	static ContactArea findContactArea(const ConvexPoly& c, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
+
+		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1};
 
 		for (const Surface& s : c.surfaces) {
 			double cos_ang = s.normal().dot(n);
 			if (1 - cos_ang <= COS_TOL) {
 				int n_points = s.n_points();
-				out = std::vector<ProjP>(n_points);
+				out.ps = std::vector<ProjP>(n_points);
+				out.p_IDs = std::vector<int>(n_points);
 				for (int i = 0; i < n_points; i++) {
 					mthz::Vec3 v = s.getPointI(i);
-					out[i] = ProjP{ v.dot(u), v.dot(w) };
+					out.ps[i] = ProjP{ v.dot(u), v.dot(w) };
+					out.p_IDs[i] = s.point_indexes[i];
 				}
 
-				if (flatness_out != nullptr) {
-					*flatness_out = cos_ang;
-				}
 				return out;
 			}
 		}
@@ -43,19 +54,16 @@ namespace phyz {
 			mthz::Vec3 p2 = e.p2();
 			double sin_ang = abs((e.p2() - e.p1()).normalize().dot(n));
 			if ((e.p1() == p || e.p2() == p) && sin_ang <= SIN_TOL) {
-				out = { ProjP{ e.p1().dot(u), e.p1().dot(w) }, ProjP{ e.p2().dot(u), e.p2().dot(w) } };
+				out.ps = { ProjP{ e.p1().dot(u), e.p1().dot(w) }, ProjP{ e.p2().dot(u), e.p2().dot(w) } };
+				out.p_IDs = { e.p1_indx, e.p2_indx };
 
-				if (flatness_out != nullptr) {
-					*flatness_out = sqrt(1 - sin_ang*sin_ang);
-				}
 				return out;
 			}
 		}
 
-		if (flatness_out != nullptr) {
-			*flatness_out = 1.0;
-		}
-		return out = { ProjP{ p.dot(u), p.dot(w) } };
+		out.ps = { ProjP{ p.dot(u), p.dot(w) } };
+		out.p_IDs = { p_ID };
+		return out;
 	}
 
 	static bool pInside(const std::vector<ProjP> poly, ProjP p) {
@@ -133,6 +141,8 @@ namespace phyz {
 
 		mthz::Vec3 min_p;
 		mthz::Vec3 max_p;
+		int min_pID;
+		int max_pID;
 		double min_val;
 		double max_val;
 	};
@@ -140,14 +150,17 @@ namespace phyz {
 	static ExtremaInfo findExtrema(const ConvexPoly& c, mthz::Vec3 axis) {
 		ExtremaInfo extrema;
 
-		for (mthz::Vec3 p : c.points) {
+		for (int i = 0; i < c.points.size(); i++) {
+			mthz::Vec3 p = c.points[i];
 			double val = p.dot(axis);
 			if (val < extrema.min_val) {
 				extrema.min_p = p;
+				extrema.min_pID = i;
 				extrema.min_val = val;
 			}
 			if (val > extrema.max_val) {
 				extrema.max_p = p;
+				extrema.max_pID = i;
 				extrema.max_val = val;
 			}
 		}
@@ -159,27 +172,28 @@ namespace phyz {
 		ExtremaInfo e1 = findExtrema(a, n);
 		ExtremaInfo e2 = findExtrema(b, n);
 
-		return { e1.max_p, e2.min_p, n, e1.max_val - e2.min_val };
+		return { e1.max_p, e2.min_p, e1.max_pID, e2.min_pID, n, e1.max_val - e2.min_val };
 	}
 
 	Manifold SAT(const ConvexPoly& a, const GaussMap& ag, const ConvexPoly& b, const GaussMap& bg) {
 		Manifold out;
-		CheckNormResults min_pen = { mthz::Vec3(), mthz::Vec3(), mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		double pen_depth;
+		CheckNormResults min_pen = { mthz::Vec3(), mthz::Vec3(), -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
-		for (mthz::Vec3 n : ag.face_verts) {
+		for (const mthz::Vec3& n : ag.face_verts) {
 			CheckNormResults x = sat_checknorm(a, b, n);
 			if (x.seprAxisExists()) {
-				out.pen_depth = -1;
+				out.max_pen_depth = -1;
 				return out;
 			}
 			else if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 			}
 		}
-		for (mthz::Vec3 n : bg.face_verts) {
+		for (const mthz::Vec3& n : bg.face_verts) {
 			CheckNormResults x = sat_checknorm(a, b, n);
 			if (x.seprAxisExists()) {
-				out.pen_depth = -1;
+				out.max_pen_depth = -1;
 				return out;
 			}
 			else if (x.pen_depth < min_pen.pen_depth) {
@@ -218,7 +232,7 @@ namespace phyz {
 
 				CheckNormResults x = sat_checknorm(a, b, n);
 				if (x.seprAxisExists()) {
-					out.pen_depth = -1;
+					out.max_pen_depth = -1;
 					return out;
 				}
 				else if (x.pen_depth < min_pen.pen_depth) {
@@ -227,7 +241,6 @@ namespace phyz {
 			}
 		}
 
-		out.pen_depth = min_pen.pen_depth;
 		out.normal = min_pen.norm;
 		mthz::Vec3 norm = min_pen.norm;
 
@@ -238,60 +251,88 @@ namespace phyz {
 		mthz::Vec3 w = norm.cross(u);*/
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
-		double a_flatness = -1, b_flatness = -1;
-		std::vector<ProjP> a_contact = findContactArea(a, norm, min_pen.a_maxP, u, w, &a_flatness);
-		std::vector<ProjP> b_contact = findContactArea(b, norm * (-1), min_pen.b_maxP, u, w, &b_flatness);
-		out.flatness = std::min<double>(a_flatness, b_flatness);
+		ContactArea a_contact = findContactArea(a, norm, min_pen.a_maxP, min_pen.a_maxPID, u, w);
+		ContactArea b_contact = findContactArea(b, norm * (-1), min_pen.b_maxP, min_pen.b_maxPID, u, w);
 
 		std::vector<ProjP> man_pool;
-		for (ProjP p : a_contact) {
-			if (pInside(b_contact, p)) {
+		std::vector<uint64_t> man_pool_magics;
+		for (int i = 0; i < a_contact.ps.size(); i++) {
+			ProjP p = a_contact.ps[i];
+			if (pInside(b_contact.ps, p)) {
 				man_pool.push_back(p);
+				uint64_t m = 0;
+				m |= 0x00000000FFFFFFFF & a_contact.p_IDs[i];
+				m |= 0xFFFFFFFF00000000 & (uint64_t(b_contact.surfaceID) << 32);
+				man_pool_magics.push_back(m);
 			}
 		}
-		for (ProjP p : b_contact) {
-			if (pInside(a_contact, p)) {
+		for (int i = 0; i < b_contact.ps.size(); i++) {
+			ProjP p = b_contact.ps[i];
+			if (pInside(a_contact.ps, p)) {
 				man_pool.push_back(p);
+				uint64_t m = 0;
+				m |= 0x00000000FFFFFFFF & a_contact.surfaceID;
+				m |= 0xFFFFFFFF00000000 & (uint64_t(b_contact.p_IDs[i]) << 32);
+				man_pool_magics.push_back(m);
 			}
 		}
-		if (a_contact.size() >= 2 && b_contact.size() >= 2) {
-			int itr_max_a = (a_contact.size() == 2) ? 1 : a_contact.size();
-			int itr_max_b = (b_contact.size() == 2) ? 1 : b_contact.size();
+		if (a_contact.ps.size() >= 2 && b_contact.ps.size() >= 2) {
+			int itr_max_a = (a_contact.ps.size() == 2) ? 1 : a_contact.ps.size();
+			int itr_max_b = (b_contact.ps.size() == 2) ? 1 : b_contact.ps.size();
 			for (int i = 0; i < itr_max_a; i++) {
-				ProjP a1 = a_contact[i];
-				ProjP a2 = a_contact[(i + 1) % a_contact.size()];
+				int a2_indx = (i + 1) % a_contact.ps.size();
+				ProjP a1 = a_contact.ps[i];
+				ProjP a2 = a_contact.ps[a2_indx];
+				int a1_ID = a_contact.p_IDs[i];
+				int a2_ID = a_contact.p_IDs[a2_indx];
 
 				for (int j = 0; j < itr_max_b; j++) {
-					ProjP b1 = b_contact[j];
-					ProjP b2 = b_contact[(j + 1) % b_contact.size()];
+					int b2_indx = (j + 1) % b_contact.ps.size();
+					ProjP b1 = b_contact.ps[j];
+					ProjP b2 = b_contact.ps[b2_indx];
+					int b1_ID = b_contact.p_IDs[j];
+					int b2_ID = b_contact.p_IDs[b2_indx];
 
 					ProjP out;
 					if (findIntersection(a1, a2, b1, b2, &out)) {
 						man_pool.push_back(out);
+						uint64_t m = 0;
+						m |= 0x000000000000FFFF & a1_ID;
+						m |= 0x00000000FFFF0000 & a2_ID;
+						m |= 0x0000FFFF00000000 & (uint64_t(b1_ID) << 32);
+						m |= 0xFFFF000000000000 & (uint64_t(b2_ID) << 48);
+						man_pool_magics.push_back(m);
 					}
 				}
 			}
 		}
 
-		mthz::Vec3 n_offset = norm * min_pen.a_maxP.dot(norm);
+		mthz::Vec3 a_maxP = min_pen.a_maxP;
+		double a_pen = min_pen.pen_depth;
+		double a_dot_val = a_maxP.dot(norm);
+		mthz::Vec3 n_offset = norm * a_dot_val;
 
-		for (ProjP p : man_pool) {
-			out.points.push_back(u * p.u + w * p.w + n_offset);
+		uint64_t cID = 0;
+		cID |= 0x00000000FFFFFFFF & a.id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.id) << 32);
+
+		out.points.reserve(man_pool.size());
+		for (int i = 0; i < man_pool.size(); i++) {
+			ProjP p = man_pool[i];
+			ContactP cp;
+			cp.pos = u * p.u + w * p.w + n_offset;
+			cp.pen_depth = cp.pos.dot(norm) - a_dot_val + a_pen;
+			cp.magicID = MagicID{ cID, man_pool_magics[i] };
+			out.points.push_back(cp);
 		}
+		out.max_pen_depth = min_pen.pen_depth;
 
 		return out;
 	}
 
 	Manifold merge_manifold(const Manifold& m1, const Manifold& m2) {
-		Manifold out = { std::vector<mthz::Vec3>(m1.points.size() + m2.points.size()), mthz::Vec3(), -1, std::max<double>(m1.flatness, m2.flatness) };
-		if (m1.pen_depth > m2.pen_depth) {
-			out.normal = m1.normal;
-			out.pen_depth = m1.pen_depth;
-		}
-		else {
-			out.normal = m2.normal;
-			out.pen_depth = m2.pen_depth;
-		}
+		Manifold out = { std::vector<ContactP>(m1.points.size() + m2.points.size()), mthz::Vec3(), std::max<double>(m1.max_pen_depth, m2.max_pen_depth)};
+		out.normal = (m1.normal + m2.normal).normalize();
 
 		for (int i = 0; i < m1.points.size(); i++) {
 			out.points[i] = m1.points[i];
@@ -308,7 +349,7 @@ namespace phyz {
 		if (new_size >= m.points.size()) {
 			return m;
 		}
-		Manifold out = { std::vector<mthz::Vec3>(new_size), m.normal, m.pen_depth, m.flatness };
+		Manifold out = { std::vector<ContactP>(new_size), m.normal, 0 };
 		std::vector<bool> p_available(m.points.size(), true);
 
 		mthz::Vec3 u, w;
@@ -319,13 +360,13 @@ namespace phyz {
 			double vw = sin(2 * M_PI * i / new_size);
 			mthz::Vec3 target_dir = u * vu + w * vw;
 
-			mthz::Vec3 max_p;
+			ContactP max_p;
 			int max_indx;
 			double max_v = -std::numeric_limits<double>::infinity();
 			for (int j = 0; j < m.points.size(); j++) {
 				if (p_available[j]) {
-					mthz::Vec3 p = m.points[j];
-					double val = p.dot(target_dir);
+					ContactP p = m.points[j];
+					double val = p.pos.dot(target_dir);
 					if (val > max_v) {
 						max_v = val;
 						max_p = p;
@@ -334,6 +375,7 @@ namespace phyz {
 				}
 			}
 			out.points[i] = max_p;
+			out.max_pen_depth = std::max<double>(out.max_pen_depth, max_p.pen_depth);
 			p_available[max_indx] = false;
 		}
 

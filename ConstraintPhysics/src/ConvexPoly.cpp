@@ -5,8 +5,12 @@
 
 namespace phyz {
 
+	static int next_id;
+	
+	ConvexPoly::ConvexPoly() : id(next_id++) {}
+
 	ConvexPoly::ConvexPoly(const ConvexPoly& c)
-		: points(c.points), interior_point(c.interior_point)
+		: points(c.points), interior_point(c.interior_point), id(next_id++)
 	{
 		for (int i = 0; i < c.surfaces.size(); i++) {
 			surfaces.push_back(Surface(c.surfaces[i], this));
@@ -72,6 +76,13 @@ namespace phyz {
 			}
 		}
 		interior_point = (points[maxD_i] + points[maxD_j]) / 2.0;
+	}
+
+	void ConvexPoly::assign_IDs() {
+		int sID = points.size();
+		for (Surface& s : surfaces) {
+			s.surfaceID = sID++;
+		}
 	}
 
 	AABB ConvexPoly::gen_AABB() const {

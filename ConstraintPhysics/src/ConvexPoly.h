@@ -14,7 +14,7 @@ namespace phyz {
 	class ConvexPoly {
 	public:
 		ConvexPoly(const ConvexPoly& c);
-		ConvexPoly() {}
+		ConvexPoly();
 
 		static ConvexPoly genRect(double x, double y, double z, double dx, double dy, double dz);
 		static ConvexPoly genTetra(double x, double y, double z, double r);
@@ -24,11 +24,13 @@ namespace phyz {
 		void gen_interiorP();
 		AABB gen_AABB() const;
 		void compute_edges();
+		void assign_IDs();
 
 		std::vector<mthz::Vec3> points;
 		std::vector<Surface> surfaces;
 		std::vector<Edge> edges;
 		mthz::Vec3 interior_point;
+		int id;
 
 	};
 
@@ -41,11 +43,12 @@ namespace phyz {
 		mthz::Vec3 p1() const;
 		mthz::Vec3 p2() const;
 
+		int p1_indx;
+		int p2_indx;
 		friend class ConvexPoly;
 	private:
 		ConvexPoly* poly;
-		int p1_indx;
-		int p2_indx;
+		
 	};
 
 	class Surface {
@@ -58,10 +61,11 @@ namespace phyz {
 		mthz::Vec3 normal() const;
 		mthz::Vec3 getPointI(int i) const;
 
+		std::vector<int> point_indexes;
 		friend class ConvexPoly;
 	private:
 		ConvexPoly* poly;
-		std::vector<int> point_indexes;
+		int surfaceID;
 		int normalDirection;
 	};
 

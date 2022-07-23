@@ -12,11 +12,7 @@ C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,23): warning C4244: '=': co
 C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,65): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(96,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(17): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(37,1): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(38,1): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(78,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(104,1): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(105,1): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(44,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\main.cpp(24,2): warning C4091: 'static ': ignored on left of 'Mesh' when no variable is declared
 C:\dev\ConstraintPhysics\Demo\src\main.cpp(61,93): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\main.cpp(65,12): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
@@ -54,11 +50,7 @@ C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,125): warning C4244: 'argument': 
 C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,111): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
   main_old.cpp
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(17): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(37,1): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(38,1): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(78,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(104,1): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(105,1): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(44,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(14,24): warning C4244: '=': conversion from 'const double' to 'float', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(32,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(33,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
