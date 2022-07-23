@@ -1,6 +1,8 @@
 #pragma once
 #include "RigidBody.h"
 #include "CollisionDetect.h"
+#include "ConstraintSolver.h"
+#include "ContactCache.h"
 
 namespace phyz {
 
@@ -13,11 +15,14 @@ namespace phyz {
 		mthz::Vec3 gravity;
 		double step_time;
 	private:
+
 		bool resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution);
 		void resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack = 1);
 
 		int next_ID = 0;
 		std::vector<RigidBody*> bodies;
+
+		ContactCache contact_cache;
 	};
 
 }

@@ -18,6 +18,9 @@
     <ClCompile Include="src\CollisionDetect.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\ConstraintSolver.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\PhysicsEngine.h">
@@ -36,6 +39,12 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\Octree.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ConstraintSolver.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ContactCache.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

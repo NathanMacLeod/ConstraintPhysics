@@ -2,12 +2,16 @@
 #include "RigidBody.h"
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
 #include "Octree.h"
 
 static const double FLATTENING_BIAS_MAG = 0;
 static const double FLAT_ENOUGH = cos(3.1415926535 * 0.1 / 180.0);
 
 namespace phyz {
+
+	int n_culled = 0;
+	int n_total = 0;
 
 	void PhysicsEngine::timeStep() {
 
@@ -22,6 +26,7 @@ namespace phyz {
 			}
 		}
 		
+		std::vector<Constraint*> constraints;
 		std::set<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
 		for (Octree<RigidBody>::Pair p : possible_intersections) {
 			RigidBody* b1 = p.t1;
@@ -34,7 +39,18 @@ namespace phyz {
 			std::vector<Manifold> manifolds;
 			for (int i = 0; i < b1->geometry.size(); i++) {
 				for (int j = 0; j < b2->geometry.size(); j++) {
-					Manifold man = SAT(b1->geometry[i], b1->gauss_maps[i], b2->geometry[j], b2->gauss_maps[j]);
+					const ConvexPoly& c1 = b1->geometry[i];
+					const ConvexPoly& c2 = b2->geometry[j];
+					if ((b1->geometry.size() > 1 || b2->geometry.size() > 1) && !AABB::intersects(b1->geometry_AABB[i], b2->geometry_AABB[j])) {
+						n_total++;
+						n_culled++;
+						continue;
+					}
+					else if (b1->geometry.size() > 1 || b2->geometry.size() > 1) {
+						n_total++;
+					}
+
+					Manifold man = SAT(c1, b1->gauss_maps[i], c2, b2->gauss_maps[j]);
 
 					if (man.pen_depth > 0) {
 						manifolds.push_back(man);
@@ -60,22 +76,45 @@ namespace phyz {
 				}
 				Manifold man = cull_manifold(manifolds[max_indx], 4);
 
+				mthz::Vec3 u, w;
+				man.normal.getPerpendicularBasis(&u, &w);
+				std::vector<Constraint*> cs = contact_cache.getWarmedConstraints(b1, b2, man, 0.33, 0.5, 3.5);
+				for (Constraint* c : cs) {
+					constraints.push_back(c);
+				}
+				/*for (const mthz::Vec3& p : man.points) {
+					
+					ContactConstraint* c = new ContactConstraint(b1, b2, man.normal, p, 0.33, man.pen_depth, 3.5, 0);
+					constraints.push_back(c);
+					constraints.push_back(new FrictionConstraint(b1, b2, u, p, 0.5, man.points.size(), c, 0));
+					constraints.push_back(new FrictionConstraint(b1, b2, w, p, 0.5, man.points.size(), c, 0));
+				}*/
+
 				//printf("n manifolds: %d, ", manifolds.size());
 				//printf("final manifold size: %d\n", man.points.size());
 
-				bool collision_occured = resolve_collision(b1, b2, man, 0.33);
+				/*bool collision_occured = resolve_collision(b1, b2, man, 0.33);
 				if (collision_occured) {
 					resolve_penetration(b1, b2, man, 0.55);
-				}
+				}*/
 			}
 		}
 
+		if (constraints.size() > 0) {
+			PGS_solve(constraints);
+		}
+		contact_cache.cleanUnusedContacts();
+
 		for (RigidBody* b : bodies) {
 			if (!b->fixed) {
-				b->com += b->vel * step_time;
+				b->com += (b->vel + b->psuedo_vel) * step_time;
 				if (b->ang_vel.magSqrd() != 0) {
-					b->orientation = mthz::Quaternion(step_time * b->ang_vel.mag(), b->ang_vel) * b->orientation;
+					mthz::Vec3 rot = b->ang_vel + b->psuedo_ang_vel;
+					b->orientation = mthz::Quaternion(step_time * rot.mag(), rot) * b->orientation;
 				}
+
+				b->psuedo_vel = mthz::Vec3(0, 0, 0);
+				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
 			}
 		}
 	}

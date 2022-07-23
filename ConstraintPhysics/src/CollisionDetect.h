@@ -3,6 +3,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <cinttypes>
 
 namespace phyz {
 	static const double M_PI = 3.14159265358979323846;
@@ -16,10 +17,21 @@ namespace phyz {
 		mthz::Vec3 normal;
 		double pen_depth;
 		double flatness; //cos angle between two surfaces
+		uint64_t magicID;
+
+		void generateMagicID(const RigidBody& a, const RigidBody& b) {
+			int largerID = std::max<int>(a.id, b.id);
+			int smallerID = std::min<int>(a.id, b.id);
+
+			magicID = 0;
+			magicID |= smallerID;
+			magicID |= uint64_t(largerID) << 32;
+		}
 	};
 	Manifold merge_manifold(const Manifold& m1, const Manifold& m2);
 	Manifold cull_manifold(const Manifold& m, int new_size);
 
-	Manifold SAT(const ConvexPoly& a, const RigidBody::GaussMap& ag, const ConvexPoly& b, const RigidBody::GaussMap& bg);
+	//geom_indx only needed for generating magicIDs, can be ignored otherwise
+	Manifold SAT(const ConvexPoly& a, const GaussMap& ag, const ConvexPoly& b, const GaussMap& bg);
 
 }

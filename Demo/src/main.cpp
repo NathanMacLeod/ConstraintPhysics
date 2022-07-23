@@ -195,7 +195,7 @@ int main() {
 		//top
 		if (rndr::getKeyPressed(GLFW_KEY_J)) {
 			double h1 = 1.8, w1 = 0.05, h2 = 0.2, w2 = 2, s = 0.33;
-			std::vector<Mesh> m1 = { rect(0, 0, 0, w1, h1, w1), rect(0, -h1*s/2, 0, w2, h2, w2) };
+			std::vector<Mesh> m1 = { rect(0, 0, 0, w1, h1, w1), rect(0, -h1 * s / 2, 0, w2, h2, w2)};
 			std::vector<phyz::ConvexPoly> geom1;
 			geom1.push_back(phyz::ConvexPoly::genRect(-w1/2, -h1/2, -w1/2, w1, h1, w1));
 			geom1.push_back(phyz::ConvexPoly::genRect(-w2/2, -h2/2 -h1*s/2, -w2/2, w2, h2, w2));

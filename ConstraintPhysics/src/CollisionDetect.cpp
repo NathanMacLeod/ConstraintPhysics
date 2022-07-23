@@ -162,7 +162,7 @@ namespace phyz {
 		return { e1.max_p, e2.min_p, n, e1.max_val - e2.min_val };
 	}
 
-	Manifold SAT(const ConvexPoly& a, const RigidBody::GaussMap& ag, const ConvexPoly& b, const RigidBody::GaussMap& bg) {
+	Manifold SAT(const ConvexPoly& a, const GaussMap& ag, const ConvexPoly& b, const GaussMap& bg) {
 		Manifold out;
 		CheckNormResults min_pen = { mthz::Vec3(), mthz::Vec3(), mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
@@ -186,8 +186,8 @@ namespace phyz {
 				min_pen = x;
 			}
 		}
-		for (RigidBody::GaussArc arc1 : ag.arcs) {
-			for (RigidBody::GaussArc arc2 : bg.arcs) {
+		for (const GaussArc& arc1 : ag.arcs) {
+			for (const GaussArc& arc2 : bg.arcs) {
 
 				mthz::Vec3 a1 = ag.face_verts[arc1.v1_indx];
 				mthz::Vec3 a2 = ag.face_verts[arc1.v2_indx];
@@ -233,9 +233,11 @@ namespace phyz {
 
 		//generate manifold
 		//make arbitrary perp vector
-		const mthz::Vec3 axis1 = mthz::Vec3(1, 0, 0), axis2 = mthz::Vec3(0, 1, 0);
+		/*const mthz::Vec3 axis1 = mthz::Vec3(1, 0, 0), axis2 = mthz::Vec3(0, 1, 0);
 		mthz::Vec3 u = (abs(norm.dot(axis1)) < abs(norm.dot(axis2))) ? norm.cross(axis1).normalize() : norm.cross(axis2).normalize();
-		mthz::Vec3 w = norm.cross(u);
+		mthz::Vec3 w = norm.cross(u);*/
+		mthz::Vec3 u, w;
+		norm.getPerpendicularBasis(&u, &w);
 		double a_flatness = -1, b_flatness = -1;
 		std::vector<ProjP> a_contact = findContactArea(a, norm, min_pen.a_maxP, u, w, &a_flatness);
 		std::vector<ProjP> b_contact = findContactArea(b, norm * (-1), min_pen.b_maxP, u, w, &b_flatness);
@@ -309,9 +311,8 @@ namespace phyz {
 		Manifold out = { std::vector<mthz::Vec3>(new_size), m.normal, m.pen_depth, m.flatness };
 		std::vector<bool> p_available(m.points.size(), true);
 
-		const mthz::Vec3 axis1 = mthz::Vec3(1, 0, 0), axis2 = mthz::Vec3(0, 1, 0);
-		mthz::Vec3 u = (abs(m.normal.dot(axis1)) < abs(m.normal.dot(axis2))) ? m.normal.cross(axis1).normalize() : m.normal.cross(axis2).normalize();
-		mthz::Vec3 w = m.normal.cross(u);
+		mthz::Vec3 u, w;
+		m.normal.getPerpendicularBasis(&u, &w);
 
 		for (int i = 0; i < new_size; i++) {
 			double vu = cos(2 * M_PI * i / new_size);

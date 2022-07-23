@@ -53,12 +53,43 @@ namespace phyz {
 		}
 	}
 
+	//get point of minimum radius
 	void ConvexPoly::gen_interiorP() {
-		mthz::Vec3 avg;
-		for (const mthz::Vec3 p : points) {
-			avg += p;
+		if (points.size() < 2) {
+			return;
 		}
-		interior_point = avg / points.size();
+
+		double maxDiam = 0;
+		int maxD_i, maxD_j;
+		for (int i = 0; i < points.size(); i++) {
+			for (int j = i + 1; j < points.size(); j++) {
+				double diameter = (points[i] - points[j]).magSqrd();
+				if (diameter > maxDiam) {
+					maxDiam = diameter;
+					maxD_i = i;
+					maxD_j = j;
+				}
+			}
+		}
+		interior_point = (points[maxD_i] + points[maxD_j]) / 2.0;
+	}
+
+	AABB ConvexPoly::gen_AABB() const {
+		const double inf = std::numeric_limits<double>::infinity();
+		mthz::Vec3 min(inf, inf, inf);
+		mthz::Vec3 max(-inf, -inf, -inf);
+
+		for (const mthz::Vec3& p : points) {
+			min.x = std::min<double>(min.x, p.x);
+			min.y = std::min<double>(min.y, p.y);
+			min.z = std::min<double>(min.z, p.z);
+
+			max.x = std::max<double>(max.x, p.x);
+			max.y = std::max<double>(max.y, p.y);
+			max.z = std::max<double>(max.z, p.z);
+		}
+
+		return { min, max };
 	}
 
 	void ConvexPoly::rotate(const mthz::Quaternion q, mthz::Vec3 pivot_point) {
@@ -194,10 +225,8 @@ namespace phyz {
 	}
 
 	Surface::Surface(const Surface& s, ConvexPoly* poly) 
-		:point_indexes(s.point_indexes), normalDirection(s.normalDirection)
-	{
-		this->poly = poly;
-	}
+		:point_indexes(s.point_indexes), normalDirection(s.normalDirection), poly(poly)
+	{}
 
 	Surface::Surface() {
 		poly = nullptr;
@@ -222,6 +251,33 @@ namespace phyz {
 		}
 
 		return poly->points[point_indexes[i]];
+	}
+
+	GaussMap computeGaussMap(const ConvexPoly& c) {
+		GaussMap g;
+		for (int i = 0; i < c.surfaces.size(); i++) {
+			const Surface& s1 = c.surfaces[i];
+			g.face_verts.push_back(s1.normal());
+
+			for (int j = i + 1; j < c.surfaces.size(); j++) {
+				const Surface& s2 = c.surfaces[j];
+
+				for (int k = 0; k < s1.n_points(); k++) {
+					for (int w = 0; w < s2.n_points(); w++) {
+						mthz::Vec3 x1 = s1.getPointI(k);
+						mthz::Vec3 x2 = s1.getPointI((k + 1) % s1.n_points());
+						mthz::Vec3 y1 = s2.getPointI(w);
+						mthz::Vec3 y2 = s2.getPointI((w + 1) % s2.n_points());
+
+						//if si and sj share an edge, there exists an arc between v1 and v2 on the gauss map
+						if ((x1 == y1 && x2 == y2) || (x1 == y2 && x2 == y1)) {
+							g.arcs.push_back({ (unsigned int)i, (unsigned int)j });
+						}
+					}
+				}
+			}
+		}
+		return g;
 	}
 
 }

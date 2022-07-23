@@ -8,7 +8,7 @@ namespace phyz {
 	static void calculateMassProperties(const std::vector<ConvexPoly>& geometry, double density, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
 
 	RigidBody::RigidBody(const std::vector<ConvexPoly>& geometry, double density, int id)
-		: geometry(geometry), reference_geometry(geometry), vel(0, 0, 0), ang_vel(0, 0, 0)
+		: geometry(geometry), reference_geometry(geometry), vel(0, 0, 0), ang_vel(0, 0, 0), psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0)
 	{
 		this->id = id;
 		fixed = false;
@@ -30,30 +30,13 @@ namespace phyz {
 		for (const ConvexPoly& c : reference_geometry) {
 			reference_gauss_maps.push_back(computeGaussMap(c));
 		}
-		gauss_maps = reference_gauss_maps;
-
-		radius = sqrt(radius);
-		aabb = genAABB(geometry);
-	}
-
-	AABB RigidBody::genAABB(const std::vector<ConvexPoly>& geometry) {
-		const double inf = std::numeric_limits<double>::infinity();
-		mthz::Vec3 min(inf, inf, inf);
-		mthz::Vec3 max(-inf, -inf, -inf);
-
-		for (const ConvexPoly& c : geometry) {
-			for (mthz::Vec3 p : c.points) {
-				min.x = std::min<double>(min.x, p.x);
-				min.y = std::min<double>(min.y, p.y);
-				min.z = std::min<double>(min.z, p.z);
-
-				max.x = std::max<double>(max.x, p.x);
-				max.y = std::max<double>(max.y, p.y);
-				max.z = std::max<double>(max.z, p.z);
-			}
+		geometry_AABB = std::vector<AABB>(geometry.size());
+		for (int i = 0; i < reference_geometry.size(); i++) {
+			geometry_AABB[i] = geometry[i].gen_AABB();
 		}
-
-		return { min, max };
+		aabb = AABB::combine(geometry_AABB);
+		gauss_maps = reference_gauss_maps;
+		radius = sqrt(radius);
 	}
 
 	RigidBody::PKey RigidBody::track_point(mthz::Vec3 p) {
@@ -71,6 +54,18 @@ namespace phyz {
 
 	mthz::Vec3 RigidBody::getVelOfPoint(mthz::Vec3 p) const {
 		return vel + ang_vel.cross(p - com);
+	}
+
+	double RigidBody::getMass() {
+		return (fixed)? std::numeric_limits<double>::infinity() : mass;
+	}
+
+	double RigidBody::getInvMass() {
+		return (fixed) ? 0 : 1.0 / mass;
+	}
+
+	mthz::Mat3 RigidBody::getInvTensor() {
+		return (fixed) ? mthz::Mat3::zero() : invTensor;
 	}
 
 	void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
@@ -133,35 +128,11 @@ namespace phyz {
 				gauss_maps[i].face_verts[j] = rot * reference_gauss_maps[i].face_verts[j];
 			}
 		}
-		aabb = genAABB(geometry);
-	}
-
-	//brute forcy but only happens once per convex poly
-	RigidBody::GaussMap RigidBody::computeGaussMap(const ConvexPoly& c) {
-		GaussMap g;
-		for (int i = 0; i < c.surfaces.size(); i++) {
-			const Surface& s1 = c.surfaces[i];
-			g.face_verts.push_back(s1.normal());
-
-			for (int j = i + 1; j < c.surfaces.size(); j++) {
-				const Surface& s2 = c.surfaces[j];
-
-				for (int k = 0; k < s1.n_points(); k++) {
-					for (int w = 0; w < s2.n_points(); w++) {
-						mthz::Vec3 x1 = s1.getPointI(k);
-						mthz::Vec3 x2 = s1.getPointI((k + 1) % s1.n_points());
-						mthz::Vec3 y1 = s2.getPointI(w);
-						mthz::Vec3 y2 = s2.getPointI((w + 1) % s2.n_points());
-
-						//if si and sj share an edge, there exists an arc between v1 and v2 on the gauss map
-						if ((x1 == y1 && x2 == y2) || (x1 == y2 && x2 == y1)) {
-							g.arcs.push_back({ (unsigned int)i, (unsigned int)j });
-						}
-					}
-				}
-			}
+		for (int i = 0; i < reference_geometry.size(); i++) {
+			geometry_AABB[i] = geometry[i].gen_AABB();
 		}
-		return g;
+		aabb = AABB::combine(geometry_AABB);
+		
 	}
 
 	static struct IntrgVals {

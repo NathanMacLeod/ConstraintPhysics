@@ -3,12 +3,14 @@
 #include "../../Math/src/Vec3.h"
 #include "../../Math/src/Quaternion.h"
 #include "../../Math/src/Mat3.h"
+#include "AABB.h"
 #include <vector>
 
 namespace phyz {
 	class Surface;
 	class Edge;
 
+	//this class needs a proper constructor this is really dumb
 	class ConvexPoly {
 	public:
 		ConvexPoly(const ConvexPoly& c);
@@ -20,6 +22,7 @@ namespace phyz {
 		void rotate(const mthz::Quaternion q, mthz::Vec3 pivot_point);
 		void translate(mthz::Vec3 t);
 		void gen_interiorP();
+		AABB gen_AABB() const;
 		void compute_edges();
 
 		std::vector<mthz::Vec3> points;
@@ -62,4 +65,15 @@ namespace phyz {
 		int normalDirection;
 	};
 
+	struct GaussArc {
+		unsigned int v1_indx;
+		unsigned int v2_indx;
+	};
+
+	struct GaussMap {
+		std::vector<mthz::Vec3> face_verts;
+		std::vector<GaussArc> arcs;
+	};
+
+	GaussMap computeGaussMap(const ConvexPoly& c);
 }
