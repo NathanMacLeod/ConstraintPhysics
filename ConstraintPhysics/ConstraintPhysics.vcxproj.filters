@@ -21,6 +21,9 @@
     <ClCompile Include="src\ConstraintSolver.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\ThreadManager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\PhysicsEngine.h">
@@ -45,6 +48,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\ContactCache.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ThreadManager.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

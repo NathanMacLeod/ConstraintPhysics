@@ -17,7 +17,13 @@ void main() {
 
 in vec4 v_Color;
 out vec4 color;
+uniform int u_Asleep;
 
 void main() {
-	color = v_Color;
+	if (u_Asleep == 0) {
+		color = v_Color;
+	}
+	else {
+		color = vec4(1.0, 0, 0, 1.0);
+	}
 }

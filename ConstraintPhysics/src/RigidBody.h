@@ -20,9 +20,11 @@ namespace phyz {
 		double getMass();
 		double getInvMass();
 		mthz::Mat3 getInvTensor();
-		void applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position);
-		void applyGyroAccel(float fElapsedTime, int n_itr = 1);
+		bool getAsleep() { return asleep;  }
+		void applyGyroAccel(float fElapsedTime);
 		void updateGeometry();
+		void sleep();
+		void wake();
 
 		int id;
 		mthz::Quaternion orientation;
@@ -38,10 +40,22 @@ namespace phyz {
 
 		friend class PhysicsEngine;
 	private:
+
+		struct MovementState {
+			mthz::Vec3 position;
+			mthz::Vec3 vel;
+			mthz::Vec3 ang_vel;
+		};
+
+		std::vector<MovementState> history;
+		void recordMovementState(int history_length);
+
 		mthz::Mat3 invTensor;
 		mthz::Mat3 tensor;
 		double mass;
-
+		bool asleep;
+		double sleep_ready_counter;
+		
 		std::vector<ConvexPoly> geometry;
 		std::vector<AABB> geometry_AABB;
 		std::vector<ConvexPoly> reference_geometry;

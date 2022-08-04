@@ -195,6 +195,45 @@ namespace phyz {
 		return out;
 	}
 
+	ConvexPoly ConvexPoly::genRamp(double x, double y, double z, double length, double height, double width) {
+		ConvexPoly out;
+
+		const double rt3 = sqrt(3.0);
+
+		out.points = std::vector<mthz::Vec3>(6);
+		out.surfaces = std::vector<Surface>(5);
+
+		out.points[0] = (mthz::Vec3(x, y, z)); //0
+		out.points[1] = (mthz::Vec3(x + length, y, z)); //1
+		out.points[2] = (mthz::Vec3(x, y + height, z)); //2
+		out.points[3] = (mthz::Vec3(x, y, z + width)); //3
+		out.points[4] = (mthz::Vec3(x + length, y, z + width)); //4
+		out.points[5] = (mthz::Vec3(x, y + height, z + width)); //5
+		mthz::Vec3 mid = mthz::Vec3(x + length/4.0, y + height/4.0, z + width/2.0);
+		std::vector<int> indexes3 = std::vector<int>(3);
+		std::vector<int> indexes4 = std::vector<int>(4);
+
+		indexes3[0] = 0; indexes3[1] = 2; indexes3[2] = 1;
+		out.surfaces[0] = (Surface(indexes3, &out, mid));
+
+		indexes3[0] = 3; indexes3[1] = 4; indexes3[2] = 5;
+		out.surfaces[1] = (Surface(indexes3, &out, mid));
+
+		indexes4[0] = 0; indexes4[1] = 1; indexes4[2] = 4; indexes4[3] = 3;
+		out.surfaces[2] = (Surface(indexes4, &out, mid));
+
+		indexes4[0] = 1; indexes4[1] = 2; indexes4[2] = 5; indexes4[3] = 4;
+		out.surfaces[3] = (Surface(indexes4, &out, mid));
+
+		indexes4[0] = 2; indexes4[1] = 0; indexes4[2] = 3; indexes4[3] = 5;
+		out.surfaces[4] = (Surface(indexes4, &out, mid));
+
+		out.interior_point = mid;
+		out.compute_edges();
+
+		return out;
+	}
+
 	Edge::Edge(int p1_indx, int p2_indx, ConvexPoly* poly) {
 		this->poly = poly;
 		this->p1_indx = p1_indx;

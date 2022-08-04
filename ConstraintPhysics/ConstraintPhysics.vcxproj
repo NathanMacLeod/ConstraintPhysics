@@ -24,6 +24,7 @@
     <ClCompile Include="src\ConvexPoly.cpp" />
     <ClCompile Include="src\PhysicsEngine.cpp" />
     <ClCompile Include="src\RigidBody.cpp" />
+    <ClCompile Include="src\ThreadManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AABB.h" />
@@ -34,6 +35,7 @@
     <ClInclude Include="src\Octree.h" />
     <ClInclude Include="src\PhysicsEngine.h" />
     <ClInclude Include="src\RigidBody.h" />
+    <ClInclude Include="src\ThreadManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Math\Math.vcxproj">

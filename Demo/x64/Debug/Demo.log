@@ -11,57 +11,42 @@ C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(65,21): warning C4244: '=': co
 C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,65): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(96,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(17): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(44,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(20): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(43,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\main.cpp(24,2): warning C4091: 'static ': ignored on left of 'Mesh' when no variable is declared
 C:\dev\ConstraintPhysics\Demo\src\main.cpp(61,93): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\main.cpp(65,12): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
 C:\dev\ConstraintPhysics\Demo\src\main.cpp(84,93): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(102,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(102,41): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(198,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(198,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(198,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(198,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(198,84): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(198,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(198,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,84): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,124): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,120): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,116): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(213,108): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,91): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,86): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,141): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,131): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,125): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(230,111): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-  main_old.cpp
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(17): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(44,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(14,24): warning C4244: '=': conversion from 'const double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(32,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(33,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(34,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(41,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(42,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(43,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(64,52): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(65,21): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,65): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(96,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-  Generating Code...
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(112,93): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(131,48): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(131,42): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(242,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(242,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(242,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(242,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(242,84): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(242,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(242,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,84): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,124): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,120): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,116): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(257,108): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,91): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,86): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,141): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,131): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,125): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\Demo\src\main.cpp(274,111): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
   Demo.vcxproj -> C:\dev\ConstraintPhysics\x64\Debug\Demo.exe

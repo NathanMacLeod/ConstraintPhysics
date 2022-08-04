@@ -84,6 +84,34 @@ static Mesh tetra(float r) {
 	return { new rndr::VertexArray(verticies.data(), verticies.size() * sizeof(Vertex), layout), new rndr::IndexBuffer(indices, 12) };
 }
 
+static Mesh ramp(float l, float h, float w) {
+
+	std::vector<Vertex> verticies = {
+		{ 0, 0, 0, 1.0f, 0.0f, 0.0f },
+		{ l, 0, 0, 1.0f, 1.0f, 0.0f },
+		{ 0, h, 0, 1.0f, 0.0f, 1.0f },
+		{ 0, 0, w, 1.0f, 1.0f, 0.0f },
+		{ l, 0, w, 1.0f, 0.0f, 1.0f },
+		{ 0, h, w, 1.0f, 0.0f, 0.0f },
+	};
+
+	unsigned int indices[] = {
+		0, 2, 1,
+		3, 4, 5,
+		0, 1, 4,
+		4, 3, 0,
+		1, 2, 5,
+		5, 4, 1,
+		2, 0, 3,
+		3, 5, 2,
+	};
+
+	rndr::VertexArrayLayout layout;
+	layout.Push<float>(3);
+	layout.Push<float>(3);
+	return { new rndr::VertexArray(verticies.data(), verticies.size() * sizeof(Vertex), layout), new rndr::IndexBuffer(indices, 24) };
+}
+
 struct PhysBod {
 	std::vector<Mesh> meshes;
 	phyz::RigidBody* r;
@@ -98,15 +126,30 @@ int main() {
 
 	std::vector<PhysBod> bodies;
 
-	double s = 400;
-	std::vector<Mesh> m2 = { rect(0, 0, 0, s, 2, s) };
-	std::vector<phyz::ConvexPoly> geom2;
-	geom2.push_back(phyz::ConvexPoly::genRect(-s/2, -3, -s/2, s, 2, s));
-	phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
-	phyz::RigidBody::PKey draw_p = r2->track_point(mthz::Vec3(0, -2, 0));
-	r2->com.y = -5;
-	r2->updateGeometry();
-	bodies.push_back({m2, r2, draw_p});
+	{
+		double s = 400;
+		std::vector<Mesh> m2 = { rect(0, 0, 0, s, 2, s) };
+		std::vector<phyz::ConvexPoly> geom2;
+		geom2.push_back(phyz::ConvexPoly::genRect(-s / 2, -3, -s / 2, s, 2, s));
+		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
+		phyz::RigidBody::PKey draw_p = r2->track_point(mthz::Vec3(0, -2, 0));
+		r2->com.y = -5;
+		r2->updateGeometry();
+		bodies.push_back({ m2, r2, draw_p });
+	}
+
+	//{
+	//	double s = 10;
+	//	mthz::Vec3 pos(-1, -4, -5);
+	//	mthz::Vec3 dim(14, 3, 10);
+	//	std::vector<Mesh> m2 = { ramp(dim.x, dim.y, dim.z) };
+	//	std::vector<phyz::ConvexPoly> geom2;
+	//	geom2.push_back(phyz::ConvexPoly::genRamp(pos.x, pos.y, pos.z, dim.x, dim.y, dim.z));
+	//	phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
+	//	phyz::RigidBody::PKey draw_p = r2->track_point(pos);
+	//	r2->updateGeometry();
+	//	bodies.push_back({ m2, r2, draw_p });
+	//}
 
 	/*Mesh m1 = rect(0, 0, 0, 1, 1, 1);
 	std::vector<phyz::ConvexPoly> geom1;
@@ -129,8 +172,8 @@ int main() {
 
 	double phyz_time = 0;
 	double timestep = 1 / 90.0;
-	p.step_time = timestep;
-	p.gravity = mthz::Vec3(0, -9.8, 0);
+	p.setStep_time(timestep);
+	p.setGravity(mthz::Vec3(0, -9.8, 0));
 
 	while (rndr::render_loop(&fElapsedTime)) {
 
@@ -170,9 +213,10 @@ int main() {
 		if (rndr::getKeyPressed(GLFW_KEY_K)) {
 			std::vector<Mesh> m1 = { rect(0, 0, 0, 1, 1, 1) };
 			std::vector<phyz::ConvexPoly> geom1;
-			geom1.push_back(phyz::ConvexPoly::genRect(-0.5, 10 - 0.5, -0.5, 1, 1, 1));
+			double h = 3;
+			geom1.push_back(phyz::ConvexPoly::genRect(-0.5, h - 0.5, -0.5, 1, 1, 1));
 			phyz::RigidBody* r1 = p.createRigidBody(geom1);
-			phyz::RigidBody::PKey draw_p = r1->track_point(mthz::Vec3(0, 10, 0));
+			phyz::RigidBody::PKey draw_p = r1->track_point(mthz::Vec3(0, h, 0));
 			//r1->ang_vel = mthz::Vec3(0, 100, 1);
 			//r1->vel = mthz::Vec3(1, 0, 0);
 			//r1->com.x = 2.3;
@@ -194,7 +238,7 @@ int main() {
 		}
 		//top
 		if (rndr::getKeyPressed(GLFW_KEY_J)) {
-			double h1 = 1.8, w1 = 0.05, h2 = 0.2, w2 = 2, s = 0.33;
+			double h1 = 1.8, w1 = 0.05, h2 = 0.2, w2 = 2, s = 0.13;
 			std::vector<Mesh> m1 = { rect(0, 0, 0, w1, h1, w1), rect(0, -h1 * s / 2, 0, w2, h2, w2)};
 			std::vector<phyz::ConvexPoly> geom1;
 			geom1.push_back(phyz::ConvexPoly::genRect(-w1/2, -h1/2, -w1/2, w1, h1, w1));
@@ -202,7 +246,7 @@ int main() {
 			phyz::RigidBody* r1 = p.createRigidBody(geom1);
 			phyz::RigidBody::PKey draw_p = r1->track_point(mthz::Vec3(0, 0, 0));
 			r1->com = mthz::Vec3(0, 10, 0);
-			r1->ang_vel = mthz::Vec3(0, 40, 0.5);
+			r1->ang_vel = mthz::Vec3(0, 40, 2.5);
 			//r1->vel = mthz::Vec3(1, 0, 0);
 			bodies.push_back({ m1, r1, draw_p });
 		}
@@ -242,6 +286,7 @@ int main() {
 		}
 
 		phyz_time += fElapsedTime;
+		//phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
 		while (phyz_time > timestep) {
 			phyz_time -= timestep;
 			p.timeStep();
@@ -253,6 +298,7 @@ int main() {
 		for (const PhysBod& b : bodies) {
 			for (const Mesh& m : b.meshes) {
 				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(pos, orient) * rndr::Mat4::model(b.r->getTrackedP(b.draw_p), b.r->orientation));
+				shader.setUniform1i("u_Asleep", b.r->getAsleep());
 				rndr::draw(*m.va, *m.ib, shader);
 			}
 		}

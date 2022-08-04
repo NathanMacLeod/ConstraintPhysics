@@ -4,11 +4,14 @@
 namespace phyz {
 
 	class Constraint;
-	void PGS_solve(const std::vector<Constraint*>& constraints, int n_itr_vel = 15, int n_itr_pos = 3);
+	class PhysicsEngine;
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel = 15, int n_itr_pos = 10);
 
 	class Constraint {
 	public:
-		Constraint(RigidBody* a, RigidBody* b, double impulse) : a(a), b(b), impulse(impulse), psuedo_impulse(0) {}
+		Constraint() {}
+		Constraint(RigidBody* a, RigidBody* b, double impulse) : a(a), b(b), impulse(impulse), psuedo_impulse(0), 
+			a_velocity_changes(nullptr), a_psuedo_velocity_changes(nullptr), b_velocity_changes(nullptr), b_psuedo_velocity_changes(nullptr) {}
 		virtual ~Constraint() {}
 
 		static struct VelVec {
@@ -20,6 +23,10 @@ namespace phyz {
 		RigidBody* b;
 		double impulse;
 		double psuedo_impulse;
+		VelVec* a_velocity_changes;
+		VelVec* a_psuedo_velocity_changes;
+		VelVec* b_velocity_changes;
+		VelVec* b_psuedo_velocity_changes;
 
 		virtual bool needsPositionalCorrection() = 0;
 		virtual void addVelocityChange(double impulse, VelVec* va, VelVec* vb) = 0;
@@ -28,11 +35,13 @@ namespace phyz {
 		virtual double getTargetValue() = 0;
 		virtual double getPsuedoTarget() = 0;
 		virtual double projectValidImpulse(double impulse) = 0;
+		
 	};
 
 	class ContactConstraint : public Constraint {
 	public:
-		ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double warm_start_impulse=0);
+		ContactConstraint() {}
+		ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double warm_start_impulse=0, double cutoff_vel=0);
 
 		bool needsPositionalCorrection() override { return true; }
 		void addVelocityChange(double impulse, VelVec* va, VelVec* vb) override;
@@ -41,6 +50,7 @@ namespace phyz {
 		double getTargetValue() override;
 		double getPsuedoTarget() override;
 		double projectValidImpulse(double impulse) override;
+
 	private:
 		mthz::Vec3 norm;
 		mthz::Vec3 rA;
@@ -54,6 +64,7 @@ namespace phyz {
 
 	class FrictionConstraint : public Constraint {
 	public:
+		FrictionConstraint() : normal_impulse(nullptr) {}
 		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 frictionDir, mthz::Vec3 contact_p, double coeff_friction, int n_contact_points, ContactConstraint* normal, double warm_start_impulse=0);
 
 		bool needsPositionalCorrection() override { return false; }
@@ -63,6 +74,8 @@ namespace phyz {
 		double getTargetValue() override;
 		double getPsuedoTarget() override { return 0; }
 		double projectValidImpulse(double impulse) override;
+
+		bool getStaticReady() { return static_ready; }
 	private:
 		mthz::Vec3 frictionDir;
 		mthz::Vec3 rA;
@@ -73,6 +86,7 @@ namespace phyz {
 		double target_val;
 		double coeff_friction;
 		double* normal_impulse;
+		bool static_ready;
 	};
 
 }

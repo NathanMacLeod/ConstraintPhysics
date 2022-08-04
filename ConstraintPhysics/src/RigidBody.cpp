@@ -8,7 +8,8 @@ namespace phyz {
 	static void calculateMassProperties(const std::vector<ConvexPoly>& geometry, double density, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
 
 	RigidBody::RigidBody(const std::vector<ConvexPoly>& geometry, double density, int id)
-		: geometry(geometry), reference_geometry(geometry), vel(0, 0, 0), ang_vel(0, 0, 0), psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0)
+		: geometry(geometry), reference_geometry(geometry), vel(0, 0, 0), ang_vel(0, 0, 0), 
+		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0)
 	{
 		this->id = id;
 		fixed = false;
@@ -68,7 +69,7 @@ namespace phyz {
 		return (fixed) ? mthz::Mat3::zero() : invTensor;
 	}
 
-	void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
+	/*void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
 		if (fixed) {
 			return;
 		}
@@ -79,40 +80,32 @@ namespace phyz {
 
 		ang_vel += invTensor * ((position - com).cross(impulse));
 
-	}
+	}*/
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical
-	void RigidBody::applyGyroAccel(float fElapsedTime, int n_substeps) {
+	void RigidBody::applyGyroAccel(float fElapsedTime) {
 		const int CUTOFF_MAG = 0.00000000001;
-		const int NEWTON_STEPS = 1;
+		const int NEWTON_STEPS = 2;
 		if (ang_vel.magSqrd() == 0) {
 			return;
 		}
 
 		mthz::Vec3 w_local = orientation.conjugate().applyRotation(ang_vel);
-		mthz::Vec3 w_old = w_local;
-		mthz::Vec3 w_new = w_local;
+		mthz::Vec3 w = w_local; //initial guess
 
 		//n_itr is number of sub-timesteps
-		float t_step = fElapsedTime / n_substeps;
-		for (int i = 0; i < n_substeps; i++) {
-			w_new = w_old; //initial guess
-
-			//using newtons method to approximate result of implicit integration
-			for (int i = 0; i < NEWTON_STEPS; i++) {
-				mthz::Vec3 f = t_step * w_new.cross(tensor * w_new) - tensor * (w_local - w_new);
-				mthz::Mat3 jacobian = tensor + t_step * (mthz::Mat3::cross_mat(w_new) * tensor - mthz::Mat3::cross_mat(tensor * w_new));
-				//printf("det: %f\n", jacobian.det());
-				if (abs(jacobian.det()) > CUTOFF_MAG) {
-					w_new = w_new - jacobian.inverse() * f;
-				}
+		float t_step = fElapsedTime;
+		//using newtons method to approximate result of implicit integration
+		for (int i = 0; i < NEWTON_STEPS; i++) {
+			mthz::Vec3 f = t_step * w.cross(tensor * w) - tensor * (w_local - w);
+			mthz::Mat3 jacobian = tensor + t_step * (mthz::Mat3::cross_mat(w) * tensor - mthz::Mat3::cross_mat(tensor * w));
+			if (abs(jacobian.det()) > CUTOFF_MAG) {
+				w -= jacobian.inverse() * f;
 			}
-
-			w_old = w_new; //for next iteration
 		}
 		
-
-		ang_vel = orientation.applyRotation(w_new);
+		
+		ang_vel = orientation.applyRotation(w);
 	}
 
 	void RigidBody::updateGeometry() {
@@ -133,6 +126,25 @@ namespace phyz {
 		}
 		aabb = AABB::combine(geometry_AABB);
 		
+	}
+
+	void RigidBody::sleep() {
+		asleep = true;
+		vel = mthz::Vec3(0, 0, 0);
+		ang_vel = mthz::Vec3(0, 0, 0);
+	}
+
+	void RigidBody::wake() {
+		asleep = false;
+		sleep_ready_counter = 0;
+		history.clear();
+	}
+
+	void RigidBody::recordMovementState(int history_length) {
+		history.push_back(MovementState{vel, ang_vel});
+		while (history.size() > history_length) {
+			history.erase(history.begin());
+		}
 	}
 
 	static struct IntrgVals {
