@@ -2,6 +2,7 @@
 #include "RigidBody.h"
 #include "CollisionDetect.h"
 #include "ConstraintSolver.h"
+#include "ThreadManager.h"
 #include "ContactCache.h"
 #include <set>
 #include <functional>
@@ -10,10 +11,16 @@ namespace phyz {
 
 	class PhysicsEngine {
 	public:
+		PhysicsEngine() {
+			thread_manager.init(4);
+		}
+
 
 		void timeStep();
 		RigidBody* createRigidBody(const std::vector<ConvexPoly>& geometry, bool fixed=false, double density=1.0);
 		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel);
+
+		int getNumBodies() { return bodies.size(); }
 
 		mthz::Vec3 getGravity();
 		void setGravity(const mthz::Vec3& v);
@@ -50,7 +57,7 @@ namespace phyz {
 		double vel_sleep_coeff = 0.1;
 		double accel_sleep_coeff = 0.022;
 
-		ContactCache contact_cache;
+		ThreadManager thread_manager;
 
 		struct Contact {
 			ContactConstraint contact;

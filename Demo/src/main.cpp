@@ -287,6 +287,9 @@ int main() {
 
 		phyz_time += fElapsedTime;
 		//phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+		if (phyz_time > 1 / 30.0) {
+			printf("n objects: %d\n", p.getNumBodies());
+		}
 		while (phyz_time > timestep) {
 			phyz_time -= timestep;
 			p.timeStep();

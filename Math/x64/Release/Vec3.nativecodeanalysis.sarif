@@ -1,0 +1,43 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.32.31329.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/math/src/vec3.cpp"
+          },
+          "roles": [
+            "analysisTarget"
+          ],
+          "hashes": {
+            "sha-256": "45347b5d13c296da4767853682478c8de5b01f20753fbb7f8642a756aefdd66a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/math/src/vec3.h"
+          },
+          "hashes": {
+            "sha-256": "5527c84734c090df54f609e592196e55743cdf6e632a538aec416595552ef198"
+          }
+        }
+      ]
+    }
+  ]
+}

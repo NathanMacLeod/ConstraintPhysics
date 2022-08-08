@@ -1,0 +1,780 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "ruleId": "C26498",
+          "message": {
+            "text": "The function 'std::numeric_limits<double>::infinity' is constexpr, mark variable 'inf' constexpr if compile-time evaluation is desired (con.5)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/AABB.h"
+                },
+                "region": {
+                  "startLine": 20,
+                  "startColumn": 10,
+                  "endLine": 20,
+                  "endColumn": 53
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "AABB::combine",
+                  "decoratedName": "?combine@AABB@@SA?AU1@AEBV?$vector@UAABB@@V?$allocator@UAABB@@@std@@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Constraint::b' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 3,
+                  "endLine": 12,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Constraint::{ctor}",
+                  "decoratedName": "??0Constraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Constraint::b"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Constraint::a' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 3,
+                  "endLine": 12,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Constraint::{ctor}",
+                  "decoratedName": "??0Constraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Constraint::a"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Constraint::impulse' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 3,
+                  "endLine": 12,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Constraint::{ctor}",
+                  "decoratedName": "??0Constraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Constraint::impulse"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Constraint::psuedo_impulse' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 3,
+                  "endLine": 12,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Constraint::{ctor}",
+                  "decoratedName": "??0Constraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Constraint::psuedo_impulse"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Constraint::a_velocity_changes' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 3,
+                  "endLine": 12,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Constraint::{ctor}",
+                  "decoratedName": "??0Constraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Constraint::a_velocity_changes"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Constraint::a_psuedo_velocity_changes' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 3,
+                  "endLine": 12,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Constraint::{ctor}",
+                  "decoratedName": "??0Constraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Constraint::a_psuedo_velocity_changes"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Constraint::b_velocity_changes' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 3,
+                  "endLine": 12,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Constraint::{ctor}",
+                  "decoratedName": "??0Constraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Constraint::b_velocity_changes"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Constraint::b_psuedo_velocity_changes' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 3,
+                  "endLine": 12,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Constraint::{ctor}",
+                  "decoratedName": "??0Constraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Constraint::b_psuedo_velocity_changes"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::ContactConstraint::target_val' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 43,
+                  "startColumn": 3,
+                  "endLine": 43,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::ContactConstraint::{ctor}",
+                  "decoratedName": "??0ContactConstraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::ContactConstraint::target_val"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::ContactConstraint::inertia_val' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 43,
+                  "startColumn": 3,
+                  "endLine": 43,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::ContactConstraint::{ctor}",
+                  "decoratedName": "??0ContactConstraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::ContactConstraint::inertia_val"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::ContactConstraint::psuedo_target_val' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 43,
+                  "startColumn": 3,
+                  "endLine": 43,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::ContactConstraint::{ctor}",
+                  "decoratedName": "??0ContactConstraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::ContactConstraint::psuedo_target_val"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::FrictionConstraint::static_ready' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 67,
+                  "startColumn": 3,
+                  "endLine": 67,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::FrictionConstraint::{ctor}",
+                  "decoratedName": "??0FrictionConstraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::FrictionConstraint::static_ready"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::FrictionConstraint::inertia_val' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 67,
+                  "startColumn": 3,
+                  "endLine": 67,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::FrictionConstraint::{ctor}",
+                  "decoratedName": "??0FrictionConstraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::FrictionConstraint::inertia_val"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::FrictionConstraint::target_val' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 67,
+                  "startColumn": 3,
+                  "endLine": 67,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::FrictionConstraint::{ctor}",
+                  "decoratedName": "??0FrictionConstraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::FrictionConstraint::target_val"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::FrictionConstraint::coeff_friction' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+                },
+                "region": {
+                  "startLine": 67,
+                  "startColumn": 3,
+                  "endLine": 67,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::FrictionConstraint::{ctor}",
+                  "decoratedName": "??0FrictionConstraint@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::FrictionConstraint::coeff_friction"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::PhysicsEngine::step_time' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/PhysicsEngine.h"
+                },
+                "region": {
+                  "startLine": 14,
+                  "startColumn": 3,
+                  "endLine": 14,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::PhysicsEngine::{ctor}",
+                  "decoratedName": "??0PhysicsEngine@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::PhysicsEngine::step_time"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::PhysicsEngine::cutoff_vel' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/PhysicsEngine.h"
+                },
+                "region": {
+                  "startLine": 14,
+                  "startColumn": 3,
+                  "endLine": 14,
+                  "endColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::PhysicsEngine::{ctor}",
+                  "decoratedName": "??0PhysicsEngine@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::PhysicsEngine::cutoff_vel"
+          }
+        },
+        {
+          "ruleId": "C26451",
+          "message": {
+            "text": "Arithmetic overflow: Using operator '*' on a 4 byte value and then casting the result to a 8 byte value. Cast the value to the wider type before calling operator '*' to avoid overflow (io.2)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/Demo/src/renderer/Mat4.h"
+                },
+                "region": {
+                  "startLine": 89,
+                  "startColumn": 20,
+                  "endLine": 89,
+                  "endColumn": 38
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "rndr::Mat4::*=",
+                  "decoratedName": "??XMat4@rndr@@QEAAXV01@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6255",
+          "message": {
+            "text": "_alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/Demo/src/main_old.cpp"
+                },
+                "region": {
+                  "startLine": 21,
+                  "startColumn": 26,
+                  "endLine": 21,
+                  "endColumn": 42
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "CompileShader",
+                  "decoratedName": "?CompileShader@@YAIIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.32.31329.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/AABB.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "b377ba2bca35d177008c083a9a6cafb0f0e92e15d1813634bbfeb3816c0fc161"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConstraintSolver.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "4273621cb751a70849470ade9cba8f0b55b6e419264903c04b5cac30eec8b8d7"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/PhysicsEngine.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "a8a7abdbeb85eb2facda2d9413bffd59713dbbd4cd082b548b50ec8a724ed877"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/dev/ConstraintPhysics/Demo/src/renderer/Mat4.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "f628b0f57ec59fa6180842d855bdc456212d8d0177d1157288ee1bd32ed76374"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/dev/ConstraintPhysics/Demo/src/main_old.cpp"
+          },
+          "roles": [
+            "analysisTarget",
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "e422deb08b41429866314b572a547bd38634e7bb278b9b809045fa203fd485ff"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/constraintphysics/src/rigidbody.h"
+          },
+          "hashes": {
+            "sha-256": "46a024a77a57ddc43d7ad2d07028418a1ee74b591bbb96e3a0d29d0c88afcd52"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/math/src/vec3.h"
+          },
+          "hashes": {
+            "sha-256": "5527c84734c090df54f609e592196e55743cdf6e632a538aec416595552ef198"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/math/src/quaternion.h"
+          },
+          "hashes": {
+            "sha-256": "38a36e60f4424f599b971d25a353b30cdeff1aefae7f558ddb6c2fc9cde1575a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/math/src/mat3.h"
+          },
+          "hashes": {
+            "sha-256": "f3aebc773439d84958636be01f0069bf5c6c75c8c60dd12243a9202a68f9aec5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/constraintphysics/src/convexpoly.h"
+          },
+          "hashes": {
+            "sha-256": "ab164c7769c1b502c470891e77fd78e0999ef7f219b2b86af640bf9b5e006081"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/constraintphysics/src/collisiondetect.h"
+          },
+          "hashes": {
+            "sha-256": "e82c91c8d7d5149c4d1416f625a21882470fa7a58e2c15d4c224ed7de829d10f"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/constraintphysics/src/threadmanager.h"
+          },
+          "hashes": {
+            "sha-256": "737d760012ebf31ac45821077177b4ecaa205293e4d9879fac119d9761e309dd"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/constraintphysics/src/contactcache.h"
+          },
+          "hashes": {
+            "sha-256": "899b48d4259da6b3c538edebd33e03bf2c884962c80f5c2e61b91b06529f965b"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/demo/src/renderer/shader.h"
+          },
+          "hashes": {
+            "sha-256": "2602dcd767b2ae38ad33a7825d494a970595a6c070c26e5e1b8f150e59cfe6a5"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/demo/dependencies/glew/include/gl/glew.h"
+          },
+          "hashes": {
+            "sha-256": "1a2d50dc00a69940838cb3b5413cf7a7ac3cee8078672f27ffbfa2d3b88ad344"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/demo/dependencies/glfw/include/glfw/glfw3.h"
+          },
+          "hashes": {
+            "sha-256": "02f117a14cc5ec6889e86d737e448b19f453a7fc3d149c05c102764b83096299"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -24,7 +24,6 @@
     <ClCompile Include="src\ConvexPoly.cpp" />
     <ClCompile Include="src\PhysicsEngine.cpp" />
     <ClCompile Include="src\RigidBody.cpp" />
-    <ClCompile Include="src\ThreadManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AABB.h" />

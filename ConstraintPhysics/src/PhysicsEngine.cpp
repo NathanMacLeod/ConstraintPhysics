@@ -1,17 +1,22 @@
 #include "PhysicsEngine.h"
 #include "RigidBody.h"
+#include "Octree.h"
+#include "ThreadManager.h"
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
-#include "Octree.h"
+#include <mutex>
+
+//debug
+#include <chrono>
 
 static const double FLATTENING_BIAS_MAG = 0;
 static const double FLAT_ENOUGH = cos(3.1415926535 * 0.1 / 180.0);
 
 namespace phyz {
 
-	int n_culled = 0;
-	int n_total = 0;
+	double parallel_t = 0;
+	double single_t = 0;
 
 	void PhysicsEngine::timeStep() {
 
@@ -39,8 +44,70 @@ namespace phyz {
 			}
 		}
 
-		std::set<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
-		for (Octree<RigidBody>::Pair p : possible_intersections) {
+		std::vector<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
+
+		//auto t1 = std::chrono::system_clock::now();
+		std::mutex critical_section_mutex;
+		thread_manager.do_all<Octree<RigidBody>::Pair>(4, possible_intersections,
+			[this, &critical_section_mutex](Octree<RigidBody>::Pair p) {
+				RigidBody* b1 = p.t1;
+				RigidBody* b2 = p.t2;
+
+				if ((b1->fixed || b1->asleep) && (b2->fixed || b2->asleep)) {
+					return;
+				}
+
+				std::vector<Manifold> manifolds;
+				for (int i = 0; i < b1->geometry.size(); i++) {
+					for (int j = 0; j < b2->geometry.size(); j++) {
+						const ConvexPoly& c1 = b1->geometry[i];
+						const ConvexPoly& c2 = b2->geometry[j];
+						if ((b1->geometry.size() > 1 || b2->geometry.size() > 1) && !AABB::intersects(b1->geometry_AABB[i], b2->geometry_AABB[j])) {
+							continue;
+						}
+
+						Manifold man = SAT(c1, b1->gauss_maps[i], c2, b2->gauss_maps[j]);
+
+						if (man.max_pen_depth > 0) {
+							manifolds.push_back(man);
+						}
+					}
+				}
+				if (manifolds.size() > 0) {
+
+					int max_indx = 0;
+					for (int i = 1; i < manifolds.size(); i++) {
+						if (manifolds[i].max_pen_depth > manifolds[max_indx].max_pen_depth) {
+							max_indx = i;
+						}
+					}
+					for (int i = 0; i < manifolds.size(); i++) {
+						if (i != max_indx) {
+							double v = manifolds[max_indx].normal.dot(manifolds[i].normal);
+							if (1 - v < COS_TOL) {
+								manifolds[max_indx] = merge_manifold(manifolds[max_indx], manifolds[i]);
+							}
+						}
+
+					}
+					Manifold man = cull_manifold(manifolds[max_indx], 4);
+
+					mthz::Vec3 u, w;
+					man.normal.getPerpendicularBasis(&u, &w);
+
+					critical_section_mutex.lock();
+					for (int i = 0; i < man.points.size(); i++) {
+						const ContactP& p = man.points[i];
+						addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.1, 0.5, man.points.size(), p.pen_depth, 270 * step_time);
+					}
+					critical_section_mutex.unlock();
+				}
+			}
+		);
+
+		
+		//auto t2 = std::chrono::system_clock::now();
+		/*for (Octree<RigidBody>::Pair p : possible_intersections) {
 			RigidBody* b1 = p.t1;
 			RigidBody* b2 = p.t2;
 
@@ -54,12 +121,7 @@ namespace phyz {
 					const ConvexPoly& c1 = b1->geometry[i];
 					const ConvexPoly& c2 = b2->geometry[j];
 					if ((b1->geometry.size() > 1 || b2->geometry.size() > 1) && !AABB::intersects(b1->geometry_AABB[i], b2->geometry_AABB[j])) {
-						n_total++;
-						n_culled++;
 						continue;
-					}
-					else if (b1->geometry.size() > 1 || b2->geometry.size() > 1) {
-						n_total++;
 					}
 
 					Manifold man = SAT(c1, b1->gauss_maps[i], c2, b2->gauss_maps[j]);
@@ -96,7 +158,18 @@ namespace phyz {
 				}
 
 			}
-		}
+		}*/
+		/*auto t3 = std::chrono::system_clock::now();
+
+		static int i = 0;
+
+		parallel_t += (t2 - t1).count();
+		single_t += (t3 - t2).count();
+
+		if (i++ % 1000 == 0) {
+			printf("parallel: %f, single: %f\n", parallel_t, single_t);
+		}*/
+
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
 
 		std::vector<Constraint*> all_constraints;

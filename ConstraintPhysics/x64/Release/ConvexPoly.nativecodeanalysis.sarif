@@ -1,0 +1,633 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "ruleId": "C26498",
+          "message": {
+            "text": "The function 'std::numeric_limits<double>::infinity' is constexpr, mark variable 'inf' constexpr if compile-time evaluation is desired (con.5)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/AABB.h"
+                },
+                "region": {
+                  "startLine": 20,
+                  "startColumn": 10,
+                  "endLine": 20,
+                  "endColumn": 53
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "AABB::combine",
+                  "decoratedName": "?combine@AABB@@SA?AU1@AEBV?$vector@UAABB@@V?$allocator@UAABB@@@std@@@std@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6001",
+          "message": {
+            "text": "Using uninitialized memory 'maxD_i'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                },
+                "region": {
+                  "startLine": 78,
+                  "startColumn": 28,
+                  "endLine": 78,
+                  "endColumn": 28
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::ConvexPoly::gen_interiorP",
+                  "decoratedName": "?gen_interiorP@ConvexPoly@phyz@@QEAAXXZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 62,
+                            "startColumn": 21
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 66,
+                            "startColumn": 10
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 67,
+                            "startColumn": 7
+                          }
+                        },
+                        "message": {
+                          "text": "'maxD_i' is not initialized"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 67,
+                            "startColumn": 15
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 68,
+                            "startColumn": 12
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 68,
+                            "startColumn": 21
+                          }
+                        },
+                        "message": {
+                          "text": "Skip this loop, (assume 'i<points.size()' is false)"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ],
+                      "importance": "important"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 78,
+                            "startColumn": 18
+                          }
+                        },
+                        "message": {
+                          "text": "'maxD_i' is an In/Out argument to 'std::vector<mthz::Vec3,std::allocator<mthz::Vec3> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\community\\vc\\tools\\msvc\\14.32.31326\\include\\vector:1728)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "important"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 79,
+                            "startColumn": 2
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 78,
+                            "startColumn": 28
+                          }
+                        },
+                        "message": {
+                          "text": "'maxD_i' is used, but may not have been initialized"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6001",
+          "message": {
+            "text": "Using uninitialized memory 'maxD_j'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                },
+                "region": {
+                  "startLine": 78,
+                  "startColumn": 45,
+                  "endLine": 78,
+                  "endColumn": 45
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::ConvexPoly::gen_interiorP",
+                  "decoratedName": "?gen_interiorP@ConvexPoly@phyz@@QEAAXXZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 62,
+                            "startColumn": 21
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 66,
+                            "startColumn": 10
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 67,
+                            "startColumn": 7
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 67,
+                            "startColumn": 15
+                          }
+                        },
+                        "message": {
+                          "text": "'maxD_j' is not initialized"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 68,
+                            "startColumn": 12
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 68,
+                            "startColumn": 21
+                          }
+                        },
+                        "message": {
+                          "text": "Skip this loop, (assume 'i<points.size()' is false)"
+                        }
+                      },
+                      "kinds": [
+                        "branch"
+                      ],
+                      "importance": "important"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 78,
+                            "startColumn": 18
+                          }
+                        },
+                        "message": {
+                          "text": "'maxD_j' is an In/Out argument to 'std::vector<mthz::Vec3,std::allocator<mthz::Vec3> >::[]' (declared at c:\\program files\\microsoft visual studio\\2022\\community\\vc\\tools\\msvc\\14.32.31326\\include\\vector:1728)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "important"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 79,
+                            "startColumn": 2
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                          },
+                          "region": {
+                            "startLine": 78,
+                            "startColumn": 45
+                          }
+                        },
+                        "message": {
+                          "text": "'maxD_j' is used, but may not have been initialized"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C26498",
+          "message": {
+            "text": "The function 'std::numeric_limits<double>::infinity' is constexpr, mark variable 'inf' constexpr if compile-time evaluation is desired (con.5)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                },
+                "region": {
+                  "startLine": 89,
+                  "startColumn": 16,
+                  "endLine": 89,
+                  "endColumn": 59
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::ConvexPoly::gen_AABB",
+                  "decoratedName": "?gen_AABB@ConvexPoly@phyz@@QEBA?AUAABB@@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Surface::surfaceID' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                },
+                "region": {
+                  "startLine": 277,
+                  "startColumn": 11,
+                  "endLine": 277,
+                  "endColumn": 11
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Surface::{ctor}",
+                  "decoratedName": "??0Surface@phyz@@QEAA@AEBV01@PEAVConvexPoly@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Surface::surfaceID"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Surface::surfaceID' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                },
+                "region": {
+                  "startLine": 281,
+                  "startColumn": 11,
+                  "endLine": 281,
+                  "endColumn": 11
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Surface::{ctor}",
+                  "decoratedName": "??0Surface@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Surface::surfaceID"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'phyz::Surface::normalDirection' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                },
+                "region": {
+                  "startLine": 281,
+                  "startColumn": 11,
+                  "endLine": 281,
+                  "endColumn": 11
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Surface::{ctor}",
+                  "decoratedName": "??0Surface@phyz@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "phyz::Surface::normalDirection"
+          }
+        },
+        {
+          "ruleId": "C6328",
+          "message": {
+            "text": "Size mismatch: 'unsigned __int64' passed as _Param_(3) when 'int' is required in call to 'printf'. "
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+                },
+                "region": {
+                  "startLine": 300,
+                  "startColumn": 4,
+                  "endLine": 300,
+                  "endColumn": 111
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "phyz::Surface::getPointI",
+                  "decoratedName": "?getPointI@Surface@phyz@@QEBA?AVVec3@mthz@@H@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.32.31329.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/AABB.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "b377ba2bca35d177008c083a9a6cafb0f0e92e15d1813634bbfeb3816c0fc161"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///C:/dev/ConstraintPhysics/ConstraintPhysics/src/ConvexPoly.cpp"
+          },
+          "roles": [
+            "analysisTarget",
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "24f1aa2e4e602c6bb9b55e0d1d21f83e7e80c952f2b40d0425f500a07682bb61"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/constraintphysics/src/convexpoly.h"
+          },
+          "hashes": {
+            "sha-256": "ab164c7769c1b502c470891e77fd78e0999ef7f219b2b86af640bf9b5e006081"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/math/src/vec3.h"
+          },
+          "hashes": {
+            "sha-256": "5527c84734c090df54f609e592196e55743cdf6e632a538aec416595552ef198"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/math/src/quaternion.h"
+          },
+          "hashes": {
+            "sha-256": "38a36e60f4424f599b971d25a353b30cdeff1aefae7f558ddb6c2fc9cde1575a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///c:/dev/constraintphysics/math/src/mat3.h"
+          },
+          "hashes": {
+            "sha-256": "f3aebc773439d84958636be01f0069bf5c6c75c8c60dd12243a9202a68f9aec5"
+          }
+        }
+      ]
+    }
+  ]
+}

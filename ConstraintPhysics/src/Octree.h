@@ -48,10 +48,10 @@ public:
 		insert_r(&root, e);
 	}
 
-	std::set<Pair> getAllIntersections() const {
+	std::vector<Pair> getAllIntersections() const {
 		std::set<Pair> pairs;
 		getAllIntersections_r(&root, &pairs);
-		return pairs;
+		return std::vector<Pair>(pairs.begin(), pairs.end());
 	}
 
 private:
