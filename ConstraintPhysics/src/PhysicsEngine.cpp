@@ -4,7 +4,6 @@
 #include "ThreadManager.h"
 #include <vector>
 #include <algorithm>
-#include <unordered_map>
 #include <mutex>
 
 //debug
@@ -48,8 +47,8 @@ namespace phyz {
 
 		//auto t1 = std::chrono::system_clock::now();
 		std::mutex critical_section_mutex;
-		thread_manager.do_all<Octree<RigidBody>::Pair>(4, possible_intersections,
-			[this, &critical_section_mutex](Octree<RigidBody>::Pair p) {
+		thread_manager.do_all<Octree<RigidBody>::Pair>(8, possible_intersections,
+			[&](const Octree<RigidBody>::Pair& p) {
 				RigidBody* b1 = p.t1;
 				RigidBody* b2 = p.t2;
 
@@ -172,10 +171,14 @@ namespace phyz {
 
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
 
-		std::vector<Constraint*> all_constraints;
-		for (const std::vector<Constraint*> constraints : island_systems) {
+		thread_manager.do_all<std::vector<Constraint*>>(8, island_systems,
+			[&](const std::vector<Constraint*>& island_system) {
+				PGS_solve(this, island_system);
+			}
+		);
+		/*for (const std::vector<Constraint*> constraints : island_systems) {
 			PGS_solve(this, constraints);
-		}
+		}*/
 		cleanExpiredConstraintsFromGraph();
 
 		for (RigidBody* b : bodies) {
@@ -205,7 +208,7 @@ namespace phyz {
 		b->ang_vel += delta_ang_vel;
 		double wake_vel = 0.25 * vel_sleep_coeff * gravity.mag(); //a little extra sensitive
 		if (b->asleep && (b->vel.mag() > wake_vel || b->ang_vel.mag() > wake_vel)) {
-			wakeupIsland(constraint_graph_nodes[b->id]);
+			//wakeupIsland(constraint_graph_nodes[b->id]);
 		}
 	}
 

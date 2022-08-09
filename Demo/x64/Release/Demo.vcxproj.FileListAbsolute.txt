@@ -1,2 +1,0 @@
-C:\dev\ConstraintPhysics\x64\Release\Demo.exe.lastcodeanalysissucceeded
-C:\dev\ConstraintPhysics\Demo\x64\Release\NativeCodeAnalysis.read.1.tlog

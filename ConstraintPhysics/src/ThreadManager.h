@@ -46,7 +46,7 @@ namespace phyz {
 			std::atomic_int next_index = 0;
 			std::atomic_int num_indices_done = 0;
 			std::atomic_int num_jobs_exited = 0;
-
+			
 			int n_jobs = std::min<double>(n_threads, in_vector.size());
 			job_lock.lock();
 			for (int i = 0; i < n_jobs; i++) {
@@ -85,8 +85,9 @@ namespace phyz {
 
 				std::unique_lock<std::mutex> lk(*sleep_lock);
 				sleep_cv->wait(lk, [&]() -> bool { return *terminated || jobs->size() > 0; });
+				//lk.unlock();
 				//while (!(*terminated || jobs->size() > 0));
-
+				
 				if (*terminated) {
 					return;
 				}

@@ -44,9 +44,6 @@
     <ClInclude Include="src\ConstraintSolver.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\ContactCache.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="src\ThreadManager.h">
       <Filter>src</Filter>
     </ClInclude>

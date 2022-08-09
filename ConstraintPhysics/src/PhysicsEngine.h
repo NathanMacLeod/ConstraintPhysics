@@ -3,16 +3,16 @@
 #include "CollisionDetect.h"
 #include "ConstraintSolver.h"
 #include "ThreadManager.h"
-#include "ContactCache.h"
 #include <set>
 #include <functional>
+#include <unordered_map>
 
 namespace phyz {
 
 	class PhysicsEngine {
 	public:
 		PhysicsEngine() {
-			thread_manager.init(4);
+			thread_manager.init(8);
 		}
 
 
@@ -51,7 +51,7 @@ namespace phyz {
 		double step_time;
 		double cutoff_vel;
 		int contact_life = 6;
-		bool sleeping_enabled = false;
+		bool sleeping_enabled = true;
 		double sleep_delay = 0.33;
 
 		double vel_sleep_coeff = 0.1;

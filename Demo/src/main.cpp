@@ -210,7 +210,7 @@ int main() {
 		}
 
 		//square
-		if (rndr::getKeyPressed(GLFW_KEY_K)) {
+		if (rndr::getKeyDown(GLFW_KEY_K)) {
 			std::vector<Mesh> m1 = { rect(0, 0, 0, 1, 1, 1) };
 			std::vector<phyz::ConvexPoly> geom1;
 			double h = 3;

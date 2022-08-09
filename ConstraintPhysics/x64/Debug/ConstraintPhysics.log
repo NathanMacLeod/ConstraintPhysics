@@ -1,15 +1,10 @@
-﻿  ConstraintSolver.cpp
+﻿  PhysicsEngine.cpp
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(20): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(43,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.h(23,22): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-  PhysicsEngine.cpp
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(20): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(43,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.h(23,22): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(31,40): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(42,24): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(156,117): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(231,30): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(30,40): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(41,24): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(104,4): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(235,30): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(13,1): warning C4311: 'type cast': pointer truncation from 'T *' to 'int'
           with
           [
@@ -25,7 +20,7 @@ C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(111): message : see refe
           [
               T=phyz::RigidBody
           ]
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(53): message : see reference to class template instantiation 'Octree<phyz::RigidBody>::Pair' being compiled
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(52): message : see reference to class template instantiation 'Octree<phyz::RigidBody>::Pair' being compiled
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(13,1): warning C4302: 'type cast': truncation from 'T *' to 'int'
           with
           [
@@ -36,7 +31,7 @@ C:\dev\ConstraintPhysics\ConstraintPhysics\src\ThreadManager.h(50,59): warning C
           [
               _Ty=double
           ]
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(106): message : see reference to function template instantiation 'void phyz::ThreadManager::do_all<Octree<phyz::RigidBody>::Pair>(int,const std::vector<Octree<phyz::RigidBody>::Pair,std::allocator<Octree<phyz::RigidBody>::Pair>> &,std::function<void (Octree<phyz::RigidBody>::Pair)>)' being compiled
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(105): message : see reference to function template instantiation 'void phyz::ThreadManager::do_all<Octree<phyz::RigidBody>::Pair>(int,const std::vector<Octree<phyz::RigidBody>::Pair,std::allocator<Octree<phyz::RigidBody>::Pair>> &,std::function<void (Octree<phyz::RigidBody>::Pair)>)' being compiled
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\ThreadManager.h(50,15): warning C4244: 'initializing': conversion from 'const _Ty' to 'int', possible loss of data
           with
           [
@@ -74,6 +69,5 @@ C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(35,1): warning C4302: 't
           [
               T=phyz::RigidBody
           ]
-  Generating Code...
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(147): warning C4715: 'Octree<phyz::RigidBody>::getSubAABB': not all control paths return a value
   ConstraintPhysics.vcxproj -> C:\dev\ConstraintPhysics\x64\Debug\ConstraintPhysics.lib

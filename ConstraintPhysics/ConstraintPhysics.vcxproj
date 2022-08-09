@@ -29,7 +29,6 @@
     <ClInclude Include="src\AABB.h" />
     <ClInclude Include="src\CollisionDetect.h" />
     <ClInclude Include="src\ConstraintSolver.h" />
-    <ClInclude Include="src\ContactCache.h" />
     <ClInclude Include="src\ConvexPoly.h" />
     <ClInclude Include="src\Octree.h" />
     <ClInclude Include="src\PhysicsEngine.h" />

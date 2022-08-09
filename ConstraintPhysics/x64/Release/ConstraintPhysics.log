@@ -1,31 +1,13 @@
-﻿  CollisionDetect.cpp
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(18,3): warning C4091: 'static ': ignored on left of 'phyz::CheckNormResults' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(23,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(29,3): warning C4091: 'static ': ignored on left of 'phyz::ContactArea' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(148,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(280,72): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(281,72): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(180,10): warning C4101: 'pen_depth': unreferenced local variable
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(340,29): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-  ConstraintSolver.cpp
+﻿  ConstraintSolver.cpp
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(20): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(43,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.h(23,22): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-  ConvexPoly.cpp
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(30,3): warning C4091: 'static ': ignored on left of 'phyz::Pair' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(35,34): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(82,26): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(294,30): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(300,11): warning C4477: 'printf' : format string '%d' requires an argument of type 'int', but variadic argument 2 has type 'unsigned __int64'
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(300,11): message : consider using '%zd' in the format string
   PhysicsEngine.cpp
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(20): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ContactCache.h(43,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.h(23,22): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(31,40): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(42,24): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(105,4): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(232,30): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(30,40): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(41,24): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(104,4): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(235,30): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(13,1): warning C4311: 'type cast': pointer truncation from 'T *' to 'int'
           with
           [
@@ -41,7 +23,7 @@ C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(111): message : see refe
           [
               T=phyz::RigidBody
           ]
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(53): message : see reference to class template instantiation 'Octree<phyz::RigidBody>::Pair' being compiled
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(52): message : see reference to class template instantiation 'Octree<phyz::RigidBody>::Pair' being compiled
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(13,1): warning C4302: 'type cast': truncation from 'T *' to 'int'
           with
           [
@@ -52,7 +34,7 @@ C:\dev\ConstraintPhysics\ConstraintPhysics\src\ThreadManager.h(50,59): warning C
           [
               _Ty=double
           ]
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(106): message : see reference to function template instantiation 'void phyz::ThreadManager::do_all<Octree<phyz::RigidBody>::Pair>(int,const std::vector<Octree<phyz::RigidBody>::Pair,std::allocator<Octree<phyz::RigidBody>::Pair>> &,std::function<void (Octree<phyz::RigidBody>::Pair)>)' being compiled
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(105): message : see reference to function template instantiation 'void phyz::ThreadManager::do_all<Octree<phyz::RigidBody>::Pair>(int,const std::vector<Octree<phyz::RigidBody>::Pair,std::allocator<Octree<phyz::RigidBody>::Pair>> &,std::function<void (Octree<phyz::RigidBody>::Pair)>)' being compiled
 C:\dev\ConstraintPhysics\ConstraintPhysics\src\ThreadManager.h(50,15): warning C4244: 'initializing': conversion from 'const _Ty' to 'int', possible loss of data
           with
           [
@@ -90,44 +72,4 @@ C:\dev\ConstraintPhysics\ConstraintPhysics\src\Octree.h(35,1): warning C4302: 't
           [
               T=phyz::RigidBody
           ]
-  RigidBody.cpp
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(46,28): warning C4267: 'return': conversion from 'size_t' to 'phyz::RigidBody::PKey', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(87,26): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(162,3): warning C4091: 'static ': ignored on left of 'phyz::IntrgVals' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(164,30): warning C4091: 'static ': ignored on left of 'phyz::Axis' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(165,36): warning C4091: 'static ': ignored on left of 'phyz::MappedAxis' when no variable is declared
-  Running Code Analysis for C/C++...
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(162,3): warning C4091: 'static ': ignored on left of 'phyz::IntrgVals' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(164,30): warning C4091: 'static ': ignored on left of 'phyz::Axis' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(165,36): warning C4091: 'static ': ignored on left of 'phyz::MappedAxis' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(20): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(30,3): warning C4091: 'static ': ignored on left of 'phyz::Pair' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(20): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(18,3): warning C4091: 'static ': ignored on left of 'phyz::CheckNormResults' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(23,3): warning C4091: 'static ': ignored on left of 'phyz::ProjP' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(29,3): warning C4091: 'static ': ignored on left of 'phyz::ContactArea' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(148,3): warning C4091: 'static ': ignored on left of 'phyz::ExtremaInfo' when no variable is declared
   ConstraintPhysics.vcxproj -> C:\dev\ConstraintPhysics\x64\Release\ConstraintPhysics.lib
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\AABB.h(20): warning C26498: The function 'std::numeric_limits<double>::infinity' is constexpr, mark variable 'inf' constexpr if compile-time evaluation is desired (con.5).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(75): warning C26451: Arithmetic overflow: Using operator '+' on a 4 byte value and then casting the result to a 8 byte value. Cast the value to the wider type before calling operator '+' to avoid overflow (io.2).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(137): warning C26495: Variable 'phyz::ExtremaInfo::min_pID' is uninitialized. Always initialize a member variable (type.6).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.h(34): warning C26495: Variable 'phyz::Manifold::max_pen_depth' is uninitialized. Always initialize a member variable (type.6).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(283): warning C26451: Arithmetic overflow: Using operator '+' on a 4 byte value and then casting the result to a 8 byte value. Cast the value to the wider type before calling operator '+' to avoid overflow (io.2).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(290): warning C26451: Arithmetic overflow: Using operator '+' on a 4 byte value and then casting the result to a 8 byte value. Cast the value to the wider type before calling operator '+' to avoid overflow (io.2).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.h(28): warning C26495: Variable 'phyz::ContactP::magicID' is uninitialized. Always initialize a member variable (type.6).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(342): warning C26451: Arithmetic overflow: Using operator '+' on a 4 byte value and then casting the result to a 8 byte value. Cast the value to the wider type before calling operator '+' to avoid overflow (io.2).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\CollisionDetect.cpp(379): warning C6001: Using uninitialized memory 'max_indx'.
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(12): warning C26495: Variable 'phyz::Constraint::b' is uninitialized. Always initialize a member variable (type.6).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(43): warning C26495: Variable 'phyz::ContactConstraint::psuedo_target_val' is uninitialized. Always initialize a member variable (type.6).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(67): warning C26495: Variable 'phyz::FrictionConstraint::inertia_val' is uninitialized. Always initialize a member variable (type.6).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.h(14): warning C26495: Variable 'phyz::PhysicsEngine::step_time' is uninitialized. Always initialize a member variable (type.6).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(78): warning C6001: Using uninitialized memory 'maxD_i'.
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(78): warning C6001: Using uninitialized memory 'maxD_j'.
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(89): warning C26498: The function 'std::numeric_limits<double>::infinity' is constexpr, mark variable 'inf' constexpr if compile-time evaluation is desired (con.5).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(277): warning C26495: Variable 'phyz::Surface::surfaceID' is uninitialized. Always initialize a member variable (type.6).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(281): warning C26495: Variable 'phyz::Surface::surfaceID' is uninitialized. Always initialize a member variable (type.6).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConvexPoly.cpp(300): warning C6328: Size mismatch: 'unsigned __int64' passed as _Param_(3) when 'int' is required in call to 'printf'. 
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(233): warning C26451: Arithmetic overflow: Using operator '*' on a 4 byte value and then casting the result to a 8 byte value. Cast the value to the wider type before calling operator '*' to avoid overflow (io.2).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(248): warning C26451: Arithmetic overflow: Using operator '-' on a 4 byte value and then casting the result to a 8 byte value. Cast the value to the wider type before calling operator '-' to avoid overflow (io.2).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.cpp(249): warning C26451: Arithmetic overflow: Using operator '-' on a 4 byte value and then casting the result to a 8 byte value. Cast the value to the wider type before calling operator '-' to avoid overflow (io.2).
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.h(69): warning C26495: Variable 'phyz::PhysicsEngine::Contact::magic' is uninitialized. Always initialize a member variable (type.6).
