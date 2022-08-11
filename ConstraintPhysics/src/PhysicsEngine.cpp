@@ -4,7 +4,6 @@
 #include "ThreadManager.h"
 #include <vector>
 #include <algorithm>
-#include <mutex>
 
 //debug
 #include <chrono>
@@ -46,7 +45,6 @@ namespace phyz {
 		std::vector<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
 
 		//auto t1 = std::chrono::system_clock::now();
-		std::mutex critical_section_mutex;
 		thread_manager.do_all<Octree<RigidBody>::Pair>(8, possible_intersections,
 			[&](const Octree<RigidBody>::Pair& p) {
 				RigidBody* b1 = p.t1;
@@ -74,32 +72,32 @@ namespace phyz {
 				}
 				if (manifolds.size() > 0) {
 
-					int max_indx = 0;
-					for (int i = 1; i < manifolds.size(); i++) {
-						if (manifolds[i].max_pen_depth > manifolds[max_indx].max_pen_depth) {
-							max_indx = i;
-						}
-					}
+					std::vector<bool> merged(manifolds.size(), false);
 					for (int i = 0; i < manifolds.size(); i++) {
-						if (i != max_indx) {
-							double v = manifolds[max_indx].normal.dot(manifolds[i].normal);
-							if (1 - v < COS_TOL) {
-								manifolds[max_indx] = merge_manifold(manifolds[max_indx], manifolds[i]);
+						if (merged[i]) {
+							continue;
+						}
+						for (int j = 0; j < manifolds.size(); j++) {
+							if (!merged[j]) {
+								double v = manifolds[i].normal.dot(manifolds[j].normal);
+								if (1 - v < COS_TOL) {
+									manifolds[i] = merge_manifold(manifolds[i], manifolds[j]);
+								}
+								merged[j] = true;
 							}
 						}
+						Manifold man = cull_manifold(manifolds[i], 4);
 
+						mthz::Vec3 u, w;
+						man.normal.getPerpendicularBasis(&u, &w);
+
+						constraint_graph_lock.lock();
+						for (int i = 0; i < man.points.size(); i++) {
+							const ContactP& p = man.points[i];
+							addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.1, 0.5, man.points.size(), p.pen_depth, 270 * step_time);
+						}
+						constraint_graph_lock.unlock();
 					}
-					Manifold man = cull_manifold(manifolds[max_indx], 4);
-
-					mthz::Vec3 u, w;
-					man.normal.getPerpendicularBasis(&u, &w);
-
-					critical_section_mutex.lock();
-					for (int i = 0; i < man.points.size(); i++) {
-						const ContactP& p = man.points[i];
-						addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.1, 0.5, man.points.size(), p.pen_depth, 270 * step_time);
-					}
-					critical_section_mutex.unlock();
 				}
 			}
 		);
@@ -208,7 +206,15 @@ namespace phyz {
 		b->ang_vel += delta_ang_vel;
 		double wake_vel = 0.25 * vel_sleep_coeff * gravity.mag(); //a little extra sensitive
 		if (b->asleep && (b->vel.mag() > wake_vel || b->ang_vel.mag() > wake_vel)) {
-			//wakeupIsland(constraint_graph_nodes[b->id]);
+			constraint_graph_lock.lock();
+			if (b->asleep) { //in case of race condition, shouldn't really matter too much though
+				wakeupIsland(constraint_graph_nodes[b->id]);
+			}
+			constraint_graph_lock.unlock();
+		}
+		else if (b->asleep) {
+			b->vel = mthz::Vec3(0, 0, 0);
+			b->ang_vel = mthz::Vec3(0, 0, 0);
 		}
 	}
 
@@ -304,9 +310,9 @@ namespace phyz {
 
 		//if no warm start existed
 		Contact* c = new Contact();
-		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, c->contact.impulse, cutoff_vel);
-		c->friction1 = FrictionConstraint(b1, b2, u, p, kinetic_friction, n_points, &c->contact, c->friction1.impulse);
-		c->friction2 = FrictionConstraint(b1, b2, w, p, kinetic_friction, n_points, &c->contact, c->friction2.impulse);
+		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, 0, cutoff_vel);
+		c->friction1 = FrictionConstraint(b1, b2, u, p, kinetic_friction, n_points, &c->contact, 0);
+		c->friction2 = FrictionConstraint(b1, b2, w, p, kinetic_friction, n_points, &c->contact, 0);
 		c->magic = magic;
 		c->memory_life = contact_life;
 		c->is_live_contact = true;

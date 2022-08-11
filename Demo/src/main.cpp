@@ -210,10 +210,10 @@ int main() {
 		}
 
 		//square
-		if (rndr::getKeyDown(GLFW_KEY_K)) {
+		if (rndr::getKeyPressed(GLFW_KEY_K)) {
 			std::vector<Mesh> m1 = { rect(0, 0, 0, 1, 1, 1) };
 			std::vector<phyz::ConvexPoly> geom1;
-			double h = 3;
+			double h = 10;
 			geom1.push_back(phyz::ConvexPoly::genRect(-0.5, h - 0.5, -0.5, 1, 1, 1));
 			phyz::RigidBody* r1 = p.createRigidBody(geom1);
 			phyz::RigidBody::PKey draw_p = r1->track_point(mthz::Vec3(0, h, 0));

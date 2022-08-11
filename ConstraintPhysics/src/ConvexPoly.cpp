@@ -2,6 +2,7 @@
 
 #include <limits>
 #include <algorithm>
+#include <cassert>
 
 namespace phyz {
 
@@ -262,9 +263,7 @@ namespace phyz {
 	Surface::Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point)
 		: point_indexes(point_indexes), poly(poly)
 	{
-		if (point_indexes.size() < 3) {
-			printf("ERROR: Trying to initialize surface with fewer than 3 points\n");
-		}
+		assert(point_indexes.size() >= 3);
 
 		normalDirection = 1; //initial guess
 		mthz::Vec3 norm = normal();
@@ -296,9 +295,7 @@ namespace phyz {
 
 
 	mthz::Vec3 Surface::getPointI(int i) const {
-		if (i < 0 || i >= point_indexes.size()) {
-			printf("ERROR: Trying to access invalid index of surface: %d, valid range [0, %d]\n", i, point_indexes.size());
-		}
+		assert(i >= 0 && i < point_indexes.size());
 
 		return poly->points[point_indexes[i]];
 	}

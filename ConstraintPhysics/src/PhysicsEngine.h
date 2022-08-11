@@ -6,6 +6,7 @@
 #include <set>
 #include <functional>
 #include <unordered_map>
+#include <mutex>
 
 namespace phyz {
 
@@ -47,6 +48,7 @@ namespace phyz {
 		int next_ID = 0;
 		std::vector<RigidBody*> bodies;
 		std::unordered_map<int, ConstraintGraphNode*> constraint_graph_nodes;
+		std::mutex constraint_graph_lock;
 		mthz::Vec3 gravity;
 		double step_time;
 		double cutoff_vel;
