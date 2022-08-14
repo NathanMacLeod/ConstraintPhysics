@@ -44,6 +44,7 @@ namespace phyz {
 					out.ps[i] = ProjP{ v.dot(u), v.dot(w) };
 					out.p_IDs[i] = s.point_indexes[i];
 				}
+				out.surfaceID = s.getSurfaceID();
 
 				return out;
 			}

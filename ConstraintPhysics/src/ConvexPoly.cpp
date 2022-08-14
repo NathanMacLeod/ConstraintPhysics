@@ -158,6 +158,7 @@ namespace phyz {
 
 		out.interior_point = mid;
 		out.compute_edges();
+		out.assign_IDs();
 
 		return out;
 	}
@@ -192,6 +193,7 @@ namespace phyz {
 
 		out.interior_point = mid;
 		out.compute_edges();
+		out.assign_IDs();
 
 		return out;
 	}
@@ -231,6 +233,7 @@ namespace phyz {
 
 		out.interior_point = mid;
 		out.compute_edges();
+		out.assign_IDs();
 
 		return out;
 	}
@@ -274,7 +277,7 @@ namespace phyz {
 	}
 
 	Surface::Surface(const Surface& s, ConvexPoly* poly) 
-		:point_indexes(s.point_indexes), normalDirection(s.normalDirection), poly(poly)
+		:point_indexes(s.point_indexes), normalDirection(s.normalDirection), poly(poly), surfaceID(s.surfaceID)
 	{}
 
 	Surface::Surface() {

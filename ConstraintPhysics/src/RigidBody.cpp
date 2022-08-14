@@ -7,11 +7,10 @@ namespace phyz {
 
 	static void calculateMassProperties(const std::vector<ConvexPoly>& geometry, double density, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
 
-	RigidBody::RigidBody(const std::vector<ConvexPoly>& geometry, double density, int id)
+	RigidBody::RigidBody(const std::vector<ConvexPoly>& geometry, double density)
 		: geometry(geometry), reference_geometry(geometry), vel(0, 0, 0), ang_vel(0, 0, 0), 
 		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0)
 	{
-		this->id = id;
 		fixed = false;
 		calculateMassProperties(geometry, density, &this->com, &this->tensor, &this->mass);
 		invTensor = tensor.inverse();
@@ -38,6 +37,16 @@ namespace phyz {
 		aabb = AABB::combine(geometry_AABB);
 		gauss_maps = reference_gauss_maps;
 		radius = sqrt(radius);
+	}
+
+	void RigidBody::setCOMtoPosition(const mthz::Vec3 pos) {
+		com = pos;
+		updateGeometry();
+	}
+
+	void RigidBody::setOrientation(const mthz::Quaternion orientation) {
+		this->orientation = orientation;
+		updateGeometry();
 	}
 
 	RigidBody::PKey RigidBody::track_point(mthz::Vec3 p) {

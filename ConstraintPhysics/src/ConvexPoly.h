@@ -61,6 +61,7 @@ namespace phyz {
 		int n_points() const;
 		mthz::Vec3 normal() const;
 		mthz::Vec3 getPointI(int i) const;
+		int getSurfaceID() const { return surfaceID; }
 
 		std::vector<int> point_indexes;
 		friend class ConvexPoly;

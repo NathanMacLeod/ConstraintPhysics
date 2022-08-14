@@ -19,22 +19,26 @@ namespace phyz {
 
 		void timeStep();
 		RigidBody* createRigidBody(const std::vector<ConvexPoly>& geometry, bool fixed=false, double density=1.0);
-		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel);
-
+		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel=mthz::Vec3(), const mthz::Vec3&delta_psuedo_ang_vel=mthz::Vec3());
+		void disallowCollision(RigidBody* b1, RigidBody* b2);
+		bool collisionAllowed(RigidBody* b1, RigidBody* b2);
+		void reallowCollision(RigidBody* b1, RigidBody* b2);
+		
+		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 ball_socket_position, double pos_correct_strength=300);
+		
 		int getNumBodies() { return bodies.size(); }
-
 		mthz::Vec3 getGravity();
-		void setGravity(const mthz::Vec3& v);
-
 		double getStep_time();
+
 		void setStep_time(double d);
+		void setGravity(const mthz::Vec3& v);
 		
 	private:
 
 		struct ConstraintGraphNode; 
 		
 		void addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
-		void cleanExpiredConstraintsFromGraph();
+		void maintainConstraintGraph();
 		void dfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		//std::vector<ConstraintGraphNode*> getAwakeIslandFootholds();
 		std::vector<std::vector<Constraint*>> sleepOrSolveIslands();
@@ -45,9 +49,10 @@ namespace phyz {
 		bool readyToSleep(RigidBody* b);
 		void wakeupIsland(ConstraintGraphNode* foothold);
 
-		int next_ID = 0;
+		double posCorrectCoeff(double pos_correct_strength, double step_time) { return std::min<double>(pos_correct_strength*step_time, 1.0); }
+
 		std::vector<RigidBody*> bodies;
-		std::unordered_map<int, ConstraintGraphNode*> constraint_graph_nodes;
+		std::unordered_map<RigidBody*, ConstraintGraphNode*> constraint_graph_nodes;
 		std::mutex constraint_graph_lock;
 		mthz::Vec3 gravity;
 		double step_time;
@@ -70,14 +75,23 @@ namespace phyz {
 			bool is_live_contact;
 		};
 
+		struct BallSocket {
+			BallSocketConstraint constraint;
+			RigidBody::PKey b1_point;
+			RigidBody::PKey b2_point;
+			double pos_correct_hardness;
+		};
+
 		struct SharedConstraintsEdge {
 			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contactConstraints(std::vector<Contact*>()) {}
 
 			ConstraintGraphNode* n1;
 			ConstraintGraphNode* n2;
 			std::vector<Contact*> contactConstraints;
+			std::vector<BallSocket*> ballSocketConstraints;
 
 			ConstraintGraphNode* other(ConstraintGraphNode* c) { return (c->b == n1->b ? n2 : n1); }
+			bool noConstraintsLeft() { return contactConstraints.empty() && ballSocketConstraints.empty(); }
 		};
 
 		struct ConstraintGraphNode {

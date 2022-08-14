@@ -35,7 +35,7 @@ namespace phyz {
 		}
 		
 		template <typename T>
-		void do_all(int n_threads, const std::vector<T>& in_vector, std::function<void(T job)> action) {
+		void do_all(int n_threads, const std::vector<T>& in_vector, const std::function<void(T job)>& action) {
 			if (in_vector.size() == 0) {
 				return;
 			}

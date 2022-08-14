@@ -2,32 +2,24 @@
 #include "PhysicsEngine.h"
 #include <unordered_map>
 
+#include <chrono>
+static int CUTOFF = 0.00000001;
+
 namespace phyz {
-	static void PGS(const std::vector<Constraint*>& constraints, int n_itr, bool solve_psuedo_vel) {
+	
+	template<int dim>
+	static void PGS_constraint_step(Constraint::VelVec* vel_change_a, Constraint::VelVec* vel_change_b, const NVec<dim>& target_val, NVec<dim>* impulse, 
+		const NVec<dim>& current_constraint_value, const NMat<dim>& inverse_inertia_mat, std::function<NVec<dim>(const NVec<dim>& impulse)> projectValidImpulse, 
+		std::function<void(const NVec<dim>& impulse, Constraint::VelVec* vel_change_a, Constraint::VelVec* vel_change_b)> addVelocityChange) 
+	{
+		NVec<dim> val_diff = target_val - current_constraint_value;
+		NVec<dim> impulse_new = (*impulse) + inverse_inertia_mat * val_diff;
+		NVec<dim> impulse_diff = projectValidImpulse(impulse_new) - (*impulse);
 
-		for (int i = 0; i < n_itr; i++) {
-			for (Constraint* c : constraints) {
-				if (solve_psuedo_vel && !c->needsPositionalCorrection()) {
-					continue;
-				}
-				Constraint::VelVec* vel_change_a = solve_psuedo_vel? c->a_psuedo_velocity_changes : c->a_velocity_changes;
-				Constraint::VelVec* vel_change_b = solve_psuedo_vel? c->b_psuedo_velocity_changes : c->b_velocity_changes;
-
-				double target_val = solve_psuedo_vel? c->getPsuedoTarget() : c->getTargetValue();
-				double impulse = solve_psuedo_vel? c->psuedo_impulse : c->impulse;
-
-				double val_diff = target_val - c->getConstraintValue(*vel_change_a, *vel_change_b);
-				double impulse_new = impulse + val_diff / c->getInertiaVal();
-				double impulse_diff = c->projectValidImpulse(impulse_new) - impulse; //apply projection on the total impulse, not the individual contributions. 
-				if (impulse_diff != 0) {
-					c->addVelocityChange(impulse_diff, vel_change_a, vel_change_b);
-
-					if (solve_psuedo_vel) { c->psuedo_impulse += impulse_diff; }
-					else                  { c->impulse += impulse_diff; }
-				}
-			}
+		if (!impulse_diff.isZero()) {
+			addVelocityChange(impulse_diff, vel_change_a, vel_change_b);
+			*impulse += impulse_diff;
 		}
-
 	}
 
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
@@ -63,117 +55,227 @@ namespace phyz {
 			c->b_psuedo_velocity_changes = &vB->psuedo_vel;
 		}
 
-		/*for (int i = 0; i < n_itr; i++) {
-			for (Constraint* c : constraints) {
-				double val_diff = c->getTargetValue() - c->getConstraintValue(velocity_changes[c->a], velocity_changes[c->b]);
-				double impulse_new = c->impulse + val_diff / c->getInertiaVal();
-				double impulse_diff = c->projectValidImpulse(impulse_new) - c->impulse; //apply projection on the total impulse, not the individual contributions. 
-				if (impulse_diff != 0) {
-					c->addVelocityChange(impulse_diff, &velocity_changes[c->a], &velocity_changes[c->b]);
-					c->impulse += impulse_diff;
-				}
-			}
-		}*/
-
 		//apply warm starting
 		for (Constraint* c : constraints) {
-			if (c->impulse != 0) {
-				c->addVelocityChange(c->impulse, c->a_velocity_changes, c->b_velocity_changes);
+			if (c->constraintWarmStarted()) {
+				c->warmStartVelocityChange(c->a_velocity_changes, c->b_velocity_changes);
 			}
 		}
 
-		PGS(constraints, n_itr_vel, false);
-		PGS(constraints, n_itr_pos, true);
+		for (int i = 0; i < n_itr_vel; i++) {
+			for (Constraint* c : constraints) {
+				c->performPGSConstraintStep();
+			}
+		}
+		for (int i = 0; i < n_itr_pos; i++) {
+			for (Constraint* c : constraints) {
+				c->performPGSPsuedoConstraintStep();
+			}
+		}
 
 		for (const auto& kv_pair : velocity_changes) {
-			pEngine->applyVelocityChange(kv_pair.first, kv_pair.second->velocity.lin, kv_pair.second->velocity.ang);
-			kv_pair.first->psuedo_vel += kv_pair.second->psuedo_vel.lin;
-			kv_pair.first->psuedo_ang_vel += kv_pair.second->psuedo_vel.ang;
-			delete kv_pair.second;
+			RigidBody* b = kv_pair.first;
+			VelPair* deltaV = kv_pair.second;
+			pEngine->applyVelocityChange(b, deltaV->velocity.lin, deltaV->velocity.ang, deltaV->psuedo_vel.lin, deltaV->psuedo_vel.ang);
+			delete deltaV;
 		}
 	}
 
-	ContactConstraint::ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double warm_start_impulse, double cutoff_vel)
-		: Constraint(a, b, warm_start_impulse), norm(norm), rA(contact_p - a->com), rB(contact_p - b->com)
+	ContactConstraint::ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, NVec<1> warm_start_impulse, double cutoff_vel)
+		: Constraint(a, b), norm(norm), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<1>{0.0})
 	{
 		rotDirA = a->getInvTensor() * norm.cross(rA);
 		rotDirB = b->getInvTensor() * norm.cross(rB);
-		inertia_val = a->getInvMass() + b->getInvMass() + rA.cross(rotDirA).dot(norm) + rB.cross(rotDirB).dot(norm);
-		double current_val = getConstraintValue({ a->vel, a->ang_vel }, { b->vel, b->ang_vel });
-		target_val = (current_val < -cutoff_vel)? - (1 + bounce) * current_val : -current_val;
-		psuedo_target_val = pen_depth * pos_correct_hardness;
+		inverse_inertia = NMat<1>{ {1.0 / (a->getInvMass() + b->getInvMass() + rA.cross(rotDirA).dot(norm) + rB.cross(rotDirB).dot(norm))} };
+		double current_val = getConstraintValue({ a->getVel(), a->getAngVel()}, {b->getVel(), b->getAngVel()}).v[0];
+		target_val = NVec<1>{ (current_val < -cutoff_vel) ? -(1 + bounce) * current_val : -current_val };
+		psuedo_target_val = NVec<1>{ pen_depth * pos_correct_hardness };
 	}
 
-	void ContactConstraint::addVelocityChange(double impulse, VelVec* va, VelVec* vb) {
-		va->lin -= norm * impulse * a->getInvMass();
-		vb->lin += norm * impulse * b->getInvMass();
-		va->ang += rotDirA * impulse;
-		vb->ang -= rotDirB * impulse;
+	void ContactConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+		addVelocityChange(impulse, va, vb);
 	}
 
-	double ContactConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
-		return vb.lin.dot(norm) - rB.cross(vb.ang).dot(norm) - va.lin.dot(norm) + rA.cross(va.ang).dot(norm);
+	void ContactConstraint::performPGSConstraintStep() {
+		PGS_constraint_step<1>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
+			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
+			[](const NVec<1>& impulse) { return NVec<1>{ std::max<double>(impulse.v[0], 0) }; },
+			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	};
+
+	void ContactConstraint::performPGSPsuedoConstraintStep() {
+		PGS_constraint_step<1>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
+			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
+			[](const NVec<1>& impulse) { return NVec<1>{ std::max<double>(impulse.v[0], 0) }; },
+			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	};
+
+	void ContactConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
+		va->lin -= norm * impulse.v[0] * a->getInvMass();
+		vb->lin += norm * impulse.v[0] * b->getInvMass();
+		va->ang += rotDirA * impulse.v[0];
+		vb->ang -= rotDirB * impulse.v[0];
 	}
 
-	double ContactConstraint::getInertiaVal() {
-		return inertia_val;
+	NVec<1> ContactConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+		return NVec<1> {vb.lin.dot(norm) - rB.cross(vb.ang).dot(norm) - va.lin.dot(norm) + rA.cross(va.ang).dot(norm)};
 	}
 
-	double ContactConstraint::getTargetValue() {
-		return target_val;
-	}
-
-	double ContactConstraint::getPsuedoTarget() {
-		return psuedo_target_val;
-	}
-
-	double ContactConstraint::projectValidImpulse(double impulse) {
-		return std::max<double>(impulse, 0);
-	}
-
-	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 frictionDir, mthz::Vec3 contact_p, double coeff_friction, int n_contact_points, ContactConstraint* normal, double warm_start_impulse)
-		: Constraint(a, b, warm_start_impulse), frictionDir(frictionDir), rA(contact_p - a->com), rB(contact_p - b->com), 
+	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 frictionDir, mthz::Vec3 contact_p, double coeff_friction, int n_contact_points, ContactConstraint* normal, NVec<1> warm_start_impulse)
+		: Constraint(a, b), frictionDir(frictionDir), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()), impulse(warm_start_impulse),
 		coeff_friction(coeff_friction / n_contact_points), normal_impulse(&normal->impulse), static_ready(false)
 	{
 		rotDirA = a->getInvTensor() * frictionDir.cross(rA);
 		rotDirB = b->getInvTensor() * frictionDir.cross(rB);
-		inertia_val = a->getInvMass() + b->getInvMass() + rA.cross(rotDirA).dot(frictionDir) + rB.cross(rotDirB).dot(frictionDir);
-		target_val = -getConstraintValue({ a->vel, a->ang_vel }, { b->vel, b->ang_vel });
+		inverse_inertia = NMat<1>{ {1.0 / (a->getInvMass() + b->getInvMass() + rA.cross(rotDirA).dot(frictionDir) + rB.cross(rotDirB).dot(frictionDir)) } };
+		target_val = -getConstraintValue({ a->getVel(), a->getAngVel()}, {b->getVel(), b->getAngVel()});
 	}
 
-	void FrictionConstraint::addVelocityChange(double impulse, VelVec* va, VelVec* vb) {
-		va->lin -= frictionDir * impulse * a->getInvMass();
-		vb->lin += frictionDir * impulse * b->getInvMass();
-		va->ang += rotDirA * impulse;
-		vb->ang -= rotDirB * impulse;
+	void FrictionConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+		addVelocityChange(impulse, va, vb);
 	}
 
-	double FrictionConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
-		return vb.lin.dot(frictionDir) - rB.cross(vb.ang).dot(frictionDir) - va.lin.dot(frictionDir) + rA.cross(va.ang).dot(frictionDir);
+	void FrictionConstraint::performPGSConstraintStep() {
+
+		PGS_constraint_step<1>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
+			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
+			[&](const NVec<1>& impulse) { 
+				double max_impulse = coeff_friction * normal_impulse->v[0];
+				if (impulse.v[0] < -max_impulse) {
+					static_ready = false;
+					return NVec<1>{-max_impulse};
+				}
+				else if (impulse.v[0] > max_impulse) {
+					static_ready = false;
+					return NVec<1>{max_impulse};
+				}
+				else {
+					static_ready = true;
+					return impulse;
+				}
+			},
+			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	};
+
+	void FrictionConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
+		va->lin -= frictionDir * impulse.v[0] * a->getInvMass();
+		vb->lin += frictionDir * impulse.v[0] * b->getInvMass();
+		va->ang += rotDirA * impulse.v[0];
+		vb->ang -= rotDirB * impulse.v[0];
 	}
 
-	double FrictionConstraint::getInertiaVal() {
-		return inertia_val;
+	NVec<1> FrictionConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+		return NVec<1> { vb.lin.dot(frictionDir) - rB.cross(vb.ang).dot(frictionDir) - va.lin.dot(frictionDir) + rA.cross(va.ang).dot(frictionDir) };
 	}
 
-	double FrictionConstraint::getTargetValue() {
-		return target_val;
-	}
-
-	double FrictionConstraint::projectValidImpulse(double impulse) {
-		double max_impulse = coeff_friction * (*normal_impulse);
-		if (impulse < -max_impulse) {
-			static_ready = false;
-			return -max_impulse;
+	BallSocketConstraint::BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_p, mthz::Vec3 error, double pos_correct_hardness, NVec<3> warm_start_impulse) 
+		: Constraint(a, b), rA(socket_p - a->getCOM()), rB(socket_p - b->getCOM()), rotDirA(a->getInvTensor() * mthz::Mat3::cross_mat(rA)), rotDirB(b->getInvTensor() * mthz::Mat3::cross_mat(rB)),
+		impulse(warm_start_impulse), psuedo_impulse(NVec<3>{ 0.0, 0.0, 0.0 })
+	{
+		mthz::Mat3 inverse_inertia_mat3 = (mthz::Mat3::iden()*a->getInvMass() + mthz::Mat3::iden()*b->getInvMass() - mthz::Mat3::cross_mat(rA)*rotDirA - mthz::Mat3::cross_mat(rB)*rotDirB).inverse();
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				inverse_inertia.v[i][j] = inverse_inertia_mat3.v[i][j];
+			}
 		}
-		else if (impulse > max_impulse) {
-			static_ready = false;
-			return max_impulse;
+		target_val = -getConstraintValue({ a->getVel(), a->getAngVel()}, {b->getVel(), b->getAngVel()});
+		psuedo_target_val = NVec<3>{ pos_correct_hardness * error.x, pos_correct_hardness * error.y, pos_correct_hardness * error.z };
+	}
+
+	void BallSocketConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+		addVelocityChange(impulse, va, vb);
+	}
+
+	void BallSocketConstraint::performPGSConstraintStep() {
+		PGS_constraint_step<3>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
+			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
+			[](const NVec<3>& impulse) { return impulse; },
+			[&](const NVec<3>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	}
+
+	void BallSocketConstraint::performPGSPsuedoConstraintStep() {
+		PGS_constraint_step<3>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
+			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
+			[](const NVec<3>& impulse) { return impulse; },
+			[&](const NVec<3>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	}
+
+	NVec<3> BallSocketConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+		mthz::Vec3 value = va.lin - rA.cross(va.ang) - vb.lin + rB.cross(vb.ang);
+		return NVec<3>{ value.x, value.y, value.z };
+	}
+
+	void BallSocketConstraint::addVelocityChange(const NVec<3>& impulse, VelVec* va, VelVec* vb) {
+		mthz::Vec3 impulse_vec(impulse.v[0], impulse.v[1], impulse.v[2]);
+		va->lin += impulse_vec / a->getMass();
+		vb->lin -= impulse_vec / b->getMass();
+		va->ang += rotDirA * impulse_vec;
+		vb->ang -= rotDirB * impulse_vec;
+	}
+
+	template<int dim>
+	bool NVec<dim>::isZero() {
+		for (int i = 0; i < dim; i++) {
+			if (abs(v[i]) > CUTOFF) {
+				return false;
+			}
 		}
-		else {
-			static_ready = true;
-			return impulse;
+		return true;
+	}
+
+	template<int dim>
+	NVec<dim> NVec<dim>::operator+(const NVec& r) const {
+		NVec<dim> out;
+		for (int i = 0; i < dim; i++) {
+			out.v[i] = v[i] + r.v[i];
+		}
+		return out;
+	}
+
+	template<int dim>
+	NVec<dim> NVec<dim>::operator-(const NVec& r) const {
+		NVec<dim> out;
+		for (int i = 0; i < dim; i++) {
+			out.v[i] = v[i] - r.v[i];
+		}
+		return out;
+	}
+
+	template<int dim>
+	NVec<dim> NVec<dim>::operator-() const {
+		NVec<dim> out;
+		for (int i = 0; i < dim; i++) {
+			out.v[i] = -v[i];
+		}
+		return out;
+	};
+
+	template<int dim>
+	void NVec<dim>::operator+=(const NVec<dim>& r) {
+		for (int i = 0; i < dim; i++) {
+			v[i] += r.v[i];
 		}
 	}
 
+	template<int dim>
+	NVec<dim> NMat<dim>::operator*(const NVec<dim>& n_vec) const {
+		NVec<dim> out;
+		for (int i = 0; i < dim; i++) {
+			out.v[i] = 0;
+			for (int j = 0; j < dim; j++) {
+				out.v[i] += n_vec.v[j] * v[i][j];
+			}
+		}
+		return out;
+	}
 }

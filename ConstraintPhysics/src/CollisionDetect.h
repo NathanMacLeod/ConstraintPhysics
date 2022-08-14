@@ -16,7 +16,6 @@ namespace phyz {
 	struct MagicID {
 		uint64_t cID; // 0 - 31 c1 id, 32 - 63 c2 id
 		uint64_t bID; // 0 - 31 c1 featureID, 32 - 63 c2 featureID
-		
 	};
 
 	bool operator==(const MagicID& m1, const MagicID& m2);

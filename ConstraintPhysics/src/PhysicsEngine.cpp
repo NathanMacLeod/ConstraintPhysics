@@ -42,6 +42,8 @@ namespace phyz {
 			}
 		}
 
+		maintainConstraintGraph();
+
 		std::vector<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
 
 		//auto t1 = std::chrono::system_clock::now();
@@ -51,6 +53,9 @@ namespace phyz {
 				RigidBody* b2 = p.t2;
 
 				if ((b1->fixed || b1->asleep) && (b2->fixed || b2->asleep)) {
+					return;
+				}
+				else if (!collisionAllowed(b1, b2)) {
 					return;
 				}
 
@@ -77,7 +82,7 @@ namespace phyz {
 						if (merged[i]) {
 							continue;
 						}
-						for (int j = 0; j < manifolds.size(); j++) {
+						for (int j = i+1; j < manifolds.size(); j++) {
 							if (!merged[j]) {
 								double v = manifolds[i].normal.dot(manifolds[j].normal);
 								if (1 - v < COS_TOL) {
@@ -94,79 +99,14 @@ namespace phyz {
 						constraint_graph_lock.lock();
 						for (int i = 0; i < man.points.size(); i++) {
 							const ContactP& p = man.points[i];
-							addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.1, 0.5, man.points.size(), p.pen_depth, 270 * step_time);
+							addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.1, 0.5, man.points.size(), p.pen_depth, posCorrectCoeff(270, step_time));
 						}
 						constraint_graph_lock.unlock();
 					}
 				}
 			}
 		);
-
 		
-		//auto t2 = std::chrono::system_clock::now();
-		/*for (Octree<RigidBody>::Pair p : possible_intersections) {
-			RigidBody* b1 = p.t1;
-			RigidBody* b2 = p.t2;
-
-			if ((b1->fixed || b1->asleep) && (b2->fixed || b2->asleep)) {
-				continue;
-			}
-
-			std::vector<Manifold> manifolds;
-			for (int i = 0; i < b1->geometry.size(); i++) {
-				for (int j = 0; j < b2->geometry.size(); j++) {
-					const ConvexPoly& c1 = b1->geometry[i];
-					const ConvexPoly& c2 = b2->geometry[j];
-					if ((b1->geometry.size() > 1 || b2->geometry.size() > 1) && !AABB::intersects(b1->geometry_AABB[i], b2->geometry_AABB[j])) {
-						continue;
-					}
-
-					Manifold man = SAT(c1, b1->gauss_maps[i], c2, b2->gauss_maps[j]);
-
-					if (man.max_pen_depth > 0) {
-						manifolds.push_back(man);
-					}
-				}
-			}
-			if (manifolds.size() > 0) {
-
-				int max_indx = 0;
-				for (int i = 1; i < manifolds.size(); i++) {
-					if (manifolds[i].max_pen_depth > manifolds[max_indx].max_pen_depth) {
-						max_indx = i;
-					}
-				}
-				for (int i = 0; i < manifolds.size(); i++) {
-					if (i != max_indx) {
-						double v = manifolds[max_indx].normal.dot(manifolds[i].normal);
-						if (1 - v < COS_TOL) {
-							manifolds[max_indx] = merge_manifold(manifolds[max_indx], manifolds[i]);
-						}
-					}
-
-				}
-				Manifold man = cull_manifold(manifolds[max_indx], 4);
-
-				mthz::Vec3 u, w;
-				man.normal.getPerpendicularBasis(&u, &w);
-				for (int i = 0; i < man.points.size(); i++) {
-					const ContactP& p = man.points[i];
-					addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.1, 0.5, man.points.size(), p.pen_depth, 270 * step_time);
-				}
-
-			}
-		}*/
-		/*auto t3 = std::chrono::system_clock::now();
-
-		static int i = 0;
-
-		parallel_t += (t2 - t1).count();
-		single_t += (t3 - t2).count();
-
-		if (i++ % 1000 == 0) {
-			printf("parallel: %f, single: %f\n", parallel_t, single_t);
-		}*/
-
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
 
 		thread_manager.do_all<std::vector<Constraint*>>(8, island_systems,
@@ -174,10 +114,6 @@ namespace phyz {
 				PGS_solve(this, island_system);
 			}
 		);
-		/*for (const std::vector<Constraint*> constraints : island_systems) {
-			PGS_solve(this, constraints);
-		}*/
-		cleanExpiredConstraintsFromGraph();
 
 		for (RigidBody* b : bodies) {
 			if (!b->fixed && !b->asleep) {
@@ -194,21 +130,56 @@ namespace phyz {
 	}
 
 	RigidBody* PhysicsEngine::createRigidBody(const std::vector<ConvexPoly>& geometry, bool fixed, double density) {
-		RigidBody* r = new RigidBody(geometry, density, next_ID++);
+		RigidBody* r = new RigidBody(geometry, density);
 		r->fixed = fixed;
 		bodies.push_back(r);
-		constraint_graph_nodes[r->id] = new ConstraintGraphNode(r);
+		constraint_graph_nodes[r] = new ConstraintGraphNode(r);
 		return r;
 	}
 
-	void PhysicsEngine::applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel) {
+	void PhysicsEngine::disallowCollision(RigidBody* b1, RigidBody* b2) {
+		b1->no_collision_set.insert(b2);
+		b2->no_collision_set.insert(b1);
+	}
+
+	bool PhysicsEngine::collisionAllowed(RigidBody* b1, RigidBody* b2) {
+		return b1->no_collision_set.find(b2) == b1->no_collision_set.end();
+	}
+
+	void PhysicsEngine::reallowCollision(RigidBody* b1, RigidBody* b2) {
+		auto i = b1->no_collision_set.find(b2);
+		if (i != b1->no_collision_set.end()) {
+			b1->no_collision_set.erase(i);
+			b2->no_collision_set.erase(b2->no_collision_set.find(b1));
+		}
+	}
+
+	void PhysicsEngine::addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 ball_socket_position, double pos_correct_strength) {
+		disallowCollision(b1, b2);
+		BallSocket* bs = new BallSocket{
+			BallSocketConstraint(b1, b2, ball_socket_position, mthz::Vec3(), pos_correct_strength * step_time),
+			b1->track_point(ball_socket_position),
+			b2->track_point(ball_socket_position),
+			pos_correct_strength
+		};
+
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		e->ballSocketConstraints.push_back(bs);
+	}
+
+	void PhysicsEngine::applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel, const mthz::Vec3& delta_psuedo_ang_vel) {
 		b->vel += delta_vel;
 		b->ang_vel += delta_ang_vel;
+		b->psuedo_vel += delta_psuedo_vel;
+		b->psuedo_ang_vel += delta_psuedo_ang_vel;
 		double wake_vel = 0.25 * vel_sleep_coeff * gravity.mag(); //a little extra sensitive
 		if (b->asleep && (b->vel.mag() > wake_vel || b->ang_vel.mag() > wake_vel)) {
 			constraint_graph_lock.lock();
 			if (b->asleep) { //in case of race condition, shouldn't really matter too much though
-				wakeupIsland(constraint_graph_nodes[b->id]);
+				wakeupIsland(constraint_graph_nodes[b]);
 			}
 			constraint_graph_lock.unlock();
 		}
@@ -289,7 +260,7 @@ namespace phyz {
 		});
 	}
 	void PhysicsEngine::addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness) {
-		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->id]; ConstraintGraphNode* n2 = constraint_graph_nodes[b2->id];
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1]; ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		mthz::Vec3 u, w;
@@ -310,9 +281,9 @@ namespace phyz {
 
 		//if no warm start existed
 		Contact* c = new Contact();
-		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, 0, cutoff_vel);
-		c->friction1 = FrictionConstraint(b1, b2, u, p, kinetic_friction, n_points, &c->contact, 0);
-		c->friction2 = FrictionConstraint(b1, b2, w, p, kinetic_friction, n_points, &c->contact, 0);
+		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, NVec<1>{0.0}, cutoff_vel);
+		c->friction1 = FrictionConstraint(b1, b2, u, p, kinetic_friction, n_points, &c->contact, NVec<1>{0.0});
+		c->friction2 = FrictionConstraint(b1, b2, w, p, kinetic_friction, n_points, &c->contact, NVec<1>{0.0});
 		c->magic = magic;
 		c->memory_life = contact_life;
 		c->is_live_contact = true;
@@ -320,7 +291,7 @@ namespace phyz {
 		e->contactConstraints.push_back(c);
 	}
 
-	void PhysicsEngine::cleanExpiredConstraintsFromGraph() {
+	void PhysicsEngine::maintainConstraintGraph() {
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = n->constraints.begin(); i != n->constraints.end();) {
@@ -336,7 +307,15 @@ namespace phyz {
 						j++;
 					}
 				}
-				if (e->contactConstraints.size() == 0) {
+				for (BallSocket* bs: e->ballSocketConstraints) {
+					//update constraint for new positions
+					RigidBody* b1 = e->n1->b;
+					RigidBody* b2 = e->n2->b;
+					mthz::Vec3 b1_pos = b1->getTrackedP(bs->b1_point);
+					mthz::Vec3 b2_pos = b2->getTrackedP(bs->b2_point);
+					bs->constraint = BallSocketConstraint(b1, b2, b1_pos, b2_pos - b1_pos, bs->pos_correct_hardness*step_time, bs->constraint.impulse);
+				}
+				if (e->noConstraintsLeft()) {
 					ConstraintGraphNode* reciprocal = e->other(n);
 					reciprocal->constraints.erase(std::remove(reciprocal->constraints.begin(), reciprocal->constraints.end(), e));
 					delete e;
@@ -388,6 +367,9 @@ namespace phyz {
 								output->island_constraints->push_back(&c->friction1);
 								output->island_constraints->push_back(&c->friction2);
 							}
+						}
+						for (BallSocket* bs : e->ballSocketConstraints) {
+							output->island_constraints->push_back(&bs->constraint);
 						}
 					}
 				}
