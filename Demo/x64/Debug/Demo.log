@@ -1,58 +1,35 @@
-﻿  main.cpp
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(14,24): warning C4244: '=': conversion from 'const double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(32,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(33,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(34,22): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(41,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(42,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(43,35): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(64,52): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(65,21): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,23): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(66,65): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\renderer\Mat4.h(96,24): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(37): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.h(29,22): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(24,2): warning C4091: 'static ': ignored on left of 'Mesh' when no variable is declared
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(61,93): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(65,12): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(84,93): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(112,93): warning C4267: 'argument': conversion from 'size_t' to 'unsigned int', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(131,48): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(131,42): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(240,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(240,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(240,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(240,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(240,84): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(240,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(240,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,88): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,84): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,124): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,120): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,116): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(254,108): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,51): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,47): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,91): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,86): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,80): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,72): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,141): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,131): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,125): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(271,111): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(290,49): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(290,46): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(290,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(297,49): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(297,46): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-C:\dev\ConstraintPhysics\Demo\src\main.cpp(297,43): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+﻿glew32s.lib(glew.obj) : warning LNK4099: PDB 'vc120.pdb' was not found with 'glew32s.lib(glew.obj)' or at 'C:\dev\ConstraintPhysics\x64\Debug\vc120.pdb'; linking object as if no debug info
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
+LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+LINK : warning LNK4217: symbol '__glewBindBuffer' defined in 'glew32s.lib(glew.obj)' is imported by 'IndexBuffer.obj' in function '"public: __cdecl rndr::IndexBuffer::IndexBuffer(unsigned int const *,unsigned int)" (??0IndexBuffer@rndr@@QEAA@PEBII@Z)'
+LINK : warning LNK4286: symbol '__glewBindBuffer' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj'
+LINK : warning LNK4217: symbol '__glewBufferData' defined in 'glew32s.lib(glew.obj)' is imported by 'IndexBuffer.obj' in function '"public: __cdecl rndr::IndexBuffer::IndexBuffer(unsigned int const *,unsigned int)" (??0IndexBuffer@rndr@@QEAA@PEBII@Z)'
+LINK : warning LNK4286: symbol '__glewBufferData' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj'
+LINK : warning LNK4217: symbol '__glewDeleteBuffers' defined in 'glew32s.lib(glew.obj)' is imported by 'IndexBuffer.obj' in function '"public: __cdecl rndr::IndexBuffer::~IndexBuffer(void)" (??1IndexBuffer@rndr@@QEAA@XZ)'
+LINK : warning LNK4286: symbol '__glewDeleteBuffers' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj'
+LINK : warning LNK4217: symbol '__glewGenBuffers' defined in 'glew32s.lib(glew.obj)' is imported by 'IndexBuffer.obj' in function '"public: __cdecl rndr::IndexBuffer::IndexBuffer(unsigned int const *,unsigned int)" (??0IndexBuffer@rndr@@QEAA@PEBII@Z)'
+LINK : warning LNK4286: symbol '__glewGenBuffers' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj'
+LINK : warning LNK4217: symbol 'glewInit' defined in 'glew32s.lib(glew.obj)' is imported by 'Renderer.obj' in function '"int __cdecl rndr::init(int,int,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?init@rndr@@YAHHHAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)'
+LINK : warning LNK4217: symbol '__glewDebugMessageCallback' defined in 'glew32s.lib(glew.obj)' is imported by 'Renderer.obj' in function '"int __cdecl rndr::init(int,int,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?init@rndr@@YAHHHAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)'
+LINK : warning LNK4217: symbol '__glewAttachShader' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CreateShader(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CreateShader@rndr@@YAIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@0@Z)'
+LINK : warning LNK4217: symbol '__glewCompileShader' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CompileShader(unsigned int,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CompileShader@rndr@@YAIIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)'
+LINK : warning LNK4217: symbol '__glewCreateProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CreateShader(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CreateShader@rndr@@YAIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@0@Z)'
+LINK : warning LNK4217: symbol '__glewCreateShader' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CompileShader(unsigned int,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CompileShader@rndr@@YAIIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)'
+LINK : warning LNK4217: symbol '__glewDeleteProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"public: __cdecl rndr::Shader::~Shader(void)" (??1Shader@rndr@@QEAA@XZ)'
+LINK : warning LNK4217: symbol '__glewDeleteShader' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CreateShader(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CreateShader@rndr@@YAIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@0@Z)'
+LINK : warning LNK4217: symbol '__glewGetShaderInfoLog' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CompileShader(unsigned int,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CompileShader@rndr@@YAIIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)'
+LINK : warning LNK4217: symbol '__glewGetShaderiv' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CompileShader(unsigned int,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CompileShader@rndr@@YAIIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)'
+LINK : warning LNK4217: symbol '__glewGetUniformLocation' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"private: int __cdecl rndr::Shader::getUniformLocation(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?getUniformLocation@Shader@rndr@@AEAAHAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)'
+LINK : warning LNK4217: symbol '__glewLinkProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CreateShader(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CreateShader@rndr@@YAIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@0@Z)'
+LINK : warning LNK4217: symbol '__glewShaderSource' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CompileShader(unsigned int,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CompileShader@rndr@@YAIIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z)'
+LINK : warning LNK4217: symbol '__glewUniform1i' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"public: void __cdecl rndr::Shader::setUniform1i(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &,int)" (?setUniform1i@Shader@rndr@@QEAAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@H@Z)'
+LINK : warning LNK4217: symbol '__glewUniform4f' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"public: void __cdecl rndr::Shader::setUniform4f(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &,float,float,float,float)" (?setUniform4f@Shader@rndr@@QEAAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@MMMM@Z)'
+LINK : warning LNK4217: symbol '__glewUniformMatrix4fv' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"public: void __cdecl rndr::Shader::setUniformMat4f(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &,class rndr::Mat4 const &)" (?setUniformMat4f@Shader@rndr@@QEAAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVMat4@2@@Z)'
+LINK : warning LNK4217: symbol '__glewUseProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"public: void __cdecl rndr::Shader::bind(void)const " (?bind@Shader@rndr@@QEBAXXZ)'
+LINK : warning LNK4217: symbol '__glewValidateProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'Shader.obj' in function '"unsigned int __cdecl rndr::CreateShader(class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > const &)" (?CreateShader@rndr@@YAIAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@0@Z)'
+LINK : warning LNK4217: symbol '__glewEnableVertexAttribArray' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj' in function '"public: __cdecl rndr::VertexArray::VertexArray(void *,unsigned int,class rndr::VertexArrayLayout const &)" (??0VertexArray@rndr@@QEAA@PEAXIAEBVVertexArrayLayout@1@@Z)'
+LINK : warning LNK4217: symbol '__glewVertexAttribPointer' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj' in function '"public: __cdecl rndr::VertexArray::VertexArray(void *,unsigned int,class rndr::VertexArrayLayout const &)" (??0VertexArray@rndr@@QEAA@PEAXIAEBVVertexArrayLayout@1@@Z)'
+LINK : warning LNK4217: symbol '__glewBindVertexArray' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj' in function '"public: void __cdecl rndr::VertexArray::bind(void)const " (?bind@VertexArray@rndr@@QEBAXXZ)'
+LINK : warning LNK4217: symbol '__glewDeleteVertexArrays' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj' in function '"public: __cdecl rndr::VertexArray::~VertexArray(void)" (??1VertexArray@rndr@@QEAA@XZ)'
+LINK : warning LNK4217: symbol '__glewGenVertexArrays' defined in 'glew32s.lib(glew.obj)' is imported by 'VertexArray.obj' in function '"public: __cdecl rndr::VertexArray::VertexArray(void *,unsigned int,class rndr::VertexArrayLayout const &)" (??0VertexArray@rndr@@QEAA@PEAXIAEBVVertexArrayLayout@1@@Z)'
   Demo.vcxproj -> C:\dev\ConstraintPhysics\x64\Debug\Demo.exe

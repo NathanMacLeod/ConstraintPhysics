@@ -54,7 +54,6 @@ namespace phyz {
 		void updateGeometry();
 
 		struct MovementState {
-			mthz::Vec3 position;
 			mthz::Vec3 vel;
 			mthz::Vec3 ang_vel;
 		};

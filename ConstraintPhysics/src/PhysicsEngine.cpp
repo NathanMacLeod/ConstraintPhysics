@@ -157,7 +157,7 @@ namespace phyz {
 	void PhysicsEngine::addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 ball_socket_position, double pos_correct_strength) {
 		disallowCollision(b1, b2);
 		BallSocket* bs = new BallSocket{
-			BallSocketConstraint(b1, b2, ball_socket_position, mthz::Vec3(), pos_correct_strength * step_time),
+			BallSocketConstraint(),
 			b1->track_point(ball_socket_position),
 			b2->track_point(ball_socket_position),
 			pos_correct_strength
@@ -168,6 +168,27 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		e->ballSocketConstraints.push_back(bs);
+	}
+
+	void PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 hinge_pos, mthz::Vec3 rot_axis, double pos_correct_strength, double rot_correct_strength) {
+		rot_axis = rot_axis.normalize();
+		disallowCollision(b1, b2);
+
+		Hinge* h = new Hinge{
+			HingeConstraint(),
+			b1->track_point(hinge_pos),
+			b2->track_point(hinge_pos),
+			b1->getOrientation().conjugate().applyRotation(rot_axis),
+			b2->getOrientation().conjugate().applyRotation(rot_axis),
+			pos_correct_strength,
+			rot_correct_strength
+		};
+
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		e->hingeConstraints.push_back(h);
 	}
 
 	void PhysicsEngine::applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel, const mthz::Vec3& delta_psuedo_ang_vel) {
@@ -214,23 +235,23 @@ namespace phyz {
 			return false;
 		}
 
-		mthz::Vec3 average_pos;
+		mthz::Vec3 average_vel;
 		mthz::Vec3 average_ang_vel;
 
 		for (const RigidBody::MovementState& s : body_history) {
-			average_pos += s.position;
+			average_vel += s.vel;
 			average_ang_vel += s.ang_vel;
 		}
 		
 		
-		average_pos /= n;
+		average_vel /= n;
 		average_ang_vel /= n;
 		mthz::Vec3 average_accel = (body_history.back().vel - body_history.front().vel) / (step_time * (n - 1));
 		mthz::Vec3 average_ang_accel = (body_history.back().ang_vel - body_history.front().ang_vel) / (step_time * (n - 1));
 
 		double vel_eps = vel_sleep_coeff * gravity.mag();
 		double accel_eps = accel_sleep_coeff * gravity.mag();
-		return average_pos.mag() <= vel_eps && average_ang_vel.mag() <= vel_eps && average_accel.mag() <= accel_eps && average_ang_accel.mag() <= accel_eps;
+		return average_vel.mag() <= vel_eps && average_ang_vel.mag() <= vel_eps && average_accel.mag() <= accel_eps && average_ang_accel.mag() <= accel_eps;
 	}
 
 	bool PhysicsEngine::readyToSleep(RigidBody* b) {
@@ -296,10 +317,12 @@ namespace phyz {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = n->constraints.begin(); i != n->constraints.end();) {
 				SharedConstraintsEdge* e = *i;
+				RigidBody* b1 = e->n1->b;
+				RigidBody* b2 = e->n2->b;
 				for (auto j = e->contactConstraints.begin(); j != e->contactConstraints.end();) {
 					Contact* contact = *j;
 					contact->is_live_contact = false;
-					if (!e->n1->b->asleep && !e->n2->b->asleep && contact->memory_life-- < 0) {
+					if (!b1->asleep && !b2->asleep && contact->memory_life-- < 0) {
 						delete contact;
 						j = e->contactConstraints.erase(j);
 					}
@@ -309,11 +332,17 @@ namespace phyz {
 				}
 				for (BallSocket* bs: e->ballSocketConstraints) {
 					//update constraint for new positions
-					RigidBody* b1 = e->n1->b;
-					RigidBody* b2 = e->n2->b;
 					mthz::Vec3 b1_pos = b1->getTrackedP(bs->b1_point);
 					mthz::Vec3 b2_pos = b2->getTrackedP(bs->b2_point);
-					bs->constraint = BallSocketConstraint(b1, b2, b1_pos, b2_pos - b1_pos, bs->pos_correct_hardness*step_time, bs->constraint.impulse);
+					bs->constraint = BallSocketConstraint(b1, b2, b1_pos, b2_pos, posCorrectCoeff(bs->pos_correct_hardness, step_time), bs->constraint.impulse);
+				}
+				for (Hinge* h : e->hingeConstraints) {
+					mthz::Vec3 b1_pos = b1->getTrackedP(h->b1_point);
+					mthz::Vec3 b2_pos = b2->getTrackedP(h->b2_point);
+					mthz::Vec3 b1_hinge_axis = b1->orientation.applyRotation(h->b1_rot_axis_body_space);
+					mthz::Vec3 b2_hinge_axis = b2->orientation.applyRotation(h->b2_rot_axis_body_space);
+					h->constraint = HingeConstraint(b1, b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, posCorrectCoeff(h->pos_correct_hardness, step_time), 
+						posCorrectCoeff(h->rot_correct_hardness, step_time), h->constraint.impulse);
 				}
 				if (e->noConstraintsLeft()) {
 					ConstraintGraphNode* reciprocal = e->other(n);
@@ -370,6 +399,9 @@ namespace phyz {
 						}
 						for (BallSocket* bs : e->ballSocketConstraints) {
 							output->island_constraints->push_back(&bs->constraint);
+						}
+						for (Hinge* h : e->hingeConstraints) {
+							output->island_constraints->push_back(&h->constraint);
 						}
 					}
 				}

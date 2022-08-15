@@ -24,7 +24,8 @@ namespace phyz {
 		bool collisionAllowed(RigidBody* b1, RigidBody* b2);
 		void reallowCollision(RigidBody* b1, RigidBody* b2);
 		
-		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 ball_socket_position, double pos_correct_strength=300);
+		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 ball_socket_position, double pos_correct_strength=500);
+		void addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 hinge_pos, mthz::Vec3 rot_axis, double pos_correct_strength=500, double rot_correct_strength=500);
 		
 		int getNumBodies() { return bodies.size(); }
 		mthz::Vec3 getGravity();
@@ -82,6 +83,16 @@ namespace phyz {
 			double pos_correct_hardness;
 		};
 
+		struct Hinge {
+			HingeConstraint constraint;
+			RigidBody::PKey b1_point;
+			RigidBody::PKey b2_point;
+			mthz::Vec3 b1_rot_axis_body_space;
+			mthz::Vec3 b2_rot_axis_body_space;
+			double pos_correct_hardness;
+			double rot_correct_hardness;
+		};
+
 		struct SharedConstraintsEdge {
 			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contactConstraints(std::vector<Contact*>()) {}
 
@@ -89,9 +100,14 @@ namespace phyz {
 			ConstraintGraphNode* n2;
 			std::vector<Contact*> contactConstraints;
 			std::vector<BallSocket*> ballSocketConstraints;
+			std::vector<Hinge*> hingeConstraints;
 
 			ConstraintGraphNode* other(ConstraintGraphNode* c) { return (c->b == n1->b ? n2 : n1); }
-			bool noConstraintsLeft() { return contactConstraints.empty() && ballSocketConstraints.empty(); }
+			bool noConstraintsLeft() { 
+				return contactConstraints.empty() 
+					&& ballSocketConstraints.empty()
+					&& hingeConstraints.empty();
+			}
 		};
 
 		struct ConstraintGraphNode {
