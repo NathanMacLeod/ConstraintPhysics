@@ -9,30 +9,40 @@
 namespace phyz {
 	class Surface;
 	class Edge;
+	struct GaussMap;
+	class RigidBody;
 
 	//this class needs a proper constructor this is really dumb
 	class ConvexPoly {
 	public:
+		ConvexPoly() {}
 		ConvexPoly(const ConvexPoly& c);
-		ConvexPoly();
+		ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, double density=1.0);
 
-		static ConvexPoly genRect(double x, double y, double z, double dx, double dy, double dz);
-		static ConvexPoly genTetra(double x, double y, double z, double r);
-		static ConvexPoly genRamp(double x, double y, double z, double length, double height, double width);
+		static ConvexPoly box(double x, double y, double z, double dx, double dy, double dz);
+		static ConvexPoly tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4);
+		//static ConvexPoly genRamp(double x, double y, double z, double length, double height, double width);
 
+		GaussMap computeGaussMap() const;
 		void rotate(const mthz::Quaternion q, mthz::Vec3 pivot_point);
 		void translate(mthz::Vec3 t);
-		void gen_interiorP();
 		AABB gen_AABB() const;
-		void compute_edges();
-		void assign_IDs();
+		inline const std::vector<mthz::Vec3>& getPoints() const { return points; }
+		inline const std::vector<Surface>& getSurfaces() const { return surfaces; }
+		inline const std::vector<Edge>& getEdges() const { return edges; }
+		inline int getID() const { return id; }
 
+		double density;
+
+		friend class Surface;
+		friend class Edge;
+		friend class RigidBody;
+	private:
 		std::vector<mthz::Vec3> points;
 		std::vector<Surface> surfaces;
 		std::vector<Edge> edges;
 		mthz::Vec3 interior_point;
 		int id;
-
 	};
 
 	class Edge {
@@ -41,8 +51,8 @@ namespace phyz {
 		Edge(const Edge& e, ConvexPoly* poly);
 		Edge();
 
-		mthz::Vec3 p1() const;
-		mthz::Vec3 p2() const;
+		inline mthz::Vec3 p1() const { return poly->points[p1_indx]; }
+		inline mthz::Vec3 p2() const { return poly->points[p2_indx]; }
 
 		int p1_indx;
 		int p2_indx;
@@ -54,19 +64,23 @@ namespace phyz {
 
 	class Surface {
 	public:
-		Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point);
+		Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID=-1);
 		Surface(const Surface& s, ConvexPoly* poly);
 		Surface();
 
 		int n_points() const;
 		mthz::Vec3 normal() const;
 		mthz::Vec3 getPointI(int i) const;
-		int getSurfaceID() const { return surfaceID; }
+		inline int getSurfaceID() const { return surfaceID; }
 
 		std::vector<int> point_indexes;
 		friend class ConvexPoly;
 	private:
+		void findNormalCalcInfo(const mthz::Vec3& normalish);
+		void setWindingAntiClockwise(const mthz::Vec3& normal);
+
 		ConvexPoly* poly;
+		int normal_calc_index;
 		int surfaceID;
 		int normalDirection;
 	};
@@ -80,6 +94,4 @@ namespace phyz {
 		std::vector<mthz::Vec3> face_verts;
 		std::vector<GaussArc> arcs;
 	};
-
-	GaussMap computeGaussMap(const ConvexPoly& c);
 }

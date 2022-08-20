@@ -99,7 +99,7 @@ namespace phyz {
 						constraint_graph_lock.lock();
 						for (int i = 0; i < man.points.size(); i++) {
 							const ContactP& p = man.points[i];
-							addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.1, 0.5, man.points.size(), p.pen_depth, posCorrectCoeff(270, step_time));
+							addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.1, 0.5, man.points.size(), p.pen_depth, posCorrectCoeff(25, step_time));
 						}
 						constraint_graph_lock.unlock();
 					}
@@ -129,8 +129,8 @@ namespace phyz {
 		}
 	}
 
-	RigidBody* PhysicsEngine::createRigidBody(const std::vector<ConvexPoly>& geometry, bool fixed, double density) {
-		RigidBody* r = new RigidBody(geometry, density);
+	RigidBody* PhysicsEngine::createRigidBody(const Geometry& geometry, bool fixed, mthz::Vec3 position, mthz::Quaternion orientation) {
+		RigidBody* r = new RigidBody(geometry, position, orientation);
 		r->fixed = fixed;
 		bodies.push_back(r);
 		constraint_graph_nodes[r] = new ConstraintGraphNode(r);
@@ -158,8 +158,8 @@ namespace phyz {
 		disallowCollision(b1, b2);
 		BallSocket* bs = new BallSocket{
 			BallSocketConstraint(),
-			b1->track_point(ball_socket_position),
-			b2->track_point(ball_socket_position),
+			b1->trackPoint(ball_socket_position),
+			b2->trackPoint(ball_socket_position),
 			pos_correct_strength
 		};
 
@@ -176,8 +176,8 @@ namespace phyz {
 
 		Hinge* h = new Hinge{
 			HingeConstraint(),
-			b1->track_point(hinge_pos),
-			b2->track_point(hinge_pos),
+			b1->trackPoint(hinge_pos),
+			b2->trackPoint(hinge_pos),
 			b1->getOrientation().conjugate().applyRotation(rot_axis),
 			b2->getOrientation().conjugate().applyRotation(rot_axis),
 			pos_correct_strength,
@@ -189,6 +189,38 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		e->hingeConstraints.push_back(h);
+	}
+
+	void PhysicsEngine::addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness) {
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1]; ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		mthz::Vec3 u, w;
+		norm.getPerpendicularBasis(&u, &w);
+
+		for (Contact* c : e->contactConstraints) {
+			if (c->magic == magic) {
+				double friction = (c->friction1.getStaticReady() && c->friction2.getStaticReady()) ? static_friction : kinetic_friction;
+
+				c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, c->contact.impulse, cutoff_vel);
+				c->friction1 = FrictionConstraint(b1, b2, u, p, friction, n_points, &c->contact, c->friction1.impulse);
+				c->friction2 = FrictionConstraint(b1, b2, w, p, friction, n_points, &c->contact, c->friction2.impulse);
+				c->memory_life = contact_life;
+				c->is_live_contact = true;
+				return;
+			}
+		}
+
+		//if no warm start existed
+		Contact* c = new Contact();
+		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, NVec<1>{0.0}, cutoff_vel);
+		c->friction1 = FrictionConstraint(b1, b2, u, p, kinetic_friction, n_points, &c->contact, NVec<1>{ 0.0 });
+		c->friction2 = FrictionConstraint(b1, b2, w, p, kinetic_friction, n_points, &c->contact, NVec<1>{ 0.0 });
+		c->magic = magic;
+		c->memory_life = contact_life;
+		c->is_live_contact = true;
+
+		e->contactConstraints.push_back(c);
 	}
 
 	void PhysicsEngine::applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel, const mthz::Vec3& delta_psuedo_ang_vel) {
@@ -210,17 +242,9 @@ namespace phyz {
 		}
 	}
 
-	mthz::Vec3 PhysicsEngine::getGravity() {
-		return gravity;
-	}
-
 	void PhysicsEngine::setGravity(const mthz::Vec3& v) {
 		gravity = v;
 		cutoff_vel = getCutoffVel(step_time, gravity);
-	}
-
-	double PhysicsEngine::getStep_time() {
-		return step_time;
 	}
 
 	void PhysicsEngine::setStep_time(double s) {
@@ -280,37 +304,6 @@ namespace phyz {
 			curr->b->wake();
 		});
 	}
-	void PhysicsEngine::addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness) {
-		ConstraintGraphNode* n1 = constraint_graph_nodes[b1]; ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
-		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
-
-		mthz::Vec3 u, w;
-		norm.getPerpendicularBasis(&u, &w);
-
-		for (Contact* c : e->contactConstraints) {
-			if (c->magic == magic) {
-				double friction = (c->friction1.getStaticReady() && c->friction2.getStaticReady()) ? static_friction : kinetic_friction;
-
-				c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, c->contact.impulse, cutoff_vel);
-				c->friction1 = FrictionConstraint(b1, b2, u, p, friction, n_points, &c->contact, c->friction1.impulse);
-				c->friction2 = FrictionConstraint(b1, b2, w, p, friction, n_points, &c->contact, c->friction2.impulse);
-				c->memory_life = contact_life;
-				c->is_live_contact = true;
-				return;
-			}
-		}
-
-		//if no warm start existed
-		Contact* c = new Contact();
-		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, NVec<1>{0.0}, cutoff_vel);
-		c->friction1 = FrictionConstraint(b1, b2, u, p, kinetic_friction, n_points, &c->contact, NVec<1>{0.0});
-		c->friction2 = FrictionConstraint(b1, b2, w, p, kinetic_friction, n_points, &c->contact, NVec<1>{0.0});
-		c->magic = magic;
-		c->memory_life = contact_life;
-		c->is_live_contact = true;
-		
-		e->contactConstraints.push_back(c);
-	}
 
 	void PhysicsEngine::maintainConstraintGraph() {
 		for (const auto& kv_pair : constraint_graph_nodes) {
@@ -332,13 +325,13 @@ namespace phyz {
 				}
 				for (BallSocket* bs: e->ballSocketConstraints) {
 					//update constraint for new positions
-					mthz::Vec3 b1_pos = b1->getTrackedP(bs->b1_point);
-					mthz::Vec3 b2_pos = b2->getTrackedP(bs->b2_point);
+					mthz::Vec3 b1_pos = b1->getTrackedP(bs->b1_point_key);
+					mthz::Vec3 b2_pos = b2->getTrackedP(bs->b2_point_key);
 					bs->constraint = BallSocketConstraint(b1, b2, b1_pos, b2_pos, posCorrectCoeff(bs->pos_correct_hardness, step_time), bs->constraint.impulse);
 				}
 				for (Hinge* h : e->hingeConstraints) {
-					mthz::Vec3 b1_pos = b1->getTrackedP(h->b1_point);
-					mthz::Vec3 b2_pos = b2->getTrackedP(h->b2_point);
+					mthz::Vec3 b1_pos = b1->getTrackedP(h->b1_point_key);
+					mthz::Vec3 b2_pos = b2->getTrackedP(h->b2_point_key);
 					mthz::Vec3 b1_hinge_axis = b1->orientation.applyRotation(h->b1_rot_axis_body_space);
 					mthz::Vec3 b2_hinge_axis = b2->orientation.applyRotation(h->b2_rot_axis_body_space);
 					h->constraint = HingeConstraint(b1, b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, posCorrectCoeff(h->pos_correct_hardness, step_time), 

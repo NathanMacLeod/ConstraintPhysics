@@ -61,14 +61,13 @@ static Mesh rect(float x, float y, float z, float w, float h, float d) {
 	return { new rndr::VertexArray(verticies.data(), verticies.size() * sizeof(Vertex), layout), new rndr::IndexBuffer(indices, 36) };
 }
 
-static Mesh tetra(float r) {
-	float rt3 = sqrt(3.0);
+static Mesh tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4) {
 
 	std::vector<Vertex> verticies = {
-		{  3*r/4, -r/3, -rt3*r/4, 1.0f, 0.0f, 0.0f}, //0
-		{  0,     -r/3,  rt3*r/2, 1.0f, 1.0f, 0.0f}, //1
-		{ -3*r/4, -r/3, -rt3*r/4, 1.0f, 0.0f, 1.0f}, //2
-		{  0,      r,    0,       1.0f, 1.0f, 1.0f}, //3
+		Vertex{ (float)p1.x, (float)p1.y, (float)p1.z, 1.0f, 0.0f, 0.0f}, //0
+		Vertex{ (float)p2.x, (float)p2.y, (float)p2.z, 1.0f, 1.0f, 0.0f}, //1
+		Vertex{ (float)p3.x, (float)p3.y, (float)p3.z, 1.0f, 0.0f, 1.0f}, //2
+		Vertex{ (float)p4.x, (float)p4.y, (float)p4.z, 1.0f, 1.0f, 1.0f}, //3
 	};
 
 	unsigned int indices[] = {
@@ -115,8 +114,18 @@ static Mesh ramp(float l, float h, float w) {
 struct PhysBod {
 	std::vector<Mesh> meshes;
 	phyz::RigidBody* r;
-	phyz::RigidBody::PKey draw_p;
 };
+
+phyz::RigidBody* box(std::vector<PhysBod>* bodies, phyz::PhysicsEngine* p, mthz::Vec3 pos, mthz::Vec3 dim) {
+	std::vector<Mesh> m1 = { rect(0, 0, 0, dim.x, dim.y, dim.z) };
+	phyz::Geometry geom1;
+	geom1.pushConvexPoly(phyz::ConvexPoly::box(-dim.x / 2.0, -dim.y / 2.0, -dim.z / 2.0, dim.x, dim.y, dim.z));
+	phyz::RigidBody* r1 = p->createRigidBody(geom1);
+	phyz::RigidBody::PKey draw_p1 = r1->trackPoint(mthz::Vec3(0, 0, 0));
+	bodies->push_back({ m1, r1 });
+	r1->setCOMtoPosition(pos);
+	return r1;
+}
 
 int main() {
 
@@ -129,12 +138,12 @@ int main() {
 	{
 		double s = 400;
 		std::vector<Mesh> m2 = { rect(0, 0, 0, s, 2, s) };
-		std::vector<phyz::ConvexPoly> geom2;
-		geom2.push_back(phyz::ConvexPoly::genRect(-s / 2, -3, -s / 2, s, 2, s));
+		phyz::Geometry geom2;
+		geom2.pushConvexPoly(phyz::ConvexPoly::box(-s / 2, -1, -s / 2, s, 2, s));
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
-		phyz::RigidBody::PKey draw_p = r2->track_point(mthz::Vec3(0, -2, 0));
+		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		r2->setCOMtoPosition(mthz::Vec3(0, -5, 0));
-		bodies.push_back({ m2, r2, draw_p });
+		bodies.push_back({ m2, r2 });
 	}
 
 	//{
@@ -142,8 +151,8 @@ int main() {
 	//	mthz::Vec3 pos(-1, -4, -5);
 	//	mthz::Vec3 dim(14, 3, 10);
 	//	std::vector<Mesh> m2 = { ramp(dim.x, dim.y, dim.z) };
-	//	std::vector<phyz::ConvexPoly> geom2;
-	//	geom2.push_back(phyz::ConvexPoly::genRamp(pos.x, pos.y, pos.z, dim.x, dim.y, dim.z));
+	//	phyz::Geometry geom2;
+	//	geom2.pushConvexPoly(phyz::ConvexPoly::genRamp(pos.x, pos.y, pos.z, dim.x, dim.y, dim.z));
 	//	phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
 	//	phyz::RigidBody::PKey draw_p = r2->track_point(pos);
 	//	r2->updateGeometry();
@@ -151,8 +160,8 @@ int main() {
 	//}
 
 	/*Mesh m1 = rect(0, 0, 0, 1, 1, 1);
-	std::vector<phyz::ConvexPoly> geom1;
-	geom1.push_back(phyz::ConvexPoly::genRect(0, 2, 0, 1, 1, 1));
+	phyz::Geometry geom1;
+	geom1.pushConvexPoly(phyz::ConvexPoly::box(0, 2, 0, 1, 1, 1));
 	phyz::RigidBody* r1 = p.createRigidBody(geom1);
 	r1->ang_vel = mthz::Vec3(0, 0, 0);*/
 	//r1->orientation = mthz::Quaternion(3.1415926563 / 4, mthz::Vec3(0, 0, 1)) * mthz::Quaternion(3.1415926563 / 4, mthz::Vec3(0, 1, 0));
@@ -205,81 +214,84 @@ int main() {
 		t += fElapsedTime;
 
 		if (rndr::getKeyPressed(GLFW_KEY_B)) {
-			int a = 1 + 2;
+			p.setGravity(p.getGravity() + mthz::Vec3(3, 0, 0));
+		}
+		if (rndr::getKeyPressed(GLFW_KEY_V)) {
+			p.setGravity(p.getGravity() + mthz::Vec3(-3, 0, 0));
 		}
 
 		//square
 		if (rndr::getKeyPressed(GLFW_KEY_K)) {
 			std::vector<Mesh> m1 = { rect(0, 0, 0, 1, 1, 1) };
-			std::vector<phyz::ConvexPoly> geom1;
+			phyz::Geometry geom1;
 			double h = 10;
-			geom1.push_back(phyz::ConvexPoly::genRect(-0.5, h - 0.5, -0.5, 1, 1, 1));
-			phyz::RigidBody* r1 = p.createRigidBody(geom1);
-			phyz::RigidBody::PKey draw_p = r1->track_point(mthz::Vec3(0, h, 0));
+			geom1.pushConvexPoly(phyz::ConvexPoly::box(-0.5, -0.5, -0.5, 1, 1, 1));
+			phyz::RigidBody* r1 = p.createRigidBody(geom1, false, mthz::Vec3(0, h, 0));
+			phyz::RigidBody::PKey draw_p = r1->trackPoint(mthz::Vec3(0, h, 0));
 			//r1->ang_vel = mthz::Vec3(0, 100, 1);
 			//r1->vel = mthz::Vec3(1, 0, 0);
 			//r1->com.x = 2.3;
 			//r1->orientation = mthz::Quaternion(3.1415926535 / 4, mthz::Vec3(0, 0, 1)) * mthz::Quaternion(3.1415926535 / 4, mthz::Vec3(0, 1, 0));
-			bodies.push_back({ m1, r1, draw_p });
+			bodies.push_back({ m1, r1 });
 		}
 		//tetrahedron
 		if (rndr::getKeyPressed(GLFW_KEY_I)) {
-			std::vector<Mesh> m1 = { tetra(1) };
-			std::vector<phyz::ConvexPoly> geom1;
-			geom1.push_back(phyz::ConvexPoly::genTetra(0, 10, 0, 1));
-			phyz::RigidBody* r1 = p.createRigidBody(geom1);
-			phyz::RigidBody::PKey draw_p = r1->track_point(mthz::Vec3(0, 10, 0));
-			r1->setAngVel(mthz::Vec3(0, 0, 0));
-			r1->setVel(mthz::Vec3(0, 0, 0));
-			r1->setOrientation(mthz::Quaternion(3.1415926535 / 2, mthz::Vec3(0, 0, 1)));
-			bodies.push_back({ m1, r1, draw_p });
+			mthz::Vec3 p1(0, 0, 0), p2(1, 0, 0), p3(0, 1, 0), p4(0, 0, 1);
+			std::vector<Mesh> m1 = { tetra(p1, p2, p3, p4) };
+			phyz::Geometry geom1;
+			geom1.pushConvexPoly(phyz::ConvexPoly::tetra(p1, p2, p3, p4));
+			phyz::RigidBody* r1 = p.createRigidBody(geom1, false, mthz::Vec3(0, 10, 0));
+			//r1->setAngVel(mthz::Vec3(0, 0, 0));
+			//r1->setVel(mthz::Vec3(0, 0, 0));
+			//r1->setOrientation(mthz::Quaternion(3.1415926535 / 2, mthz::Vec3(0, 0, 1)));
+			bodies.push_back({ m1, r1 });
 		}
 		//top
 		if (rndr::getKeyPressed(GLFW_KEY_J)) {
 			double h1 = 1.8, w1 = 0.05, h2 = 0.2, w2 = 2, s = 0.13;
 			std::vector<Mesh> m1 = { rect(0, 0, 0, w1, h1, w1), rect(0, -h1 * s / 2, 0, w2, h2, w2)};
-			std::vector<phyz::ConvexPoly> geom1;
-			geom1.push_back(phyz::ConvexPoly::genRect(-w1/2, -h1/2, -w1/2, w1, h1, w1));
-			geom1.push_back(phyz::ConvexPoly::genRect(-w2/2, -h2/2 -h1*s/2, -w2/2, w2, h2, w2));
+			phyz::Geometry geom1;
+			geom1.pushConvexPoly(phyz::ConvexPoly::box(-w1/2, -h1/2, -w1/2, w1, h1, w1));
+			geom1.pushConvexPoly(phyz::ConvexPoly::box(-w2/2, -h2/2 -h1*s/2, -w2/2, w2, h2, w2));
 			phyz::RigidBody* r1 = p.createRigidBody(geom1);
-			phyz::RigidBody::PKey draw_p = r1->track_point(mthz::Vec3(0, 0, 0));
+			phyz::RigidBody::PKey draw_p = r1->trackPoint(mthz::Vec3(0, 0, 0));
 			r1->setCOMtoPosition(mthz::Vec3(0, 10, 0));
 			r1->setAngVel(mthz::Vec3(0, 40, 2.5));
-			bodies.push_back({ m1, r1, draw_p });
+			bodies.push_back({ m1, r1 });
 		}
 
 		//barbell
 		if (rndr::getKeyPressed(GLFW_KEY_L)) {
 			double h1 = 1.8, w1 = 0.2, h2 = 0.5, w2 = 1, s = 0.5;
 			std::vector<Mesh> m1 = { rect(0, 0, 0, w1, h1, w1), rect(0, -h1 * s / 2, 0, w2, h2, w2), rect(0, h1 * s / 2, 0, w2, h2, w2) };
-			std::vector<phyz::ConvexPoly> geom1;
-			geom1.push_back(phyz::ConvexPoly::genRect(-w1 / 2, -h1 / 2, -w1 / 2, w1, h1, w1));
-			geom1.push_back(phyz::ConvexPoly::genRect(-w2 / 2, -h2 / 2 - h1 * s / 2, -w2 / 2, w2, h2, w2));
-			geom1.push_back(phyz::ConvexPoly::genRect(-w2/2, -h2 / 2 + h1 * s / 2, -w2/2, w2, h2, w2));
+			phyz::Geometry geom1;
+			geom1.pushConvexPoly(phyz::ConvexPoly::box(-w1 / 2, -h1 / 2, -w1 / 2, w1, h1, w1));
+			geom1.pushConvexPoly(phyz::ConvexPoly::box(-w2 / 2, -h2 / 2 - h1 * s / 2, -w2 / 2, w2, h2, w2));
+			geom1.pushConvexPoly(phyz::ConvexPoly::box(-w2/2, -h2 / 2 + h1 * s / 2, -w2/2, w2, h2, w2));
 			phyz::RigidBody* r1 = p.createRigidBody(geom1);
-			phyz::RigidBody::PKey draw_p = r1->track_point(mthz::Vec3(0, 0, 0));
+			phyz::RigidBody::PKey draw_p = r1->trackPoint(mthz::Vec3(0, 0, 0));
 			r1->setCOMtoPosition(mthz::Vec3(0, 10, 0));
 			//r1->orientation = mthz::Quaternion(3.1415926535 / 2.0, mthz::Vec3(0, 0, 1));
 			r1->setAngVel(mthz::Vec3(0, 6, 1.4));
 			//r1->vel = mthz::Vec3(10, 0, 0);
-			bodies.push_back({ m1, r1, draw_p });
+			bodies.push_back({ m1, r1 });
 		}
 
 		//unbalanced_barbell
 		if (rndr::getKeyPressed(GLFW_KEY_U)) {
 			double h1 = 2.8, w1 = 0.2, h2 = 0.5, w2 = 1, s = 0.5;
 			std::vector<Mesh> m1 = { rect(0, 0, 0, w1, h1, w1), rect(0, -h1 * s / 2, 0, w2, h2/10, w2), rect(0, h1 * s / 2, 0, w2 * 3/4.0, h2, w2 * 3/4.0) };
-			std::vector<phyz::ConvexPoly> geom1;
-			geom1.push_back(phyz::ConvexPoly::genRect(-w1 / 2, -h1 / 2, -w1 / 2, w1, h1, w1));
-			geom1.push_back(phyz::ConvexPoly::genRect(-w2 / 2, -h2 / 20 - h1 * s / 2, -w2 / 2, w2, h2/10, w2));
-			geom1.push_back(phyz::ConvexPoly::genRect(-w2 * 3 / 8.0, -h2 / 2 + h1 * s / 2, -w2  * 3 / 8.0, w2 * 3/4.0, h2, w2 * 3/4.0));
+			phyz::Geometry geom1;
+			geom1.pushConvexPoly(phyz::ConvexPoly::box(-w1 / 2, -h1 / 2, -w1 / 2, w1, h1, w1));
+			geom1.pushConvexPoly(phyz::ConvexPoly::box(-w2 / 2, -h2 / 20 - h1 * s / 2, -w2 / 2, w2, h2/10, w2));
+			geom1.pushConvexPoly(phyz::ConvexPoly::box(-w2 * 3 / 8.0, -h2 / 2 + h1 * s / 2, -w2  * 3 / 8.0, w2 * 3/4.0, h2, w2 * 3/4.0));
 			phyz::RigidBody* r1 = p.createRigidBody(geom1);
-			phyz::RigidBody::PKey draw_p = r1->track_point(mthz::Vec3(0, 0, 0));
+			phyz::RigidBody::PKey draw_p = r1->trackPoint(mthz::Vec3(0, 0, 0));
 			r1->setCOMtoPosition(mthz::Vec3(0, 10, 0));
 			r1->setOrientation(mthz::Quaternion(0.67895851999693979, 0.0070540392161153693, 0.022756044727275559, 0.73378997750219643));
 			r1->setAngVel(mthz::Vec3(0, 0.5, 10));
 			//r1->vel = mthz::Vec3(10, 0, 0);
-			bodies.push_back({ m1, r1, draw_p });
+			bodies.push_back({ m1, r1 });
 		}
 
 		//chain
@@ -291,11 +303,11 @@ int main() {
 			phyz::RigidBody* prev_link = nullptr;
 			for (int i = 0; i < n_links; i++) {
 				std::vector<Mesh> m1 = { rect(0, 0, 0, link_dimensions.x, link_dimensions.y, link_dimensions.z) };
-				std::vector<phyz::ConvexPoly> geom1;
-				geom1.push_back(phyz::ConvexPoly::genRect(-link_dimensions.x / 2.0, -link_dimensions.y / 2.0, -link_dimensions.z / 2.0, link_dimensions.x, link_dimensions.y, link_dimensions.z));
+				phyz::Geometry geom1;
+				geom1.pushConvexPoly(phyz::ConvexPoly::box(-link_dimensions.x / 2.0, -link_dimensions.y / 2.0, -link_dimensions.z / 2.0, link_dimensions.x, link_dimensions.y, link_dimensions.z));
 				phyz::RigidBody* r1 = p.createRigidBody(geom1);
-				phyz::RigidBody::PKey draw_p1 = r1->track_point(mthz::Vec3(0, 0, 0));
-				bodies.push_back({ m1, r1, draw_p1 });
+				phyz::RigidBody::PKey draw_p1 = r1->trackPoint(mthz::Vec3(0, 0, 0));
+				bodies.push_back({ m1, r1 });
 				double y = end_y + link_dimensions.y * (n_links - i);
 				r1->setCOMtoPosition(mthz::Vec3(0, y, 0));
 
@@ -306,32 +318,37 @@ int main() {
 			}
 		}
 
+		//simple hinge
 		if (rndr::getKeyPressed(GLFW_KEY_P)) {
 			double end_y = 1;
 			mthz::Vec3 box1_dimensions(1, 0.5, 1);
 			mthz::Vec3 box2_dimensions(0.5, 0.5, 0.5);
 
-			std::vector<Mesh> m1 = { rect(0, 0, 0, box1_dimensions.x, box1_dimensions.y, box1_dimensions.z) };
-			std::vector<phyz::ConvexPoly> geom1;
-			geom1.push_back(phyz::ConvexPoly::genRect(-box1_dimensions.x / 2.0, -box1_dimensions.y / 2.0, -box1_dimensions.z / 2.0, box1_dimensions.x, box1_dimensions.y, box1_dimensions.z));
-			phyz::RigidBody* r1 = p.createRigidBody(geom1, true);
-			phyz::RigidBody::PKey draw_p1 = r1->track_point(mthz::Vec3(0, 0, 0));
-			bodies.push_back({ m1, r1, draw_p1 });
-			double y1 = end_y;
-			r1->setCOMtoPosition(mthz::Vec3(0, y1, 0));
-
-			std::vector<Mesh> m2 = { rect(0, 0, 0, box2_dimensions.x, box2_dimensions.y, box2_dimensions.z) };
-			std::vector<phyz::ConvexPoly> geom2;
-			geom2.push_back(phyz::ConvexPoly::genRect(-box2_dimensions.x / 2.0, -box2_dimensions.y / 2.0, -box2_dimensions.z / 2.0, box2_dimensions.x, box2_dimensions.y, box2_dimensions.z));
-			phyz::RigidBody* r2 = p.createRigidBody(geom2);
-			phyz::RigidBody::PKey draw_p2 = r2->track_point(mthz::Vec3(0, 0, 0));
-			bodies.push_back({ m2, r2, draw_p2 });
-			double y2 = end_y + box1_dimensions.y/2.0 + box2_dimensions.y/2.0;
-			r2->setCOMtoPosition(mthz::Vec3(0, y2, 0));
-
+			phyz::RigidBody* r1 = box(&bodies, &p, mthz::Vec3(0, end_y, 0), box1_dimensions);
+			phyz::RigidBody* r2 = box(&bodies, &p, mthz::Vec3(0, end_y + box1_dimensions.y / 2.0 + box2_dimensions.y / 2.0, 0), box2_dimensions);
 			
-			p.addHingeConstraint(r1, r2, mthz::Vec3(0, y1 + box1_dimensions.y / 2.0, 0), mthz::Vec3(0, 1, 0));
+			p.addHingeConstraint(r1, r2, mthz::Vec3(0, end_y + box1_dimensions.y / 2.0, 0), mthz::Vec3(0, 1, 0));
 			
+		}
+
+		//car
+		if (rndr::getKeyPressed(GLFW_KEY_C)) {
+
+			mthz::Vec3 pos(0, 10, 0);
+			mthz::Vec3 chasis_dim(3, 0.25, 1.3);
+			mthz::Vec3 wheel_dim(1.25, 1.25, 0.15);
+			double wheel_spacing = 0.66;
+
+			phyz::RigidBody* chasis = box(&bodies, &p, pos, chasis_dim);
+			phyz::RigidBody* w1 = box(&bodies, &p, pos + mthz::Vec3(chasis_dim.x * wheel_spacing / 2.0, 0, chasis_dim.z / 2.0), wheel_dim);
+			phyz::RigidBody* w2 = box(&bodies, &p, pos + mthz::Vec3(-chasis_dim.x * wheel_spacing / 2.0, 0, chasis_dim.z / 2.0), wheel_dim);
+			phyz::RigidBody* w3 = box(&bodies, &p, pos + mthz::Vec3(chasis_dim.x * wheel_spacing / 2.0, 0, -chasis_dim.z / 2.0), wheel_dim);
+			phyz::RigidBody* w4 = box(&bodies, &p, pos + mthz::Vec3(-chasis_dim.x * wheel_spacing / 2.0, 0, -chasis_dim.z / 2.0), wheel_dim);
+
+			p.addHingeConstraint(chasis, w1, w1->getCOM(), mthz::Vec3(0, 0, 1));
+			p.addHingeConstraint(chasis, w2, w2->getCOM(), mthz::Vec3(0, 0, 1));
+			p.addHingeConstraint(chasis, w3, w3->getCOM(), mthz::Vec3(0, 0, -1));
+			p.addHingeConstraint(chasis, w4, w4->getCOM(), mthz::Vec3(0, 0, -1));
 		}
 
 		phyz_time += fElapsedTime;
@@ -349,7 +366,7 @@ int main() {
 
 		for (const PhysBod& b : bodies) {
 			for (const Mesh& m : b.meshes) {
-				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(pos, orient) * rndr::Mat4::model(b.r->getTrackedP(b.draw_p), b.r->getOrientation()));
+				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(pos, orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
 				shader.setUniform1i("u_Asleep", b.r->getAsleep());
 				rndr::draw(*m.va, *m.ib, shader);
 			}

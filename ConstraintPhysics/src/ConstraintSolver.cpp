@@ -243,7 +243,7 @@ namespace phyz {
 	HingeConstraint::HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse)
 		: Constraint(a, b), rA(hinge_pos_a - a->getCOM()), rB(hinge_pos_a - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 })
 	{
-		hinge_pos_a.getPerpendicularBasis(&u, &w);
+		rot_axis_a.getPerpendicularBasis(&u, &w);
 		n = rot_axis_b;
 
 		mthz::Mat3 Ia_inv = a->getInvTensor();
@@ -267,7 +267,7 @@ namespace phyz {
 			rotDirA.v[0][4] = r.x; rotDirA.v[1][4] = r.y; rotDirA.v[2][4] = r.z;
 		}
 		{
-			mthz::Mat3 l = Ib_inv * rA_skew;      //left block
+			mthz::Mat3 l = Ib_inv * rB_skew;      //left block
 			mthz::Vec3 m = Ib_inv * (n.cross(u)); //middle block
 			mthz::Vec3 r = Ib_inv * (n.cross(w)); //right block
 
@@ -282,7 +282,7 @@ namespace phyz {
 		
 		//INVERSE INERTIA MATRIX
 		{
-			mthz::Mat3 ul = mthz::Mat3::iden() * Ia_inv + mthz::Mat3::iden() * Ib_inv - rA_skew * Ia_inv * rA_skew - rB_skew * Ib_inv * rB_skew; //upper left
+			mthz::Mat3 ul = mthz::Mat3::iden() * a->getInvMass() + mthz::Mat3::iden() * b->getInvMass() - rA_skew * Ia_inv * rA_skew - rB_skew * Ib_inv * rB_skew; //upper left
 			mthz::Vec3 um = -(rA_skew * Ia_inv + rB_skew * Ib_inv) * (n.cross(u)); //upper middle
 			mthz::Vec3 ur = -(rA_skew * Ia_inv + rB_skew * Ib_inv) * (n.cross(w)); //upper right
 

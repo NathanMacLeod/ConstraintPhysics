@@ -18,18 +18,18 @@ namespace phyz {
 
 
 		void timeStep();
-		RigidBody* createRigidBody(const std::vector<ConvexPoly>& geometry, bool fixed=false, double density=1.0);
+		RigidBody* createRigidBody(const Geometry& geometry, bool fixed=false, mthz::Vec3 position=mthz::Vec3(), mthz::Quaternion orientation=mthz::Quaternion());
 		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel=mthz::Vec3(), const mthz::Vec3&delta_psuedo_ang_vel=mthz::Vec3());
 		void disallowCollision(RigidBody* b1, RigidBody* b2);
 		bool collisionAllowed(RigidBody* b1, RigidBody* b2);
 		void reallowCollision(RigidBody* b1, RigidBody* b2);
 		
-		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 ball_socket_position, double pos_correct_strength=500);
-		void addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 hinge_pos, mthz::Vec3 rot_axis, double pos_correct_strength=500, double rot_correct_strength=500);
+		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 ball_socket_position, double pos_correct_strength=25);
+		void addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 hinge_pos, mthz::Vec3 rot_axis, double pos_correct_strength=25, double rot_correct_strength=25);
 		
-		int getNumBodies() { return bodies.size(); }
-		mthz::Vec3 getGravity();
-		double getStep_time();
+		inline int getNumBodies() { return bodies.size(); }
+		inline mthz::Vec3 getGravity() { return gravity;  }
+		inline double getStep_time() { return step_time; }
 
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
@@ -41,16 +41,13 @@ namespace phyz {
 		void addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
 		void maintainConstraintGraph();
 		void dfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
-		//std::vector<ConstraintGraphNode*> getAwakeIslandFootholds();
 		std::vector<std::vector<Constraint*>> sleepOrSolveIslands();
-		//bool resolve_collision(RigidBody* a, RigidBody* b, Manifold manifold, double restitution);
-		//void resolve_penetration(RigidBody* a, RigidBody* b, const Manifold& manifold, double slack = 1);
-		double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
+		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
 		bool bodySleepy(const std::vector<RigidBody::MovementState>& body_history);
 		bool readyToSleep(RigidBody* b);
 		void wakeupIsland(ConstraintGraphNode* foothold);
 
-		double posCorrectCoeff(double pos_correct_strength, double step_time) { return std::min<double>(pos_correct_strength*step_time, 1.0); }
+		inline double posCorrectCoeff(double pos_correct_strength, double step_time) { return std::min<double>(pos_correct_strength, 1.0 / step_time); }
 
 		std::vector<RigidBody*> bodies;
 		std::unordered_map<RigidBody*, ConstraintGraphNode*> constraint_graph_nodes;
@@ -59,7 +56,7 @@ namespace phyz {
 		double step_time;
 		double cutoff_vel;
 		int contact_life = 6;
-		bool sleeping_enabled = true;
+		bool sleeping_enabled = false;
 		double sleep_delay = 0.33;
 
 		double vel_sleep_coeff = 0.1;
@@ -78,15 +75,15 @@ namespace phyz {
 
 		struct BallSocket {
 			BallSocketConstraint constraint;
-			RigidBody::PKey b1_point;
-			RigidBody::PKey b2_point;
+			RigidBody::PKey b1_point_key;
+			RigidBody::PKey b2_point_key;
 			double pos_correct_hardness;
 		};
 
 		struct Hinge {
 			HingeConstraint constraint;
-			RigidBody::PKey b1_point;
-			RigidBody::PKey b2_point;
+			RigidBody::PKey b1_point_key;
+			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_rot_axis_body_space;
 			mthz::Vec3 b2_rot_axis_body_space;
 			double pos_correct_hardness;
@@ -117,7 +114,6 @@ namespace phyz {
 			std::vector<SharedConstraintsEdge*> constraints;
 
 			SharedConstraintsEdge* getOrCreateEdgeTo(ConstraintGraphNode* n2);
-			//void removeEdgeTo(ConstraintGraphNode* n2);
 		};
 	};
 

@@ -8,10 +8,8 @@ namespace phyz {
 
 	static int next_id;
 	
-	ConvexPoly::ConvexPoly() : id(next_id++) {}
-
 	ConvexPoly::ConvexPoly(const ConvexPoly& c)
-		: points(c.points), interior_point(c.interior_point), id(next_id++)
+		: points(c.points), interior_point(c.interior_point), id(next_id++), density(c.density)
 	{
 		for (int i = 0; i < c.surfaces.size(); i++) {
 			surfaces.push_back(Surface(c.surfaces[i], this));
@@ -21,16 +19,39 @@ namespace phyz {
 		}
 	}
 
-	static struct Pair {
-		int p1;
-		int p2;
+	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, double density)
+		: points(points), id(next_id++), density(density)
+	{
+		assert(points.size() >= 4);
 
-		bool operator==(const Pair p) {
-			return (p1 == p.p1 && p2 == p.p2) || (p2 == p.p1 && p1 == p.p2);
+		//create interior point (inefficient but not performance critical)
+		interior_point = mthz::Vec3(0, 0, 0);
+		for (const mthz::Vec3& p : points) {
+			interior_point += p;
 		}
-	};
+		interior_point /= points.size();
 
-	void ConvexPoly::compute_edges() {
+		//create surfaces
+		int surfaceID = points.size();
+		surfaces.reserve(surface_vertex_indices.size());
+		for (const std::vector<int> surface_indices : surface_vertex_indices) {
+			#ifndef NDEBUG
+			for (int i : surface_indices) {
+				assert(i >= 0 && i < points.size());
+			}
+			#endif
+			surfaces.push_back(Surface(surface_indices, this, interior_point, surfaceID++));
+		}
+
+		//create edges
+		struct Pair {
+			int p1;
+			int p2;
+
+			bool operator==(const Pair p) {
+				return (p1 == p.p1 && p2 == p.p2) || (p2 == p.p1 && p1 == p.p2);
+			}
+		};
 		std::vector<Pair> seen_pairs;
 		for (const Surface& s : surfaces) {
 			int n = s.point_indexes.size();
@@ -50,39 +71,10 @@ namespace phyz {
 				}
 			}
 		}
-
 		edges = std::vector<Edge>(seen_pairs.size());
 		for (int i = 0; i < seen_pairs.size(); i++) {
 			Pair pair = seen_pairs[i];
 			edges[i] = Edge(pair.p1, pair.p2, this);
-		}
-	}
-
-	//get point of minimum radius
-	void ConvexPoly::gen_interiorP() {
-		if (points.size() < 2) {
-			return;
-		}
-
-		double maxDiam = 0;
-		int maxD_i, maxD_j;
-		for (int i = 0; i < points.size(); i++) {
-			for (int j = i + 1; j < points.size(); j++) {
-				double diameter = (points[i] - points[j]).magSqrd();
-				if (diameter > maxDiam) {
-					maxDiam = diameter;
-					maxD_i = i;
-					maxD_j = j;
-				}
-			}
-		}
-		interior_point = (points[maxD_i] + points[maxD_j]) / 2.0;
-	}
-
-	void ConvexPoly::assign_IDs() {
-		int sID = points.size();
-		for (Surface& s : surfaces) {
-			s.surfaceID = sID++;
 		}
 	}
 
@@ -119,123 +111,112 @@ namespace phyz {
 		interior_point += t;
 	}
 
-	ConvexPoly ConvexPoly::genRect(double x, double y, double z, double dx, double dy, double dz) {
-		ConvexPoly out;
+	ConvexPoly ConvexPoly::box(double x, double y, double z, double dx, double dy, double dz) {
 
-		out.points = std::vector<mthz::Vec3>(8);
-		out.surfaces = std::vector<Surface>(6);
+		std::vector<mthz::Vec3> points(8);
+		std::vector<std::vector<int>> surface_indices(6);
 
-		out.points[0] = (mthz::Vec3(x, y, z)); //0
-		out.points[1] = (mthz::Vec3(x + dx, y, z)); //1
-		out.points[2] = (mthz::Vec3(x + dx, y + dy, z)); //2
-		out.points[3] = (mthz::Vec3(x, y + dy, z)); //3
+		points[0] = (mthz::Vec3(x, y, z)); //0
+		points[1] = (mthz::Vec3(x + dx, y, z)); //1
+		points[2] = (mthz::Vec3(x + dx, y + dy, z)); //2
+		points[3] = (mthz::Vec3(x, y + dy, z)); //3
 
-		out.points[4] = (mthz::Vec3(x, y, z + dz)); //4
-		out.points[5] = (mthz::Vec3(x + dx, y, z + dz)); //5
-		out.points[6] = (mthz::Vec3(x + dx, y + dy, z + dz)); //6
-		out.points[7] = (mthz::Vec3(x, y + dy, z + dz)); //7
+		points[4] = (mthz::Vec3(x, y, z + dz)); //4
+		points[5] = (mthz::Vec3(x + dx, y, z + dz)); //5
+		points[6] = (mthz::Vec3(x + dx, y + dy, z + dz)); //6
+		points[7] = (mthz::Vec3(x, y + dy, z + dz)); //7
 
-		mthz::Vec3 mid = mthz::Vec3(x + dx / 2.0, y + dy / 2.0, z + dz / 2.0);
-		std::vector<int> indexes = std::vector<int>(4);
+		surface_indices[0] = { 0, 3, 2, 1 };
+		surface_indices[1] = { 0, 1, 5, 4 };
+		surface_indices[2] = { 1, 2, 6, 5 };
+		surface_indices[3] = { 2, 3, 7, 6 };
+		surface_indices[4] = { 3, 0, 4, 7 };
+		surface_indices[5] = { 4, 5, 6, 7 };
 
-		indexes[0] = 0; indexes[1] = 3; indexes[2] = 2; indexes[3] = 1;
-		out.surfaces[0] = (Surface(indexes, &out, mid));
-
-		indexes[0] = 0; indexes[1] = 1; indexes[2] = 5; indexes[3] = 4;
-		out.surfaces[1] = (Surface(indexes, &out, mid));
-
-		indexes[0] = 1; indexes[1] = 2; indexes[2] = 6; indexes[3] = 5;
-		out.surfaces[2] = (Surface(indexes, &out, mid));
-
-		indexes[0] = 2; indexes[1] = 3; indexes[2] = 7; indexes[3] = 6;
-		out.surfaces[3] = (Surface(indexes, &out, mid));
-
-		indexes[0] = 3; indexes[1] = 0; indexes[2] = 4; indexes[3] = 7;
-		out.surfaces[4] = (Surface(indexes, &out, mid));
-
-		indexes[0] = 4; indexes[1] = 5; indexes[2] = 6; indexes[3] = 7;
-		out.surfaces[5] = (Surface(indexes, &out, mid));
-
-		out.interior_point = mid;
-		out.compute_edges();
-		out.assign_IDs();
-
-		return out;
+		return ConvexPoly(points, surface_indices);
 	}
 
-	ConvexPoly ConvexPoly::genTetra(double x, double y, double z, double r) {
+	ConvexPoly ConvexPoly::tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4) {
 		ConvexPoly out;
 
 		const double rt3 = sqrt(3.0);
 
-		out.points = std::vector<mthz::Vec3>(4);
-		out.surfaces = std::vector<Surface>(4);
+		std::vector<mthz::Vec3> points = { p1, p2, p3, p4 };
+		std::vector<std::vector<int>> surfaces(4);
+		
+		surfaces[0] = { 0, 1, 2 };
+		surfaces[1] = { 1, 2, 3 };
+		surfaces[2] = { 2, 3, 0 };
+		surfaces[3] = { 3, 0, 1 };
 
-		out.points[0] = (mthz::Vec3(x + 3*r/4, y - r/3, z - rt3*r/4)); //0
-		out.points[1] = (mthz::Vec3(x, y - r/3, z + rt3*r/2)); //1
-		out.points[2] = (mthz::Vec3(x - 3*r/4, y - r/3, z - rt3*r/4)); //2
-		out.points[3] = (mthz::Vec3(x, y + r, z)); //3
-
-		mthz::Vec3 mid = mthz::Vec3(x, y, z);
-		std::vector<int> indexes = std::vector<int>(3);
-
-		indexes[0] = 0; indexes[1] = 1; indexes[2] = 2;
-		out.surfaces[0] = (Surface(indexes, &out, mid));
-
-		indexes[0] = 0; indexes[1] = 3; indexes[2] = 1;
-		out.surfaces[1] = (Surface(indexes, &out, mid));
-
-		indexes[0] = 0; indexes[1] = 2; indexes[2] = 3;
-		out.surfaces[2] = (Surface(indexes, &out, mid));
-
-		indexes[0] = 2; indexes[1] = 1; indexes[2] = 3;
-		out.surfaces[3] = (Surface(indexes, &out, mid));
-
-		out.interior_point = mid;
-		out.compute_edges();
-		out.assign_IDs();
-
-		return out;
+		return ConvexPoly(points, surfaces);
 	}
 
-	ConvexPoly ConvexPoly::genRamp(double x, double y, double z, double length, double height, double width) {
-		ConvexPoly out;
+	//ConvexPoly ConvexPoly::genRamp(double x, double y, double z, double length, double height, double width) {
+	//	ConvexPoly out;
 
-		const double rt3 = sqrt(3.0);
+	//	const double rt3 = sqrt(3.0);
 
-		out.points = std::vector<mthz::Vec3>(6);
-		out.surfaces = std::vector<Surface>(5);
+	//	points = std::vector<mthz::Vec3>(6);
+	//	surfaces = std::vector<Surface>(5);
 
-		out.points[0] = (mthz::Vec3(x, y, z)); //0
-		out.points[1] = (mthz::Vec3(x + length, y, z)); //1
-		out.points[2] = (mthz::Vec3(x, y + height, z)); //2
-		out.points[3] = (mthz::Vec3(x, y, z + width)); //3
-		out.points[4] = (mthz::Vec3(x + length, y, z + width)); //4
-		out.points[5] = (mthz::Vec3(x, y + height, z + width)); //5
-		mthz::Vec3 mid = mthz::Vec3(x + length/4.0, y + height/4.0, z + width/2.0);
-		std::vector<int> indexes3 = std::vector<int>(3);
-		std::vector<int> indexes4 = std::vector<int>(4);
+	//	points[0] = (mthz::Vec3(x, y, z)); //0
+	//	points[1] = (mthz::Vec3(x + length, y, z)); //1
+	//	points[2] = (mthz::Vec3(x, y + height, z)); //2
+	//	points[3] = (mthz::Vec3(x, y, z + width)); //3
+	//	points[4] = (mthz::Vec3(x + length, y, z + width)); //4
+	//	points[5] = (mthz::Vec3(x, y + height, z + width)); //5
+	//	mthz::Vec3 mid = mthz::Vec3(x + length/4.0, y + height/4.0, z + width/2.0);
+	//	std::vector<int> indexes3 = std::vector<int>(3);
+	//	std::vector<int> indexes4 = std::vector<int>(4);
 
-		indexes3[0] = 0; indexes3[1] = 2; indexes3[2] = 1;
-		out.surfaces[0] = (Surface(indexes3, &out, mid));
+	//	//indexes3[0] = 0; indexes3[1] = 2; indexes3[2] = 1;
+	//	surfaces[0] = (Surface(indexes3, &out, mid));
 
-		indexes3[0] = 3; indexes3[1] = 4; indexes3[2] = 5;
-		out.surfaces[1] = (Surface(indexes3, &out, mid));
+	//	//indexes3[0] = 3; indexes3[1] = 4; indexes3[2] = 5;
+	//	surfaces[1] = (Surface(indexes3, &out, mid));
 
-		indexes4[0] = 0; indexes4[1] = 1; indexes4[2] = 4; indexes4[3] = 3;
-		out.surfaces[2] = (Surface(indexes4, &out, mid));
+	//	//indexes4[0] = 0; indexes4[1] = 1; indexes4[2] = 4; indexes4[3] = 3;
+	//	surfaces[2] = (Surface(indexes4, &out, mid));
 
-		indexes4[0] = 1; indexes4[1] = 2; indexes4[2] = 5; indexes4[3] = 4;
-		out.surfaces[3] = (Surface(indexes4, &out, mid));
+	//	//indexes4[0] = 1; indexes4[1] = 2; indexes4[2] = 5; indexes4[3] = 4;
+	//	surfaces[3] = (Surface(indexes4, &out, mid));
 
-		indexes4[0] = 2; indexes4[1] = 0; indexes4[2] = 3; indexes4[3] = 5;
-		out.surfaces[4] = (Surface(indexes4, &out, mid));
+	//	//indexes4[0] = 2; indexes4[1] = 0; indexes4[2] = 3; indexes4[3] = 5;
+	//	surfaces[4] = (Surface(indexes4, &out, mid));
 
-		out.interior_point = mid;
-		out.compute_edges();
-		out.assign_IDs();
+	//	interior_point = mid;
+	//	compute_edges();
+	//	assign_IDs();
 
-		return out;
+	//	return out;
+	//}
+
+	GaussMap ConvexPoly::computeGaussMap() const {
+		GaussMap g;
+		for (int i = 0; i < surfaces.size(); i++) {
+			const Surface& s1 = surfaces[i];
+			g.face_verts.push_back(s1.normal());
+
+			for (int j = i + 1; j < surfaces.size(); j++) {
+				const Surface& s2 = surfaces[j];
+
+				for (int k = 0; k < s1.n_points(); k++) {
+					for (int w = 0; w < s2.n_points(); w++) {
+						mthz::Vec3 x1 = s1.getPointI(k);
+						mthz::Vec3 x2 = s1.getPointI((k + 1) % s1.n_points());
+						mthz::Vec3 y1 = s2.getPointI(w);
+						mthz::Vec3 y2 = s2.getPointI((w + 1) % s2.n_points());
+
+						//if si and sj share an edge, there exists an arc between v1 and v2 on the gauss map
+						if ((x1 == y1 && x2 == y2) || (x1 == y2 && x2 == y1)) {
+							g.arcs.push_back({ (unsigned int)i, (unsigned int)j });
+						}
+					}
+				}
+			}
+		}
+		return g;
 	}
 
 	Edge::Edge(int p1_indx, int p2_indx, ConvexPoly* poly) {
@@ -255,39 +236,45 @@ namespace phyz {
 		poly = nullptr;
 	}
 
-	mthz::Vec3 Edge::p1() const {
-		return poly->points[p1_indx];
-	}
-
-	mthz::Vec3 Edge::p2() const {
-		return poly->points[p2_indx];
-	}
-
-	Surface::Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point)
-		: point_indexes(point_indexes), poly(poly)
+	Surface::Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID)
+		: point_indexes(point_indexes), poly(poly), surfaceID(surfaceID)
 	{
 		assert(point_indexes.size() >= 3);
 
-		normalDirection = 1; //initial guess
-		mthz::Vec3 norm = normal();
-		mthz::Vec3 outward = poly->points[point_indexes[0]] - interior_point;
-		if (outward.dot(norm) < 0) {
-			normalDirection = -1;
-		}
+		findNormalCalcInfo(poly->points[point_indexes[0]] - interior_point);
+		setWindingAntiClockwise(normal());
 	}
 
-	Surface::Surface(const Surface& s, ConvexPoly* poly) 
-		:point_indexes(s.point_indexes), normalDirection(s.normalDirection), poly(poly), surfaceID(s.surfaceID)
+	Surface::Surface(const Surface& s, ConvexPoly* poly)
+		: point_indexes(s.point_indexes), normalDirection(s.normalDirection), poly(poly), surfaceID(s.surfaceID),
+		normal_calc_index(s.normal_calc_index)
 	{}
 
 	Surface::Surface() {
 		poly = nullptr;
 	}
 
+	void Surface::findNormalCalcInfo(const mthz::Vec3& normalish) {
+		mthz::Vec3 p0 = poly->points[point_indexes[0]];
+		mthz::Vec3 p1 = poly->points[point_indexes[1]];
+		normal_calc_index = 2;
+		mthz::Vec3 v1 = (p1 - p0).normalize();
+		mthz::Vec3 v2 = (poly->points[point_indexes[normal_calc_index]] - p0).normalize();
+		while (abs(v1.dot(v2)) > 0.99) {
+			v2 = (poly->points[point_indexes[++normal_calc_index]] - p0).normalize();
+			assert(normal_calc_index < point_indexes.size());
+		}
+
+		normalDirection = 1; //initial guess
+		if (normalish.dot(normal()) < 0) {
+			normalDirection = -1;
+		}
+	}
+
 	mthz::Vec3 Surface::normal() const {
 		mthz::Vec3 p1 = poly->points[point_indexes[0]];
 		mthz::Vec3 p2 = poly->points[point_indexes[1]];
-		mthz::Vec3 p3 = poly->points[point_indexes[2]];
+		mthz::Vec3 p3 = poly->points[point_indexes[normal_calc_index]];
 
 		return (p2 - p1).cross(p3 - p2).normalize() * normalDirection;
 	}
@@ -299,35 +286,41 @@ namespace phyz {
 
 	mthz::Vec3 Surface::getPointI(int i) const {
 		assert(i >= 0 && i < point_indexes.size());
-
 		return poly->points[point_indexes[i]];
 	}
 
-	GaussMap computeGaussMap(const ConvexPoly& c) {
-		GaussMap g;
-		for (int i = 0; i < c.surfaces.size(); i++) {
-			const Surface& s1 = c.surfaces[i];
-			g.face_verts.push_back(s1.normal());
+	void Surface::setWindingAntiClockwise(const mthz::Vec3& normal) {
+		 //if winding is anti-clockwise to normal, greens theorem will yield a positive area
+		mthz::Vec3 u, w;
+		normal.getPerpendicularBasis(&u, &w);
+		double area = 0;
+		for (int i = 0; i < n_points(); i++) {
+			int i1 = i;
+			int i2 = (i + 1 == n_points()) ? 0 : i+1;
 
-			for (int j = i + 1; j < c.surfaces.size(); j++) {
-				const Surface& s2 = c.surfaces[j];
+			double p1_u, p1_w, p2_u, p2_w;
+;			mthz::Vec3 p1 = getPointI(i1);
+			mthz::Vec3 p2 = getPointI(i2);
+			
+			p1_u = p1.dot(u);
+			p1_w = p1.dot(w);
+			p2_u = p2.dot(u);
+			p2_w = p2.dot(w);
 
-				for (int k = 0; k < s1.n_points(); k++) {
-					for (int w = 0; w < s2.n_points(); w++) {
-						mthz::Vec3 x1 = s1.getPointI(k);
-						mthz::Vec3 x2 = s1.getPointI((k + 1) % s1.n_points());
-						mthz::Vec3 y1 = s2.getPointI(w);
-						mthz::Vec3 y2 = s2.getPointI((w + 1) % s2.n_points());
-
-						//if si and sj share an edge, there exists an arc between v1 and v2 on the gauss map
-						if ((x1 == y1 && x2 == y2) || (x1 == y2 && x2 == y1)) {
-							g.arcs.push_back({ (unsigned int)i, (unsigned int)j });
-						}
-					}
-				}
-			}
+			area += (p2_w - p1_w) * (p2_u + p1_u) / 2.0;
 		}
-		return g;
+
+		//reverse if winding was clockwise
+		if (area < 0) {
+			for (int i = 0; i < point_indexes.size() / 2; i++) {
+				int j = point_indexes.size() - 1 - i;
+
+				int tmp = point_indexes[j];
+				point_indexes[j] = point_indexes[i];
+				point_indexes[i] = tmp;
+			}
+			findNormalCalcInfo(normal);
+ 		}
 	}
 
 }

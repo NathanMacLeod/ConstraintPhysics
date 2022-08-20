@@ -5,14 +5,14 @@
 
 namespace phyz {
 
-	static void calculateMassProperties(const std::vector<ConvexPoly>& geometry, double density, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
+	static void calculateMassProperties(const Geometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
 
-	RigidBody::RigidBody(const std::vector<ConvexPoly>& geometry, double density)
-		: geometry(geometry), reference_geometry(geometry), vel(0, 0, 0), ang_vel(0, 0, 0), 
+	RigidBody::RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation)
+		: geometry(source_geometry.polyhedra), reference_geometry(source_geometry.polyhedra), vel(0, 0, 0), ang_vel(0, 0, 0),
 		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0)
 	{
 		fixed = false;
-		calculateMassProperties(geometry, density, &this->com, &this->tensor, &this->mass);
+		calculateMassProperties(source_geometry, &this->com, &this->tensor, &this->mass);
 		invTensor = tensor.inverse();
 
 		radius = 0;
@@ -28,7 +28,7 @@ namespace phyz {
 		}
 
 		for (const ConvexPoly& c : reference_geometry) {
-			reference_gauss_maps.push_back(computeGaussMap(c));
+			reference_gauss_maps.push_back(c.computeGaussMap());
 		}
 		geometry_AABB = std::vector<AABB>(geometry.size());
 		for (int i = 0; i < reference_geometry.size(); i++) {
@@ -37,6 +37,13 @@ namespace phyz {
 		aabb = AABB::combine(geometry_AABB);
 		gauss_maps = reference_gauss_maps;
 		radius = sqrt(radius);
+		pos_pkey = trackPoint(source_geometry.origin_position);
+		setToPosition(pos);
+		setOrientation(source_geometry.orientation);
+	}
+
+	void RigidBody::setToPosition(const mthz::Vec3 pos) {
+		setCOMtoPosition(pos + com - getTrackedP(pos_pkey));
 	}
 
 	void RigidBody::setCOMtoPosition(const mthz::Vec3 pos) {
@@ -49,7 +56,7 @@ namespace phyz {
 		updateGeometry();
 	}
 
-	RigidBody::PKey RigidBody::track_point(mthz::Vec3 p) {
+	RigidBody::PKey RigidBody::trackPoint(mthz::Vec3 p) {
 		mthz::Vec3 r = p - com;
 		track_p.push_back(orientation.conjugate().applyRotation(r));
 		return track_p.size() - 1;
@@ -77,19 +84,6 @@ namespace phyz {
 	mthz::Mat3 RigidBody::getInvTensor() {
 		return (fixed) ? mthz::Mat3::zero() : invTensor;
 	}
-
-	/*void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
-		if (fixed) {
-			return;
-		}
-
-		vel += impulse / mass;
-
-		static mthz::Mat3 mat;
-
-		ang_vel += invTensor * ((position - com).cross(impulse));
-
-	}*/
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical
 	void RigidBody::applyGyroAccel(float fElapsedTime) {
@@ -156,6 +150,24 @@ namespace phyz {
 		}
 	}
 
+	Geometry Geometry::merge(const Geometry& g1, const Geometry& g2) {
+		Geometry out;
+		out.polyhedra.reserve(g1.polyhedra.size() + g2.polyhedra.size());
+		for (const ConvexPoly& c : g1.polyhedra) {
+			ConvexPoly copy = c;
+			copy.translate(-g1.origin_position);
+			copy.rotate(g1.orientation, mthz::Vec3(0, 0, 0));
+			out.polyhedra.push_back(c);
+		}
+		for (const ConvexPoly& c : g2.polyhedra) {
+			ConvexPoly copy = c;
+			copy.translate(-g2.origin_position);
+			copy.rotate(g2.orientation, mthz::Vec3(0, 0, 0));
+			out.polyhedra.push_back(c);
+		}
+		return out;
+	}
+
 	static struct IntrgVals {
 		IntrgVals() {
 			v = 0;
@@ -206,14 +218,14 @@ namespace phyz {
 	}
 
 	//based off of 'Fast and Accurate Computation of Polyhedral Mass Properties' (Brian Miritch)
-	static void calculateMassProperties(const std::vector<ConvexPoly>& geometry, double density, mthz::Vec3* com, mthz::Mat3* tensor, double* mass) {
+	static void calculateMassProperties(const Geometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass) {
 		*com = mthz::Vec3(0, 0, 0);
 		*mass = 0;
 		*tensor = mthz::Mat3(); //default zeroed
-		for (const ConvexPoly& g : geometry) {
+		for (const ConvexPoly& g : geometry.getPolyhedra()) {
 			double vol = 0, vol_x = 0, vol_y = 0, vol_z = 0, vol_xy = 0, vol_yz = 0, vol_zx = 0, vol_x2 = 0, vol_y2 = 0, vol_z2 = 0;
 
-			for (const Surface& s : g.surfaces) {
+			for (const Surface& s : g.getSurfaces()) {
 				mthz::Vec3 n = s.normal();
 				IntrgVals a, b, c;
 				Axis proj_axis;
@@ -248,9 +260,9 @@ namespace phyz {
 					ga2 += dB * (va * va * va + 3 * va * va * dA / 2.0 + va * dA * dA + dA * dA * dA / 4.0) / 3.0;
 					gb2 -= dA * (vb * vb * vb + 3 * vb * vb * dB / 2.0 + vb * dB * dB + dB * dB * dB / 4.0) / 3.0;
 					ga2b -= dA * (va * va * vb * vb + va * va * vb * dB + va * vb * vb * dA + (va * va * dB * dB + vb * vb * dA * dA + 4 * va * vb * dA * dB) / 3.0
-						+ (va * dA * dB * dB + vb * dB * dA * dA) / 2.0 + dA * dA * dB * dB / 4.0) / 2.0;
+						+ (va * dA * dB * dB + vb * dB * dA * dA) / 2.0 + dA * dA * dB * dB / 5.0) / 2.0;
 					gab2 += dB * (va * va * vb * vb + va * va * vb * dB + va * vb * vb * dA + (va * va * dB * dB + vb * vb * dA * dA + 4 * va * vb * dA * dB) / 3.0
-						+ (va * dA * dB * dB + vb * dB * dA * dA) / 2.0 + dA * dA * dB * dB / 4.0) / 2.0;
+						+ (va * dA * dB * dB + vb * dB * dA * dA) / 2.0 + dA * dA * dB * dB / 5.0) / 2.0;
 					ga3 += dB * (va * va * va * va + 2 * va * va * va * dA + 2 * va * va * dA * dA + va * dA * dA * dA + dA * dA * dA * dA / 5.0) / 4.0;
 					gb3 -= dA * (vb * vb * vb * vb + 2 * vb * vb * vb * dB + 2 * vb * vb * dB * dB + vb * dB * dB * dB + dB * dB * dB * dB / 5.0) / 4.0;
 				}
@@ -311,19 +323,18 @@ namespace phyz {
 				vol_z2 += n.z * z.v3 / 3.0;
 			}
 
-			*mass += density * vol;
-			*com += mthz::Vec3(vol_x, vol_y, vol_z);
+			*mass += g.density * vol;
+			*com += mthz::Vec3(vol_x, vol_y, vol_z) * g.density;
 
-			tensor->v[0][0] += vol_y2 + vol_z2;
-			tensor->v[0][1] -= vol_xy;
-			tensor->v[0][2] -= vol_zx;
-			tensor->v[1][1] += vol_x2 + vol_z2;
-			tensor->v[1][2] -= vol_yz;
-			tensor->v[2][2] += vol_x2 + vol_y2;
+			tensor->v[0][0] += (vol_y2 + vol_z2) * g.density;
+			tensor->v[0][1] -= vol_xy * g.density;
+			tensor->v[0][2] -= vol_zx * g.density;
+			tensor->v[1][1] += (vol_x2 + vol_z2) * g.density;
+			tensor->v[1][2] -= vol_yz * g.density;
+			tensor->v[2][2] += (vol_x2 + vol_y2) * g.density;
 		}
 
-		*com /= *mass / density; // volume = mass/density
-		*tensor *= density;
+		*com /= *mass;
 
 		//transposition of inertia tensor to be relative to CoM
 		tensor->v[0][0] -= *mass * (com->y * com->y + com->z * com->z);

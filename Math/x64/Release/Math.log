@@ -1,5 +1,4 @@
 ﻿  Mat3.cpp
 C:\dev\ConstraintPhysics\Math\src\Mat3.cpp(1,10): warning C4067: unexpected tokens following preprocessor directive - expected a newline
   Vec3.cpp
-  Running Code Analysis for C/C++...
   Math.vcxproj -> C:\dev\ConstraintPhysics\x64\Release\Math.lib

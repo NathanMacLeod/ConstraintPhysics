@@ -33,7 +33,7 @@ namespace phyz {
 
 		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1};
 
-		for (const Surface& s : c.surfaces) {
+		for (const Surface& s : c.getSurfaces()) {
 			double cos_ang = s.normal().dot(n);
 			if (1 - cos_ang <= COS_TOL) {
 				int n_points = s.n_points();
@@ -50,7 +50,7 @@ namespace phyz {
 			}
 		}
 
-		for (Edge e : c.edges) {
+		for (Edge e : c.getEdges()) {
 			mthz::Vec3 p1 = e.p1();
 			mthz::Vec3 p2 = e.p2();
 			double sin_ang = abs((e.p2() - e.p1()).normalize().dot(n));
@@ -151,8 +151,8 @@ namespace phyz {
 	static ExtremaInfo findExtrema(const ConvexPoly& c, mthz::Vec3 axis) {
 		ExtremaInfo extrema;
 
-		for (int i = 0; i < c.points.size(); i++) {
-			mthz::Vec3 p = c.points[i];
+		for (int i = 0; i < c.getPoints().size(); i++) {
+			mthz::Vec3 p = c.getPoints()[i];
 			double val = p.dot(axis);
 			if (val < extrema.min_val) {
 				extrema.min_p = p;
@@ -314,8 +314,8 @@ namespace phyz {
 		mthz::Vec3 n_offset = norm * a_dot_val;
 
 		uint64_t cID = 0;
-		cID |= 0x00000000FFFFFFFF & a.id;
-		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.id) << 32);
+		cID |= 0x00000000FFFFFFFF & a.getID();
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.getID()) << 32);
 
 		out.points.reserve(man_pool.size());
 		for (int i = 0; i < man_pool.size(); i++) {

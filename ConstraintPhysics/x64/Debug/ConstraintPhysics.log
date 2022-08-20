@@ -1,5 +1,8 @@
-﻿  ConstraintSolver.cpp
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.h(56): warning C4091: 'static ': ignored on left of 'phyz::Constraint::VelVec' when no variable is declared
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\PhysicsEngine.h(30,22): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
-C:\dev\ConstraintPhysics\ConstraintPhysics\src\ConstraintSolver.cpp(7,19): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+﻿  RigidBody.cpp
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(62,28): warning C4267: 'return': conversion from 'size_t' to 'phyz::RigidBody::PKey', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(90,26): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(183,3): warning C4091: 'static ': ignored on left of 'phyz::IntrgVals' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(185,30): warning C4091: 'static ': ignored on left of 'phyz::Axis' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(186,36): warning C4091: 'static ': ignored on left of 'phyz::MappedAxis' when no variable is declared
+C:\dev\ConstraintPhysics\ConstraintPhysics\src\RigidBody.cpp(218): warning C4715: 'phyz::getAxisVal': not all control paths return a value
   ConstraintPhysics.vcxproj -> C:\dev\ConstraintPhysics\x64\Debug\ConstraintPhysics.lib

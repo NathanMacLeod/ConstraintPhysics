@@ -10,13 +10,30 @@
 
 namespace phyz {
 
+	class RigidBody;
+	class Geometry {
+	public:
+		void pushConvexPoly(const ConvexPoly& p) { polyhedra.push_back(p); };
+		void setOrigin(const mthz::Vec3 v) { origin_position = v; }
+		void setOrientation(const mthz::Quaternion q) { orientation = q; }
+		inline const std::vector<ConvexPoly>& getPolyhedra() const { return polyhedra; }
+
+		static Geometry merge(const Geometry& g1, const Geometry& g2);
+
+		friend class RigidBody;
+	private:
+		std::vector<ConvexPoly> polyhedra;
+		mthz::Vec3 origin_position;
+		mthz::Quaternion orientation;
+	};
+
 	class RigidBody {
+	private:
+		RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation);
 	public:
 		typedef int PKey;
 
-		RigidBody(const std::vector<ConvexPoly>& geometry, double density);
-
-		PKey track_point(mthz::Vec3 p); //track the movement of p which is on the body b. P given in world coordinates
+		PKey trackPoint(mthz::Vec3 p); //track the movement of p which is on the body b. P given in world coordinates
 		mthz::Vec3 getTrackedP(PKey pk);
 		mthz::Vec3 getVelOfPoint(mthz::Vec3 p) const;
 
@@ -24,11 +41,13 @@ namespace phyz {
 		double getInvMass();
 		mthz::Mat3 getInvTensor();
 		bool getAsleep() { return asleep;  }
+		mthz::Vec3 getPos() { return getTrackedP(pos_pkey); }
 		mthz::Vec3 getCOM() { return com; }
 		mthz::Quaternion getOrientation() { return orientation; }
 		mthz::Vec3 getVel() { return vel; }
 		mthz::Vec3 getAngVel() { return ang_vel; }
 
+		void setToPosition(const mthz::Vec3 pos);
 		void setCOMtoPosition(const mthz::Vec3 pos);
 		void setOrientation(const mthz::Quaternion orientation);
 		void setVel(mthz::Vec3 vel) { this->vel = vel; }
@@ -42,6 +61,7 @@ namespace phyz {
 		AABB aabb;
 		double radius;
 		bool fixed;
+		PKey pos_pkey;
 
 		mthz::Quaternion orientation;
 		mthz::Vec3 com;

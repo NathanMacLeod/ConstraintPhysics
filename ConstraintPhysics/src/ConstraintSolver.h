@@ -73,7 +73,7 @@ namespace phyz {
 		ContactConstraint() : impulse(NVec<1>{0.0}) {}
 		ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, NVec<1> warm_start_impulse=NVec<1>{ 0.0 }, double cutoff_vel=0);
 
-		bool constraintWarmStarted() override { return !impulse.isZero(); }
+		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
 		void performPGSConstraintStep() override;
 		void performPGSPsuedoConstraintStep() override;
@@ -100,7 +100,7 @@ namespace phyz {
 		FrictionConstraint() : normal_impulse(nullptr), impulse(NVec<1>{0.0}) {}
 		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 frictionDir, mthz::Vec3 contact_p, double coeff_friction, int n_contact_points, ContactConstraint* normal, NVec<1> warm_start_impulse=NVec<1>{ 0.0 });
 
-		bool constraintWarmStarted() override { return !impulse.isZero(); }
+		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
 		void performPGSConstraintStep() override;
 		void performPGSPsuedoConstraintStep() override { return; };
@@ -128,7 +128,7 @@ namespace phyz {
 		BallSocketConstraint() : impulse(NVec<3>{0.0, 0.0, 0.0}) {}
 		BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, NVec<3> warm_start_impulse=NVec<3>{ 0.0 });
 		
-		bool constraintWarmStarted() override { return !impulse.isZero(); }
+		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
 		void performPGSConstraintStep() override;
 		void performPGSPsuedoConstraintStep() override;
@@ -154,7 +154,7 @@ namespace phyz {
 		HingeConstraint() : impulse(NVec<5>{0.0, 0.0, 0.0, 0.0, 0.0}) {}
 		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse=NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 });
 
-		bool constraintWarmStarted() override { return !impulse.isZero(); }
+		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
 		void performPGSConstraintStep() override;
 		void performPGSPsuedoConstraintStep() override;

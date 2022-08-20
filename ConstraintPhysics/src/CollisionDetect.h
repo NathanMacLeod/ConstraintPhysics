@@ -41,7 +41,7 @@ namespace phyz {
 //providing hash function for MagicID
 namespace std {
   template <> struct hash<phyz::MagicID> {
-		size_t operator()(const phyz::MagicID& key) const {
+		inline size_t operator()(const phyz::MagicID& key) const {
 			return key.cID * key.bID;
 		}
 	};
