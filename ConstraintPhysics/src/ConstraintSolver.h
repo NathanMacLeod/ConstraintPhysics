@@ -28,6 +28,7 @@ namespace phyz {
 		NMat<n_row, n_col> operator+(const NMat<n_row, n_col>& r) const;
 		NMat<n_row, n_col> operator-(const NMat<n_row, n_col>& r) const;
 		NVec<n_row> operator*(const NVec<n_col>& v) const;
+		NMat<n_row, n_col> operator-() const;
 		template<int x>
 		NMat<n_row, x> operator*(const NMat<n_col, x>& r) const {
 			NMat<n_row, x> out;
@@ -170,6 +171,33 @@ namespace phyz {
 		mthz::Vec3 u;
 		mthz::Vec3 w;
 		mthz::Vec3 n;
+		NMat<3, 5> rotDirA;
+		NMat<3, 5> rotDirB;
+		NMat<5, 5> inverse_inertia;
+		NVec<5> target_val;
+		NVec<5> psuedo_target_val;
+	};
+
+	class SliderConstraint : public Constraint {
+	public:
+		SliderConstraint() : impulse(NVec<5>{0.0, 0.0, 0.0, 0.0, 0.0}) {}
+		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, mthz::Vec3 slider_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse = NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 });
+
+		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
+		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		void performPGSConstraintStep() override;
+		void performPGSPsuedoConstraintStep() override;
+
+		NVec<5> getConstraintValue(const VelVec& va, const VelVec& vb);
+		void addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb);
+
+		NVec<5> impulse;
+		NVec<5> psuedo_impulse;
+	private:
+		mthz::Vec3 rA;
+		mthz::Vec3 rB;
+		mthz::Vec3 u;
+		mthz::Vec3 w;
 		NMat<3, 5> rotDirA;
 		NMat<3, 5> rotDirB;
 		NMat<5, 5> inverse_inertia;

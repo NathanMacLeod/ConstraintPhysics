@@ -7,7 +7,7 @@
 
 namespace phyz {
 	static const double M_PI = 3.14159265358979323846;
-	static const double TOL_ANG = 2 * M_PI / 180;
+	static const double TOL_ANG = 1 * M_PI / 180;
 	static const double COS_TOL = 1 - cos(TOL_ANG);
 	static const double SIN_TOL = sin(TOL_ANG);
 	const double CUTOFF_MAG = 0.00000001;

@@ -8,7 +8,7 @@ namespace phyz {
 	static void calculateMassProperties(const Geometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
 
 	RigidBody::RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation)
-		: geometry(source_geometry.polyhedra), reference_geometry(source_geometry.polyhedra), vel(0, 0, 0), ang_vel(0, 0, 0),
+		: geometry(source_geometry.getPolyhedra()), reference_geometry(source_geometry.getPolyhedra()), vel(0, 0, 0), ang_vel(0, 0, 0),
 		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0)
 	{
 		fixed = false;
@@ -37,28 +37,53 @@ namespace phyz {
 		aabb = AABB::combine(geometry_AABB);
 		gauss_maps = reference_gauss_maps;
 		radius = sqrt(radius);
-		pos_pkey = trackPoint(source_geometry.origin_position);
+		local_coord_origin = -com;
+		origin_pkey = trackPoint(mthz::Vec3(0,0,0));
 		setToPosition(pos);
-		setOrientation(source_geometry.orientation);
+		recievedWakingAction = false;
 	}
 
-	void RigidBody::setToPosition(const mthz::Vec3 pos) {
-		setCOMtoPosition(pos + com - getTrackedP(pos_pkey));
+	void RigidBody::setToPosition(const mthz::Vec3& pos) {
+		translate(pos - getTrackedP(origin_pkey));
+		recievedWakingAction = true;
 	}
 
-	void RigidBody::setCOMtoPosition(const mthz::Vec3 pos) {
+	void RigidBody::setCOMtoPosition(const mthz::Vec3& pos) {
 		com = pos;
+		updateGeometry();
+		recievedWakingAction = true;
+	}
+
+	void RigidBody::translate(const mthz::Vec3& v) {
+		com += v;
 		updateGeometry();
 	}
 
 	void RigidBody::setOrientation(const mthz::Quaternion orientation) {
 		this->orientation = orientation;
 		updateGeometry();
+		recievedWakingAction = true;
+	}
+
+	void RigidBody::setVel(mthz::Vec3 vel) { 
+		this->vel = vel; 
+		recievedWakingAction = true;
+	}
+
+	void RigidBody::setAngVel(mthz::Vec3 ang_vel) { 
+		this->ang_vel = ang_vel; 
+		recievedWakingAction = true;
+	}
+
+	void RigidBody::setFixed(bool fixed) { 
+		this->fixed = fixed; 
+		if (!fixed) {
+			recievedWakingAction = true;
+		}
 	}
 
 	RigidBody::PKey RigidBody::trackPoint(mthz::Vec3 p) {
-		mthz::Vec3 r = p - com;
-		track_p.push_back(orientation.conjugate().applyRotation(r));
+		track_p.push_back(local_coord_origin + p);
 		return track_p.size() - 1;
 	}
 
@@ -79,6 +104,14 @@ namespace phyz {
 
 	double RigidBody::getInvMass() {
 		return (fixed) ? 0 : 1.0 / mass;
+	}
+
+	mthz::Vec3 RigidBody::getVel() { 
+		return (fixed)? mthz::Vec3(0, 0, 0) : vel; 
+	}
+
+	mthz::Vec3 RigidBody::getAngVel() { 
+		return (fixed) ? mthz::Vec3(0, 0, 0) : ang_vel;
 	}
 
 	mthz::Mat3 RigidBody::getInvTensor() {
@@ -121,7 +154,7 @@ namespace phyz {
 		}
 		for (int i = 0; i < reference_gauss_maps.size(); i++) {
 			for (int j = 0; j < reference_gauss_maps[i].face_verts.size(); j++) {
-				gauss_maps[i].face_verts[j] = rot * reference_gauss_maps[i].face_verts[j];
+				gauss_maps[i].face_verts[j].v = rot * reference_gauss_maps[i].face_verts[j].v;
 			}
 		}
 		for (int i = 0; i < reference_geometry.size(); i++) {
@@ -138,9 +171,11 @@ namespace phyz {
 	}
 
 	void RigidBody::wake() {
-		asleep = false;
-		sleep_ready_counter = 0;
-		history.clear();
+		if (asleep) {
+			asleep = false;
+			sleep_ready_counter = 0;
+			history.clear();
+		}
 	}
 
 	void RigidBody::recordMovementState(int history_length) {
@@ -148,24 +183,6 @@ namespace phyz {
 		while (history.size() > history_length) {
 			history.erase(history.begin());
 		}
-	}
-
-	Geometry Geometry::merge(const Geometry& g1, const Geometry& g2) {
-		Geometry out;
-		out.polyhedra.reserve(g1.polyhedra.size() + g2.polyhedra.size());
-		for (const ConvexPoly& c : g1.polyhedra) {
-			ConvexPoly copy = c;
-			copy.translate(-g1.origin_position);
-			copy.rotate(g1.orientation, mthz::Vec3(0, 0, 0));
-			out.polyhedra.push_back(c);
-		}
-		for (const ConvexPoly& c : g2.polyhedra) {
-			ConvexPoly copy = c;
-			copy.translate(-g2.origin_position);
-			copy.rotate(g2.orientation, mthz::Vec3(0, 0, 0));
-			out.polyhedra.push_back(c);
-		}
-		return out;
 	}
 
 	static struct IntrgVals {
@@ -349,5 +366,4 @@ namespace phyz {
 		tensor->v[2][0] = tensor->v[0][2];
 		tensor->v[2][1] = tensor->v[1][2];
 	}
-
 }

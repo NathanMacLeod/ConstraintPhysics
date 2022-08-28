@@ -13,9 +13,10 @@ namespace phyz {
 	class PhysicsEngine {
 	public:
 		PhysicsEngine() {
-			thread_manager.init(8);
+#ifdef USE_MULTITHREAD
+			thread_manager.init(N_THREADS);
+#endif
 		}
-
 
 		void timeStep();
 		RigidBody* createRigidBody(const Geometry& geometry, bool fixed=false, mthz::Vec3 position=mthz::Vec3(), mthz::Quaternion orientation=mthz::Quaternion());
@@ -24,22 +25,28 @@ namespace phyz {
 		bool collisionAllowed(RigidBody* b1, RigidBody* b2);
 		void reallowCollision(RigidBody* b1, RigidBody* b2);
 		
-		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 ball_socket_position, double pos_correct_strength=25);
-		void addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 hinge_pos, mthz::Vec3 rot_axis, double pos_correct_strength=25, double rot_correct_strength=25);
-		
 		inline int getNumBodies() { return bodies.size(); }
-		inline mthz::Vec3 getGravity() { return gravity;  }
+		inline mthz::Vec3 getGravity() { return gravity; }
 		inline double getStep_time() { return step_time; }
 
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
-		
+
+		typedef int MotorID;
+
+		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=250);
+		MotorID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=250, double rot_correct_strength=250);
+		void addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength=250, double rot_correct_strength=250);
+
+		void setMotorPower(MotorID id, double power);
+
 	private:
 
+		static const int N_THREADS = 4;
 		struct ConstraintGraphNode; 
 		
 		void addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
-		void maintainConstraintGraph();
+		void maintainConstraintGraphApplyPoweredConstraints();
 		void dfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		std::vector<std::vector<Constraint*>> sleepOrSolveIslands();
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
@@ -47,22 +54,24 @@ namespace phyz {
 		bool readyToSleep(RigidBody* b);
 		void wakeupIsland(ConstraintGraphNode* foothold);
 
-		inline double posCorrectCoeff(double pos_correct_strength, double step_time) { return std::min<double>(pos_correct_strength, 1.0 / step_time); }
+		inline double posCorrectCoeff(double pos_correct_strength, double step_time) { return std::min<double>(pos_correct_strength * step_time, 1.0 / step_time); }
 
 		std::vector<RigidBody*> bodies;
-		std::unordered_map<RigidBody*, ConstraintGraphNode*> constraint_graph_nodes;
-		std::mutex constraint_graph_lock;
 		mthz::Vec3 gravity;
-		double step_time;
-		double cutoff_vel;
+		double step_time = 1.0 / 90;
+		double cutoff_vel = 0;
 		int contact_life = 6;
 		bool sleeping_enabled = false;
-		double sleep_delay = 0.33;
+		double sleep_delay = 0.5;
 
 		double vel_sleep_coeff = 0.1;
 		double accel_sleep_coeff = 0.022;
 
 		ThreadManager thread_manager;
+
+		//Constraint Graph
+		std::unordered_map<RigidBody*, ConstraintGraphNode*> constraint_graph_nodes;
+		std::mutex constraint_graph_lock;
 
 		struct Contact {
 			ContactConstraint contact;
@@ -88,6 +97,17 @@ namespace phyz {
 			mthz::Vec3 b2_rot_axis_body_space;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
+			double power_level;
+		};
+
+		struct Slider {
+			SliderConstraint constraint;
+			RigidBody::PKey b1_point_key;
+			RigidBody::PKey b2_point_key;
+			mthz::Vec3 b1_slide_axis_body_space;
+			mthz::Vec3 b2_slide_axis_body_space;
+			double pos_correct_hardness;
+			double rot_correct_hardness;
 		};
 
 		struct SharedConstraintsEdge {
@@ -98,12 +118,14 @@ namespace phyz {
 			std::vector<Contact*> contactConstraints;
 			std::vector<BallSocket*> ballSocketConstraints;
 			std::vector<Hinge*> hingeConstraints;
+			std::vector<Slider*> sliderConstraints;
 
-			ConstraintGraphNode* other(ConstraintGraphNode* c) { return (c->b == n1->b ? n2 : n1); }
+			inline ConstraintGraphNode* other(ConstraintGraphNode* c) { return (c->b == n1->b ? n2 : n1); }
 			bool noConstraintsLeft() { 
 				return contactConstraints.empty() 
 					&& ballSocketConstraints.empty()
-					&& hingeConstraints.empty();
+					&& hingeConstraints.empty()
+					&& sliderConstraints.empty();
 			}
 		};
 
@@ -115,6 +137,9 @@ namespace phyz {
 
 			SharedConstraintsEdge* getOrCreateEdgeTo(ConstraintGraphNode* n2);
 		};
+
+		MotorID nextMotorID = 0;
+		std::unordered_map<MotorID, Hinge*> motor_map;
 	};
 
 }

@@ -12,20 +12,21 @@ namespace phyz {
 	struct GaussMap;
 	class RigidBody;
 
-	//this class needs a proper constructor this is really dumb
+	struct SurfaceDef {
+		std::vector<int> surface_vertex_indices;
+		bool internal_surface;
+	};
+
 	class ConvexPoly {
 	public:
 		ConvexPoly() {}
 		ConvexPoly(const ConvexPoly& c);
 		ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, double density=1.0);
-
-		static ConvexPoly box(double x, double y, double z, double dx, double dy, double dz);
-		static ConvexPoly tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4);
-		//static ConvexPoly genRamp(double x, double y, double z, double length, double height, double width);
+		ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<SurfaceDef>& surface_defs, double density = 1.0);
 
 		GaussMap computeGaussMap() const;
-		void rotate(const mthz::Quaternion q, mthz::Vec3 pivot_point);
-		void translate(mthz::Vec3 t);
+		ConvexPoly getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point=mthz::Vec3(0,0,0)) const;
+		ConvexPoly getTranslated(mthz::Vec3 t) const;
 		AABB gen_AABB() const;
 		inline const std::vector<mthz::Vec3>& getPoints() const { return points; }
 		inline const std::vector<Surface>& getSurfaces() const { return surfaces; }
@@ -62,9 +63,10 @@ namespace phyz {
 		
 	};
 
+
 	class Surface {
 	public:
-		Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID=-1);
+		Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID = -1, bool internal_surface = false);
 		Surface(const Surface& s, ConvexPoly* poly);
 		Surface();
 
@@ -83,6 +85,7 @@ namespace phyz {
 		int normal_calc_index;
 		int surfaceID;
 		int normalDirection;
+		bool internal_surface;
 	};
 
 	struct GaussArc {
@@ -90,8 +93,14 @@ namespace phyz {
 		unsigned int v2_indx;
 	};
 
+	struct GaussVert {
+		mthz::Vec3 v;
+		bool SAT_redundant;
+		bool internal_face;
+	};
+
 	struct GaussMap {
-		std::vector<mthz::Vec3> face_verts;
+		std::vector<GaussVert> face_verts;
 		std::vector<GaussArc> arcs;
 	};
 }

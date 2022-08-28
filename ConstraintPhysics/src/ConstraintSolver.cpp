@@ -231,8 +231,8 @@ namespace phyz {
 
 	void BallSocketConstraint::addVelocityChange(const NVec<3>& impulse, VelVec* va, VelVec* vb) {
 		mthz::Vec3 impulse_vec(impulse.v[0], impulse.v[1], impulse.v[2]);
-		va->lin += impulse_vec / a->getMass();
-		vb->lin -= impulse_vec / b->getMass();
+		va->lin += impulse_vec * a->getInvMass();
+		vb->lin -= impulse_vec * b->getInvMass();
 		va->ang += rotDirA * impulse_vec;
 		vb->ang -= rotDirB * impulse_vec;
 	}
@@ -352,10 +352,144 @@ namespace phyz {
 
 	void HingeConstraint::addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb) {
 		mthz::Vec3 linear_impulse_vec(impulse.v[0], impulse.v[1], impulse.v[2]);
-		va->lin += linear_impulse_vec / a->getMass();
-		vb->lin -= linear_impulse_vec / b->getMass();
+		va->lin += linear_impulse_vec * a->getInvMass();
+		vb->lin -= linear_impulse_vec * b->getInvMass();
 		va->ang += NVec3toVec3(rotDirA * impulse);
 		vb->ang -= NVec3toVec3(rotDirB * impulse);
+	}
+
+	//******************************
+	//*****SLIDER CONSTRAINT********
+	//******************************
+	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, mthz::Vec3 slider_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse)
+		: Constraint(a, b), rA(slider_point_b - a->getCOM()), rB(slider_point_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 })
+	{
+		slider_axis_a = slider_axis_a.normalize();
+		slider_axis_b = slider_axis_b.normalize();
+		slider_axis_a.getPerpendicularBasis(&u, &w);
+
+		mthz::Mat3 Ia_inv = a->getInvTensor();
+		mthz::Mat3 Ib_inv = b->getInvTensor();
+
+		mthz::Vec3 rAxU = rA.cross(u);
+		mthz::Vec3 rAxW = rA.cross(w);
+		mthz::Vec3 rBxU = rB.cross(u);
+		mthz::Vec3 rBxW = rB.cross(w);
+
+		//IMPULSE TO ROTATION MATRICES
+		{
+			mthz::Vec3 l = Ia_inv * rAxU; //left block
+			mthz::Vec3 m = Ia_inv * rAxW; //middle block
+			mthz::Mat3 r = Ia_inv;        //right block
+
+			rotDirA.v[0][0] = l.x; rotDirA.v[0][1] = m.x;
+			rotDirA.v[1][0] = l.y; rotDirA.v[1][1] = m.y;
+			rotDirA.v[2][0] = l.z; rotDirA.v[2][1] = m.z;
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					rotDirA.v[i][j + 2] = r.v[i][j];
+				}
+			}
+		}
+		{
+			mthz::Vec3 l = Ib_inv * rBxU; //left block
+			mthz::Vec3 m = Ib_inv * rBxW; //middle block
+			mthz::Mat3 r = Ib_inv;        //right block
+
+			rotDirB.v[0][0] = l.x; rotDirB.v[0][1] = m.x;
+			rotDirB.v[1][0] = l.y; rotDirB.v[1][1] = m.y;
+			rotDirB.v[2][0] = l.z; rotDirB.v[2][1] = m.z;
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					rotDirB.v[i][j + 2] = r.v[i][j];
+				}
+			}
+		}
+
+		//INVERSE INERTIA MATRIX
+		{
+			NMat<1, 3> u_dot = { u.x, u.y, u.z };
+			NMat<1, 3> w_dot = { w.x, w.y, w.z };
+			NMat<3, 3> rA_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rA));
+			NMat<3, 3> rB_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rB));
+			NMat<3, 3> Ia_inv_mat = Mat3toNMat33(Ia_inv);
+			NMat<3, 3> Ib_inv_mat = Mat3toNMat33(Ib_inv);
+
+			//top row
+			inverse_inertia.v[0][0] = a->getInvMass() + b->getInvMass() - u.dot(rA.cross(Ia_inv * (rAxU))) - u.dot(rB.cross(Ib_inv * (rBxU)));
+			inverse_inertia.v[0][1] = -u.dot(rA.cross(Ia_inv * (rAxW))) - u.dot(rB.cross(Ib_inv * (rBxW)));
+			NMat<1, 3> ur = -u_dot * rA_skew * Ia_inv_mat - u_dot * rB_skew * Ib_inv_mat;
+			inverse_inertia.v[0][2] = ur.v[0][0]; inverse_inertia.v[0][3] = ur.v[0][1]; inverse_inertia.v[0][4] = ur.v[0][2];
+
+			//middle row
+			inverse_inertia.v[1][0] = -w.dot(rA.cross(Ia_inv * (rAxU))) - w.dot(rB.cross(Ib_inv * (rBxU)));
+			inverse_inertia.v[1][1] = a->getInvMass() + b->getInvMass() - w.dot(rA.cross(Ia_inv * (rAxW))) - w.dot(rB.cross(Ib_inv * (rBxW)));
+			NMat<1, 3> mr = -w_dot * rA_skew * Ia_inv_mat - w_dot * rB_skew * Ib_inv_mat;
+			inverse_inertia.v[1][2] = mr.v[0][0]; inverse_inertia.v[1][3] = mr.v[0][1]; inverse_inertia.v[1][4] = mr.v[0][2];
+
+			mthz::Vec3 ll = Ia_inv * rAxU + Ib_inv * rBxU;
+			mthz::Vec3 lm = Ia_inv * rAxW + Ib_inv * rBxW;
+			mthz::Mat3 lr = Ia_inv + Ib_inv;
+
+			inverse_inertia.v[2][0] = ll.x; inverse_inertia.v[2][1] = lm.x;
+			inverse_inertia.v[3][0] = ll.y; inverse_inertia.v[3][1] = lm.y;
+			inverse_inertia.v[4][0] = ll.z; inverse_inertia.v[4][1] = lm.z;
+
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					inverse_inertia.v[i + 2][j + 2] = lr.v[i][j];
+				}
+			}
+
+			inverse_inertia = inverse_inertia.inverse();
+		}
+
+		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
+		{
+			double u_correct = (slider_point_b - slider_point_a).dot(u) * pos_correct_hardness;
+			double w_correct = (slider_point_b - slider_point_a).dot(w) * pos_correct_hardness;
+			mthz::Vec3 rot_correct = slider_axis_a.cross(slider_axis_b) * rot_correct_hardness;
+			psuedo_target_val = NVec<5>{ u_correct, w_correct, rot_correct.x, rot_correct.y, rot_correct.z };
+		}
+	}
+
+	void SliderConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+		addVelocityChange(impulse, va, vb);
+	}
+
+	void SliderConstraint::performPGSConstraintStep() {
+		PGS_constraint_step<5>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
+			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
+			[](const NVec<5>& impulse) { return impulse; },
+			[&](const NVec<5>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	}
+
+	void SliderConstraint::performPGSPsuedoConstraintStep() {
+		PGS_constraint_step<5>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
+			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
+			[](const NVec<5>& impulse) { return impulse; },
+			[&](const NVec<5>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	}
+
+	NVec<5> SliderConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+		double u_value = u.dot(va.lin) - u.dot(rA.cross(va.ang)) - u.dot(vb.lin) + u.dot(rB.cross(vb.ang));
+		double w_value = w.dot(va.lin) - w.dot(rA.cross(va.ang)) - w.dot(vb.lin) + w.dot(rB.cross(vb.ang));
+		mthz::Vec3 rot_value = va.ang - vb.ang;
+		return NVec<5>{ u_value, w_value, rot_value.x, rot_value.y, rot_value.z };
+	}
+
+	void SliderConstraint::addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb) {
+		va->lin += (impulse.v[0] * u + impulse.v[1] * w) * a->getInvMass();
+		vb->lin -= (impulse.v[0] * u + impulse.v[1] * w) * b->getInvMass();
+		va->ang += NVec3toVec3(rotDirA * impulse);
+		vb->ang -= NVec3toVec3(rotDirB * impulse);
+
+		NVec<5> v = getConstraintValue(*va, *vb);
+		int a = 1 + 2;
 	}
 
 	template<int n>
@@ -431,6 +565,17 @@ namespace phyz {
 		for (int i = 0; i < n_row; i++) {
 			for (int j = 0; j < n_col; j++) {
 				out.v[i][j] = this->v[i][j] - r.v[i][j];
+			}
+		}
+		return out;
+	}
+
+	template <int n_row, int n_col>
+	NMat<n_row, n_col> NMat<n_row, n_col>::operator-() const {
+		NMat<n_row, n_col> out;
+		for (int i = 0; i < n_row; i++) {
+			for (int j = 0; j < n_col; j++) {
+				out.v[i][j] = -this->v[i][j];
 			}
 		}
 		return out;

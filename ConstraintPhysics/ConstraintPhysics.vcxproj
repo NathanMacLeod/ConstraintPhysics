@@ -22,6 +22,8 @@
     <ClCompile Include="src\CollisionDetect.cpp" />
     <ClCompile Include="src\ConstraintSolver.cpp" />
     <ClCompile Include="src\ConvexPoly.cpp" />
+    <ClCompile Include="src\Geometry.cpp" />
+    <ClCompile Include="src\HACD.cpp" />
     <ClCompile Include="src\PhysicsEngine.cpp" />
     <ClCompile Include="src\RigidBody.cpp" />
   </ItemGroup>
@@ -30,6 +32,8 @@
     <ClInclude Include="src\CollisionDetect.h" />
     <ClInclude Include="src\ConstraintSolver.h" />
     <ClInclude Include="src\ConvexPoly.h" />
+    <ClInclude Include="src\Geometry.h" />
+    <ClInclude Include="src\HACD.h" />
     <ClInclude Include="src\Octree.h" />
     <ClInclude Include="src\PhysicsEngine.h" />
     <ClInclude Include="src\RigidBody.h" />

@@ -19,7 +19,20 @@ namespace phyz {
 		}
 	}
 
+	static std::vector<SurfaceDef> default_surface_defs(const std::vector<std::vector<int>>& surface_vertex_indices) {
+		std::vector<SurfaceDef> out;
+		out.reserve(surface_vertex_indices.size());
+		for (const std::vector<int>& indices : surface_vertex_indices) {
+			out.push_back(SurfaceDef{ indices, false });
+		}
+		return out;
+	}
+
 	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, double density)
+		: ConvexPoly(points, default_surface_defs(surface_vertex_indices), density)
+	{}
+
+	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<SurfaceDef>& surface_vertex_indices, double density)
 		: points(points), id(next_id++), density(density)
 	{
 		assert(points.size() >= 4);
@@ -34,13 +47,13 @@ namespace phyz {
 		//create surfaces
 		int surfaceID = points.size();
 		surfaces.reserve(surface_vertex_indices.size());
-		for (const std::vector<int> surface_indices : surface_vertex_indices) {
+		for (const SurfaceDef& s : surface_vertex_indices) {
 			#ifndef NDEBUG
-			for (int i : surface_indices) {
+			for (int i : s.surface_vertex_indices) {
 				assert(i >= 0 && i < points.size());
 			}
 			#endif
-			surfaces.push_back(Surface(surface_indices, this, interior_point, surfaceID++));
+			surfaces.push_back(Surface(s.surface_vertex_indices, this, interior_point, surfaceID++, s.internal_surface));
 		}
 
 		//create edges
@@ -96,107 +109,48 @@ namespace phyz {
 		return { min, max };
 	}
 
-	void ConvexPoly::rotate(const mthz::Quaternion q, mthz::Vec3 pivot_point) {
+	ConvexPoly ConvexPoly::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
+		ConvexPoly copy(*this);
+
 		mthz::Mat3 rotMat = q.getRotMatrix();
 		for (int i = 0; i < points.size(); i++) {
-			points[i] = pivot_point + rotMat * (points[i] - pivot_point);
+			copy.points[i] = pivot_point + rotMat * (points[i] - pivot_point);
 		}
-		interior_point = pivot_point + rotMat * (interior_point - pivot_point);
+		copy.interior_point = pivot_point + rotMat * (interior_point - pivot_point);
+
+		return copy;
 	}
 
-	void ConvexPoly::translate(mthz::Vec3 t) {
+	ConvexPoly ConvexPoly::getTranslated(mthz::Vec3 t) const {
+		ConvexPoly copy(*this);
+
 		for (int i = 0; i < points.size(); i++) {
-			points[i] += t;
+			copy.points[i] += t;
 		}
-		interior_point += t;
+		copy.interior_point += t;
+
+		return copy;
 	}
-
-	ConvexPoly ConvexPoly::box(double x, double y, double z, double dx, double dy, double dz) {
-
-		std::vector<mthz::Vec3> points(8);
-		std::vector<std::vector<int>> surface_indices(6);
-
-		points[0] = (mthz::Vec3(x, y, z)); //0
-		points[1] = (mthz::Vec3(x + dx, y, z)); //1
-		points[2] = (mthz::Vec3(x + dx, y + dy, z)); //2
-		points[3] = (mthz::Vec3(x, y + dy, z)); //3
-
-		points[4] = (mthz::Vec3(x, y, z + dz)); //4
-		points[5] = (mthz::Vec3(x + dx, y, z + dz)); //5
-		points[6] = (mthz::Vec3(x + dx, y + dy, z + dz)); //6
-		points[7] = (mthz::Vec3(x, y + dy, z + dz)); //7
-
-		surface_indices[0] = { 0, 3, 2, 1 };
-		surface_indices[1] = { 0, 1, 5, 4 };
-		surface_indices[2] = { 1, 2, 6, 5 };
-		surface_indices[3] = { 2, 3, 7, 6 };
-		surface_indices[4] = { 3, 0, 4, 7 };
-		surface_indices[5] = { 4, 5, 6, 7 };
-
-		return ConvexPoly(points, surface_indices);
-	}
-
-	ConvexPoly ConvexPoly::tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4) {
-		ConvexPoly out;
-
-		const double rt3 = sqrt(3.0);
-
-		std::vector<mthz::Vec3> points = { p1, p2, p3, p4 };
-		std::vector<std::vector<int>> surfaces(4);
-		
-		surfaces[0] = { 0, 1, 2 };
-		surfaces[1] = { 1, 2, 3 };
-		surfaces[2] = { 2, 3, 0 };
-		surfaces[3] = { 3, 0, 1 };
-
-		return ConvexPoly(points, surfaces);
-	}
-
-	//ConvexPoly ConvexPoly::genRamp(double x, double y, double z, double length, double height, double width) {
-	//	ConvexPoly out;
-
-	//	const double rt3 = sqrt(3.0);
-
-	//	points = std::vector<mthz::Vec3>(6);
-	//	surfaces = std::vector<Surface>(5);
-
-	//	points[0] = (mthz::Vec3(x, y, z)); //0
-	//	points[1] = (mthz::Vec3(x + length, y, z)); //1
-	//	points[2] = (mthz::Vec3(x, y + height, z)); //2
-	//	points[3] = (mthz::Vec3(x, y, z + width)); //3
-	//	points[4] = (mthz::Vec3(x + length, y, z + width)); //4
-	//	points[5] = (mthz::Vec3(x, y + height, z + width)); //5
-	//	mthz::Vec3 mid = mthz::Vec3(x + length/4.0, y + height/4.0, z + width/2.0);
-	//	std::vector<int> indexes3 = std::vector<int>(3);
-	//	std::vector<int> indexes4 = std::vector<int>(4);
-
-	//	//indexes3[0] = 0; indexes3[1] = 2; indexes3[2] = 1;
-	//	surfaces[0] = (Surface(indexes3, &out, mid));
-
-	//	//indexes3[0] = 3; indexes3[1] = 4; indexes3[2] = 5;
-	//	surfaces[1] = (Surface(indexes3, &out, mid));
-
-	//	//indexes4[0] = 0; indexes4[1] = 1; indexes4[2] = 4; indexes4[3] = 3;
-	//	surfaces[2] = (Surface(indexes4, &out, mid));
-
-	//	//indexes4[0] = 1; indexes4[1] = 2; indexes4[2] = 5; indexes4[3] = 4;
-	//	surfaces[3] = (Surface(indexes4, &out, mid));
-
-	//	//indexes4[0] = 2; indexes4[1] = 0; indexes4[2] = 3; indexes4[3] = 5;
-	//	surfaces[4] = (Surface(indexes4, &out, mid));
-
-	//	interior_point = mid;
-	//	compute_edges();
-	//	assign_IDs();
-
-	//	return out;
-	//}
 
 	GaussMap ConvexPoly::computeGaussMap() const {
 		GaussMap g;
 		for (int i = 0; i < surfaces.size(); i++) {
 			const Surface& s1 = surfaces[i];
-			g.face_verts.push_back(s1.normal());
+
+			bool redundant = false;
+			for (GaussVert& g : g.face_verts) {
+				if (abs(s1.normal().dot(g.v)) > 0.999) {
+					if (g.internal_face) {
+						g.SAT_redundant = true; //in case where one face is internal (aka normal is not valid for collision resolution)
+												//then the internal one should be the one marked redundant to make sure that normal is still tested
+					}
+					else {
+						redundant = true;
+					}
+					break;
+				}
+			}
+			g.face_verts.push_back(GaussVert{ s1.normal(), redundant, s1.internal_surface });
 
 			for (int j = i + 1; j < surfaces.size(); j++) {
 				const Surface& s2 = surfaces[j];
@@ -236,8 +190,8 @@ namespace phyz {
 		poly = nullptr;
 	}
 
-	Surface::Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID)
-		: point_indexes(point_indexes), poly(poly), surfaceID(surfaceID)
+	Surface::Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID, bool internal_surface)
+		: point_indexes(point_indexes), poly(poly), surfaceID(surfaceID), internal_surface(internal_surface)
 	{
 		assert(point_indexes.size() >= 3);
 
@@ -247,7 +201,7 @@ namespace phyz {
 
 	Surface::Surface(const Surface& s, ConvexPoly* poly)
 		: point_indexes(s.point_indexes), normalDirection(s.normalDirection), poly(poly), surfaceID(s.surfaceID),
-		normal_calc_index(s.normal_calc_index)
+		normal_calc_index(s.normal_calc_index), internal_surface(s.internal_surface)
 	{}
 
 	Surface::Surface() {
@@ -299,7 +253,7 @@ namespace phyz {
 			int i2 = (i + 1 == n_points()) ? 0 : i+1;
 
 			double p1_u, p1_w, p2_u, p2_w;
-;			mthz::Vec3 p1 = getPointI(i1);
+			mthz::Vec3 p1 = getPointI(i1);
 			mthz::Vec3 p2 = getPointI(i2);
 			
 			p1_u = p1.dot(u);

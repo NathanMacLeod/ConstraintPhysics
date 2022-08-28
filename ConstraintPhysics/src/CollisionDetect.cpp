@@ -173,7 +173,15 @@ namespace phyz {
 		ExtremaInfo e1 = findExtrema(a, n);
 		ExtremaInfo e2 = findExtrema(b, n);
 
-		return { e1.max_p, e2.min_p, e1.max_pID, e2.min_pID, n, e1.max_val - e2.min_val };
+		double forward_pen_depth = e1.max_val - e2.min_val;
+		double reverse_pen_depth = e2.max_val - e1.min_val;
+
+		if (forward_pen_depth < reverse_pen_depth) {
+			return CheckNormResults{ e1.max_p, e2.min_p, e1.max_pID, e2.min_pID, n, forward_pen_depth };
+		}
+		else {
+			return CheckNormResults{ e1.min_p, e2.max_p, e1.min_pID, e2.max_pID, -n, reverse_pen_depth };
+		}
 	}
 
 	Manifold SAT(const ConvexPoly& a, const GaussMap& ag, const ConvexPoly& b, const GaussMap& bg) {
@@ -181,33 +189,37 @@ namespace phyz {
 		double pen_depth;
 		CheckNormResults min_pen = { mthz::Vec3(), mthz::Vec3(), -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
-		for (const mthz::Vec3& n : ag.face_verts) {
-			CheckNormResults x = sat_checknorm(a, b, n);
-			if (x.seprAxisExists()) {
-				out.max_pen_depth = -1;
-				return out;
-			}
-			else if (x.pen_depth < min_pen.pen_depth) {
-				min_pen = x;
+		for (const GaussVert& g : ag.face_verts) {
+			if (!g.SAT_redundant) {
+				CheckNormResults x = sat_checknorm(a, b, g.v);
+				if (x.seprAxisExists()) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+				else if (!g.internal_face && x.pen_depth < min_pen.pen_depth) {
+					min_pen = x;
+				}
 			}
 		}
-		for (const mthz::Vec3& n : bg.face_verts) {
-			CheckNormResults x = sat_checknorm(a, b, n);
-			if (x.seprAxisExists()) {
-				out.max_pen_depth = -1;
-				return out;
-			}
-			else if (x.pen_depth < min_pen.pen_depth) {
-				min_pen = x;
+		for (const GaussVert& g : bg.face_verts) {
+			if (!g.SAT_redundant) {
+				CheckNormResults x = sat_checknorm(a, b, g.v);
+				if (x.seprAxisExists()) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+				else if (!g.internal_face && x.pen_depth < min_pen.pen_depth) {
+					min_pen = x;
+				}
 			}
 		}
 		for (const GaussArc& arc1 : ag.arcs) {
 			for (const GaussArc& arc2 : bg.arcs) {
 
-				mthz::Vec3 a1 = ag.face_verts[arc1.v1_indx];
-				mthz::Vec3 a2 = ag.face_verts[arc1.v2_indx];
-				mthz::Vec3 b1 = -bg.face_verts[arc2.v1_indx];
-				mthz::Vec3 b2 = -bg.face_verts[arc2.v2_indx];
+				mthz::Vec3 a1 = ag.face_verts[arc1.v1_indx].v;
+				mthz::Vec3 a2 = ag.face_verts[arc1.v2_indx].v;
+				mthz::Vec3 b1 = -bg.face_verts[arc2.v1_indx].v;
+				mthz::Vec3 b2 = -bg.face_verts[arc2.v2_indx].v;
 
 				//check arcs arent on opposite hemispheres
 				if ((a1 + a2).dot(b1 + b2) <= 0) {
@@ -236,7 +248,7 @@ namespace phyz {
 					out.max_pen_depth = -1;
 					return out;
 				}
-				else if (x.pen_depth < min_pen.pen_depth) {
+				else if (false && x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
 				}
 			}

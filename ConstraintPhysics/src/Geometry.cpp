@@ -1,0 +1,195 @@
+#include "Geometry.h"
+
+namespace phyz {
+
+	Geometry::Geometry(const std::initializer_list<Geometry>& in) {
+		for (const Geometry& g : in) {
+			polyhedra.reserve(g.polyhedra.size());
+			for (const ConvexPoly& c : g.polyhedra) {
+				polyhedra.push_back(c);
+			}
+		}
+	}
+
+	Geometry Geometry::box(mthz::Vec3 pos, double dx, double dy, double dz, double density) {
+
+		std::vector<mthz::Vec3> points(8);
+		std::vector<std::vector<int>> surface_indices(6);
+
+		points[0] = (mthz::Vec3(pos.x, pos.y, pos.z)); //0
+		points[1] = (mthz::Vec3(pos.x + dx, pos.y, pos.z)); //1
+		points[2] = (mthz::Vec3(pos.x + dx, pos.y + dy, pos.z)); //2
+		points[3] = (mthz::Vec3(pos.x, pos.y + dy, pos.z)); //3
+
+		points[4] = (mthz::Vec3(pos.x, pos.y, pos.z + dz)); //4
+		points[5] = (mthz::Vec3(pos.x + dx, pos.y, pos.z + dz)); //5
+		points[6] = (mthz::Vec3(pos.x + dx, pos.y + dy, pos.z + dz)); //6
+		points[7] = (mthz::Vec3(pos.x, pos.y + dy, pos.z + dz)); //7
+
+		surface_indices[0] = { 0, 3, 2, 1 };
+		surface_indices[1] = { 0, 1, 5, 4 };
+		surface_indices[2] = { 1, 2, 6, 5 };
+		surface_indices[3] = { 2, 3, 7, 6 };
+		surface_indices[4] = { 3, 0, 4, 7 };
+		surface_indices[5] = { 4, 5, 6, 7 };
+
+		return Geometry(ConvexPoly(points, surface_indices, density));
+	}
+
+	Geometry Geometry::tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4, double density) {
+		ConvexPoly out;
+
+		const double rt3 = sqrt(3.0);
+
+		std::vector<mthz::Vec3> points = { p1, p2, p3, p4 };
+		std::vector<std::vector<int>> surface_indices(4);
+
+		surface_indices[0] = { 0, 1, 2 };
+		surface_indices[1] = { 1, 2, 3 };
+		surface_indices[2] = { 2, 3, 0 };
+		surface_indices[3] = { 3, 0, 1 };
+
+		return Geometry(ConvexPoly(points, surface_indices, density));
+	}
+
+	Geometry Geometry::triPrism(double x1, double z1, double x2, double z2, double x3, double z3, double y, double height, double density) {
+		std::vector<mthz::Vec3> points(6);
+		std::vector<std::vector<int>> surface_indices(5);
+
+		points[0] = (mthz::Vec3(x1, y, z1)); //0
+		points[1] = (mthz::Vec3(x2, y, z2)); //1
+		points[2] = (mthz::Vec3(x3, y, z3)); //2
+
+		points[3] = (mthz::Vec3(x1, y + height, z1)); //3
+		points[4] = (mthz::Vec3(x2, y + height, z2)); //4
+		points[5] = (mthz::Vec3(x3, y + height, z3)); //5
+
+		surface_indices[0] = { 0, 1, 2 };
+		surface_indices[1] = { 0, 1, 4, 3 };
+		surface_indices[2] = { 1, 2, 5, 4 };
+		surface_indices[3] = { 2, 0, 3, 5 };
+		surface_indices[4] = { 3, 4, 5 };
+
+		return Geometry(ConvexPoly(points, surface_indices));
+	}
+
+	Geometry Geometry::cylinder(mthz::Vec3 pos, double radius, double height, int detail, double density) {
+		int n_faces = 3 + detail;
+		std::vector<mthz::Vec3> points(n_faces * 2);
+		std::vector<std::vector<int>> surface_indices(2 + n_faces);
+
+		for (int i = 0; i < n_faces; i++) {
+			double theta = 2 * 3.1415926535 * i / n_faces;
+			points[i] = mthz::Vec3(pos.x + radius * cos(theta), pos.y, pos.z + radius * sin(theta));
+			points[i + n_faces] = mthz::Vec3(pos.x + radius * cos(theta), pos.y + height, pos.z + radius * sin(theta));
+		}
+
+		for (int i = 0; i < n_faces; i++) {
+			surface_indices[0].push_back(n_faces - 1 - i);
+			surface_indices[1].push_back(n_faces + i);
+		}
+
+		for (int i = 0; i < n_faces; i++) {
+			int j = (i + 1 == n_faces) ? 0 : i + 1;
+			surface_indices[i + 2] = { i, j, n_faces + j, n_faces + i };
+		}
+
+		return ConvexPoly(points, surface_indices, density);
+	}
+
+	Geometry Geometry::ring(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int detail, double density) {
+		int n_faces = 3 + detail;
+		std::vector<mthz::Vec3> points(4 * n_faces);
+		//std::vector<std::vector<int>> surface_indices(4 * n_faces);
+
+		Geometry out;
+		for (int i = 0; i < n_faces; i++) {
+			double theta = 2 * 3.1415926535 * i / n_faces;
+			points[i + 0 * n_faces] = mthz::Vec3(pos.x + inner_radius * cos(theta), pos.y, pos.z + inner_radius * sin(theta)); //lower inner radius
+			points[i + 1 * n_faces] = mthz::Vec3(pos.x + outer_radius * cos(theta), pos.y, pos.z + outer_radius * sin(theta)); //lower outer radius
+			points[i + 2 * n_faces] = mthz::Vec3(pos.x + inner_radius * cos(theta), pos.y + height, pos.z + inner_radius * sin(theta)); //upper inner radius
+			points[i + 3 * n_faces] = mthz::Vec3(pos.x + outer_radius * cos(theta), pos.y + height, pos.z + outer_radius * sin(theta)); //upper outer radius
+ 		}
+
+		for (int i = 0; i < n_faces; i++) {
+			int j = (i + 1 == n_faces) ? 0 : i + 1;
+			std::vector<mthz::Vec3> segment_points = {
+				points[i], points[i + n_faces], points[i + 2 * n_faces], points[i + 3 * n_faces],
+				points[j], points[j + n_faces], points[j + 2 * n_faces], points[j + 3 * n_faces]
+			};
+
+			std::vector<SurfaceDef> surface_indices = {
+				{ { 0, 1, 5, 4 }, false }, //underside
+				{ { 1, 5, 7, 3 }, false }, //outside
+				{ { 2, 3, 7, 6 }, false }, //upperside
+				{ { 0, 2, 6, 4 }, false }, //inner side
+				{ { 0, 1, 3, 2 }, true }, //inside edge 2
+				{ { 4, 5, 7, 6 }, true }  //inside edge 1
+			};
+
+			out = out.merge(out, Geometry(ConvexPoly(segment_points, surface_indices, density)));
+		}
+
+		return out;
+	}
+
+	Geometry Geometry::gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity, double density) {
+
+		Geometry wheel = cylinder(pos, radius, height, 2 * n_teeth - 3, density);
+		double tooth_width = radius * 3.1415926535 / (n_teeth);
+		Geometry tooth = box(pos + mthz::Vec3(radius, 0, 0), tooth_length, height, tooth_width, density);
+
+		double d_theta = 2 * 3.1415926535 / (n_teeth);
+		tooth = tooth.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
+		for (int i = 0; i < n_teeth; i++) {
+			tooth = tooth.getRotated(mthz::Quaternion(d_theta, mthz::Vec3(0, 1, 0)), pos);
+			wheel = merge(wheel, tooth);
+		}
+
+		return wheel;
+	}
+
+	Geometry Geometry::bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, double density) {
+		Geometry wheel = cylinder(pos, radius, height, 2 * n_teeth - 3, density);
+		Geometry tooth = box(pos + mthz::Vec3(radius - tooth_radius, height, 0), tooth_radius, height, tooth_width, density);
+
+		double d_theta = 2 * 3.1415926535 / (n_teeth);
+		tooth = tooth.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
+		for (int i = 0; i < n_teeth; i++) {
+			tooth = tooth.getRotated(mthz::Quaternion(d_theta, mthz::Vec3(0, 1, 0)), pos);
+			wheel = merge(wheel, tooth);
+		}
+
+		return wheel;
+	}
+
+	Geometry Geometry::merge(const Geometry& g1, const Geometry& g2) {
+		Geometry out;
+		out.polyhedra.reserve(g1.polyhedra.size() + g2.polyhedra.size());
+		for (const ConvexPoly& c : g1.polyhedra) {
+			out.polyhedra.push_back(c);
+		}
+		for (const ConvexPoly& c : g2.polyhedra) {
+			out.polyhedra.push_back(c);
+		}
+		return out;
+	}
+
+	Geometry Geometry::getTranslated(const mthz::Vec3 v) const {
+		Geometry out;
+		out.polyhedra.reserve(polyhedra.size());
+		for (const ConvexPoly& c : polyhedra) {
+			out.polyhedra.push_back(c.getTranslated(v));
+		}
+		return out;
+	}
+
+	Geometry Geometry::getRotated(const mthz::Quaternion q, const mthz::Vec3& rot_point) const {
+		Geometry out;
+		out.polyhedra.reserve(polyhedra.size());
+		for (const ConvexPoly& c : polyhedra) {
+			out.polyhedra.push_back(c.getRotated(q, rot_point));
+		}
+		return out;
+	}
+}
