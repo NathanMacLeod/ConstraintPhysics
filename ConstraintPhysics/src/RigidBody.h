@@ -25,6 +25,7 @@ namespace phyz {
 		double getInvMass();
 		mthz::Mat3 getInvTensor();
 		bool getAsleep() { return asleep;  }
+		bool getIsFixed() { return fixed; }
 		mthz::Vec3 getPos() { return getTrackedP(origin_pkey); }
 		mthz::Vec3 getCOM() { return com; }
 		mthz::Quaternion getOrientation() { return orientation; }

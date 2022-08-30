@@ -37,6 +37,10 @@ namespace mthz {
 				v.x * (2 * i * k - 2 * r * j) + v.y * (2 * j * k + 2 * r * i) + v.z * (r * r - i * i - j * j + k * k));
 		}
 
+		Vec3 rotateAbout(Vec3 v, Vec3 p) {
+			return applyRotation(v - p) + p;
+		}
+
 		Mat3 getRotMatrix() const {
 			Mat3 mat;
 			mat.v[0][0] = r * r + i * i - j * j - k * k; mat.v[0][1] = 2 * i * j - 2 * r * k;         mat.v[0][2] = 2 * i * k + 2 * r * j;

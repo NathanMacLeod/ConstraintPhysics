@@ -5,7 +5,7 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel = 15, int n_itr_pos = 10);
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel = 40, int n_itr_pos = 25);
 
 	template <int n>
 	struct NVec {
@@ -176,6 +176,30 @@ namespace phyz {
 		NMat<5, 5> inverse_inertia;
 		NVec<5> target_val;
 		NVec<5> psuedo_target_val;
+	};
+
+	class MotorConstraint : public Constraint {
+	public:
+		MotorConstraint() : impulse(NVec<1>{0.0}) {}
+		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+
+		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
+		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		void performPGSConstraintStep() override;
+		void performPGSPsuedoConstraintStep() override;
+
+		NVec<1> getConstraintValue(const VelVec& va, const VelVec& vb);
+		void addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb);
+
+		NVec<1> impulse;
+	private:
+		double max_torque;
+		mthz::Vec3 motor_axis;
+		mthz::Vec3 rotDirA;
+		mthz::Vec3 rotDirB;
+		NMat<1, 1> inverse_inertia;
+		NVec<1> target_val;
+		NVec<1> psuedo_target_val;
 	};
 
 	class SliderConstraint : public Constraint {

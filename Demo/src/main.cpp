@@ -233,146 +233,284 @@ int main() {
 		bodies.push_back({ m2, r2 });
 
 		phyz::PhysicsEngine::MotorID throttle;
-		{
+		phyz::PhysicsEngine::MotorID steering;
+		//{
 			mthz::Vec3 pos(0, 1, 0);
 			
-			mthz::Vec3 base_dim(1, 0.2, 1);
+			mthz::Vec3 base_dim(1, 0.1, 1);
 			phyz::Geometry base = phyz::Geometry::box(pos, base_dim.x, base_dim.y, base_dim.z);
 
 			double base_gear_radius = 0.15;
-			double base_gear_tooth_size = 0.15;
-			double base_gear_height = 0.2;
-			int base_gear_teeth = 10;
+			double base_gear_tooth_size = 0.1;
+			double base_gear_height = 0.1;
+			int base_gear_teeth = 8;
 			mthz::Vec3 base_gear_position = pos + mthz::Vec3(base_dim.x / 2.0, base_dim.y, base_dim.z / 2.0);
-			phyz::Geometry base_gear = phyz::Geometry::gear(base_gear_position, base_gear_radius, base_gear_tooth_size, base_dim.y, base_gear_teeth);
+			phyz::Geometry base_gear = phyz::Geometry::gear(base_gear_position, base_gear_radius, base_gear_tooth_size, base_gear_height, base_gear_teeth, true, 5);
 
-			double transmission_gear1_radius = 0.3;
-			double transmission_gear1_tooth_size = 0.15;
-			double transmission_gear1_height = 0.2;
+			double transmission_gear1_radius = 0.29;
+			double transmission_gear1_tooth_size = 0.1;
+			double transmission_gear1_height = 0.1;
 			int transmission_gear1_teeth = 15;
 			mthz::Vec3 transmission_gear1_position = base_gear_position + mthz::Vec3(base_gear_radius + base_gear_tooth_size / 2.0, base_gear_height / 2.0 + transmission_gear1_tooth_size + transmission_gear1_radius, 0);
-			phyz::Geometry transmission_gear1 = phyz::Geometry::gear(transmission_gear1_position, transmission_gear1_radius, transmission_gear1_tooth_size, transmission_gear1_height, transmission_gear1_teeth)
+			phyz::Geometry transmission_gear1 = phyz::Geometry::gear(transmission_gear1_position, transmission_gear1_radius, transmission_gear1_tooth_size, transmission_gear1_height, transmission_gear1_teeth, false)
 				.getRotated(mthz::Quaternion(-3.1415926535/2.0, mthz::Vec3(0, 0, 1)), transmission_gear1_position);
 
-			double drive_shaft_length = 1.5;
+			double drive_shaft_length = 1;
 			double drive_shaft_width = 0.10;
 			mthz::Vec3 drive_shaft_position = transmission_gear1_position + mthz::Vec3(transmission_gear1_height, 0, 0);
 			phyz::Geometry drive_shaft = phyz::Geometry::box(drive_shaft_position + mthz::Vec3(0, -drive_shaft_width / 2.0, -drive_shaft_width / 2.0), drive_shaft_length, drive_shaft_width, drive_shaft_width);
 
 			double transmission_gear2_radius = 0.15;
-			double transmission_gear2_tooth_size = 0.15;
-			double transmission_gear2_height = 0.2;
+			double transmission_gear2_tooth_size = 0.075;
+			double transmission_gear2_height = 0.1;
 			int transmission_gear2_teeth = 10;
 			mthz::Vec3 transmission_gear2_position = drive_shaft_position + mthz::Vec3(drive_shaft_length, 0, 0);
-			phyz::Geometry transmission_gear2 = phyz::Geometry::gear(transmission_gear2_position, transmission_gear2_radius, transmission_gear2_tooth_size, transmission_gear2_height, transmission_gear2_teeth)
+			phyz::Geometry transmission_gear2 = phyz::Geometry::gear(transmission_gear2_position, transmission_gear2_radius, transmission_gear2_tooth_size, transmission_gear2_height, transmission_gear2_teeth, true)
 				.getRotated(mthz::Quaternion(-3.1415926535 / 2.0, mthz::Vec3(0, 0, 1)), transmission_gear2_position);
 
-			double differential_gear1_radius = 0.3;
-			double differential_gear1_height = 0.15;
-			double differential_gear1_tooth_size = 0.2;
-			int differential_gear1_teeth = 15;
-			mthz::Vec3 differential_gear1_position = transmission_gear2_position + mthz::Vec3(differential_gear1_radius + differential_gear1_tooth_size + transmission_gear1_height/2.0, 0, transmission_gear2_radius + transmission_gear2_tooth_size / 2.0 + differential_gear1_height);
-			phyz::Geometry differential_gear1 = phyz::Geometry::gear(differential_gear1_position, differential_gear1_radius, differential_gear1_tooth_size, differential_gear1_height, differential_gear1_teeth)
-				.getRotated(mthz::Quaternion(-3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), differential_gear1_position);
+			double differential_gear1_radius = 0.45;
+			double differential_gear1_height = 0.1;
+			double differential_gear1_tooth_height = 0.075;
+			double differential_gear1_tooth_radius = 0.1;
+			double differential_gear1_tooth_width = 3.1415926535 * transmission_gear2_radius / transmission_gear2_teeth;
+			int differential_gear1_teeth = 22;
+			mthz::Vec3 differential_center = transmission_gear2_position + mthz::Vec3(differential_gear1_radius, 0, 0);
+			mthz::Vec3 differential_gear1_position = differential_center + mthz::Vec3(0, 0, transmission_gear2_radius + transmission_gear2_tooth_size / 4.0 + differential_gear1_height + differential_gear1_tooth_height);
+			phyz::Geometry differential_gear1 = phyz::Geometry::bevelGear(differential_gear1_position, differential_gear1_radius, differential_gear1_tooth_radius, differential_gear1_tooth_width, 
+				differential_gear1_tooth_height, differential_gear1_height, differential_gear1_teeth, false, 0.5).getRotated(mthz::Quaternion(-3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), differential_gear1_position);
+
+			double differential_arm_radius = 0.6 * differential_gear1_radius;
+			double differential_arm_width = 0.05;
+			double differential_arm_length = differential_gear1_position.z - differential_gear1_height - drive_shaft_position.z + differential_arm_width/2.0;
+			mthz::Vec3 differential_arm1_position = differential_gear1_position + mthz::Vec3(0, differential_arm_radius, -differential_gear1_height);
+			mthz::Vec3 differential_arm2_position = differential_gear1_position + mthz::Vec3(0, -differential_arm_radius, -differential_gear1_height);
+			phyz::Geometry differential_arm1 = phyz::Geometry::box(differential_arm1_position - mthz::Vec3(differential_arm_width/2.0, differential_arm_width/2.0, 0), differential_arm_width, differential_arm_width, -differential_arm_length);
+			phyz::Geometry differential_arm2 = phyz::Geometry::box(differential_arm2_position - mthz::Vec3(differential_arm_width/2.0, differential_arm_width/2.0, 0), differential_arm_width, differential_arm_width, -differential_arm_length);
+
+			double differential_gear2_height = 0.04;
+			double differential_gear2_radius = 0.1;
+			double differential_gear2_gap = 0.01;
+			mthz::Vec3 differential_elbow1_position = mthz::Vec3(differential_arm1_position.x, differential_arm1_position.y - differential_arm_width / 2.0, drive_shaft_position.z);
+			double differential_elbow_height = differential_elbow1_position.y - differential_center.y - differential_gear2_height - differential_gear2_radius - differential_gear2_gap;
+			phyz::Geometry differential_elbow1 = phyz::Geometry::box(differential_elbow1_position - mthz::Vec3(differential_arm_width / 2.0, 0, differential_arm_width / 2.0), differential_arm_width, -differential_elbow_height, differential_arm_width);
+
+			mthz::Vec3 differential_elbow2_position = mthz::Vec3(differential_arm2_position.x, differential_arm2_position.y + differential_arm_width / 2.0, drive_shaft_position.z);
+			phyz::Geometry differential_elbow2 = phyz::Geometry::box(differential_elbow2_position - mthz::Vec3(differential_arm_width / 2.0, 0, differential_arm_width / 2.0), differential_arm_width, differential_elbow_height, differential_arm_width);
+
+
+			double differential_gear2_tooth_size = 0.05;
+			double differential_gear2_teeth = 12;
+			mthz::Vec3 differential_gear2_position = differential_elbow1_position + mthz::Vec3(0, -differential_elbow_height, 0);
+			phyz::Geometry differential_gear2 = phyz::Geometry::gear(differential_gear2_position, differential_gear2_radius, differential_gear2_tooth_size, differential_gear2_height, differential_gear2_teeth, false, 8)
+				.getRotated(mthz::Quaternion(3.1415926535, mthz::Vec3(0, 0, 1)), differential_gear2_position);
+
+			mthz::Vec3 differential_gear3_position = differential_elbow2_position + mthz::Vec3(0, differential_elbow_height, 0);
+			phyz::Geometry differential_gear3 = phyz::Geometry::gear(differential_gear3_position, differential_gear2_radius, differential_gear2_tooth_size, differential_gear2_height, differential_gear2_teeth, false, 8);
+
+			double axle1_gear_radius = differential_gear2_radius;
+			double axle1_gear_tooth_size = differential_gear2_tooth_size;
+			double axle1_gear_height = differential_gear2_height;
+			int axle1_gear_teeth = differential_gear2_teeth;
+			mthz::Vec3 axle1_gear_position = differential_center + mthz::Vec3(0, 0, differential_gear2_radius + differential_gear2_tooth_size / 4.0);
+			phyz::Geometry axle1_gear = phyz::Geometry::gear(axle1_gear_position, axle1_gear_radius, axle1_gear_tooth_size, axle1_gear_height, axle1_gear_teeth, true, 0.1)
+				.getRotated(mthz::Quaternion(3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), axle1_gear_position);
+
+			mthz::Vec3 axle2_gear_position = differential_center - mthz::Vec3(0, 0, differential_gear2_radius + differential_gear2_tooth_size / 4.0);
+			phyz::Geometry axle2_gear = phyz::Geometry::gear(axle2_gear_position, axle1_gear_radius, axle1_gear_tooth_size, axle1_gear_height, axle1_gear_teeth, true, 0.1)
+				.getRotated(mthz::Quaternion(-3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), axle2_gear_position);
+
+			double axle1_width = 0.1;
+			double axle1_length = 0.75;
+			mthz::Vec3 axle1_position = axle1_gear_position + mthz::Vec3(0, 0, axle1_gear_height);
+			phyz::Geometry axle1 = phyz::Geometry::box(axle1_position + mthz::Vec3(-axle1_width / 2.0, -axle1_width / 2.0, 0), axle1_width, axle1_width, axle1_length, 0.1);
+
+			mthz::Vec3 axle2_position = axle2_gear_position - mthz::Vec3(0, 0, axle1_gear_height);
+			phyz::Geometry axle2 = phyz::Geometry::box(axle2_position + mthz::Vec3(-axle1_width / 2.0, -axle1_width / 2.0, 0), axle1_width, axle1_width, -axle1_length, 0.1);
+
+			double rear_wheel1_radius = 0.75;
+			double rear_wheel1_height = 0.15;
+			mthz::Vec3 rear_wheel1_position = axle1_position + mthz::Vec3(0, 0, axle1_length);
+			phyz::Geometry rear_wheel1 = phyz::Geometry::cylinder(rear_wheel1_position, rear_wheel1_radius, rear_wheel1_height, 20, 0.1)
+				.getRotated(mthz::Quaternion(3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), rear_wheel1_position);
+
+			mthz::Vec3 rear_wheel2_position = axle2_position - mthz::Vec3(0, 0, axle1_length);
+			phyz::Geometry rear_wheel2 = phyz::Geometry::cylinder(rear_wheel2_position, rear_wheel1_radius, rear_wheel1_height, 20, 0.1)
+				.getRotated(mthz::Quaternion(-3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), rear_wheel2_position);
+
+			double steering_wheel_radius = 0.2;
+			double steering_wheel_width = 0.1;
+			mthz::Vec3 steering_wheel_position = pos + mthz::Vec3(1.25, 1.5, 0.75);
+			mthz::Quaternion steering_wheel_orientation(1.2 * 3.1415926535 / 2.0, mthz::Vec3(0, 0, 1));
+			phyz::Geometry steering_wheel_w = phyz::Geometry::cylinder(steering_wheel_position, steering_wheel_radius, steering_wheel_width);
+
+			double steering_wheel_rod1_length = 0.5;
+			double steering_wheel_rod1_width = 0.1;
+			mthz::Vec3 steering_wheel_rod1_position = steering_wheel_position + mthz::Vec3(0, steering_wheel_width, 0);
+			phyz::Geometry steering_wheel_rod1 = phyz::Geometry::box(steering_wheel_rod1_position - mthz::Vec3(steering_wheel_rod1_width/2.0, 0, steering_wheel_rod1_width/2.0), 
+				steering_wheel_rod1_width, steering_wheel_rod1_length, steering_wheel_rod1_width);
+
+			double sw_joint1_arm1_length = 0.1;
+			double sw_joint1_arm1_width = steering_wheel_rod1_width * 0.5;
+			double sw_joint1_arm1_height = 0.015;
+			mthz::Vec3 sw_joint1_arm1_position = steering_wheel_rod1_position + mthz::Vec3(steering_wheel_rod1_width/2.0, steering_wheel_rod1_length, 0);
+			phyz::Geometry sw_joint1_arm1 = phyz::Geometry::box(sw_joint1_arm1_position + mthz::Vec3(-sw_joint1_arm1_height, 0, -sw_joint1_arm1_width / 2.0), sw_joint1_arm1_height, sw_joint1_arm1_length, sw_joint1_arm1_width);
+
+			mthz::Vec3 sw_joint1_arm2_position = steering_wheel_rod1_position + mthz::Vec3(-steering_wheel_rod1_width/2.0, steering_wheel_rod1_length, 0);
+			phyz::Geometry sw_joint1_arm2 = phyz::Geometry::box(sw_joint1_arm2_position + mthz::Vec3(0, 0, -sw_joint1_arm1_width / 2.0), sw_joint1_arm1_height, sw_joint1_arm1_length, sw_joint1_arm1_width);
+
+			double sw_joint1_pivot_radius = steering_wheel_rod1_width * 0.33;
+			double sw_joint1_pivot_width = 0.02;
+			double sw_joint1_gap = sw_joint1_arm1_length * 0.8;
+			mthz::Vec3 sw_joint1_pivot_position = steering_wheel_rod1_position + mthz::Vec3(0, steering_wheel_rod1_length + sw_joint1_gap - sw_joint1_pivot_width / 2.0, 0);
+			mthz::Vec3 sw_joint1_pivot_pos_oriented = steering_wheel_orientation.rotateAbout(sw_joint1_pivot_position, steering_wheel_position);
+			phyz::Geometry sw_joint1_pivot = phyz::Geometry::cylinder(sw_joint1_pivot_position, sw_joint1_pivot_radius, sw_joint1_pivot_width, 10, 70).getRotated(steering_wheel_orientation, steering_wheel_position);
+
+			mthz::Vec3 steering_wheel_rod2_target = pos + mthz::Vec3(0, 1.0, base_dim.z/2.0);
+			mthz::Vec3 rod2_target_diff = steering_wheel_rod2_target - sw_joint1_pivot_pos_oriented;
+			double rod2_target_diff_dist = rod2_target_diff.mag();
+			double elev_angle = asin(-rod2_target_diff.y / rod2_target_diff_dist);
+			mthz::Quaternion rod2_orientation = mthz::Quaternion(asin(rod2_target_diff.z / (rod2_target_diff_dist * cos(elev_angle))), mthz::Vec3(0, 1, 0))
+				* mthz::Quaternion(3.1415926535/2.0 + elev_angle, mthz::Vec3(0, 0, 1));
+
+			double steering_wheel_rod2_length = rod2_target_diff_dist - 2 * sw_joint1_gap;
+			mthz::Vec3 steering_wheel_rod2_position = mthz::Vec3(0, sw_joint1_gap, 0);
+			phyz::Geometry steering_wheel_rod2 = phyz::Geometry::box(steering_wheel_rod2_position - mthz::Vec3(steering_wheel_rod1_width / 2.0, 0, steering_wheel_rod1_width / 2.0),
+				steering_wheel_rod1_width, steering_wheel_rod2_length, steering_wheel_rod1_width);
+
+			mthz::Vec3 sw_joint1_arm3_position = steering_wheel_rod2_position + mthz::Vec3(0, 0, steering_wheel_rod1_width / 2.0);
+			phyz::Geometry sw_joint1_arm3 = phyz::Geometry::box(sw_joint1_arm3_position + mthz::Vec3(-sw_joint1_arm1_width / 2.0, 0,  -sw_joint1_arm1_height), sw_joint1_arm1_width, -sw_joint1_arm1_length, sw_joint1_arm1_height);
+			mthz::Vec3 sw_joint1_arm4_position = steering_wheel_rod2_position + mthz::Vec3(0, 0, -steering_wheel_rod1_width / 2.0);
+			phyz::Geometry sw_joint1_arm4 = phyz::Geometry::box(sw_joint1_arm4_position + mthz::Vec3(-sw_joint1_arm1_width / 2.0, 0, -sw_joint1_arm1_height / 2.0), sw_joint1_arm1_width, -sw_joint1_arm1_length, sw_joint1_arm1_height);
+			mthz::Vec3 sw_joint2_arm1_position = steering_wheel_rod2_position + mthz::Vec3(steering_wheel_rod1_width / 2.0, steering_wheel_rod2_length, 0);
+			phyz::Geometry sw_joint2_arm1 = phyz::Geometry::box(sw_joint2_arm1_position + mthz::Vec3(-sw_joint1_arm1_height, 0, -sw_joint1_arm1_width / 2.0), sw_joint1_arm1_height, sw_joint1_arm1_length, sw_joint1_arm1_width);
+			mthz::Vec3 sw_joint2_arm2_position = steering_wheel_rod2_position + mthz::Vec3(-steering_wheel_rod1_width / 2.0, steering_wheel_rod2_length, 0);
+			phyz::Geometry sw_joint2_arm2 = phyz::Geometry::box(sw_joint2_arm2_position + mthz::Vec3(0, 0, -sw_joint1_arm1_width / 2.0), sw_joint1_arm1_height, sw_joint1_arm1_length, sw_joint1_arm1_width);
+
+			mthz::Vec3 sw_joint2_pivot_position = steering_wheel_rod2_position + mthz::Vec3(0, steering_wheel_rod2_length + sw_joint1_gap - sw_joint1_pivot_width / 2.0, 0);
+			mthz::Vec3 sw_joint2_pivot_pos_oriented = sw_joint1_pivot_pos_oriented + rod2_orientation.rotateAbout(sw_joint2_pivot_position, mthz::Vec3(0, 0, 0));
+			phyz::Geometry sw_joint2_pivot = phyz::Geometry::cylinder(sw_joint2_pivot_position, sw_joint1_pivot_radius, sw_joint1_pivot_width, 10, 70).getRotated(rod2_orientation).getTranslated(sw_joint1_pivot_pos_oriented);
+
+			double steering_wheel_rod3_length = 0.5;
+			mthz::Vec3 steering_wheel_rod3_position = mthz::Vec3(0, sw_joint1_gap, 0);
+			phyz::Geometry steering_wheel_rod3 = phyz::Geometry::box(steering_wheel_rod3_position - mthz::Vec3(steering_wheel_rod1_width / 2.0, 0, steering_wheel_rod1_width / 2.0),
+				steering_wheel_rod1_width, steering_wheel_rod3_length, steering_wheel_rod1_width);
+			mthz::Quaternion rod3_orientation = mthz::Quaternion(3.1415926535 / 2.0, mthz::Vec3(0, 0, 1));
+
+			mthz::Vec3 sw_joint2_arm3_position = steering_wheel_rod3_position + mthz::Vec3(0, 0, steering_wheel_rod1_width / 2.0);
+			phyz::Geometry sw_joint2_arm3 = phyz::Geometry::box(sw_joint2_arm3_position + mthz::Vec3(-sw_joint1_arm1_width / 2.0, 0, -sw_joint1_arm1_height), sw_joint1_arm1_width, -sw_joint1_arm1_length, sw_joint1_arm1_height);
+			mthz::Vec3 sw_joint2_arm4_position = steering_wheel_rod3_position + mthz::Vec3(0, 0, -steering_wheel_rod1_width / 2.0);
+			phyz::Geometry sw_joint2_arm4 = phyz::Geometry::box(sw_joint2_arm4_position + mthz::Vec3(-sw_joint1_arm1_width / 2.0, 0, -sw_joint1_arm1_height / 2.0), sw_joint1_arm1_width, -sw_joint1_arm1_length, sw_joint1_arm1_height);
 
 			phyz::Geometry transmission = { transmission_gear1, drive_shaft, transmission_gear2 };
-			phyz::Geometry differential = { differential_gear1 };
+			phyz::Geometry differential = { differential_gear1, differential_arm1, differential_elbow1, differential_arm2, differential_elbow2 };
+			phyz::Geometry rear_wheel_c1 = { axle1_gear, axle1, rear_wheel1 };
+			phyz::Geometry rear_wheel_c2 = { axle2_gear, axle2, rear_wheel2 };
+
+			phyz::Geometry front_wheel1 = phyz::Geometry::cylinder(rear_wheel1_position + mthz::Vec3(-2.5, 0, 0), rear_wheel1_radius, rear_wheel1_height, 20, 0.1)
+				.getRotated(mthz::Quaternion(3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), rear_wheel1_position);
+			phyz::Geometry front_wheel2 = phyz::Geometry::cylinder(rear_wheel2_position + mthz::Vec3(-2.5, 0, 0), rear_wheel1_radius, rear_wheel1_height, 20, 0.1)
+				.getRotated(mthz::Quaternion(-3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), rear_wheel2_position);
+			phyz::Geometry steering_wheel = phyz::Geometry({ steering_wheel_w, steering_wheel_rod1, sw_joint1_arm1, sw_joint1_arm2 })
+				.getRotated(steering_wheel_orientation, steering_wheel_position);
+			phyz::Geometry steering_wheel_rod_c2 = phyz::Geometry{ steering_wheel_rod2, sw_joint1_arm3, sw_joint1_arm4, sw_joint2_arm1, sw_joint2_arm2 }
+				.getRotated(rod2_orientation).getTranslated(sw_joint1_pivot_pos_oriented);
+			phyz::Geometry steering_wheel_rod_c3 = phyz::Geometry{ steering_wheel_rod3, sw_joint2_arm3, sw_joint2_arm4 }
+				.getRotated(rod3_orientation).getTranslated(sw_joint2_pivot_pos_oriented);
+
+			mthz::Vec3 steering_wheel_axis = steering_wheel_orientation.applyRotation(mthz::Vec3(0, 1, 0));
+			mthz::Vec3 steering_wheel_rod2_axis = rod2_orientation.applyRotation(mthz::Vec3(0, 1, 0));
+			mthz::Vec3 steering_wheel_rod3_axis = rod3_orientation.applyRotation(mthz::Vec3(0, 1, 0));
+			bool steering_lock = false;
 
 			phyz::RigidBody* base_r = p.createRigidBody(base, true);
 			std::vector<Mesh> base_m = { fromGeometry(base) };
-			phyz::RigidBody* base_gear_r = p.createRigidBody(base_gear);
-			std::vector<Mesh> base_gear_m = { fromGeometry(base_gear) };
+			//phyz::RigidBody* base_gear_r = p.createRigidBody(base_gear);
+			//std::vector<Mesh> base_gear_m = { fromGeometry(base_gear) };
 			phyz::RigidBody* transmission_r = p.createRigidBody(transmission);
 			std::vector<Mesh> transmission_m = { fromGeometry(transmission) };
 			phyz::RigidBody* differential_r = p.createRigidBody(differential);
 			std::vector<Mesh> differential_m = { fromGeometry(differential) };
+			phyz::RigidBody* differential_gear2_r = p.createRigidBody(differential_gear2);
+		    std::vector<Mesh> differential_gear2_m = { fromGeometry(differential_gear2) };
+			phyz::RigidBody* differential_gear3_r = p.createRigidBody(differential_gear3);
+			std::vector<Mesh> differential_gear3_m = { fromGeometry(differential_gear3) };
+			phyz::RigidBody* rear_wheel1_r = p.createRigidBody(rear_wheel_c1);
+			std::vector<Mesh> rear_wheel1_m = { fromGeometry(rear_wheel_c1) };
+			phyz::RigidBody* rear_wheel2_r = p.createRigidBody(rear_wheel_c2);
+			std::vector<Mesh> rear_wheel2_m = { fromGeometry(rear_wheel_c2) };
+			phyz::RigidBody* front_wheel1_r = p.createRigidBody(front_wheel1);
+			std::vector<Mesh> front_wheel1_m = { fromGeometry(front_wheel1) };
+			phyz::RigidBody* front_wheel2_r = p.createRigidBody(front_wheel2);
+			std::vector<Mesh> front_wheel2_m = { fromGeometry(front_wheel2) };
+			phyz::RigidBody* steering_wheel_r = p.createRigidBody(steering_wheel, steering_lock);
+			std::vector<Mesh> steering_wheel_m = { fromGeometry(steering_wheel) };
+			phyz::RigidBody* sw_joint1_pivot_r = p.createRigidBody(sw_joint1_pivot);
+			std::vector<Mesh> sw_joint1_pivot_m = { fromGeometry(sw_joint1_pivot) };
+			phyz::RigidBody* sw_joint2_pivot_r = p.createRigidBody(sw_joint2_pivot);
+			std::vector<Mesh> sw_joint2_pivot_m = { fromGeometry(sw_joint2_pivot) };
+			phyz::RigidBody* steering_wheel_rod2_r = p.createRigidBody(steering_wheel_rod_c2, steering_lock);
+			std::vector<Mesh> steering_wheel_rod2_m = { fromGeometry(steering_wheel_rod_c2) };
+			phyz::RigidBody* steering_wheel_rod3_r = p.createRigidBody(steering_wheel_rod_c3, steering_lock);
+			std::vector<Mesh> steering_wheel_rod3_m = { fromGeometry(steering_wheel_rod_c3) };
 
-			base_gear_r->setVel(mthz::Vec3(0.1, 0, 0));
-			base_gear_r->setAngVel(mthz::Vec3(0, 0, 15));
-
-			throttle = p.addHingeConstraint(base_r, base_gear_r, base_gear_position, base_gear_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
-			p.addHingeConstraint(base_r, transmission_r, transmission_gear1_position, transmission_gear1_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
+			//p.addHingeConstraint(base_r, base_gear_r, base_gear_position, base_gear_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
+			throttle = p.addHingeConstraint(base_r, transmission_r, transmission_gear1_position, transmission_gear1_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 			p.addHingeConstraint(base_r, differential_r, differential_gear1_position, differential_gear1_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
+			p.addHingeConstraint(differential_r, differential_gear2_r, differential_gear2_position, differential_gear2_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
+			p.addHingeConstraint(differential_r, differential_gear3_r, differential_gear3_position, differential_gear3_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
+			p.addHingeConstraint(base_r, rear_wheel1_r, axle1_gear_position, axle1_gear_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
+			p.addHingeConstraint(base_r, rear_wheel2_r, axle2_gear_position, axle2_gear_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
+			p.addHingeConstraint(base_r, front_wheel1_r, rear_wheel1_position + mthz::Vec3(-2.5, 0, 0), rear_wheel1_position + mthz::Vec3(-2.5, 0, 0), mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
+			p.addHingeConstraint(base_r, front_wheel2_r, rear_wheel2_position + mthz::Vec3(-2.5, 0, 0), rear_wheel2_position + mthz::Vec3(-2.5, 0, 0), mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
+			steering = p.addHingeConstraint(base_r, steering_wheel_r, steering_wheel_position, steering_wheel_position, steering_wheel_axis, steering_wheel_axis);
+			p.addHingeConstraint(base_r, steering_wheel_rod2_r, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_pos_oriented, steering_wheel_rod2_axis, steering_wheel_rod2_axis);
+			mthz::Vec3 sw_joint1_pivot_axis1 = steering_wheel_orientation.applyRotation(mthz::Vec3(1, 0, 0));
+			mthz::Vec3 sw_joint1_pivot_axis2 = steering_wheel_orientation.applyRotation(mthz::Vec3(0, 0, 1));
+			mthz::Vec3 sw_joint1_pivot_axis3 = rod2_orientation.applyRotation(mthz::Vec3(0, 0, 1));
+			p.addHingeConstraint(steering_wheel_r, sw_joint1_pivot_r, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_axis1, sw_joint1_pivot_axis1);
+			p.addHingeConstraint(steering_wheel_rod2_r, sw_joint1_pivot_r, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_axis3, sw_joint1_pivot_axis2);
+			p.addHingeConstraint(base_r, steering_wheel_rod3_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, steering_wheel_rod3_axis, steering_wheel_rod3_axis);
+			mthz::Vec3 sw_joint2_pivot_axis1 = rod2_orientation.applyRotation(mthz::Vec3(1, 0, 0));
+			mthz::Vec3 sw_joint2_pivot_axis2 = rod2_orientation.applyRotation(mthz::Vec3(0, 0, 1));
+			mthz::Vec3 sw_joint2_pivot_axis3 = rod2_orientation.applyRotation(mthz::Vec3(0, 0, 1));
+			p.addHingeConstraint(steering_wheel_rod2_r, sw_joint2_pivot_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_axis1, sw_joint2_pivot_axis1);
+			p.addHingeConstraint(steering_wheel_rod3_r, sw_joint2_pivot_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_axis3, sw_joint2_pivot_axis2);
+
+			p.disallowCollision(rear_wheel1_r, differential_r);
 
 			bodies.push_back({ base_m, base_r });
-			bodies.push_back({ base_gear_m, base_gear_r });
+			//bodies.push_back({ base_gear_m, base_gear_r });
 			bodies.push_back({ transmission_m, transmission_r });
 			bodies.push_back({ differential_m, differential_r });
-			/*mthz::Vec3 pos(0, 10, 0);
-			mthz::Vec3 chasis_dim(3, 0.25, 1.3);
-			double wheel_width = 0.15;
-			double wheel_radius = 0.75;
-			double wheel_spacing = 0.66;
-
-			phyz::Geometry wheel;
-			phyz::ConvexPoly wheel_c = phyz::ConvexPoly::cylinder(0, -wheel_width / 2.0, 0, wheel_radius, wheel_width, 25);
-			wheel_c.rotate(mthz::Quaternion(3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), mthz::Vec3(0, 0, 0));
-			wheel.pushConvexPoly(wheel_c);
-			std::vector<Mesh> wheel_m = { fromGeometry(wheel) };
-
-			phyz::RigidBody* chasis = box(&bodies, &p, pos, chasis_dim);
-			phyz::RigidBody* w1 = p.createRigidBody(wheel, false, chasis->getPos() + mthz::Vec3(chasis_dim.x * wheel_spacing / 2.0, 0, chasis_dim.z / 2.0));
-			phyz::RigidBody* w2 = p.createRigidBody(wheel, false, chasis->getPos() + mthz::Vec3(-chasis_dim.x * wheel_spacing / 2.0, 0, chasis_dim.z / 2.0));
-			phyz::RigidBody* w3 = p.createRigidBody(wheel, false, chasis->getPos() + mthz::Vec3(chasis_dim.x * wheel_spacing / 2.0, 0, -chasis_dim.z / 2.0));
-			phyz::RigidBody* w4 = p.createRigidBody(wheel, false, chasis->getPos() + mthz::Vec3(-chasis_dim.x * wheel_spacing / 2.0, 0, -chasis_dim.z / 2.0));
-
-			wheel_motor_1 = p.addHingeConstraint(chasis, w1, mthz::Vec3(chasis_dim.x * wheel_spacing / 2.0, 0, chasis_dim.z / 2.0), mthz::Vec3(0, 0, 0), mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1));
-			wheel_motor_2 = p.addHingeConstraint(chasis, w2, mthz::Vec3(-chasis_dim.x * wheel_spacing / 2.0, 0, chasis_dim.z / 2.0), mthz::Vec3(0, 0, 0), mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1));
-			wheel_motor_3 = p.addHingeConstraint(chasis, w3, mthz::Vec3(chasis_dim.x * wheel_spacing / 2.0, 0, -chasis_dim.z / 2.0), mthz::Vec3(0, 0, 0), mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
-			wheel_motor_4 = p.addHingeConstraint(chasis, w4, mthz::Vec3(-chasis_dim.x * wheel_spacing / 2.0, 0, -chasis_dim.z / 2.0), mthz::Vec3(0, 0, 0), mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
-
-			bodies.push_back({ wheel_m, w1 });
-			bodies.push_back({ wheel_m, w2 });
-			bodies.push_back({ wheel_m, w3 });
-			bodies.push_back({ wheel_m, w4 });*/
-		}
-
-		p.setMotorPower(throttle, 0.002);
-
-		/*phyz::Geometry cube;
-		cube.pushConvexPoly(phyz::ConvexPoly::box(0, 0, 0, 1, 1, 1));
-		std::vector<Mesh> cube_mesh = { fromGeometry(cube) };
-
-		for (int i = 0; i < 1400; i++) {
-			phyz::RigidBody* r = p.createRigidBody(cube, false, mthz::Vec3(0, i * 2, 0));
-			bodies.push_back({ cube_mesh, r });
-		}*/
-
-		//{
-		//	double s = 10;s
-		//	mthz::Vec3 pos(-1, -4, -5);
-		//	mthz::Vec3 dim(14, 3, 10);
-		//	std::vector<Mesh> m2 = { ramp(dim.x, dim.y, dim.z) };
-		//	phyz::Geometry geom2;
-		//	geom2.pushConvexPoly(phyz::ConvexPoly::genRamp(pos.x, pos.y, pos.z, dim.x, dim.y, dim.z));
-		//	phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
-		//	phyz::RigidBody::PKey draw_p = r2->track_point(pos);
-		//	r2->updateGeometry();
-		//	bodies.push_back({ m2, r2, draw_p });
+			bodies.push_back({ differential_gear2_m, differential_gear2_r });
+			bodies.push_back({ differential_gear3_m, differential_gear3_r });
+			bodies.push_back({ rear_wheel1_m, rear_wheel1_r });
+			bodies.push_back({ rear_wheel2_m, rear_wheel2_r });
+			bodies.push_back({ front_wheel1_m, front_wheel1_r });
+			bodies.push_back({ front_wheel2_m, front_wheel2_r });
+			bodies.push_back({ steering_wheel_m, steering_wheel_r });
+			bodies.push_back({ sw_joint1_pivot_m, sw_joint1_pivot_r });
+			bodies.push_back({ steering_wheel_rod2_m, steering_wheel_rod2_r });
+			bodies.push_back({ sw_joint2_pivot_m, sw_joint2_pivot_r });
+			bodies.push_back({ steering_wheel_rod3_m, steering_wheel_rod3_r });
 		//}
 
-		/*Mesh m1 = rect(0, 0, 0, 1, 1, 1);
-		phyz::Geometry geom1;
-		geom1.pushConvexPoly(phyz::ConvexPoly::box(0, 2, 0, 1, 1, 1));
-		phyz::RigidBody* r1 = p.createRigidBody(geom1);
-		r1->ang_vel = mthz::Vec3(0, 0, 0);*/
-		//r1->orientation = mthz::Quaternion(3.1415926563 / 4, mthz::Vec3(0, 0, 1)) * mthz::Quaternion(3.1415926563 / 4, mthz::Vec3(0, 1, 0));
+		p.setMotor(throttle, -0.5, 35);
+		p.setMotor(steering, -0.5, 35);
+
 
 		rndr::Shader shader("resources/shaders/Basic.shader");
-
 		shader.bind();
-
 
 		float t = 0;
 		float fElapsedTime;
 
-		mthz::Vec3 pos(0, 0, 10);
 		mthz::Quaternion orient;
 		double mv_speed = 2;
 		double rot_speed = 1;
 
 		double phyz_time = 0;
-		double timestep = 1 / 240.0;
+		double timestep = 1 / 90.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -9.8, 0));
 
@@ -406,12 +544,22 @@ int main() {
 
 			t += fElapsedTime;
 
+			if (rndr::getKeyPressed(GLFW_KEY_V)) {
+				static int i = -1;
+				p.setMotor(throttle, --i, 100);
+				p.setMotor(steering, --i, 100);
+			}
+			if (rndr::getKeyPressed(GLFW_KEY_X)) {
+				base_r->setFixed(!base_r->getIsFixed());
+			}
 			if (rndr::getKeyPressed(GLFW_KEY_B)) {
-				phyz::AABB aabb = bunny_mesh.getAABB();
+				/*phyz::AABB aabb = bunny_mesh.getAABB();
 				phyz::Geometry bunny_geom = phyz::Geometry::box(mthz::Vec3(aabb.min.x, aabb.min.y, aabb.min.z), aabb.max.x - aabb.min.x, aabb.max.y - aabb.min.y, aabb.max.z - aabb.min.z, 0.1);
 				phyz::RigidBody* bunny_r = p.createRigidBody(bunny_geom);
 				Mesh bunny = fromPhyzMesh(bunny_mesh);
-				bodies.push_back({ std::vector<Mesh>{bunny}, bunny_r });
+				bodies.push_back({ std::vector<Mesh>{bunny}, bunny_r });*/
+
+				rear_wheel2_r->setFixed(!rear_wheel2_r->getIsFixed());
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_T)) {
 				phyz::AABB aabb = teapot_mesh.getAABB();

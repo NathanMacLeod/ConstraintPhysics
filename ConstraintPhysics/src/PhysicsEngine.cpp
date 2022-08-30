@@ -114,7 +114,7 @@ namespace phyz {
 							constraint_graph_lock.lock();
 							for (int i = 0; i < man.points.size(); i++) {
 								const ContactP& p = man.points[i];
-								addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.3, 0.6, man.points.size(), p.pen_depth, posCorrectCoeff(250, step_time));
+								addContact(b1, b2, p.pos, man.normal, p.magicID, 0.3, 1.1, 0.6, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
 							}
 							constraint_graph_lock.unlock();
 						}
@@ -133,7 +133,7 @@ namespace phyz {
 		thread_manager.do_all<std::vector<Constraint*>>(N_THREADS, island_systems,
 			[&](const std::vector<Constraint*>& island_system) {
 #endif
-				PGS_solve(this, island_system, 45, 45);
+				PGS_solve(this, island_system);
 			}
 #ifdef USE_MULTITHREAD
 		);
@@ -199,13 +199,14 @@ namespace phyz {
 
 		Hinge* h = new Hinge{
 			HingeConstraint(),
+			MotorConstraint(),
 			b1->trackPoint(b1_attach_pos_local),
 			b2->trackPoint(b2_attach_pos_local),
 			b1_rot_axis_local.normalize(),
 			b2_rot_axis_local.normalize(),
 			pos_correct_strength,
 			rot_correct_strength,
-			0
+			0, 0
 		};
 
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
@@ -383,8 +384,15 @@ namespace phyz {
 					mthz::Vec3 b1_hinge_axis = b1->orientation.applyRotation(h->b1_rot_axis_body_space);
 					mthz::Vec3 b2_hinge_axis = b2->orientation.applyRotation(h->b2_rot_axis_body_space);
 
-					b1->ang_vel += b1->getInvTensor() * b1_hinge_axis * h->power_level * step_time;
-					b2->ang_vel -= b2->getInvTensor() * b1_hinge_axis * h->power_level * step_time;
+					if (h->max_torque > 0) {
+						double velocity_diff = h->target_velocity - (b1->ang_vel.dot(b1_hinge_axis) - b2->ang_vel.dot(b1_hinge_axis));
+						double desired_torque = velocity_diff / (b1_hinge_axis.dot(b1->getInvTensor() * b1_hinge_axis * step_time) + b1_hinge_axis.dot(b2->getInvTensor() * b1_hinge_axis * step_time));
+						double actual_torque = (desired_torque > 0) ? std::min<double>(desired_torque, h->max_torque) : std::max<double>(desired_torque, -h->max_torque);
+
+						b1->ang_vel += b1->getInvTensor() * b1_hinge_axis * actual_torque * step_time;
+						b2->ang_vel -= b2->getInvTensor() * b1_hinge_axis * actual_torque * step_time;
+						h->motor_constraint = MotorConstraint(b1, b2, b1_hinge_axis, h->target_velocity, h->max_torque, h->motor_constraint.impulse);
+					}
 
 					h->constraint = HingeConstraint(b1, b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, posCorrectCoeff(h->pos_correct_hardness, step_time), 
 						posCorrectCoeff(h->rot_correct_hardness, step_time), h->constraint.impulse);
@@ -456,6 +464,9 @@ namespace phyz {
 						}
 						for (Hinge* h : e->hingeConstraints) {
 							output->island_constraints->push_back(&h->constraint);
+							if (h->max_torque != 0) {
+								output->island_constraints->push_back(&h->motor_constraint);
+							}
 						}
 						for (Slider* s : e->sliderConstraints) {
 							output->island_constraints->push_back(&s->constraint);
@@ -489,9 +500,10 @@ namespace phyz {
 		return c;
 	}
 
-	void PhysicsEngine::setMotorPower(MotorID id, double power) {
+	void PhysicsEngine::setMotor(MotorID id, double target_velocity, double max_torque) {
 		assert(motor_map.find(id) != motor_map.end());
-		motor_map[id]->power_level = power;
+		motor_map[id]->target_velocity = target_velocity;
+		motor_map[id]->max_torque = max_torque;
 	}
 	
 }

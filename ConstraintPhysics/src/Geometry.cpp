@@ -133,34 +133,67 @@ namespace phyz {
 		return out;
 	}
 
+	static Geometry tooth(mthz::Vec3 pos, double width, double length, double height, double density) {
+		std::vector<mthz::Vec3> points(12);
+		std::vector<std::vector<int>> surface_indices(8);
+		double f = 0.4;
+		double p = 0.3;
+
+		points[0] = (mthz::Vec3(pos.x, pos.y, pos.z)); //0
+		points[1] = (mthz::Vec3(pos.x + length * f, pos.y, pos.z)); //1
+		points[2] = (mthz::Vec3(pos.x + length, pos.y, pos.z + width * p)); //2
+		points[3] = (mthz::Vec3(pos.x + length, pos.y, pos.z + width * (1-p))); //3
+		points[4] = (mthz::Vec3(pos.x + length * f, pos.y, pos.z + width)); //1
+		points[5] = (mthz::Vec3(pos.x, pos.y, pos.z + width)); //1
+
+		points[6] = (mthz::Vec3(pos.x, pos.y + height, pos.z)); //0
+		points[7] = (mthz::Vec3(pos.x + length * f, pos.y + height, pos.z)); //1
+		points[8] = (mthz::Vec3(pos.x + length, pos.y + height, pos.z + width * p)); //2
+		points[9] = (mthz::Vec3(pos.x + length, pos.y + height, pos.z + width * (1 - p))); //3
+		points[10] = (mthz::Vec3(pos.x + length * f, pos.y + height, pos.z + width)); //1
+		points[11] = (mthz::Vec3(pos.x, pos.y + height, pos.z + width)); //1
+
+		surface_indices[0] = { 0, 1, 2, 3, 4, 5 };
+		surface_indices[1] = { 6, 7, 8, 9, 10, 11 };
+		surface_indices[2] = { 0, 1, 7, 6 };
+		surface_indices[3] = { 1, 2, 8, 7 };
+		surface_indices[4] = { 2, 3, 9, 8 };
+		surface_indices[5] = { 3, 4, 10, 9 };
+		surface_indices[6] = { 4, 5, 11, 10 };
+		surface_indices[7] = { 5, 0, 6, 11 };
+	
+		return Geometry(ConvexPoly(points, surface_indices, density));
+	}
+
 	Geometry Geometry::gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity, double density) {
 
 		Geometry wheel = cylinder(pos, radius, height, 2 * n_teeth - 3, density);
 		double tooth_width = radius * 3.1415926535 / (n_teeth);
-		Geometry tooth = box(pos + mthz::Vec3(radius, 0, 0), tooth_length, height, tooth_width, density);
+		Geometry toothG= tooth(pos + mthz::Vec3(radius, 0, 0), tooth_width, tooth_length, height, density);
 
 		double d_theta = 2 * 3.1415926535 / (n_teeth);
-		tooth = tooth.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
+		toothG = toothG.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
 		for (int i = 0; i < n_teeth; i++) {
-			tooth = tooth.getRotated(mthz::Quaternion(d_theta, mthz::Vec3(0, 1, 0)), pos);
-			wheel = merge(wheel, tooth);
+			toothG= toothG.getRotated(mthz::Quaternion(d_theta, mthz::Vec3(0, 1, 0)), pos);
+			wheel = merge(wheel, toothG);
 		}
 
-		return wheel;
+		return (parity)? wheel.getRotated(mthz::Quaternion(d_theta/2.0, mthz::Vec3(0, 1, 0)), pos) :  wheel;
 	}
 
-	Geometry Geometry::bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, double density) {
+	Geometry Geometry::bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity, double density) {
 		Geometry wheel = cylinder(pos, radius, height, 2 * n_teeth - 3, density);
-		Geometry tooth = box(pos + mthz::Vec3(radius - tooth_radius, height, 0), tooth_radius, height, tooth_width, density);
+		mthz::Vec3 tooth_pos = pos + mthz::Vec3(radius - tooth_radius, height, 0);
+		Geometry toothG = tooth(tooth_pos, tooth_width, height, -tooth_radius, density).getRotated(mthz::Quaternion(3.1415926535/2.0, mthz::Vec3(0, 0, 1)), tooth_pos);
 
 		double d_theta = 2 * 3.1415926535 / (n_teeth);
-		tooth = tooth.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
+		toothG = toothG.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
 		for (int i = 0; i < n_teeth; i++) {
-			tooth = tooth.getRotated(mthz::Quaternion(d_theta, mthz::Vec3(0, 1, 0)), pos);
-			wheel = merge(wheel, tooth);
+			toothG = toothG.getRotated(mthz::Quaternion(d_theta, mthz::Vec3(0, 1, 0)), pos);
+			wheel = merge(wheel, toothG);
 		}
 
-		return wheel;
+		return (parity) ? wheel.getRotated(mthz::Quaternion(d_theta / 2.0, mthz::Vec3(0, 1, 0)), pos) : wheel;
 	}
 
 	Geometry Geometry::merge(const Geometry& g1, const Geometry& g2) {

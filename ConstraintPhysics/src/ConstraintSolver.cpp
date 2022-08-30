@@ -359,6 +359,53 @@ namespace phyz {
 	}
 
 	//******************************
+	//*****MOTOR CONSTRAINT*********
+	//******************************
+	MotorConstraint::MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque, NVec<1> warm_start_impulse)
+		: Constraint(a, b), motor_axis(motor_axis), max_torque(max_torque), impulse(warm_start_impulse)
+	{
+		rotDirA = a->getInvTensor() * motor_axis;
+		rotDirB = b->getInvTensor() * motor_axis;
+		inverse_inertia = NMat<1, 1>{ {1.0 / (motor_axis.dot(rotDirA) + motor_axis.dot(rotDirB))} };
+		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
+		target_val = NVec<1>{ target_velocity - current_val };
+	}
+
+	void MotorConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+		addVelocityChange(impulse, va, vb);
+	}
+
+	void MotorConstraint::performPGSConstraintStep() {
+		PGS_constraint_step<1>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
+			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
+			[&](const NVec<1>& impulse) {
+				if (impulse.v[0] > 0) {
+					return NVec<1>{ std::min<double>(impulse.v[0], max_torque) };
+				}
+				else {
+					return NVec<1>{ std::max<double>(impulse.v[0], -max_torque) };
+				}
+			},
+			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	};
+
+	void MotorConstraint::performPGSPsuedoConstraintStep() {
+		return;
+	};
+
+	void MotorConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
+		va->ang += rotDirA * impulse.v[0];
+		vb->ang -= rotDirB * impulse.v[0];
+	}
+
+	NVec<1> MotorConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+		return NVec<1> {motor_axis.dot(va.ang) - motor_axis.dot(vb.ang)};
+	}
+
+
+	//******************************
 	//*****SLIDER CONSTRAINT********
 	//******************************
 	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, mthz::Vec3 slider_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse)

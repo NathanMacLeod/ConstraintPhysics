@@ -34,11 +34,11 @@ namespace phyz {
 
 		typedef int MotorID;
 
-		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=250);
-		MotorID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=250, double rot_correct_strength=250);
-		void addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength=250, double rot_correct_strength=250);
+		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=350);
+		MotorID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=350, double rot_correct_strength=350);
+		void addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength=350, double rot_correct_strength=350);
 
-		void setMotorPower(MotorID id, double power);
+		void setMotor(MotorID id, double target_velocity, double max_torque);
 
 	private:
 
@@ -91,13 +91,15 @@ namespace phyz {
 
 		struct Hinge {
 			HingeConstraint constraint;
+			MotorConstraint motor_constraint;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_rot_axis_body_space;
 			mthz::Vec3 b2_rot_axis_body_space;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
-			double power_level;
+			double max_torque;
+			double target_velocity;
 		};
 
 		struct Slider {
