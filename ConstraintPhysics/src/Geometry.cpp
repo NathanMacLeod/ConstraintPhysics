@@ -181,10 +181,10 @@ namespace phyz {
 		return (parity)? wheel.getRotated(mthz::Quaternion(d_theta/2.0, mthz::Vec3(0, 1, 0)), pos) :  wheel;
 	}
 
-	Geometry Geometry::bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity, double density) {
-		Geometry wheel = cylinder(pos, radius, height, 2 * n_teeth - 3, density);
+	Geometry Geometry::bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity, double density, double hole_radius, int circle_detail) {
+		Geometry wheel = (hole_radius == 0) ? cylinder(pos, radius, height, circle_detail, density) : ring(pos, hole_radius, radius, height, circle_detail, density);
 		mthz::Vec3 tooth_pos = pos + mthz::Vec3(radius - tooth_radius, height, 0);
-		Geometry toothG = tooth(tooth_pos, tooth_width, height, -tooth_radius, density).getRotated(mthz::Quaternion(3.1415926535/2.0, mthz::Vec3(0, 0, 1)), tooth_pos);
+		Geometry toothG = tooth(tooth_pos, tooth_width, tooth_height, -tooth_radius, density).getRotated(mthz::Quaternion(3.1415926535/2.0, mthz::Vec3(0, 0, 1)), tooth_pos);
 
 		double d_theta = 2 * 3.1415926535 / (n_teeth);
 		toothG = toothG.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
@@ -194,6 +194,17 @@ namespace phyz {
 		}
 
 		return (parity) ? wheel.getRotated(mthz::Quaternion(d_theta / 2.0, mthz::Vec3(0, 1, 0)), pos) : wheel;
+	}
+
+	Geometry Geometry::pinion(mthz::Vec3 pos, double height, double width, double tooth_height, double tooth_width, double gap_width, int n_teeth, double density) {
+		double length = (1 + n_teeth) * gap_width + n_teeth * tooth_width;
+		Geometry pinion = box(pos, width, height, length, density);
+		Geometry toothG = tooth(mthz::Vec3(0, 0, 0), tooth_width, tooth_height, -width, density).getRotated(mthz::Quaternion(3.1415926535 / 2.0, mthz::Vec3(0, 0, 1)));
+		for (int i = 0; i < n_teeth; i++) {
+			mthz::Vec3 tooth_pos = pos + mthz::Vec3(0, height, (1 + i) * gap_width + i * tooth_width);
+			pinion = pinion.merge(pinion, toothG.getTranslated(tooth_pos));
+		}
+		return pinion;
 	}
 
 	Geometry Geometry::merge(const Geometry& g1, const Geometry& g2) {
