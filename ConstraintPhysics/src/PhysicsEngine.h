@@ -10,17 +10,36 @@
 
 namespace phyz {
 
+	class PhysicsEngine;
+
+	struct CollisionTarget {
+	public:
+		static CollisionTarget all();
+		static CollisionTarget with(RigidBody* r);
+
+		friend class PhysicsEngine;
+	private:
+		CollisionTarget(bool with_all, RigidBody* specific_target) : with_all(with_all), specific_target(specific_target) {}
+
+		bool with_all;
+		RigidBody* specific_target;
+	};
+
+	typedef int ColActionID;
+	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifold)> ColAction;
+
+	typedef int MotorID;
+
 	class PhysicsEngine {
 	public:
-		PhysicsEngine() {
-#ifdef USE_MULTITHREAD
-			thread_manager.init(N_THREADS);
-#endif
-		}
+		static void enableMultithreading(int n_threads);
+		static void disableMultithreading();
 
 		void timeStep();
 		RigidBody* createRigidBody(const Geometry& geometry, bool fixed=false, mthz::Vec3 position=mthz::Vec3(), mthz::Quaternion orientation=mthz::Quaternion());
+		void removeRigidBody(RigidBody* r);
 		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel=mthz::Vec3(), const mthz::Vec3&delta_psuedo_ang_vel=mthz::Vec3());
+		void disallowCollisionSet(const std::initializer_list<RigidBody*>& bodies);
 		void disallowCollision(RigidBody* b1, RigidBody* b2);
 		bool collisionAllowed(RigidBody* b1, RigidBody* b2);
 		void reallowCollision(RigidBody* b1, RigidBody* b2);
@@ -31,8 +50,9 @@ namespace phyz {
 
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
-
-		typedef int MotorID;
+		
+		ColActionID registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action);
+		void removeCollisionAction(ColActionID action_key);
 
 		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=350);
 		MotorID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=350, double rot_correct_strength=350);
@@ -42,21 +62,25 @@ namespace phyz {
 
 	private:
 
-		static const int N_THREADS = 4;
+		static int n_threads;
+		static ThreadManager thread_manager;
+		static bool use_multithread;
+
 		struct ConstraintGraphNode; 
-		
 		void addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
 		void maintainConstraintGraphApplyPoweredConstraints();
 		void dfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		std::vector<std::vector<Constraint*>> sleepOrSolveIslands();
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
 		bool bodySleepy(const std::vector<RigidBody::MovementState>& body_history);
+		void deleteRigidBody(RigidBody* r);
 		bool readyToSleep(RigidBody* b);
 		void wakeupIsland(ConstraintGraphNode* foothold);
 
 		inline double posCorrectCoeff(double pos_correct_strength, double step_time) { return std::min<double>(pos_correct_strength * step_time, 1.0 / step_time); }
 
 		std::vector<RigidBody*> bodies;
+		std::vector<RigidBody*> bodies_to_delete;
 		mthz::Vec3 gravity;
 		double step_time = 1.0 / 90;
 		double cutoff_vel = 0;
@@ -67,16 +91,13 @@ namespace phyz {
 		double vel_sleep_coeff = 0.1;
 		double accel_sleep_coeff = 0.022;
 
-		ThreadManager thread_manager;
-
 		//Constraint Graph
 		std::unordered_map<RigidBody*, ConstraintGraphNode*> constraint_graph_nodes;
 		std::mutex constraint_graph_lock;
 
 		struct Contact {
 			ContactConstraint contact;
-			FrictionConstraint friction1;
-			FrictionConstraint friction2;
+			FrictionConstraint friction;
 			MagicID magic;
 			int memory_life; //how many frames can be referenced for warm starting before is deleted
 			bool is_live_contact;
@@ -114,6 +135,7 @@ namespace phyz {
 
 		struct SharedConstraintsEdge {
 			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contactConstraints(std::vector<Contact*>()) {}
+			~SharedConstraintsEdge();
 
 			ConstraintGraphNode* n1;
 			ConstraintGraphNode* n2;
@@ -133,6 +155,7 @@ namespace phyz {
 
 		struct ConstraintGraphNode {
 			ConstraintGraphNode(RigidBody* b) : b(b), constraints(std::vector<SharedConstraintsEdge*>()) {}
+			~ConstraintGraphNode();
 
 			RigidBody* b;
 			std::vector<SharedConstraintsEdge*> constraints;
@@ -142,6 +165,11 @@ namespace phyz {
 
 		MotorID nextMotorID = 0;
 		std::unordered_map<MotorID, Hinge*> motor_map;
+
+		ColActionID nextActionID = 0;
+		inline static RigidBody* all() { return nullptr; }
+		std::unordered_map<RigidBody*, std::unordered_map<RigidBody*, std::vector<ColActionID>>> get_action_map;
+		std::unordered_map<ColActionID, ColAction> col_actions;
 	};
 
 }

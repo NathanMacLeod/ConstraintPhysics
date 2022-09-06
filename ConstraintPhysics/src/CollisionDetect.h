@@ -23,6 +23,9 @@ namespace phyz {
 	struct ContactP {
 		mthz::Vec3 pos;
 		double pen_depth;
+		double restitution;
+		double kinetic_friction_coeff;
+		double static_friction_coeff;
 		MagicID magicID;
 	};
 

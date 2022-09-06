@@ -12,8 +12,10 @@ namespace phyz {
 		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0)
 	{
 		fixed = false;
-		calculateMassProperties(source_geometry, &this->com, &this->tensor, &this->mass);
-		invTensor = tensor.inverse();
+		calculateMassProperties(source_geometry, &this->com, &this->reference_tensor, &this->mass);
+		reference_invTensor = reference_tensor.inverse();
+		tensor = reference_tensor;
+		invTensor = reference_invTensor;
 
 		radius = 0;
 		for (ConvexPoly& c : reference_geometry) {
@@ -41,6 +43,12 @@ namespace phyz {
 		origin_pkey = trackPoint(mthz::Vec3(0,0,0));
 		setToPosition(pos);
 		recievedWakingAction = false;
+	}
+
+	void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
+		mthz::Vec3 torque = (position - com).cross(impulse);
+		vel += getInvMass() * impulse;
+		ang_vel += getInvTensor() * impulse;
 	}
 
 	void RigidBody::setToPosition(const mthz::Vec3& pos) {
@@ -80,6 +88,11 @@ namespace phyz {
 		if (!fixed) {
 			recievedWakingAction = true;
 		}
+	}
+
+	void RigidBody::setNoCollision(bool no_collision) {
+		this->no_collision = no_collision;
+		recievedWakingAction = true;
 	}
 
 	RigidBody::PKey RigidBody::trackPoint(mthz::Vec3 p) {
@@ -126,14 +139,13 @@ namespace phyz {
 			return;
 		}
 
-		mthz::Vec3 w_local = orientation.conjugate().applyRotation(ang_vel);
-		mthz::Vec3 w = w_local; //initial guess
+		mthz::Vec3 w = ang_vel; //initial guess
 
 		//n_itr is number of sub-timesteps
 		float t_step = fElapsedTime;
 		//using newtons method to approximate result of implicit integration
 		for (int i = 0; i < NEWTON_STEPS; i++) {
-			mthz::Vec3 f = t_step * w.cross(tensor * w) - tensor * (w_local - w);
+			mthz::Vec3 f = t_step * w.cross(tensor * w) - tensor * (ang_vel - w);
 			mthz::Mat3 jacobian = tensor + t_step * (mthz::Mat3::cross_mat(w) * tensor - mthz::Mat3::cross_mat(tensor * w));
 			if (abs(jacobian.det()) > CUTOFF_MAG) {
 				w -= jacobian.inverse() * f;
@@ -141,11 +153,17 @@ namespace phyz {
 		}
 		
 		
-		ang_vel = orientation.applyRotation(w);
+		ang_vel = w;
 	}
 
 	void RigidBody::updateGeometry() {
+
+		orientation = orientation.normalize();
 		mthz::Mat3 rot = orientation.getRotMatrix();
+		mthz::Mat3 rot_conjugate = rot.inverse();
+		tensor = rot * reference_tensor * rot_conjugate;
+		invTensor = rot * reference_invTensor * rot_conjugate;
+
 		for (int i = 0; i < reference_geometry.size(); i++) {
 			for (int j = 0; j < reference_geometry[i].points.size(); j++) {
 				geometry[i].points[j] = com + rot * reference_geometry[i].points[j];
@@ -340,15 +358,15 @@ namespace phyz {
 				vol_z2 += n.z * z.v3 / 3.0;
 			}
 
-			*mass += g.density * vol;
-			*com += mthz::Vec3(vol_x, vol_y, vol_z) * g.density;
+			*mass += g.material.density * vol;
+			*com += mthz::Vec3(vol_x, vol_y, vol_z) * g.material.density;
 
-			tensor->v[0][0] += (vol_y2 + vol_z2) * g.density;
-			tensor->v[0][1] -= vol_xy * g.density;
-			tensor->v[0][2] -= vol_zx * g.density;
-			tensor->v[1][1] += (vol_x2 + vol_z2) * g.density;
-			tensor->v[1][2] -= vol_yz * g.density;
-			tensor->v[2][2] += (vol_x2 + vol_y2) * g.density;
+			tensor->v[0][0] += (vol_y2 + vol_z2) * g.material.density;
+			tensor->v[0][1] -= vol_xy * g.material.density;
+			tensor->v[0][2] -= vol_zx * g.material.density;
+			tensor->v[1][1] += (vol_x2 + vol_z2) * g.material.density;
+			tensor->v[1][2] -= vol_yz * g.material.density;
+			tensor->v[2][2] += (vol_x2 + vol_y2) * g.material.density;
 		}
 
 		*com /= *mass;

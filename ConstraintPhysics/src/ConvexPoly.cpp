@@ -9,7 +9,7 @@ namespace phyz {
 	static int next_id;
 	
 	ConvexPoly::ConvexPoly(const ConvexPoly& c)
-		: points(c.points), interior_point(c.interior_point), id(next_id++), density(c.density)
+		: points(c.points), interior_point(c.interior_point), id(next_id++), material(c.material)
 	{
 		for (int i = 0; i < c.surfaces.size(); i++) {
 			surfaces.push_back(Surface(c.surfaces[i], this));
@@ -28,12 +28,12 @@ namespace phyz {
 		return out;
 	}
 
-	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, double density)
-		: ConvexPoly(points, default_surface_defs(surface_vertex_indices), density)
+	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, Material material)
+		: ConvexPoly(points, default_surface_defs(surface_vertex_indices), material)
 	{}
 
-	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<SurfaceDef>& surface_vertex_indices, double density)
-		: points(points), id(next_id++), density(density)
+	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<SurfaceDef>& surface_vertex_indices, Material material)
+		: points(points), id(next_id++), material(material)
 	{
 		assert(points.size() >= 4);
 

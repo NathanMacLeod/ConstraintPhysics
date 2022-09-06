@@ -12,6 +12,22 @@ namespace phyz {
 	struct GaussMap;
 	class RigidBody;
 
+	struct Material {
+		const static Material default_material() { return {1.0, 0.3, 0.6, 1.1}; }
+		static Material ice() { return { 0.6, 0.3, 0.1, 0.2 }; }
+		static Material rubber() { return { 0.8, 0.6, 1.0, 1.4 }; }
+		const static Material modified_density(double d) {
+			Material m = default_material();
+			m.density = d;
+			return m;
+		}
+
+		double density;
+		double restitution;
+		double kinetic_friction_coeff;
+		double static_friction_coeff;
+	};
+
 	struct SurfaceDef {
 		std::vector<int> surface_vertex_indices;
 		bool internal_surface;
@@ -21,8 +37,8 @@ namespace phyz {
 	public:
 		ConvexPoly() {}
 		ConvexPoly(const ConvexPoly& c);
-		ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, double density=1.0);
-		ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<SurfaceDef>& surface_defs, double density = 1.0);
+		ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, Material material=Material::default_material());
+		ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<SurfaceDef>& surface_defs, Material material=Material::default_material());
 
 		GaussMap computeGaussMap() const;
 		ConvexPoly getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point=mthz::Vec3(0,0,0)) const;
@@ -33,7 +49,7 @@ namespace phyz {
 		inline const std::vector<Edge>& getEdges() const { return edges; }
 		inline int getID() const { return id; }
 
-		double density;
+		Material material;
 
 		friend class Surface;
 		friend class Edge;

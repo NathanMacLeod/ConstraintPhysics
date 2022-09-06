@@ -248,7 +248,7 @@ namespace phyz {
 					out.max_pen_depth = -1;
 					return out;
 				}
-				else if (false && x.pen_depth < min_pen.pen_depth) {
+				else if (x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
 				}
 			}
@@ -257,11 +257,6 @@ namespace phyz {
 		out.normal = min_pen.norm;
 		mthz::Vec3 norm = min_pen.norm;
 
-		//generate manifold
-		//make arbitrary perp vector
-		/*const mthz::Vec3 axis1 = mthz::Vec3(1, 0, 0), axis2 = mthz::Vec3(0, 1, 0);
-		mthz::Vec3 u = (abs(norm.dot(axis1)) < abs(norm.dot(axis2))) ? norm.cross(axis1).normalize() : norm.cross(axis2).normalize();
-		mthz::Vec3 w = norm.cross(u);*/
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
 		ContactArea a_contact = findContactArea(a, norm, min_pen.a_maxP, min_pen.a_maxPID, u, w);
@@ -335,6 +330,9 @@ namespace phyz {
 			ContactP cp;
 			cp.pos = u * p.u + w * p.w + n_offset;
 			cp.pen_depth = cp.pos.dot(norm) - a_dot_val + a_pen;
+			cp.restitution = std::max<double>(a.material.restitution, b.material.restitution);
+			cp.kinetic_friction_coeff = (a.material.kinetic_friction_coeff + b.material.kinetic_friction_coeff) / 2.0;
+			cp.static_friction_coeff = (a.material.static_friction_coeff + b.material.static_friction_coeff) / 2.0;
 			cp.magicID = MagicID{ cID, man_pool_magics[i] };
 			out.points.push_back(cp);
 		}

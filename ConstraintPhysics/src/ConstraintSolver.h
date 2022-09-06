@@ -5,7 +5,7 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel = 40, int n_itr_pos = 25);
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel = 35, int n_itr_pos = 25);
 
 	template <int n>
 	struct NVec {
@@ -24,6 +24,14 @@ namespace phyz {
 		double v[n_row][n_col];
 
 		NMat<n_row, n_col> inverse() const;
+		template<int r, int c>
+		void copyInto(const NMat<r, c>& m, int row, int col) {
+			for (int i = 0; i < r; i++) {
+				for (int j = 0; j < c; j++) {
+					v[i + row][j + col] = m.v[i][j];
+				}
+			}
+		}
 
 		NMat<n_row, n_col> operator+(const NMat<n_row, n_col>& r) const;
 		NMat<n_row, n_col> operator-(const NMat<n_row, n_col>& r) const;
@@ -91,6 +99,7 @@ namespace phyz {
 		mthz::Vec3 rB;
 		mthz::Vec3 rotDirA;
 		mthz::Vec3 rotDirB;
+		NMat<1, 12> jacobian;
 		NMat<1,1> inverse_inertia;
 		NVec<1> target_val;
 		NVec<1> psuedo_target_val;
@@ -98,27 +107,29 @@ namespace phyz {
 
 	class FrictionConstraint : public Constraint {
 	public:
-		FrictionConstraint() : normal_impulse(nullptr), impulse(NVec<1>{0.0}) {}
-		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 frictionDir, mthz::Vec3 contact_p, double coeff_friction, int n_contact_points, ContactConstraint* normal, NVec<1> warm_start_impulse=NVec<1>{ 0.0 });
+		FrictionConstraint() : normal_impulse(nullptr), impulse(NVec<2>{0.0}) {}
+		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, int n_contact_points, ContactConstraint* normal, NVec<2> warm_start_impulse=NVec<2>{ 0.0, 0.0 }, mthz::Vec3 source_u=mthz::Vec3(), mthz::Vec3 source_w=mthz::Vec3());
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
 		void performPGSConstraintStep() override;
 		void performPGSPsuedoConstraintStep() override { return; };
 
-		NVec<1> getConstraintValue(const VelVec& va, const VelVec& vb);
-		void addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb);
+		NVec<2> getConstraintValue(const VelVec& va, const VelVec& vb);
+		void addVelocityChange(const NVec<2>& impulse, VelVec* va, VelVec* vb);
 		bool getStaticReady() { return static_ready; }
 
-		NVec<1> impulse;
+		NVec<2> impulse;
+		mthz::Vec3 u;
+		mthz::Vec3 w;
 	private:
-		mthz::Vec3 frictionDir;
 		mthz::Vec3 rA;
 		mthz::Vec3 rB;
-		mthz::Vec3 rotDirA;
-		mthz::Vec3 rotDirB;
-		NMat<1,1> inverse_inertia;
-		NVec<1> target_val;
+		NMat<3, 2> rotDirA;
+		NMat<3, 2> rotDirB;
+		NMat<2, 12> jacobian;
+		NMat<2,2> inverse_inertia;
+		NVec<2> target_val;
 		double coeff_friction;
 		NVec<1>* normal_impulse;
 		bool static_ready;
@@ -144,6 +155,7 @@ namespace phyz {
 		mthz::Vec3 rB;
 		mthz::Mat3 rotDirA;
 		mthz::Mat3 rotDirB;
+		NMat<3, 12> jacobian;
 		NMat<3,3> inverse_inertia;
 		NVec<3> target_val;
 		NVec<3> psuedo_target_val;
@@ -153,7 +165,7 @@ namespace phyz {
 	class HingeConstraint : public Constraint {
 	public:
 		HingeConstraint() : impulse(NVec<5>{0.0, 0.0, 0.0, 0.0, 0.0}) {}
-		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse=NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 });
+		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse=NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u=mthz::Vec3(), mthz::Vec3 source_w=mthz::Vec3());
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -165,14 +177,15 @@ namespace phyz {
 
 		NVec<5> impulse;
 		NVec<5> psuedo_impulse;
+		mthz::Vec3 u;
+		mthz::Vec3 w;
 	private:
 		mthz::Vec3 rA;
 		mthz::Vec3 rB;
-		mthz::Vec3 u;
-		mthz::Vec3 w;
 		mthz::Vec3 n;
 		NMat<3, 5> rotDirA;
 		NMat<3, 5> rotDirB;
+		NMat<5, 12> jacobian;
 		NMat<5, 5> inverse_inertia;
 		NVec<5> target_val;
 		NVec<5> psuedo_target_val;
@@ -224,6 +237,7 @@ namespace phyz {
 		mthz::Vec3 w;
 		NMat<3, 5> rotDirA;
 		NMat<3, 5> rotDirB;
+		NMat<5, 12> jacobian;
 		NMat<5, 5> inverse_inertia;
 		NVec<5> target_val;
 		NVec<5> psuedo_target_val;

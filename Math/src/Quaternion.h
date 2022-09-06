@@ -1,6 +1,7 @@
 #pragma once
 #include "Vec3.h"
 #include "Mat3.h"
+#define PI 3.1415926535
 
 namespace mthz {
 

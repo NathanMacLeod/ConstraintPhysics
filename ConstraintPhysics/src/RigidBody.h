@@ -26,12 +26,16 @@ namespace phyz {
 		mthz::Mat3 getInvTensor();
 		bool getAsleep() { return asleep;  }
 		bool getIsFixed() { return fixed; }
+		bool getNoCollision() { return no_collision; }
 		mthz::Vec3 getPos() { return getTrackedP(origin_pkey); }
 		mthz::Vec3 getCOM() { return com; }
 		mthz::Quaternion getOrientation() { return orientation; }
 		mthz::Vec3 getVel();
 		mthz::Vec3 getAngVel();
 
+		void applyForce(mthz::Vec3 force) { vel += force * getInvMass(); }
+		void applyTorque(mthz::Vec3 torque) { ang_vel += getInvTensor() * torque; }
+		void applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position);
 		void setToPosition(const mthz::Vec3& pos);
 		void setCOMtoPosition(const mthz::Vec3& pos);
 		void translate(const mthz::Vec3& v);
@@ -39,6 +43,7 @@ namespace phyz {
 		void setVel(mthz::Vec3 vel);
 		void setAngVel(mthz::Vec3 ang_vel);
 		void setFixed(bool fixed);
+		void setNoCollision(bool no_collision);
 
 		friend class PhysicsEngine;
 	private:
@@ -74,8 +79,11 @@ namespace phyz {
 
 		mthz::Mat3 invTensor;
 		mthz::Mat3 tensor;
+		mthz::Mat3 reference_invTensor;
+		mthz::Mat3 reference_tensor;
 		double mass;
 		bool asleep;
+		bool no_collision;
 		double sleep_ready_counter;
 		
 		std::vector<ConvexPoly> geometry;
