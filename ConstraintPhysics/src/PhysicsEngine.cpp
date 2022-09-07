@@ -113,13 +113,16 @@ namespace phyz {
 						if (merged[i]) {
 							continue;
 						}
+
 						for (int j = i + 1; j < manifolds.size(); j++) {
 							if (!merged[j]) {
+
 								double v = manifolds[i].normal.dot(manifolds[j].normal);
 								if (1 - v < COS_TOL) {
 									manifolds[i] = merge_manifold(manifolds[i], manifolds[j]);
+									merged[j] = true;
 								}
-								merged[j] = true;
+								
 							}
 						}
 						Manifold man = cull_manifold(manifolds[i], 4);
@@ -447,17 +450,11 @@ namespace phyz {
 					mthz::Vec3 b2_hinge_axis = b2->orientation.applyRotation(h->b2_rot_axis_body_space);
 
 					if (h->max_torque > 0) {
-						double velocity_diff = h->target_velocity - (b1->ang_vel.dot(b1_hinge_axis) - b2->ang_vel.dot(b1_hinge_axis));
-						double desired_torque = velocity_diff / (b1_hinge_axis.dot(b1->getInvTensor() * b1_hinge_axis * step_time) + b1_hinge_axis.dot(b2->getInvTensor() * b1_hinge_axis * step_time));
-						double actual_torque = (desired_torque > 0) ? std::min<double>(desired_torque, h->max_torque) : std::max<double>(desired_torque, -h->max_torque);
-
-						b1->ang_vel += b1->getInvTensor() * b1_hinge_axis * actual_torque * step_time;
-						b2->ang_vel -= b2->getInvTensor() * b1_hinge_axis * actual_torque * step_time;
 						h->motor_constraint = MotorConstraint(b1, b2, b1_hinge_axis, h->target_velocity, h->max_torque, h->motor_constraint.impulse);
 					}
 
 					h->constraint = HingeConstraint(b1, b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, posCorrectCoeff(h->pos_correct_hardness, step_time), 
-						posCorrectCoeff(h->rot_correct_hardness, step_time), h->constraint.impulse);
+						posCorrectCoeff(h->rot_correct_hardness, step_time), h->constraint.impulse, h->constraint.u, h->constraint.w);
 				}
 				for (Slider* s : e->sliderConstraints) {
 					mthz::Vec3 b1_pos = b1->getTrackedP(s->b1_point_key);
@@ -466,7 +463,7 @@ namespace phyz {
 					mthz::Vec3 b2_slide_axis = b2->orientation.applyRotation(s->b2_slide_axis_body_space);
 
 					s->constraint = SliderConstraint(b1, b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
-						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse);
+						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse, s->constraint.u, s->constraint.w);
 				}
 				if (e->noConstraintsLeft()) {
 					delete e;

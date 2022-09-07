@@ -218,7 +218,7 @@ namespace phyz {
 	class SliderConstraint : public Constraint {
 	public:
 		SliderConstraint() : impulse(NVec<5>{0.0, 0.0, 0.0, 0.0, 0.0}) {}
-		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, mthz::Vec3 slider_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse = NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 });
+		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, mthz::Vec3 slider_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse = NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -230,11 +230,11 @@ namespace phyz {
 
 		NVec<5> impulse;
 		NVec<5> psuedo_impulse;
+		mthz::Vec3 u;
+		mthz::Vec3 w;
 	private:
 		mthz::Vec3 rA;
 		mthz::Vec3 rB;
-		mthz::Vec3 u;
-		mthz::Vec3 w;
 		NMat<3, 5> rotDirA;
 		NMat<3, 5> rotDirB;
 		NMat<5, 12> jacobian;

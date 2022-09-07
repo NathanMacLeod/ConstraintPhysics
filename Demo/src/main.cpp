@@ -235,9 +235,9 @@ void spawnCar(phyz::PhysicsEngine& p, std::vector<PhysBod>& bodies, mthz::Vec3 p
 	phyz::Geometry engine_gear2 = phyz::Geometry::gear(engine_gear2_position, engine_gear2_radius, engine_gear2_tooth_size, engine_gear2_height, engine_gear2_teeth, true, phyz::Material::modified_density(2), driveshaft_gear1_tooth_width)
 		.getRotated(mthz::Quaternion(-3.1415926535 / 2.0, mthz::Vec3(0, 0, 1)), engine_gear2_position);
 
-	double engine_gear1_radius = engine_gear2_radius * 0.33;
+	double engine_gear1_radius = engine_gear2_radius * 0.32;
 	double engine_gear1_tooth_size = engine_gear2_tooth_size;
-	double engine_gear1_tooth_width = driveshaft_gear1_tooth_width;
+	double engine_gear1_tooth_width = driveshaft_gear1_tooth_width * 0.75;
 	double engine_gear1_height = engine_gear2_height;
 	int engine_gear1_teeth = 8;
 	mthz::Vec3 engine_gear1_position = engine_gear2_position + mthz::Vec3(0, engine_gear1_radius + driveshaft_gear1_radius + 1.5 * engine_gear2_tooth_size, 0);
@@ -483,7 +483,7 @@ void spawnCar(phyz::PhysicsEngine& p, std::vector<PhysBod>& bodies, mthz::Vec3 p
 	double pinion_height = 0.1;
 	mthz::Vec3 pinion_position = rod3_orientation.applyRotation(steering_wheel_gear_position) + sw_joint2_pivot_pos_oriented +
 		mthz::Vec3(-steering_wheel_gear_height, -steering_wheel_gear_radius - pinion_height - 1.25 * steering_wheel_gear_tooth_size, -pinion_length / 2.0);
-	phyz::Geometry pinion = phyz::Geometry::pinion(pinion_position, pinion_height, steering_wheel_gear_height, steering_wheel_gear_tooth_size, pinion_tooth_width, pinion_gap_width, pinion_n_teeth);
+	phyz::Geometry pinion = phyz::Geometry::pinion(pinion_position, pinion_height, steering_wheel_gear_height, steering_wheel_gear_tooth_size, pinion_tooth_width, pinion_gap_width, pinion_n_teeth, phyz::Material::modified_density(0.1));
 
 	double front_wheel1_radius = 0.66 * rear_wheel1_radius;
 	mthz::Vec3 front_wheel1_position = mthz::Vec3(pinion_position.x - 0.45, rear_wheel1_position.y - (rear_wheel1_radius - front_wheel1_radius), rear_wheel1_position.z);
@@ -493,12 +493,12 @@ void spawnCar(phyz::PhysicsEngine& p, std::vector<PhysBod>& bodies, mthz::Vec3 p
 	double front_wheel1_elbow_length = 0.125;
 	double front_wheel1_arm_width = 0.125;
 	phyz::Geometry front_wheel1_elbow = phyz::Geometry::box(front_wheel1_position - mthz::Vec3(front_wheel1_arm_width / 2.0, front_wheel1_arm_width / 2.0, 0), front_wheel1_arm_width, front_wheel1_arm_width,
-		-front_wheel1_elbow_length);
+		-front_wheel1_elbow_length, phyz::Material::modified_density(0.1));
 
 	double front_wheel1_arm_length = 0.4;
 	mthz::Vec3 front_wheel1_arm_pos = front_wheel1_position + mthz::Vec3(0, 0, -front_wheel1_elbow_length - front_wheel1_arm_width / 2.0);
 	phyz::Geometry front_wheel1_forearm = phyz::Geometry::box(front_wheel1_arm_pos + mthz::Vec3(-front_wheel1_arm_width / 2.0, -front_wheel1_arm_width / 2.0, -front_wheel1_arm_width / 2.0),
-		front_wheel1_arm_length + front_wheel1_arm_width / 2.0, front_wheel1_arm_width, front_wheel1_arm_width);
+		front_wheel1_arm_length + front_wheel1_arm_width / 2.0, front_wheel1_arm_width, front_wheel1_arm_width, phyz::Material::modified_density(0.1));
 
 	mthz::Vec3 front_wheel1_rod_pinion_connect = pinion_position + mthz::Vec3(steering_wheel_gear_height / 2.0, pinion_height / 2.0, pinion_length);
 	mthz::Vec3 front_wheel1_rod_arm_connect = front_wheel1_arm_pos + mthz::Vec3(front_wheel1_arm_length, 0, 0);
@@ -516,11 +516,11 @@ void spawnCar(phyz::PhysicsEngine& p, std::vector<PhysBod>& bodies, mthz::Vec3 p
 		.getRotated(mthz::Quaternion(-3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), front_wheel2_position);
 
 	phyz::Geometry front_wheel2_elbow = phyz::Geometry::box(front_wheel2_position - mthz::Vec3(front_wheel1_arm_width / 2.0, front_wheel1_arm_width / 2.0, 0), front_wheel1_arm_width, front_wheel1_arm_width,
-		front_wheel1_elbow_length);
+		front_wheel1_elbow_length, phyz::Material::modified_density(0.1));
 
 	mthz::Vec3 front_wheel2_arm_pos = front_wheel2_position + mthz::Vec3(0, 0, front_wheel1_elbow_length + front_wheel1_arm_width / 2.0);
 	phyz::Geometry front_wheel2_forearm = phyz::Geometry::box(front_wheel2_arm_pos + mthz::Vec3(-front_wheel1_arm_width / 2.0, -front_wheel1_arm_width / 2.0, -front_wheel1_arm_width / 2.0),
-		front_wheel1_arm_length + front_wheel1_arm_width / 2.0, front_wheel1_arm_width, front_wheel1_arm_width);
+		front_wheel1_arm_length + front_wheel1_arm_width / 2.0, front_wheel1_arm_width, front_wheel1_arm_width, phyz::Material::modified_density(0.1));
 
 	mthz::Vec3 front_wheel2_rod_pinion_connect = pinion_position + mthz::Vec3(steering_wheel_gear_height / 2.0, pinion_height / 2.0, 0);
 	mthz::Vec3 front_wheel2_rod_arm_connect = front_wheel2_arm_pos + mthz::Vec3(front_wheel1_arm_length, 0, 0);
@@ -748,6 +748,9 @@ int main() {
 		}
 	);
 
+	bool paused = false;
+	bool slow = false;
+
 	if (false) {
 		double timestep = 1 / 120.0;
 		p.setStep_time(timestep);
@@ -849,7 +852,6 @@ int main() {
 				i++;
 
 				p.setMotor(throttle, -i, 100);
-				//p.setMotor(engine, 4 * i, 150);
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_G)) {
 				static int i = 1;
@@ -868,6 +870,7 @@ int main() {
 				bodies.push_back({ std::vector<Mesh>{bunny}, bunny_r });*/
 
 				//rear_wheel2_r->setFixed(!rear_wheel2_r->getIsFixed());
+				slow = !slow;
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_T)) {
 				phyz::AABB aabb = teapot_mesh.getAABB();
@@ -982,23 +985,24 @@ int main() {
 
 			//cyllinder
 			if (rndr::getKeyPressed(GLFW_KEY_H)) {
-				phyz::Geometry geom = phyz::Geometry::cylinder(mthz::Vec3(0, 0, 0), 0.66, 0.3, 10);
+				phyz::Geometry geom = phyz::Geometry::ring(mthz::Vec3(0, 0, 0), 0.33, 0.66, 0.3, 6);
 				std::vector<Mesh> m = { fromGeometry(geom) };
 				phyz::RigidBody* r = p.createRigidBody(geom, false, mthz::Vec3(0, 10, 0));
+				r->setAngVel(mthz::Vec3(0, 0, 0.5));
 				bodies.push_back({ m, r });
 			}
 
 			//simple hinge
 			if (rndr::getKeyPressed(GLFW_KEY_P)) {
-				double end_y = 1;
+				/*double end_y = 1;
 				mthz::Vec3 box1_dimensions(1, 0.5, 1);
 				mthz::Vec3 box2_dimensions(0.5, 0.5, 0.5);
 
 				phyz::RigidBody* r1 = box(&bodies, &p, mthz::Vec3(0, end_y, 0), box1_dimensions);
 				phyz::RigidBody* r2 = box(&bodies, &p, mthz::Vec3(0, end_y + box1_dimensions.y, 0), box2_dimensions);
 
-				p.addHingeConstraint(r1, r2, mthz::Vec3(0, box1_dimensions.y / 2.0, 0), mthz::Vec3(0, -box2_dimensions.y / 2.0, 0), mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
-
+				p.addHingeConstraint(r1, r2, mthz::Vec3(0, box1_dimensions.y / 2.0, 0), mthz::Vec3(0, -box2_dimensions.y / 2.0, 0), mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));*/
+				paused = !paused;
 			}
 
 			//car
@@ -1060,7 +1064,14 @@ int main() {
 				p.setMotorPower(wheel_motor_4, 0);*/
 			}
 
-			phyz_time += fElapsedTime;
+			if (!paused) {
+				if (slow) {
+					phyz_time += fElapsedTime * 0.1;
+				}
+				else {
+					phyz_time += fElapsedTime;
+				}
+			}
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
 			if (phyz_time > 1 / 30.0) {
 			//	printf("n objects: %d\n", p.getNumBodies());
