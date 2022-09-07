@@ -1,4 +1,5 @@
 #include "CollisionDetect.h"
+#include "ConvexPoly.h"
 
 namespace phyz {
 
@@ -7,8 +8,6 @@ namespace phyz {
 	}
 
 	static struct CheckNormResults {
-		mthz::Vec3 a_maxP;
-		mthz::Vec3 b_maxP;
 		int a_maxPID;
 		int b_maxPID;
 		mthz::Vec3 norm;
@@ -28,25 +27,38 @@ namespace phyz {
 		int surfaceID;
 	};
 
+	static inline ContactArea projectFace(const Surface& s, mthz::Vec3 u, mthz::Vec3 w) {
+		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1 };
+
+		int n_points = s.n_points();
+		out.ps = std::vector<ProjP>(n_points);
+		out.p_IDs = std::vector<int>(n_points);
+		for (int i = 0; i < n_points; i++) {
+			mthz::Vec3 v = s.getPointI(i);
+			out.ps[i] = ProjP{ v.dot(u), v.dot(w) };
+			out.p_IDs[i] = s.point_indexes[i];
+		}
+		out.surfaceID = s.getSurfaceID();
+
+		return out;
+	}
+
+	static inline ContactArea projectEdge(const Edge& e, mthz::Vec3 n, mthz::Vec3 p, mthz::Vec3 u, mthz::Vec3 w) {
+		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1 };
+
+		out.ps = { ProjP{ e.p1().dot(u), e.p1().dot(w) }, ProjP{ e.p2().dot(u), e.p2().dot(w) } };
+		out.p_IDs = { e.p1_indx, e.p2_indx };
+
+		return out;
+	}
+
 	//kinda brute forcey might redo later
 	static ContactArea findContactArea(const ConvexPoly& c, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
-
-		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1};
 
 		for (const Surface& s : c.getSurfaces()) {
 			double cos_ang = s.normal().dot(n);
 			if (1 - cos_ang <= COS_TOL) {
-				int n_points = s.n_points();
-				out.ps = std::vector<ProjP>(n_points);
-				out.p_IDs = std::vector<int>(n_points);
-				for (int i = 0; i < n_points; i++) {
-					mthz::Vec3 v = s.getPointI(i);
-					out.ps[i] = ProjP{ v.dot(u), v.dot(w) };
-					out.p_IDs[i] = s.point_indexes[i];
-				}
-				out.surfaceID = s.getSurfaceID();
-
-				return out;
+				return projectFace(s, u, w);
 			}
 		}
 
@@ -55,16 +67,16 @@ namespace phyz {
 			mthz::Vec3 p2 = e.p2();
 			double sin_ang = abs((e.p2() - e.p1()).normalize().dot(n));
 			if ((e.p1() == p || e.p2() == p) && sin_ang <= SIN_TOL) {
-				out.ps = { ProjP{ e.p1().dot(u), e.p1().dot(w) }, ProjP{ e.p2().dot(u), e.p2().dot(w) } };
-				out.p_IDs = { e.p1_indx, e.p2_indx };
-
-				return out;
+				return projectEdge(e, n, p, u, w);
 			}
 		}
 
-		out.ps = { ProjP{ p.dot(u), p.dot(w) } };
-		out.p_IDs = { p_ID };
-		return out;
+		return ContactArea{
+			{ ProjP{ p.dot(u), p.dot(w) } },
+			{ p_ID },
+			-1
+		};
+		
 	}
 
 	static bool pInside(const std::vector<ProjP> poly, ProjP p) {
@@ -134,33 +146,22 @@ namespace phyz {
 		return true;
 	}
 
-	static struct ExtremaInfo {
-		ExtremaInfo() {
-			min_val = std::numeric_limits<double>::infinity();
-			max_val = -std::numeric_limits<double>::infinity();
-		}
+	ExtremaInfo recenter(const ExtremaInfo& info, double old_ref_value, double new_ref_value) {
+		double diff = new_ref_value - old_ref_value;
+		return ExtremaInfo{ info.min_pID, info.max_pID, info.min_val + diff, info.max_val + diff};
+	}
 
-		mthz::Vec3 min_p;
-		mthz::Vec3 max_p;
-		int min_pID;
-		int max_pID;
-		double min_val;
-		double max_val;
-	};
-
-	static ExtremaInfo findExtrema(const ConvexPoly& c, mthz::Vec3 axis) {
+	ExtremaInfo findExtrema(const ConvexPoly& c, mthz::Vec3 axis) {
 		ExtremaInfo extrema;
 
 		for (int i = 0; i < c.getPoints().size(); i++) {
 			mthz::Vec3 p = c.getPoints()[i];
 			double val = p.dot(axis);
 			if (val < extrema.min_val) {
-				extrema.min_p = p;
 				extrema.min_pID = i;
 				extrema.min_val = val;
 			}
 			if (val > extrema.max_val) {
-				extrema.max_p = p;
 				extrema.max_pID = i;
 				extrema.max_val = val;
 			}
@@ -169,46 +170,45 @@ namespace phyz {
 		return extrema;
 	}
 
-	static CheckNormResults sat_checknorm(const ConvexPoly& a, const ConvexPoly& b, mthz::Vec3 n) {
-		ExtremaInfo e1 = findExtrema(a, n);
-		ExtremaInfo e2 = findExtrema(b, n);
-
-		double forward_pen_depth = e1.max_val - e2.min_val;
-		double reverse_pen_depth = e2.max_val - e1.min_val;
+	static CheckNormResults sat_checknorm(const ExtremaInfo& a_info, const ExtremaInfo& b_info, mthz::Vec3 n) {
+		double forward_pen_depth = a_info.max_val - b_info.min_val;
+		double reverse_pen_depth = b_info.max_val - a_info.min_val;
 
 		if (forward_pen_depth < reverse_pen_depth) {
-			return CheckNormResults{ e1.max_p, e2.min_p, e1.max_pID, e2.min_pID, n, forward_pen_depth };
+			return CheckNormResults{ a_info.max_pID, b_info.min_pID, n, forward_pen_depth };
 		}
 		else {
-			return CheckNormResults{ e1.min_p, e2.max_p, e1.min_pID, e2.max_pID, -n, reverse_pen_depth };
+			return CheckNormResults{ a_info.min_pID, b_info.max_pID, -n, reverse_pen_depth };
 		}
 	}
 
 	Manifold SAT(const ConvexPoly& a, const GaussMap& ag, const ConvexPoly& b, const GaussMap& bg) {
 		Manifold out;
 		double pen_depth;
-		CheckNormResults min_pen = { mthz::Vec3(), mthz::Vec3(), -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
 		for (const GaussVert& g : ag.face_verts) {
 			if (!g.SAT_redundant) {
-				CheckNormResults x = sat_checknorm(a, b, g.v);
+				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(a.getPoints()[g.SAT_reference_point_index]));
+				CheckNormResults x = sat_checknorm(recentered_g_extrema, findExtrema(b, g.v), g.v);
 				if (x.seprAxisExists()) {
 					out.max_pen_depth = -1;
 					return out;
 				}
-				else if (!g.internal_face && x.pen_depth < min_pen.pen_depth) {
+				else if (x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
 				}
 			}
 		}
 		for (const GaussVert& g : bg.face_verts) {
 			if (!g.SAT_redundant) {
-				CheckNormResults x = sat_checknorm(a, b, g.v);
+				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(b.getPoints()[g.SAT_reference_point_index]));
+				CheckNormResults x = sat_checknorm(findExtrema(a, g.v), recentered_g_extrema, g.v);
 				if (x.seprAxisExists()) {
 					out.max_pen_depth = -1;
 					return out;
 				}
-				else if (!g.internal_face && x.pen_depth < min_pen.pen_depth) {
+				else if (x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
 				}
 			}
@@ -243,7 +243,7 @@ namespace phyz {
 					n *= -1;
 				}
 
-				CheckNormResults x = sat_checknorm(a, b, n);
+				CheckNormResults x = sat_checknorm(findExtrema(a, n), findExtrema(b, n), n);
 				if (x.seprAxisExists()) {
 					out.max_pen_depth = -1;
 					return out;
@@ -256,11 +256,13 @@ namespace phyz {
 
 		out.normal = min_pen.norm;
 		mthz::Vec3 norm = min_pen.norm;
+		mthz::Vec3 a_maxP = a.getPoints()[min_pen.a_maxPID];
+		mthz::Vec3 b_maxP = b.getPoints()[min_pen.b_maxPID];
 
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
-		ContactArea a_contact = findContactArea(a, norm, min_pen.a_maxP, min_pen.a_maxPID, u, w);
-		ContactArea b_contact = findContactArea(b, norm * (-1), min_pen.b_maxP, min_pen.b_maxPID, u, w);
+		ContactArea a_contact = findContactArea(a, norm, a_maxP, min_pen.a_maxPID, u, w);
+		ContactArea b_contact = findContactArea(b, (-1) * norm, b_maxP, min_pen.b_maxPID, u, w);
 
 		std::vector<ProjP> man_pool;
 		std::vector<uint64_t> man_pool_magics;
@@ -315,7 +317,6 @@ namespace phyz {
 			}
 		}
 
-		mthz::Vec3 a_maxP = min_pen.a_maxP;
 		double a_pen = min_pen.pen_depth;
 		double a_dot_val = a_maxP.dot(norm);
 		mthz::Vec3 n_offset = norm * a_dot_val;

@@ -742,11 +742,11 @@ int main() {
 
 	phyz::PhysicsEngine p;
 	//phyz::PhysicsEngine::enableMultithreading(4);
-	p.registerCollisionAction(phyz::CollisionTarget::all(), phyz::CollisionTarget::all(),
-		[&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifolds) {
-			//printf("Collision!\n");
-		}
-	);
+	//p.registerCollisionAction(phyz::CollisionTarget::all(), phyz::CollisionTarget::all(),
+	//	[&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifolds) {
+	//		printf("Collision!\n");
+	//	}
+	//);
 
 	bool paused = false;
 	bool slow = false;
@@ -851,11 +851,11 @@ int main() {
 				
 				i++;
 
-				p.setMotor(throttle, -i, 100);
+				//p.setMotor(throttle, -i, 100);
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_G)) {
 				static int i = 1;
-				p.setMotor(steering, 1 - (i++ % 3), 100);
+				//p.setMotor(steering, 1 - (i++ % 3), 100);
 			}
 			/*if (rndr::getKeyPressed(GLFW_KEY_X)) {
 				

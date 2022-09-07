@@ -19,20 +19,7 @@ namespace phyz {
 		}
 	}
 
-	static std::vector<SurfaceDef> default_surface_defs(const std::vector<std::vector<int>>& surface_vertex_indices) {
-		std::vector<SurfaceDef> out;
-		out.reserve(surface_vertex_indices.size());
-		for (const std::vector<int>& indices : surface_vertex_indices) {
-			out.push_back(SurfaceDef{ indices, false });
-		}
-		return out;
-	}
-
 	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, Material material)
-		: ConvexPoly(points, default_surface_defs(surface_vertex_indices), material)
-	{}
-
-	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<SurfaceDef>& surface_vertex_indices, Material material)
 		: points(points), id(next_id++), material(material)
 	{
 		assert(points.size() >= 4);
@@ -47,13 +34,13 @@ namespace phyz {
 		//create surfaces
 		int surfaceID = points.size();
 		surfaces.reserve(surface_vertex_indices.size());
-		for (const SurfaceDef& s : surface_vertex_indices) {
-			#ifndef NDEBUG
-			for (int i : s.surface_vertex_indices) {
+		for (const std::vector<int>& s : surface_vertex_indices) {
+#ifndef NDEBUG
+			for (int i : s) {
 				assert(i >= 0 && i < points.size());
 			}
-			#endif
-			surfaces.push_back(Surface(s.surface_vertex_indices, this, interior_point, surfaceID++, s.internal_surface));
+#endif
+			surfaces.push_back(Surface(s, this, interior_point, surfaceID++));
 		}
 
 		//create edges
@@ -132,47 +119,6 @@ namespace phyz {
 		return copy;
 	}
 
-	GaussMap ConvexPoly::computeGaussMap() const {
-		GaussMap g;
-		for (int i = 0; i < surfaces.size(); i++) {
-			const Surface& s1 = surfaces[i];
-
-			bool redundant = false;
-			for (GaussVert& g : g.face_verts) {
-				if (abs(s1.normal().dot(g.v)) > 0.999) {
-					if (g.internal_face) {
-						g.SAT_redundant = true; //in case where one face is internal (aka normal is not valid for collision resolution)
-												//then the internal one should be the one marked redundant to make sure that normal is still tested
-					}
-					else {
-						redundant = true;
-					}
-					break;
-				}
-			}
-			g.face_verts.push_back(GaussVert{ s1.normal(), redundant, s1.internal_surface });
-
-			for (int j = i + 1; j < surfaces.size(); j++) {
-				const Surface& s2 = surfaces[j];
-
-				for (int k = 0; k < s1.n_points(); k++) {
-					for (int w = 0; w < s2.n_points(); w++) {
-						mthz::Vec3 x1 = s1.getPointI(k);
-						mthz::Vec3 x2 = s1.getPointI((k + 1) % s1.n_points());
-						mthz::Vec3 y1 = s2.getPointI(w);
-						mthz::Vec3 y2 = s2.getPointI((w + 1) % s2.n_points());
-
-						//if si and sj share an edge, there exists an arc between v1 and v2 on the gauss map
-						if ((x1 == y1 && x2 == y2) || (x1 == y2 && x2 == y1)) {
-							g.arcs.push_back({ (unsigned int)i, (unsigned int)j });
-						}
-					}
-				}
-			}
-		}
-		return g;
-	}
-
 	Edge::Edge(int p1_indx, int p2_indx, ConvexPoly* poly) {
 		this->poly = poly;
 		this->p1_indx = p1_indx;
@@ -190,8 +136,8 @@ namespace phyz {
 		poly = nullptr;
 	}
 
-	Surface::Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID, bool internal_surface)
-		: point_indexes(point_indexes), poly(poly), surfaceID(surfaceID), internal_surface(internal_surface)
+	Surface::Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID)
+		: point_indexes(point_indexes), poly(poly), surfaceID(surfaceID)
 	{
 		assert(point_indexes.size() >= 3);
 
@@ -201,7 +147,7 @@ namespace phyz {
 
 	Surface::Surface(const Surface& s, ConvexPoly* poly)
 		: point_indexes(s.point_indexes), normalDirection(s.normalDirection), poly(poly), surfaceID(s.surfaceID),
-		normal_calc_index(s.normal_calc_index), internal_surface(s.internal_surface)
+		normal_calc_index(s.normal_calc_index)
 	{}
 
 	Surface::Surface() {
@@ -277,4 +223,40 @@ namespace phyz {
  		}
 	}
 
+	GaussMap ConvexPoly::computeGaussMap() const {
+		GaussMap g;
+		for (int i = 0; i < surfaces.size(); i++) {
+			const Surface& s1 = surfaces[i];
+
+			bool redundant = false;
+			for (GaussVert& g : g.face_verts) {
+				if (s1.normal().dot(g.v) < -0.999) {
+					redundant = true;
+					break;
+				}
+			}
+			int reference_point_index = s1.point_indexes[0];
+			g.face_verts.push_back(GaussVert{ s1.normal(), redundant, findExtrema(*this, s1.normal()), reference_point_index, s1.normal().dot(points[reference_point_index]) });
+
+			for (int j = i + 1; j < surfaces.size(); j++) {
+				const Surface& s2 = surfaces[j];
+
+				for (int k = 0; k < s1.n_points(); k++) {
+					for (int w = 0; w < s2.n_points(); w++) {
+						int s1_indx1 = s1.point_indexes[k];
+						int s1_indx2 = s1.point_indexes[(k + 1) % s1.n_points()];
+						int s2_indx1 = s1.point_indexes[w];
+						int s2_indx2 = s1.point_indexes[(w + 1) % s2.n_points()];
+
+						//if si and sj share an edge, there exists an arc between v1 and v2 on the gauss map
+						if ((s1_indx1 == s2_indx1 && s1_indx2 == s2_indx2) || (s1_indx1 == s2_indx2 && s1_indx2 == s2_indx1)) {
+							g.arcs.push_back(GaussArc{ (unsigned int)i, (unsigned int)j });
+							break;
+						}
+					}
+				}
+			}
+		}
+		return g;
+	}
 }

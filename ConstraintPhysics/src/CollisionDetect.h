@@ -1,11 +1,15 @@
 #pragma once
-#include "RigidBody.h"
+#include "../../Math/src/Vec3.h"
 #include <thread>
 #include <atomic>
 #include <mutex>
 #include <cinttypes>
+#include <vector>
 
 namespace phyz {
+	class ConvexPoly;
+	struct GaussMap;
+
 	static const double M_PI = 3.14159265358979323846;
 	static const double TOL_ANG = 1 * M_PI / 180;
 	static const double COS_TOL = 1 - cos(TOL_ANG);
@@ -37,6 +41,24 @@ namespace phyz {
 	Manifold merge_manifold(const Manifold& m1, const Manifold& m2);
 	Manifold cull_manifold(const Manifold& m, int new_size);
 
+	
+	struct ExtremaInfo {
+		ExtremaInfo(int min_pID, int max_pID, double min_val, double max_val)
+			: min_pID(min_pID), max_pID(max_pID), min_val(min_val), max_val(max_val)
+		{}
+		ExtremaInfo() {
+			min_val = std::numeric_limits<double>::infinity();
+			max_val = -std::numeric_limits<double>::infinity();
+		}
+
+		int min_pID;
+		int max_pID;
+		double min_val;
+		double max_val;
+	};
+
+	ExtremaInfo recenter(const ExtremaInfo& info, double old_ref_value, double new_ref_value);
+	ExtremaInfo findExtrema(const ConvexPoly& c, mthz::Vec3 axis);
 	Manifold SAT(const ConvexPoly& a, const GaussMap& ag, const ConvexPoly& b, const GaussMap& bg);
 
 }

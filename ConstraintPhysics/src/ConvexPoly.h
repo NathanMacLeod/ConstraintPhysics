@@ -4,6 +4,7 @@
 #include "../../Math/src/Quaternion.h"
 #include "../../Math/src/Mat3.h"
 #include "AABB.h"
+#include "CollisionDetect.h"
 #include <vector>
 
 namespace phyz {
@@ -28,17 +29,11 @@ namespace phyz {
 		double static_friction_coeff;
 	};
 
-	struct SurfaceDef {
-		std::vector<int> surface_vertex_indices;
-		bool internal_surface;
-	};
-
 	class ConvexPoly {
 	public:
 		ConvexPoly() {}
 		ConvexPoly(const ConvexPoly& c);
 		ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, Material material=Material::default_material());
-		ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<SurfaceDef>& surface_defs, Material material=Material::default_material());
 
 		GaussMap computeGaussMap() const;
 		ConvexPoly getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point=mthz::Vec3(0,0,0)) const;
@@ -82,7 +77,7 @@ namespace phyz {
 
 	class Surface {
 	public:
-		Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID = -1, bool internal_surface = false);
+		Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID = -1);
 		Surface(const Surface& s, ConvexPoly* poly);
 		Surface();
 
@@ -101,7 +96,6 @@ namespace phyz {
 		int normal_calc_index;
 		int surfaceID;
 		int normalDirection;
-		bool internal_surface;
 	};
 
 	struct GaussArc {
@@ -112,7 +106,9 @@ namespace phyz {
 	struct GaussVert {
 		mthz::Vec3 v;
 		bool SAT_redundant;
-		bool internal_face;
+		ExtremaInfo cached_SAT_query;
+		int SAT_reference_point_index;
+		double SAT_reference_point_value;
 	};
 
 	struct GaussMap {

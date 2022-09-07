@@ -118,13 +118,13 @@ namespace phyz {
 				points[j], points[j + n_faces], points[j + 2 * n_faces], points[j + 3 * n_faces]
 			};
 
-			std::vector<SurfaceDef> surface_indices = {
-				{ { 0, 1, 5, 4 }, false }, //underside
-				{ { 1, 5, 7, 3 }, false }, //outside
-				{ { 2, 3, 7, 6 }, false }, //upperside
-				{ { 0, 2, 6, 4 }, false }, //inner side
-				{ { 0, 1, 3, 2 }, true }, //inside edge 2
-				{ { 4, 5, 7, 6 }, true }  //inside edge 1
+			std::vector<std::vector<int>> surface_indices = {
+				{ { 0, 1, 5, 4 } }, //underside
+				{ { 1, 5, 7, 3 } }, //outside
+				{ { 2, 3, 7, 6 } }, //upperside
+				{ { 0, 2, 6, 4 } }, //inner side
+				{ { 0, 1, 3, 2 } }, //inside edge 2
+				{ { 4, 5, 7, 6 } }  //inside edge 1
 			};
 
 			out = out.merge(out, Geometry(ConvexPoly(segment_points, surface_indices, material)));

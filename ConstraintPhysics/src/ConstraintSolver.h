@@ -5,7 +5,7 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel = 35, int n_itr_pos = 25);
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel = 20, int n_itr_pos = 15);
 
 	template <int n>
 	struct NVec {
