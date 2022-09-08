@@ -42,6 +42,8 @@ namespace phyz {
 		inline const std::vector<mthz::Vec3>& getPoints() const { return points; }
 		inline const std::vector<Surface>& getSurfaces() const { return surfaces; }
 		inline const std::vector<Edge>& getEdges() const { return edges; }
+		inline const std::vector<int>& getFaceIndicesAdjacentToPointI(int i) const { return adjacent_faces_to_vertex[i]; }
+		inline const std::vector<int>& getEdgeIndicesAdjacentToPointI(int i) const { return adjacent_edges_to_vertex[i]; }
 		inline int getID() const { return id; }
 
 		Material material;
@@ -50,6 +52,8 @@ namespace phyz {
 		friend class Edge;
 		friend class RigidBody;
 	private:
+		std::vector<std::vector<int>> adjacent_faces_to_vertex;
+		std::vector<std::vector<int>> adjacent_edges_to_vertex;
 		std::vector<mthz::Vec3> points;
 		std::vector<Surface> surfaces;
 		std::vector<Edge> edges;

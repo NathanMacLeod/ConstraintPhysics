@@ -289,17 +289,21 @@ namespace phyz {
 		return id;
 	}
 
-	void PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength, double rot_correct_strength) {
+	void PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, 
+		double pos_correct_strength, double rot_correct_strength, double positive_slide_limit, double negative_slide_limit) {
 		disallowCollision(b1, b2);
 
 		Slider* s = new Slider{
 			SliderConstraint(),
+			ContactConstraint(),
 			b1->trackPoint(b1_slider_pos_local),
 			b2->trackPoint(b2_slider_pos_local),
 			b1_slider_axis_local.normalize(),
 			b2_slider_axis_local.normalize(),
 			pos_correct_strength,
 			rot_correct_strength,
+			positive_slide_limit,
+			negative_slide_limit
 		};
 
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
@@ -462,6 +466,20 @@ namespace phyz {
 					mthz::Vec3 b1_slide_axis = b1->orientation.applyRotation(s->b1_slide_axis_body_space);
 					mthz::Vec3 b2_slide_axis = b2->orientation.applyRotation(s->b2_slide_axis_body_space);
 
+					double slider_value = b2_pos.dot(b1_slide_axis) - b1_pos.dot(b1_slide_axis);
+					if (slider_value > s->positive_slide_limit) {
+						s->slide_limit = ContactConstraint(b1, b2, -b1_slide_axis, b1_pos + s->positive_slide_limit * b1_slide_axis, 0, slider_value - s->positive_slide_limit, s->pos_correct_hardness, s->slide_limit.impulse);
+						s->slide_limit_exceeded = true;
+					}
+					else if (slider_value < -s->negative_slide_limit) {
+						s->slide_limit = ContactConstraint(b1, b2, b1_slide_axis, b1_pos - s->negative_slide_limit * b1_slide_axis, 0, -s->negative_slide_limit - slider_value, s->pos_correct_hardness, s->slide_limit.impulse);
+						s->slide_limit_exceeded = true;
+					}
+					else {
+						s->slide_limit.impulse = NVec<1>{ 0 };
+						s->slide_limit_exceeded = false;
+					}
+
 					s->constraint = SliderConstraint(b1, b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
 						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse, s->constraint.u, s->constraint.w);
 				}
@@ -523,6 +541,9 @@ namespace phyz {
 						}
 						for (Slider* s : e->sliderConstraints) {
 							output->island_constraints->push_back(&s->constraint);
+							if (s->slide_limit_exceeded) {
+								output->island_constraints->push_back(&s->slide_limit);
+							}
 						}
 					}
 				}

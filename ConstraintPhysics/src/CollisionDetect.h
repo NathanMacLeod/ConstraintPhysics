@@ -57,8 +57,8 @@ namespace phyz {
 		double max_val;
 	};
 
-	ExtremaInfo recenter(const ExtremaInfo& info, double old_ref_value, double new_ref_value);
-	ExtremaInfo findExtrema(const ConvexPoly& c, mthz::Vec3 axis);
+	inline ExtremaInfo recenter(const ExtremaInfo& info, double old_ref_value, double new_ref_value);
+	inline ExtremaInfo findExtrema(const ConvexPoly& c, mthz::Vec3 axis);
 	Manifold SAT(const ConvexPoly& a, const GaussMap& ag, const ConvexPoly& b, const GaussMap& bg);
 
 }

@@ -56,7 +56,8 @@ namespace phyz {
 
 		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=350);
 		MotorID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=350, double rot_correct_strength=350);
-		void addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength=350, double rot_correct_strength=350);
+		void addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength=350, 
+			double rot_correct_strength=350, double positive_slide_limit=std::numeric_limits<double>::infinity(), double negative_slide_limit=std::numeric_limits<double>::infinity());
 
 		void setMotor(MotorID id, double target_velocity, double max_torque);
 
@@ -125,12 +126,16 @@ namespace phyz {
 
 		struct Slider {
 			SliderConstraint constraint;
+			ContactConstraint slide_limit;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_slide_axis_body_space;
 			mthz::Vec3 b2_slide_axis_body_space;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
+			double positive_slide_limit;
+			double negative_slide_limit;
+			bool slide_limit_exceeded;
 		};
 
 		struct SharedConstraintsEdge {

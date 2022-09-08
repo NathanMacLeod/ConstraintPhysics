@@ -55,14 +55,16 @@ namespace phyz {
 	//kinda brute forcey might redo later
 	static ContactArea findContactArea(const ConvexPoly& c, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
 
-		for (const Surface& s : c.getSurfaces()) {
+		for (int surface_index : c.getFaceIndicesAdjacentToPointI(p_ID)) {
+			const Surface& s = c.getSurfaces()[surface_index];
 			double cos_ang = s.normal().dot(n);
 			if (1 - cos_ang <= COS_TOL) {
 				return projectFace(s, u, w);
 			}
 		}
 
-		for (Edge e : c.getEdges()) {
+		for (int edge_index : c.getEdgeIndicesAdjacentToPointI(p_ID)) {
+			const Edge& e = c.getEdges()[edge_index];
 			mthz::Vec3 p1 = e.p1();
 			mthz::Vec3 p2 = e.p2();
 			double sin_ang = abs((e.p2() - e.p1()).normalize().dot(n));

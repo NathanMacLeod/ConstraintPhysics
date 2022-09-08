@@ -9,7 +9,7 @@ namespace phyz {
 	static int next_id;
 	
 	ConvexPoly::ConvexPoly(const ConvexPoly& c)
-		: points(c.points), interior_point(c.interior_point), id(next_id++), material(c.material)
+		: points(c.points), interior_point(c.interior_point), id(next_id++), material(c.material), adjacent_faces_to_vertex(c.adjacent_faces_to_vertex), adjacent_edges_to_vertex(c.adjacent_edges_to_vertex)
 	{
 		for (int i = 0; i < c.surfaces.size(); i++) {
 			surfaces.push_back(Surface(c.surfaces[i], this));
@@ -20,11 +20,11 @@ namespace phyz {
 	}
 
 	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, Material material)
-		: points(points), id(next_id++), material(material)
+		: points(points), id(next_id++), material(material), adjacent_faces_to_vertex(points.size()), adjacent_edges_to_vertex(points.size())
 	{
 		assert(points.size() >= 4);
 
-		//create interior point (inefficient but not performance critical)
+		//create interior point
 		interior_point = mthz::Vec3(0, 0, 0);
 		for (const mthz::Vec3& p : points) {
 			interior_point += p;
@@ -34,12 +34,12 @@ namespace phyz {
 		//create surfaces
 		int surfaceID = points.size();
 		surfaces.reserve(surface_vertex_indices.size());
-		for (const std::vector<int>& s : surface_vertex_indices) {
-#ifndef NDEBUG
-			for (int i : s) {
-				assert(i >= 0 && i < points.size());
+		for (int i = 0; i < surface_vertex_indices.size(); i++) {
+			const std::vector<int>& s = surface_vertex_indices[i];
+			for (int j : s) {
+				assert(j >= 0 && j < points.size());
+				adjacent_faces_to_vertex[j].push_back(i);
 			}
-#endif
 			surfaces.push_back(Surface(s, this, interior_point, surfaceID++));
 		}
 
@@ -75,6 +75,8 @@ namespace phyz {
 		for (int i = 0; i < seen_pairs.size(); i++) {
 			Pair pair = seen_pairs[i];
 			edges[i] = Edge(pair.p1, pair.p2, this);
+			adjacent_edges_to_vertex[pair.p1].push_back(i);
+			adjacent_edges_to_vertex[pair.p2].push_back(i);
 		}
 	}
 
@@ -245,8 +247,8 @@ namespace phyz {
 					for (int w = 0; w < s2.n_points(); w++) {
 						int s1_indx1 = s1.point_indexes[k];
 						int s1_indx2 = s1.point_indexes[(k + 1) % s1.n_points()];
-						int s2_indx1 = s1.point_indexes[w];
-						int s2_indx2 = s1.point_indexes[(w + 1) % s2.n_points()];
+						int s2_indx1 = s2.point_indexes[w];
+						int s2_indx2 = s2.point_indexes[(w + 1) % s2.n_points()];
 
 						//if si and sj share an edge, there exists an arc between v1 and v2 on the gauss map
 						if ((s1_indx1 == s2_indx1 && s1_indx2 == s2_indx2) || (s1_indx1 == s2_indx2 && s1_indx2 == s2_indx1)) {
