@@ -489,15 +489,18 @@ namespace phyz {
 		NMat<3, 3> Ia_inv_mat = Mat3toNMat33(Ia_inv);
 		NMat<3, 3> Ib_inv_mat = Mat3toNMat33(Ib_inv);
 
+		mthz::Vec3 pos_error = slider_point_a - slider_point_b;
 		mthz::Vec3 rAxU = rA.cross(u);
 		mthz::Vec3 rAxW = rA.cross(w);
 		mthz::Vec3 rBxU = rB.cross(u);
 		mthz::Vec3 rBxW = rB.cross(w);
+		mthz::Vec3 UxPe = u.cross(pos_error);
+		mthz::Vec3 WxPe = w.cross(pos_error);
 
 		//IMPULSE TO ROTATION MATRICES
 		{
-			mthz::Vec3 l = Ia_inv * rAxU; //left block
-			mthz::Vec3 m = Ia_inv * rAxW; //middle block
+			mthz::Vec3 l = Ia_inv * rAxU + u.cross(pos_error); //left block
+			mthz::Vec3 m = Ia_inv * rAxW + w.cross(pos_error); //middle block
 
 			rotDirA.v[0][0] = l.x; rotDirA.v[0][1] = m.x;
 			rotDirA.v[1][0] = l.y; rotDirA.v[1][1] = m.y;
@@ -518,17 +521,20 @@ namespace phyz {
 		{
 			NMat<1, 3> u_dot = { u.x, u.y, u.z };
 			NMat<1, 3> w_dot = { w.x, w.y, w.z };
+			NMat<1, 3> Pe_dot = { pos_error.x, pos_error.y, pos_error.z };
 			NMat<3, 3> rA_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rA));
 			NMat<3, 3> rB_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rB));
+			NMat<3, 3> u_skew = Mat3toNMat33(mthz::Mat3::cross_mat(u));
+			NMat<3, 3> w_skew = Mat3toNMat33(mthz::Mat3::cross_mat(w));
 			NMat<3, 3> zero = Mat3toNMat33(mthz::Mat3::zero());
 
 			jacobian.copyInto(u_dot, 0, 0);
-			jacobian.copyInto(-u_dot * rA_skew, 0, 3);
+			jacobian.copyInto(-u_dot * rA_skew - Pe_dot * u_skew, 0, 3);
 			jacobian.copyInto(-u_dot, 0, 6);
 			jacobian.copyInto(u_dot * rB_skew, 0, 9);
 
 			jacobian.copyInto(w_dot, 1, 0);
-			jacobian.copyInto(-w_dot * rA_skew, 1, 3);
+			jacobian.copyInto(-w_dot * rA_skew - Pe_dot * w_skew, 1, 3);
 			jacobian.copyInto(-w_dot, 1, 6);
 			jacobian.copyInto(w_dot * rB_skew, 1, 9);
 
@@ -538,19 +544,19 @@ namespace phyz {
 			jacobian.copyInto(-idenMat<3>(), 2, 9);
 
 			//top row
-			inverse_inertia.v[0][0] = a->getInvMass() + b->getInvMass() - u.dot(rA.cross(Ia_inv * (rAxU))) - u.dot(rB.cross(Ib_inv * (rBxU)));
-			inverse_inertia.v[0][1] = -u.dot(rA.cross(Ia_inv * (rAxW))) - u.dot(rB.cross(Ib_inv * (rBxW)));
-			NMat<1, 3> ur = -u_dot * rA_skew * Ia_inv_mat - u_dot * rB_skew * Ib_inv_mat;
+			inverse_inertia.v[0][0] = a->getInvMass() + b->getInvMass() - u.dot(rA.cross(Ia_inv * (rAxU + UxPe))) - pos_error.dot(u.cross(Ia_inv * (rAxU + UxPe))) - u.dot(rB.cross(Ib_inv * (rBxU)));
+			inverse_inertia.v[0][1] = -u.dot(rA.cross(Ia_inv * (rAxW + WxPe))) - pos_error.dot(u.cross(Ia_inv * (rAxW))) - u.dot(rB.cross(Ib_inv * (rBxW)));
+			NMat<1, 3> ur = -(u_dot * rA_skew + Pe_dot * u_skew) * Ia_inv_mat - u_dot * rB_skew * Ib_inv_mat;
 			inverse_inertia.v[0][2] = ur.v[0][0]; inverse_inertia.v[0][3] = ur.v[0][1]; inverse_inertia.v[0][4] = ur.v[0][2];
 
 			//middle row
-			inverse_inertia.v[1][0] = -w.dot(rA.cross(Ia_inv * (rAxU))) - w.dot(rB.cross(Ib_inv * (rBxU)));
-			inverse_inertia.v[1][1] = a->getInvMass() + b->getInvMass() - w.dot(rA.cross(Ia_inv * (rAxW))) - w.dot(rB.cross(Ib_inv * (rBxW)));
-			NMat<1, 3> mr = -w_dot * rA_skew * Ia_inv_mat - w_dot * rB_skew * Ib_inv_mat;
+			inverse_inertia.v[1][0] = -w.dot(rA.cross(Ia_inv * (rAxU + UxPe))) - pos_error.dot(w.cross(Ia_inv * (rAxU + UxPe))) - w.dot(rB.cross(Ib_inv * (rBxU)));
+			inverse_inertia.v[1][1] = a->getInvMass() + b->getInvMass() - w.dot(rA.cross(Ia_inv * (rAxW))) - pos_error.dot(w.cross(Ia_inv * (rAxW + WxPe))) - w.dot(rB.cross(Ib_inv * (rBxW)));
+			NMat<1, 3> mr = -(w_dot * rA_skew + Pe_dot * w_skew) * Ia_inv_mat - w_dot * rB_skew * Ib_inv_mat;
 			inverse_inertia.v[1][2] = mr.v[0][0]; inverse_inertia.v[1][3] = mr.v[0][1]; inverse_inertia.v[1][4] = mr.v[0][2];
 
-			mthz::Vec3 ll = Ia_inv * rAxU + Ib_inv * rBxU;
-			mthz::Vec3 lm = Ia_inv * rAxW + Ib_inv * rBxW;
+			mthz::Vec3 ll = Ia_inv * (rAxU + UxPe) + Ib_inv * rBxU;
+			mthz::Vec3 lm = Ia_inv * (rAxW + WxPe) + Ib_inv * rBxW;
 			NMat<3, 3> lr = Mat3toNMat33(Ia_inv + Ib_inv);
 
 			inverse_inertia.v[2][0] = ll.x; inverse_inertia.v[2][1] = lm.x;
@@ -563,11 +569,13 @@ namespace phyz {
 
 		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
 		{
-			double u_correct = (slider_point_b - slider_point_a).dot(u) * pos_correct_hardness;
-			double w_correct = (slider_point_b - slider_point_a).dot(w) * pos_correct_hardness;
+			double u_correct = -pos_error.dot(u) * pos_correct_hardness;
+			double w_correct = -pos_error.dot(w) * pos_correct_hardness;
 
 			mthz::Quaternion orientation_diff = b->getOrientation() * a->getOrientation().conjugate();
 			mthz::Vec3 rot_correct = mthz::Vec3(orientation_diff.i, orientation_diff.j, orientation_diff.k) * rot_correct_hardness;
+			//printf("Rot error: %f\n", rot_correct.mag());
+			//printf("pos error: %f\n", sqrt(u_correct * u_correct + w_correct * w_correct));
 			psuedo_target_val = NVec<5>{ u_correct, w_correct, rot_correct.x, rot_correct.y, rot_correct.z };
 		}
 	}
@@ -581,7 +589,10 @@ namespace phyz {
 			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
 			[](const NVec<5>& impulse) { return impulse; },
 			[&](const NVec<5>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				NVec<5> old_val = getConstraintValue(*a_velocity_changes, *b_velocity_changes);
 				this->addVelocityChange(impulse, va, vb);
+				NVec<5> new_val = getConstraintValue(*a_velocity_changes, *b_velocity_changes);
+				int a = 1 + 2;
 			});
 	}
 
@@ -603,9 +614,6 @@ namespace phyz {
 		vb->lin -= (impulse.v[0] * u + impulse.v[1] * w) * b->getInvMass();
 		va->ang += NVec3toVec3(rotDirA * impulse);
 		vb->ang -= NVec3toVec3(rotDirB * impulse);
-
-		NVec<5> v = getConstraintValue(*va, *vb);
-		int a = 1 + 2;
 	}
 
 	template<int n>

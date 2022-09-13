@@ -1,9 +1,10 @@
+#define GLEW_STATIC
+#include <GL/glew.h>
+
 #include "Renderer.h"
 
 #include <chrono>
 #include <cstdio>
-
-#include <GL/glew.h>
 
 namespace rndr {
 

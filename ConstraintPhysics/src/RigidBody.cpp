@@ -120,7 +120,7 @@ namespace phyz {
 	}
 
 	mthz::Vec3 RigidBody::getVel() { 
-		return (fixed)? mthz::Vec3(0, 0, 0) : vel; 
+		return (fixed)? mthz::Vec3(0, 0, 0) : vel;
 	}
 
 	mthz::Vec3 RigidBody::getAngVel() { 

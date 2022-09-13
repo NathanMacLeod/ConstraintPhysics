@@ -129,8 +129,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Demos\DemoScene.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\main_old.cpp" />
+    <ClCompile Include="src\Mesh.cpp" />
     <ClCompile Include="src\renderer\IndexBuffer.cpp" />
     <ClCompile Include="src\renderer\Renderer.cpp" />
     <ClCompile Include="src\renderer\Shader.cpp" />
@@ -145,6 +147,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Demos\CarDemo.h" />
+    <ClInclude Include="src\Demos\DemoScene.h" />
+    <ClInclude Include="src\Mesh.h" />
     <ClInclude Include="src\renderer\IndexBuffer.h" />
     <ClInclude Include="src\renderer\Mat4.h" />
     <ClInclude Include="src\renderer\Renderer.h" />

@@ -13,6 +13,9 @@
     <Filter Include="resources\shaders">
       <UniqueIdentifier>{a04c038f-c6dc-4515-9ee5-27b1ac888085}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Demos">
+      <UniqueIdentifier>{609d72ac-60ff-417a-b5c5-c44a62c8a5ff}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\renderer\Renderer.cpp">
@@ -33,6 +36,12 @@
     <ClCompile Include="src\main_old.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Mesh.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Demos\DemoScene.cpp">
+      <Filter>src\Demos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\renderer\Renderer.h">
@@ -49,6 +58,15 @@
     </ClInclude>
     <ClInclude Include="src\renderer\Mat4.h">
       <Filter>src\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mesh.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\DemoScene.h">
+      <Filter>src\Demos</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\CarDemo.h">
+      <Filter>src\Demos</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -5,7 +5,7 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel = 20, int n_itr_pos = 15);
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel, int n_itr_pos);
 
 	template <int n>
 	struct NVec {
@@ -55,7 +55,7 @@ namespace phyz {
 
 	class Constraint {
 	public:
-		Constraint() {}
+		Constraint() : a(nullptr), b(nullptr), a_velocity_changes(nullptr), a_psuedo_velocity_changes(nullptr), b_velocity_changes(nullptr), b_psuedo_velocity_changes(nullptr) {}
 		Constraint(RigidBody* a, RigidBody* b) : a(a), b(b), a_velocity_changes(nullptr), a_psuedo_velocity_changes(nullptr), b_velocity_changes(nullptr), b_psuedo_velocity_changes(nullptr) {}
 		virtual ~Constraint() {}
 
@@ -70,6 +70,7 @@ namespace phyz {
 		VelVec* a_psuedo_velocity_changes;
 		VelVec* b_velocity_changes;
 		VelVec* b_psuedo_velocity_changes;
+		bool debug_track = false;
 
 		virtual bool constraintWarmStarted() = 0;
 		virtual void warmStartVelocityChange(VelVec* va, VelVec* vb) = 0;

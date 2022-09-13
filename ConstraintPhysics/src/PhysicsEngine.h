@@ -32,6 +32,8 @@ namespace phyz {
 
 	class PhysicsEngine {
 	public:
+		~PhysicsEngine();
+
 		static void enableMultithreading(int n_threads);
 		static void disableMultithreading();
 
@@ -48,6 +50,8 @@ namespace phyz {
 		inline mthz::Vec3 getGravity() { return gravity; }
 		inline double getStep_time() { return step_time; }
 
+		void setPGSIterations(int n_vel, int n_pos) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; }
+		void setSleepingEnabled(bool sleeping);
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
 		
@@ -66,6 +70,9 @@ namespace phyz {
 		static int n_threads;
 		static ThreadManager thread_manager;
 		static bool use_multithread;
+
+		int pgsVelIterations = 20;
+		int pgsPosIterations = 15;
 
 		struct ConstraintGraphNode; 
 		void addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
@@ -86,7 +93,7 @@ namespace phyz {
 		double step_time = 1.0 / 90;
 		double cutoff_vel = 0;
 		int contact_life = 6;
-		bool sleeping_enabled = false;
+		bool sleeping_enabled = true;
 		double sleep_delay = 0.5;
 
 		double vel_sleep_coeff = 0.1;
