@@ -93,6 +93,23 @@ void DemoManager::selectDemoScene() {
 
 	SceneLauncher scene = scene_suite[selected_index];
 	current_scene = scene.createInstance(this, properties);
+	current_scene_name = scene.name;
+}
+
+void DemoManager::displaySceneControls() {
+	assert(current_scene != nullptr);
+	printf("\n%s Controls:\n", current_scene_name.c_str());
+	printf("======================\n");
+	for (ControlDescription c : current_scene->controls()) {
+		printf("\t%s:\t%s\n", c.input_name.c_str(), c.input_action_description.c_str());
+	}
+	printf("\nPress ENTER to start\n");
+	std::string unused;
+	std::getline(std::cin, unused);
+}
+
+void DemoManager::runScene() {
+	assert(current_scene != nullptr);
 	current_scene->run();
 }
 

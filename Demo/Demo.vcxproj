@@ -149,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="src\Demos\CarDemo.h" />
     <ClInclude Include="src\Demos\DemoScene.h" />
+    <ClInclude Include="src\Demos\ImageDemo.h" />
     <ClInclude Include="src\Mesh.h" />
     <ClInclude Include="src\renderer\IndexBuffer.h" />
     <ClInclude Include="src\renderer\Mat4.h" />

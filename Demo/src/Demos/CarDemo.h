@@ -11,15 +11,44 @@ public:
 
 	}
 
+	std::vector<ControlDescription> controls() override {
+		return {
+			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
+			ControlDescription{"UP, DOWN, LEFT, RIGHT", "Rotate the camera"},
+			ControlDescription{"G", "toggle free-look and lock to vehicle"},
+			ControlDescription{"B", "Lock the rear right wheel"},
+			ControlDescription{"I. K", "Incrase, Decrease throttle"},
+			ControlDescription{"J, L", "Steer left, right"},
+		};
+	}
+
+	static void addBrickRing(phyz::PhysicsEngine* p, std::vector<PhysBod>* bodies, mthz::Vec3 block_dim, double radius, mthz::Vec3 pos, int n_layers, double offset_ratio) {
+		phyz::Geometry block = phyz::Geometry::box(mthz::Vec3(0, 0, 0), block_dim.x, block_dim.y, block_dim.z, phyz::Material::modified_density(0.05));
+
+		double outer_dTheta = acos(1 - block_dim.z * block_dim.z / (2 * radius * radius));
+		for (int i = 0; i < n_layers; i++) {
+			double offset_angle = outer_dTheta * i / offset_ratio;
+			for (double theta = 0; theta < 2 * 3.1415926563; theta += outer_dTheta) {
+				mthz::Vec3 block_pos = pos + mthz::Vec3(0, i * block_dim.y, 0) + mthz::Quaternion(theta + offset_angle, mthz::Vec3(0, 1, 0)).applyRotation(mthz::Vec3(radius, 0, 0));
+				mthz::Quaternion orient(theta + offset_angle + outer_dTheta / 2.0, mthz::Vec3(0, 1, 0));
+
+				phyz::Geometry block_oriented = block.getRotated(orient).getTranslated(block_pos);
+				phyz::RigidBody* r = p->createRigidBody(block_oriented);
+				Mesh m = { fromGeometry(block_oriented) };
+				bodies->push_back(PhysBod{ m, r });
+			}
+		}
+	}
+
 	void run() override {
 
-		rndr::init(properties.window_width, properties.window_height, "Phyz Demo");
+		rndr::init(properties.window_width, properties.window_height, "Car Demo");
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
 		}
 
 		phyz::PhysicsEngine p;
-		p.setSleepingEnabled(false);
+		//p.setSleepingEnabled(false);
 		p.setPGSIterations(35, 25);
 
 		bool paused = false;
@@ -31,27 +60,29 @@ public:
 		//************************
 		//*******BASE PLATE*******
 		//************************
-		double s = 80;
+		double s = 100;
 		phyz::Geometry geom2 = phyz::Geometry::box(mthz::Vec3(-s / 2, -1, -s / 2), s, 2, s);
-		std::vector<Mesh> m2 = { fromGeometry(geom2) };
+		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		r2->setCOMtoPosition(mthz::Vec3(0, -5, 0));
 		bodies.push_back({ m2, r2 });
 
-		mthz::Vec3 pos(0, 0.1, 0);
-		mthz::Vec3 base_dim(1, 0.1, 1);
-		phyz::Geometry base = phyz::Geometry::box(pos, base_dim.x, base_dim.y, base_dim.z, phyz::Material::modified_density(1));
-
 		//*****************
 		//****OBSTACLES****
 		//*****************
-
+		double radius = 25;
+		mthz::Vec3 block_dim(1, 1, 2);
+		addBrickRing(&p, &bodies, block_dim, radius, mthz::Vec3(0, -4, 0), 2, 2);
 		
 
 		//*****************
 		//*******CAR*******
 		//*****************
+
+		mthz::Vec3 pos(0, -3, radius - 5);
+		mthz::Vec3 base_dim(1, 0.1, 1);
+		phyz::Geometry base = phyz::Geometry::box(pos, base_dim.x, base_dim.y, base_dim.z, phyz::Material::modified_density(1));
 
 		double base_gear_radius = 0.15;
 		double base_gear_tooth_size = 0.1;
@@ -356,12 +387,12 @@ public:
 		double front_wheel1_elbow_length = 0.125;
 		double front_wheel1_arm_width = 0.125;
 		phyz::Geometry front_wheel1_elbow = phyz::Geometry::box(front_wheel1_position - mthz::Vec3(front_wheel1_arm_width / 2.0, front_wheel1_arm_width / 2.0, 0), front_wheel1_arm_width, front_wheel1_arm_width,
-			-front_wheel1_elbow_length, phyz::Material::modified_density(0.1));
+			-front_wheel1_elbow_length);
 
 		double front_wheel1_arm_length = 0.4;
 		mthz::Vec3 front_wheel1_arm_pos = front_wheel1_position + mthz::Vec3(0, 0, -front_wheel1_elbow_length - front_wheel1_arm_width / 2.0);
 		phyz::Geometry front_wheel1_forearm = phyz::Geometry::box(front_wheel1_arm_pos + mthz::Vec3(-front_wheel1_arm_width / 2.0, -front_wheel1_arm_width / 2.0, -front_wheel1_arm_width / 2.0),
-			front_wheel1_arm_length + front_wheel1_arm_width / 2.0, front_wheel1_arm_width, front_wheel1_arm_width, phyz::Material::modified_density(1.0));
+			front_wheel1_arm_length + front_wheel1_arm_width / 2.0, front_wheel1_arm_width, front_wheel1_arm_width);
 
 		mthz::Vec3 front_wheel1_rod_pinion_connect = pinion_position + mthz::Vec3(steering_wheel_gear_height / 2.0, pinion_height / 2.0, pinion_length);
 		mthz::Vec3 front_wheel1_rod_arm_connect = front_wheel1_arm_pos + mthz::Vec3(front_wheel1_arm_length, 0, 0);
@@ -379,11 +410,11 @@ public:
 			.getRotated(mthz::Quaternion(-3.1415926535 / 2.0, mthz::Vec3(1, 0, 0)), front_wheel2_position);
 
 		phyz::Geometry front_wheel2_elbow = phyz::Geometry::box(front_wheel2_position - mthz::Vec3(front_wheel1_arm_width / 2.0, front_wheel1_arm_width / 2.0, 0), front_wheel1_arm_width, front_wheel1_arm_width,
-			front_wheel1_elbow_length, phyz::Material::modified_density(0.1));
+			front_wheel1_elbow_length);
 
 		mthz::Vec3 front_wheel2_arm_pos = front_wheel2_position + mthz::Vec3(0, 0, front_wheel1_elbow_length + front_wheel1_arm_width / 2.0);
 		phyz::Geometry front_wheel2_forearm = phyz::Geometry::box(front_wheel2_arm_pos + mthz::Vec3(-front_wheel1_arm_width / 2.0, -front_wheel1_arm_width / 2.0, -front_wheel1_arm_width / 2.0),
-			front_wheel1_arm_length + front_wheel1_arm_width / 2.0, front_wheel1_arm_width, front_wheel1_arm_width, phyz::Material::modified_density(0.1));
+			front_wheel1_arm_length + front_wheel1_arm_width / 2.0, front_wheel1_arm_width, front_wheel1_arm_width);
 
 		mthz::Vec3 front_wheel2_rod_pinion_connect = pinion_position + mthz::Vec3(steering_wheel_gear_height / 2.0, pinion_height / 2.0, 0);
 		mthz::Vec3 front_wheel2_rod_arm_connect = front_wheel2_arm_pos + mthz::Vec3(front_wheel1_arm_length, 0, 0);
@@ -423,85 +454,85 @@ public:
 		bool steering_lock = false;
 
 		phyz::RigidBody* base_r = p.createRigidBody(base);
-		std::vector<Mesh> base_m = { fromGeometry(base) };
+		Mesh base_m = fromGeometry(base);
 		phyz::RigidBody* drive_shaft_r = p.createRigidBody(drive_shaft);
-		std::vector<Mesh> drive_shaft_m = { fromGeometry(drive_shaft) };
+		Mesh drive_shaft_m = fromGeometry(drive_shaft);
 		phyz::RigidBody* drive_shaft_gear3_r = p.createRigidBody(drive_shaft_gear3);
-		std::vector<Mesh> drive_shaft_gear3_m = { fromGeometry(drive_shaft_gear3) };
+		Mesh drive_shaft_gear3_m = fromGeometry(drive_shaft_gear3);
 		phyz::RigidBody* crankshaft_r = p.createRigidBody(crankshaft);
-		std::vector<Mesh> crankshaft_m = { fromGeometry(crankshaft) };
+		Mesh crankshaft_m = fromGeometry(crankshaft);
 		phyz::RigidBody* piston_arm1_r = p.createRigidBody(piston_arm1);
-		std::vector<Mesh> piston_arm1_m = { fromGeometry(piston_arm1) };
+		Mesh piston_arm1_m = fromGeometry(piston_arm1);
 		phyz::RigidBody* piston_arm2_r = p.createRigidBody(piston_arm2);
-		std::vector<Mesh> piston_arm2_m = { fromGeometry(piston_arm2) };
+		Mesh piston_arm2_m = fromGeometry(piston_arm2);
 		phyz::RigidBody* piston_arm3_r = p.createRigidBody(piston_arm3);
-		std::vector<Mesh> piston_arm3_m = { fromGeometry(piston_arm3) };
+		Mesh piston_arm3_m = fromGeometry(piston_arm3);
 		phyz::RigidBody* piston_arm4_r = p.createRigidBody(piston_arm4);
-		std::vector<Mesh> piston_arm4_m = { fromGeometry(piston_arm4) };
+		Mesh piston_arm4_m = fromGeometry(piston_arm4);
 		phyz::RigidBody* piston_arm5_r = p.createRigidBody(piston_arm5);
-		std::vector<Mesh> piston_arm5_m = { fromGeometry(piston_arm5) };
+		Mesh piston_arm5_m = fromGeometry(piston_arm5);
 		phyz::RigidBody* piston_arm6_r = p.createRigidBody(piston_arm6);
-		std::vector<Mesh> piston_arm6_m = { fromGeometry(piston_arm6) };
+		Mesh piston_arm6_m = fromGeometry(piston_arm6);
 		phyz::RigidBody* piston_arm7_r = p.createRigidBody(piston_arm7);
-		std::vector<Mesh> piston_arm7_m = { fromGeometry(piston_arm7) };
+		Mesh piston_arm7_m = fromGeometry(piston_arm7);
 		phyz::RigidBody* piston_arm8_r = p.createRigidBody(piston_arm8);
-		std::vector<Mesh> piston_arm8_m = { fromGeometry(piston_arm8) };
+		Mesh piston_arm8_m = fromGeometry(piston_arm8);
 		phyz::RigidBody* piston1_r = p.createRigidBody(piston1);
-		std::vector<Mesh> piston1_m = { fromGeometry(piston1) };
+		Mesh piston1_m = fromGeometry(piston1);
 		phyz::RigidBody* piston2_r = p.createRigidBody(piston2);
-		std::vector<Mesh> piston2_m = { fromGeometry(piston2) };
+		Mesh piston2_m = fromGeometry(piston2);
 		phyz::RigidBody* piston3_r = p.createRigidBody(piston3);
-		std::vector<Mesh> piston3_m = { fromGeometry(piston3) };
+		Mesh piston3_m = fromGeometry(piston3);
 		phyz::RigidBody* piston4_r = p.createRigidBody(piston4);
-		std::vector<Mesh> piston4_m = { fromGeometry(piston4) };
+		Mesh piston4_m = fromGeometry(piston4);
 		phyz::RigidBody* piston5_r = p.createRigidBody(piston5);
-		std::vector<Mesh> piston5_m = { fromGeometry(piston5) };
+		Mesh piston5_m = fromGeometry(piston5);
 		phyz::RigidBody* piston6_r = p.createRigidBody(piston6);
-		std::vector<Mesh> piston6_m = { fromGeometry(piston6) };
+		Mesh piston6_m = fromGeometry(piston6);
 		phyz::RigidBody* piston7_r = p.createRigidBody(piston7);
-		std::vector<Mesh> piston7_m = { fromGeometry(piston7) };
+		Mesh piston7_m = fromGeometry(piston7);
 		phyz::RigidBody* piston8_r = p.createRigidBody(piston8);
-		std::vector<Mesh> piston8_m = { fromGeometry(piston8) };
+		Mesh piston8_m = fromGeometry(piston8);
 		phyz::RigidBody* engine_gear2_r = p.createRigidBody(engine_gear2);
-		std::vector<Mesh> engine_gear2_m = { fromGeometry(engine_gear2) };
+		Mesh engine_gear2_m = fromGeometry(engine_gear2);
 		phyz::RigidBody* differential_r = p.createRigidBody(differential);
-		std::vector<Mesh> differential_m = { fromGeometry(differential) };
+		Mesh differential_m = fromGeometry(differential);
 		phyz::RigidBody* differential_gear2_r = p.createRigidBody(differential_gear2);
-		std::vector<Mesh> differential_gear2_m = { fromGeometry(differential_gear2) };
+		Mesh differential_gear2_m = fromGeometry(differential_gear2);
 		phyz::RigidBody* differential_gear3_r = p.createRigidBody(differential_gear3);
-		std::vector<Mesh> differential_gear3_m = { fromGeometry(differential_gear3) };
+		Mesh differential_gear3_m = fromGeometry(differential_gear3);
 		phyz::RigidBody* rear_wheel1_r = p.createRigidBody(rear_wheel_c1);
-		std::vector<Mesh> rear_wheel1_m = { fromGeometry(rear_wheel_c1) };
+		Mesh rear_wheel1_m = fromGeometry(rear_wheel_c1);
 		phyz::RigidBody* rear_wheel2_r = p.createRigidBody(rear_wheel_c2);
-		std::vector<Mesh> rear_wheel2_m = { fromGeometry(rear_wheel_c2) };
+		Mesh rear_wheel2_m = fromGeometry(rear_wheel_c2);
 		phyz::RigidBody* front_wheel1_r = p.createRigidBody(front_wheel1);
-		std::vector<Mesh> front_wheel1_m = { fromGeometry(front_wheel1) };
+		Mesh front_wheel1_m = fromGeometry(front_wheel1);
 		phyz::RigidBody* front_wheel1_arm_r = p.createRigidBody(front_wheel1_arm);
-		std::vector<Mesh> front_wheel1_arm_m = { fromGeometry(front_wheel1_arm) };
+		Mesh front_wheel1_arm_m = fromGeometry(front_wheel1_arm);
 		phyz::RigidBody* front_wheel2_r = p.createRigidBody(front_wheel2);
-		std::vector<Mesh> front_wheel2_m = { fromGeometry(front_wheel2) };
+		Mesh front_wheel2_m = fromGeometry(front_wheel2);
 		phyz::RigidBody* front_wheel2_arm_r = p.createRigidBody(front_wheel2_arm);
-		std::vector<Mesh> front_wheel2_arm_m = { fromGeometry(front_wheel2_arm) };
+		Mesh front_wheel2_arm_m = fromGeometry(front_wheel2_arm);
 		phyz::RigidBody* steering_wheel_r = p.createRigidBody(steering_wheel, steering_lock);
-		std::vector<Mesh> steering_wheel_m = { fromGeometry(steering_wheel) };
+		Mesh steering_wheel_m = fromGeometry(steering_wheel);
 		phyz::RigidBody* sw_joint1_pivot_r = p.createRigidBody(sw_joint1_pivot);
-		std::vector<Mesh> sw_joint1_pivot_m = { fromGeometry(sw_joint1_pivot) };
+		Mesh sw_joint1_pivot_m = fromGeometry(sw_joint1_pivot);
 		phyz::RigidBody* sw_joint2_pivot_r = p.createRigidBody(sw_joint2_pivot);
-		std::vector<Mesh> sw_joint2_pivot_m = { fromGeometry(sw_joint2_pivot) };
+		Mesh sw_joint2_pivot_m = fromGeometry(sw_joint2_pivot);
 		phyz::RigidBody* steering_wheel_rod2_r = p.createRigidBody(steering_wheel_rod_c2, steering_lock);
-		std::vector<Mesh> steering_wheel_rod2_m = { fromGeometry(steering_wheel_rod_c2) };
+		Mesh steering_wheel_rod2_m = fromGeometry(steering_wheel_rod_c2);
 		phyz::RigidBody* steering_wheel_rod3_r = p.createRigidBody(steering_wheel_rod_c3, steering_lock);
-		std::vector<Mesh> steering_wheel_rod3_m = { fromGeometry(steering_wheel_rod_c3) };
+		Mesh steering_wheel_rod3_m = fromGeometry(steering_wheel_rod_c3);
 		phyz::RigidBody* pinion_r = p.createRigidBody(pinion, steering_lock);
-		std::vector<Mesh> pinion_m = { fromGeometry(pinion) };
+		Mesh pinion_m = fromGeometry(pinion);
 		phyz::RigidBody* front_wheel1_rod_r = p.createRigidBody(front_wheel1_rod);
-		std::vector<Mesh> front_wheel1_rod_m = { fromGeometry(front_wheel1_rod) };
+		Mesh front_wheel1_rod_m = fromGeometry(front_wheel1_rod);
 		phyz::RigidBody* front_wheel2_rod_r = p.createRigidBody(front_wheel2_rod);
-		std::vector<Mesh> front_wheel2_rod_m = { fromGeometry(front_wheel2_rod) };
+		Mesh front_wheel2_rod_m = fromGeometry(front_wheel2_rod);
 		phyz::RigidBody* steering_wheel1_post_r = p.createRigidBody(steering_wheel1_post);
-		std::vector<Mesh> steering_wheel1_post_m = { fromGeometry(steering_wheel1_post) };
+		Mesh steering_wheel1_post_m = fromGeometry(steering_wheel1_post);
 		phyz::RigidBody* steering_wheel2_post_r = p.createRigidBody(steering_wheel2_post);
-		std::vector<Mesh> steering_wheel2_post_m = { fromGeometry(steering_wheel2_post) };
+		Mesh steering_wheel2_post_m = fromGeometry(steering_wheel2_post);
 
 		p.addHingeConstraint(base_r, drive_shaft_r, driveshaft_gear1_position, driveshaft_gear1_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addHingeConstraint(base_r, engine_gear2_r, engine_gear2_position, engine_gear2_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
@@ -514,21 +545,21 @@ public:
 		p.addHingeConstraint(crankshaft_r, piston_arm6_r, piston_arm6_pos, piston_arm6_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addHingeConstraint(crankshaft_r, piston_arm7_r, piston_arm7_pos, piston_arm7_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addHingeConstraint(crankshaft_r, piston_arm8_r, piston_arm8_pos, piston_arm8_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(piston_arm1_r, piston1_r, piston_arm1_pos + y_axis * piston_arm_length, piston1_pos, mthz::Vec3(0, 1, 0), piston1_axis);
+		p.addHingeConstraint(piston_arm1_r, piston1_r, piston_arm1_pos + y_axis * piston_arm_length, piston1_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addSliderConstraint(base_r, piston1_r, piston1_pos, piston1_pos, piston1_axis, piston1_axis);
-		p.addHingeConstraint(piston_arm2_r, piston2_r, piston_arm2_pos + y_axis * piston_arm_length, piston2_pos, mthz::Vec3(0, 1, 0), piston1_axis);
+		p.addHingeConstraint(piston_arm2_r, piston2_r, piston_arm2_pos + y_axis * piston_arm_length, piston2_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addSliderConstraint(base_r, piston2_r, piston2_pos, piston2_pos, piston1_axis, piston1_axis);
-		p.addHingeConstraint(piston_arm3_r, piston3_r, piston_arm3_pos + y_axis * piston_arm_length, piston3_pos, mthz::Vec3(0, 1, 0), piston1_axis);
+		p.addHingeConstraint(piston_arm3_r, piston3_r, piston_arm3_pos + y_axis * piston_arm_length, piston3_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addSliderConstraint(base_r, piston3_r, piston3_pos, piston3_pos, piston1_axis, piston1_axis);
-		p.addHingeConstraint(piston_arm4_r, piston4_r, piston_arm4_pos + y_axis * piston_arm_length, piston4_pos, mthz::Vec3(0, 1, 0), piston1_axis);
+		p.addHingeConstraint(piston_arm4_r, piston4_r, piston_arm4_pos + y_axis * piston_arm_length, piston4_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addSliderConstraint(base_r, piston4_r, piston4_pos, piston4_pos, piston1_axis, piston1_axis);
-		p.addHingeConstraint(piston_arm5_r, piston5_r, piston_arm5_pos + y_axis * piston_arm_length, piston5_pos, mthz::Vec3(0, 1, 0), piston5_axis);
+		p.addHingeConstraint(piston_arm5_r, piston5_r, piston_arm5_pos + y_axis * piston_arm_length, piston5_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addSliderConstraint(base_r, piston5_r, piston5_pos, piston5_pos, piston5_axis, piston5_axis);
-		p.addHingeConstraint(piston_arm6_r, piston6_r, piston_arm6_pos + y_axis * piston_arm_length, piston6_pos, mthz::Vec3(0, 1, 0), piston5_axis);
+		p.addHingeConstraint(piston_arm6_r, piston6_r, piston_arm6_pos + y_axis * piston_arm_length, piston6_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addSliderConstraint(base_r, piston6_r, piston6_pos, piston6_pos, piston5_axis, piston5_axis);
-		p.addHingeConstraint(piston_arm7_r, piston7_r, piston_arm7_pos + y_axis * piston_arm_length, piston7_pos, mthz::Vec3(0, 1, 0), piston5_axis);
+		p.addHingeConstraint(piston_arm7_r, piston7_r, piston_arm7_pos + y_axis * piston_arm_length, piston7_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addSliderConstraint(base_r, piston7_r, piston7_pos, piston7_pos, piston5_axis, piston5_axis);
-		p.addHingeConstraint(piston_arm8_r, piston8_r, piston_arm8_pos + y_axis * piston_arm_length, piston8_pos, mthz::Vec3(0, 1, 0), piston5_axis);
+		p.addHingeConstraint(piston_arm8_r, piston8_r, piston_arm8_pos + y_axis * piston_arm_length, piston8_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addSliderConstraint(base_r, piston8_r, piston8_pos, piston8_pos, piston5_axis, piston5_axis);
 		phyz::MotorID throttle = p.addHingeConstraint(base_r, drive_shaft_gear3_r, drive_shaft_gear3_position, drive_shaft_gear3_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
 		p.addHingeConstraint(base_r, differential_r, differential_gear1_position, differential_gear1_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
@@ -561,8 +592,6 @@ public:
 		phyz::MotorID post1 = p.addHingeConstraint(base_r, steering_wheel1_post_r, steering_wheel1_post_position, steering_wheel1_post_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
 		phyz::MotorID post2 = p.addHingeConstraint(base_r, steering_wheel2_post_r, steering_wheel2_post_position, steering_wheel2_post_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
 
-		base_r->psuedo_fixed = false;
-
 		base_r->setNoCollision(true);
 		p.disallowCollisionSet({ crankshaft_r,
 			piston_arm1_r, piston1_r,
@@ -575,8 +604,6 @@ public:
 			piston_arm8_r, piston8_r,
 			});
 
-		bodies.push_back({ base_m, base_r });
-		//bodies.push_back({ base_gear_m, base_gear_r });
 		bodies.push_back({ drive_shaft_m, drive_shaft_r });
 		bodies.push_back({ drive_shaft_gear3_m, drive_shaft_gear3_r });
 		bodies.push_back({ engine_gear2_m, engine_gear2_r });
@@ -641,7 +668,7 @@ public:
 		double phyz_time = 0;
 		double timestep = 1 / 90.0;
 		p.setStep_time(timestep);
-		p.setGravity(mthz::Vec3(0, -0, 0));
+		p.setGravity(mthz::Vec3(0, -4.9, 0));
 
 		while (rndr::render_loop(&fElapsedTime)) {
 
@@ -693,21 +720,9 @@ public:
 			if (rndr::getKeyPressed(GLFW_KEY_B)) {
 				rear_wheel2_r->setFixed(!rear_wheel2_r->getIsFixed());
 			}
-			if (rndr::getKeyPressed(GLFW_KEY_X)) {
-				base_r->setFixed(!base_r->getIsFixed());
-			}
 			if (rndr::getKeyPressed(GLFW_KEY_G)) {
 				pos = base_r->getTrackedP(lock_cam_pos);
 				lock_cam = !lock_cam;
-			}
-
-			//cyllinder
-			if (rndr::getKeyPressed(GLFW_KEY_H)) {
-				phyz::Geometry geom = phyz::Geometry::ring(mthz::Vec3(0, 0, 0), 0.33, 0.66, 0.3, 6);
-				std::vector<Mesh> m = { fromGeometry(geom) };
-				phyz::RigidBody* r = p.createRigidBody(geom, false, mthz::Vec3(0, 10, 0));
-				r->setAngVel(mthz::Vec3(0, 0, 0.5));
-				bodies.push_back({ m, r });
 			}
 
 			if (!paused) {
@@ -731,13 +746,12 @@ public:
 			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));
 
 			for (const PhysBod& b : bodies) {
-				for (const Mesh& m : b.meshes) {
-					mthz::Vec3 cam_pos = (lock_cam) ? base_r->getTrackedP(lock_cam_pos) : pos;
-					mthz::Quaternion cam_orient = (lock_cam) ? base_r->getOrientation() * orient : orient;
-					shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-					shader.setUniform1i("u_Asleep", b.r->getAsleep());
-					rndr::draw(*m.va, *m.ib, shader);
-				}
+				mthz::Vec3 cam_pos = (lock_cam) ? base_r->getTrackedP(lock_cam_pos) : pos;
+				mthz::Quaternion cam_orient = (lock_cam) ? base_r->getOrientation() * orient : orient;
+				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
+				shader.setUniform1i("u_Asleep", b.r->getAsleep());
+				rndr::draw(*b.mesh.va, *b.mesh.ib, shader);
+				
 			}
 		}
 	}

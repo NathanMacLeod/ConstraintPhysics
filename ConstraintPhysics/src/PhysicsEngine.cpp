@@ -5,7 +5,6 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
-#include <shared_mutex>
 //debug
 #include <chrono>
 
@@ -53,7 +52,7 @@ namespace phyz {
 			}
 			b->recievedWakingAction = false;
 
-			if (!b->asleep && !b->fixed && !b->psuedo_fixed) {
+			if (!b->asleep && !b->fixed) {
 				b->recordMovementState(sleep_delay / step_time);
 				if (bodySleepy(b->history)) {
 					b->sleep_ready_counter += step_time;
@@ -62,14 +61,9 @@ namespace phyz {
 					b->sleep_ready_counter = 0;
 				}
 				
-				if (!b->fixed && !b->psuedo_fixed) {
-					b->updateGeometry();
-					b->vel += gravity * step_time;
-					b->applyGyroAccel(step_time);
-					//if (b->vel.mag() > 10.0) {
-					//	b->vel *= 10 / b->vel.mag();
-					//}
-				}
+				b->updateGeometry();
+				b->vel += gravity * step_time;
+				b->applyGyroAccel(step_time);
 			}
 
 			octree.insert(*b, b->aabb);
@@ -79,7 +73,7 @@ namespace phyz {
 
 		std::vector<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
 
-		std::shared_mutex action_mutex;
+		std::mutex action_mutex;
 		struct TriggeredActionPair {
 			RigidBody* b1;
 			RigidBody* b2;
@@ -141,12 +135,12 @@ namespace phyz {
 						constraint_graph_lock.unlock();
 
 						std::vector<ColAction> thispair_actions;
-						action_mutex.lock_shared();
+						action_mutex.lock();
 						for (ColActionID c : get_action_map[b1][b2]) thispair_actions.push_back(col_actions[c]);
 						for (ColActionID c : get_action_map[b1][b2]) thispair_actions.push_back(col_actions[c]);
 						for (ColActionID c : get_action_map[all()][b2]) thispair_actions.push_back(col_actions[c]);
 						for (ColActionID c : get_action_map[all()][all()]) thispair_actions.push_back(col_actions[c]);
-						action_mutex.unlock_shared();
+						action_mutex.unlock();
 
 						if (thispair_actions.size() > 0) {
 							action_mutex.lock();
@@ -177,6 +171,14 @@ namespace phyz {
 		}
 
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
+		for (int i = 0; i < island_systems.size(); i++) {
+			for (int j = 0; j < island_systems[i].size()/2; j++) {
+				int swp = island_systems[i].size() - 1 - j;
+				Constraint* tmp = island_systems[i][j];
+				island_systems[i][j] = island_systems[i][swp];
+				island_systems[i][swp] = tmp;
+			}
+		}
 
 		if (use_multithread) {
 			thread_manager.do_all<std::vector<Constraint*>>(n_threads, island_systems,
@@ -193,7 +195,7 @@ namespace phyz {
 		
 
 		for (RigidBody* b : bodies) {
-			if (!b->fixed && !b->asleep && !b->psuedo_fixed) {
+			if (!b->fixed && !b->asleep) {
 				b->com += (b->vel + b->psuedo_vel) * step_time;
 				if (b->ang_vel.magSqrd() != 0) {
 					mthz::Vec3 rot = b->ang_vel + b->psuedo_ang_vel;
@@ -308,7 +310,8 @@ namespace phyz {
 			pos_correct_strength,
 			rot_correct_strength,
 			positive_slide_limit,
-			negative_slide_limit
+			negative_slide_limit,
+			false,
 		};
 
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
@@ -414,12 +417,12 @@ namespace phyz {
 	//Exception being where the very first node is fixed to propogate changes, such as translating a fixed object requires waking bodies around it
 	void PhysicsEngine::dfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action) {
 		visited->insert(curr);
-		if (!curr->b->fixed && !curr->b->psuedo_fixed) {
+		if (!curr->b->fixed) {
 			action(curr, in);
 		}
 		for (SharedConstraintsEdge* e : curr->constraints) {
 			ConstraintGraphNode* n = e->other(curr);
-			if (!n->b->fixed && !n->b->psuedo_fixed && visited->find(n) == visited->end()) {
+			if (!n->b->fixed && visited->find(n) == visited->end()) {
 				dfsVisitAll(n, visited, in, action);
 			}
 		}
@@ -508,7 +511,7 @@ namespace phyz {
 			ConstraintGraphNode* n = kv_pair.second;
 
 			//fixed bodies can only be leaves of graph
-			if (n->b->fixed || n->b->psuedo_fixed || n->b->asleep || visited.find(n) != visited.end()) {
+			if (n->b->fixed || n->b->asleep || visited.find(n) != visited.end()) {
 				continue;
 			}
 

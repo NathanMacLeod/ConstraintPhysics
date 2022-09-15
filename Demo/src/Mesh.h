@@ -18,7 +18,7 @@ static struct Mesh {
 };
 
 struct PhysBod {
-	std::vector<Mesh> meshes;
+	Mesh mesh;
 	phyz::RigidBody* r;
 };
 

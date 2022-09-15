@@ -46,8 +46,6 @@ namespace phyz {
 		void setNoCollision(bool no_collision);
 
 		friend class PhysicsEngine;
-
-		bool psuedo_fixed = false;
 	private:
 		AABB aabb;
 		double radius;

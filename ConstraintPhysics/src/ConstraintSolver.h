@@ -70,7 +70,6 @@ namespace phyz {
 		VelVec* a_psuedo_velocity_changes;
 		VelVec* b_velocity_changes;
 		VelVec* b_psuedo_velocity_changes;
-		bool debug_track = false;
 
 		virtual bool constraintWarmStarted() = 0;
 		virtual void warmStartVelocityChange(VelVec* va, VelVec* vb) = 0;

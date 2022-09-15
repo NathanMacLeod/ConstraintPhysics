@@ -23,11 +23,19 @@ public:
 	void registerScene(const std::string& name, std::function<DemoScene* (DemoManager*, DemoProperties)> createInstance) { scene_suite.push_back({name, createInstance}); }
 	void selectProperties();
 	void selectDemoScene();
+	void displaySceneControls();
+	void runScene();
 	void deselectCurrentScene();
 private:
 	DemoProperties properties;
 	std::vector<SceneLauncher> scene_suite;
 	DemoScene* current_scene = nullptr;
+	std::string current_scene_name;
+};
+
+struct ControlDescription {
+	std::string input_name;
+	std::string input_action_description;
 };
 
 class DemoScene {
@@ -35,7 +43,11 @@ public:
 	DemoScene(DemoManager* manager, DemoProperties properties);
 	virtual ~DemoScene();
 	virtual void run()=0;
+
+	friend class DemoManager;
 protected:
 	DemoManager* manager;
 	DemoProperties properties;
+
+	virtual std::vector<ControlDescription> controls()=0;
 };
