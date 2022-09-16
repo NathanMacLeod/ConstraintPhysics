@@ -224,7 +224,8 @@ namespace phyz {
 				mthz::Vec3 b2 = -bg.face_verts[arc2.v2_indx].v;
 
 				//check arcs arent on opposite hemispheres
-				if ((a1 + a2).dot(b1 + b2) <= 0) {
+				mthz::Vec3 a_avg = a1 + a2;
+				if (a_avg.dot(b1) + a_avg.dot(b2) <= 0) {
 					continue;
 				}
 
@@ -241,7 +242,7 @@ namespace phyz {
 				}
 
 				n = n.normalize();
-				if ((a1 + a2).dot(n) < 0) {
+				if (a_avg.dot(n) < 0) {
 					n *= -1;
 				}
 

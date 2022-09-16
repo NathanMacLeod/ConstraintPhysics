@@ -52,30 +52,30 @@ public:
 	};
 
 	static struct BodyHistory {
-		BodyHistory(phyz::RigidBody* r) : r(r) {}
+		BodyHistory(phyz::RigidBody* r, const phyz::Geometry& g, color c={0.4, 0.4, 0.4}) : r(r), g(g), color(c) {}
 
 		phyz::RigidBody* r;
+		phyz::Geometry g;
 		std::vector<PosState> history;
+		color color;
 	};
 
 	void run() override {
-
-		rndr::init(properties.window_width, properties.window_height, "Car Demo");
 
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
 		}
 
 		phyz::PhysicsEngine p;
-		//p.setSleepingEnabled(false);
+		p.setSleepingEnabled(true);
 		p.setPGSIterations(45, 35);
 
 		bool paused = false;
 		bool slow = false;
 		bool lock_cam = true;
 
-		std::vector<PhysBod> bodies;
-		std::vector<BodyHistory> moving_bodies;
+		std::vector<BodyHistory> pre_bodies;
+		std::vector<int> recolor_body_indexes;
 
 		mthz::Vec3 base_dim(8.5, 0.25, 1.0);
 		phyz::Geometry base = phyz::Geometry::box(mthz::Vec3(), base_dim.x, base_dim.y, base_dim.z);
@@ -99,7 +99,7 @@ public:
 				phyz::Geometry pin = phyz::Geometry::cylinder(pin_pos,cylinder_radius, base_dim.z - base_dim.y)
 					.getRotated(mthz::Quaternion(3.1415926535/2.0, mthz::Vec3(1, 0, 0)), pin_pos);
 
-				bodies.push_back({ fromGeometry(pin),  p.createRigidBody(pin, true) });
+				pre_bodies.push_back(BodyHistory(p.createRigidBody(pin, true), pin, color{130, 0, 0}));
 			}
 		}
 
@@ -122,46 +122,35 @@ public:
 					phyz::Geometry cube = phyz::Geometry::box(pos, size, size, size);
 					phyz::RigidBody* r = p.createRigidBody(cube);
 
-					moving_bodies.push_back(BodyHistory(r));
-					bodies.push_back({ fromGeometry(cube), r });
+					recolor_body_indexes.push_back(pre_bodies.size());
+					pre_bodies.push_back(BodyHistory(r, cube));
 				}
 			}
 		}
 
 		phyz::RigidBody* base_r = p.createRigidBody(base, true);
-		Mesh base_m = fromGeometry(base);
 		phyz::RigidBody* negx_wall_r = p.createRigidBody(negx_wall, true);
-		Mesh negx_wall_m = fromGeometry(negx_wall);
 		phyz::RigidBody* posx_wall_r = p.createRigidBody(posx_wall, true);
-		Mesh posx_wall_m = fromGeometry(posx_wall);
 		phyz::RigidBody* back_wall_r = p.createRigidBody(back_wall, true);
-		Mesh back_wall_m = fromGeometry(back_wall);
 		phyz::RigidBody* front_wall_r = p.createRigidBody(front_wall, true);
 		phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
-		Mesh spinner1_m = fromGeometry(spinner1);
 		phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
-		Mesh spinner2_m = fromGeometry(spinner2);
 
-		phyz::MotorID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, spinner1_pos, mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1));
+		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, spinner1_pos, mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1));
 		p.setMotor(spinner1_motor, 0.5, 1000000);
-		phyz::MotorID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, spinner2_pos, mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1));
+		phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, spinner2_pos, mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1));
 		p.setMotor(spinner2_motor, -0.5, 1000000);
 
-		bodies.push_back({ base_m, base_r });
-		bodies.push_back({ negx_wall_m, negx_wall_r });
-		bodies.push_back({ posx_wall_m, posx_wall_r });
-		bodies.push_back({ back_wall_m, back_wall_r });
-		bodies.push_back({ spinner1_m, spinner1_r });
-		bodies.push_back({ spinner2_m, spinner2_r });
+		pre_bodies.push_back(BodyHistory(base_r, base));
 
-		moving_bodies.push_back(BodyHistory(spinner1_r));
-		moving_bodies.push_back(BodyHistory(spinner2_r));
+		pre_bodies.push_back(BodyHistory(negx_wall_r, negx_wall));
+		pre_bodies.push_back(BodyHistory(posx_wall_r, posx_wall));
+		//pre_bodies.push_back(BodyHistory(back_wall_r, back_wall));
+		pre_bodies.push_back(BodyHistory(spinner1_r, spinner1, color{ 130, 0, 0 }));
+		pre_bodies.push_back(BodyHistory(spinner2_r, spinner2, color{ 130, 0, 0 }));
 
 		mthz::Vec3 cam_pos = mthz::Vec3(4, 8, 16);
 		mthz::Quaternion cam_orient;
-
-		rndr::Shader shader("resources/shaders/Basic.shader");
-		shader.bind();
 
 		double mv_speed = 2;
 		double rot_speed = 1;
@@ -173,37 +162,80 @@ public:
 		printf("Precomputing...\n");
 		int curr_percent = -1;
 		double frame_time = 1 / 120.0;
-		int steps_per_frame = 3;
-		double simulation_time = 30;
+		int steps_per_frame = 2;
+		double simulation_time = 60;
 		int progress_bar_width = 50;
 
 		p.setStep_time(frame_time / steps_per_frame);
-		for (BodyHistory& b : moving_bodies) {
+		for (BodyHistory& b : pre_bodies) {
 			b.history.reserve(simulation_time / frame_time);
 			b.history.push_back({ b.r->getPos(), b.r->getOrientation() });
 		}
 
 		int n_frames = 0;
+		float physics_time = 0;
+		float update_time = 0;
 		for (double t = 0; t <= simulation_time; t += frame_time) {
 			int new_percent = 100 * t / simulation_time;
 			if (new_percent > curr_percent) {
 				curr_percent = new_percent;
 				render_progress_bar(t / simulation_time, progress_bar_width, false);
+				//printf("physics: %f, update: %f\n", physics_time / (update_time + physics_time), update_time / (update_time + physics_time));
 			}
 
+			auto t1 = std::chrono::system_clock::now();
 			for (int i = 0; i < steps_per_frame; i++) {
 				p.timeStep();
 			}
-			for (BodyHistory& b : moving_bodies) {
+			auto t2 = std::chrono::system_clock::now();
+			for (BodyHistory& b : pre_bodies) {
 				b.history.push_back({ b.r->getPos(), b.r->getOrientation() });
 			}
+			auto t3 = std::chrono::system_clock::now();
+			update_time += std::chrono::duration<float>(t3 - t2).count();
+			physics_time += std::chrono::duration<float>(t2 - t1).count();
 			n_frames++;
 		}
 		render_progress_bar(curr_percent, progress_bar_width, true);
 
-		//printf("Press enter to start:\n");
-		//std::string unused;
-		//std::getline(std::cin, unused);
+		for (int indx : recolor_body_indexes) {
+			int col_pick = (pre_bodies[indx].r->getCOM().x - base_dim.y) * 6 / effective_width;
+
+			switch (col_pick) {
+			case 0:
+				pre_bodies[indx].color = color{ 1.0, 0.0, 0 };
+				break;
+			case 1:
+				pre_bodies[indx].color = color{ 1.0, 0.5, 0 };
+				break;
+			case 2:
+				pre_bodies[indx].color = color{ 1.0, 1.0, 0 };
+				break;
+			case 3:
+				pre_bodies[indx].color = color{ 0.0, 1.0, 0 };
+				break;
+			case 4:
+				pre_bodies[indx].color = color{ 0.0, 0.0, 1.0 };
+				break;
+			case 5:
+				pre_bodies[indx].color = color{ 0.29, 0.0, 0.5 };
+				break;
+			}
+		}
+
+		printf("Press enter to start:\n");
+		std::string unused;
+		std::getline(std::cin, unused);
+
+		rndr::init(properties.window_width, properties.window_height, "Car Demo");
+
+		rndr::Shader shader("resources/shaders/Basic.shader");
+		shader.bind();
+
+		std::vector<PhysBod> bodies;
+		for (const BodyHistory& b : pre_bodies) {
+			bodies.push_back({ fromGeometry(b.g, b.color), b.r,});
+		}
 
 		double t = 0;
 		float fElapsedTime;
@@ -233,7 +265,7 @@ public:
 			int new_frame = t / frame_time;
 			if (new_frame != curr_frame && new_frame < n_frames) {
 				curr_frame = new_frame;
-				for (const BodyHistory& b : moving_bodies) {
+				for (const BodyHistory& b : pre_bodies) {
 					b.r->setOrientation(b.history[curr_frame].orient);
 					b.r->setToPosition(b.history[curr_frame].pos);
 				}
@@ -269,7 +301,7 @@ public:
 				t = 0;
 			}
 
-			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));
+			rndr::clear(rndr::color(0.7f, 0.7f, 0.7f));
 
 			for (const PhysBod& b : bodies) {
 				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));

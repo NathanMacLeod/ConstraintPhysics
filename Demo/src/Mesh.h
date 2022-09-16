@@ -23,7 +23,18 @@ struct PhysBod {
 };
 
 
+static struct color {
+	float r;
+	float g;
+	float b;
+
+	bool operator==(const color& c) {
+		return r == c.r && g == c.g && b == c.b;
+ 	}
+};
+extern color auto_generate;
+
 float frand();
 
 Mesh fromPhyzMesh(const phyz::Mesh& m);
-Mesh fromGeometry(const phyz::Geometry g);
+Mesh fromGeometry(const phyz::Geometry g, color c=auto_generate);

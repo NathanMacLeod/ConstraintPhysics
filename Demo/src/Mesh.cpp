@@ -1,5 +1,7 @@
 #include "Mesh.h"
 
+color auto_generate = { -1.0f, -1.0f, -1.0f };
+
 float frand() {
 	return (float)std::rand() / RAND_MAX;
 }
@@ -27,14 +29,15 @@ Mesh fromPhyzMesh(const phyz::Mesh& m) {
 	return { new rndr::VertexArray(vertices.data(), vertices.size() * sizeof(Vertex), layout), new rndr::IndexBuffer(indices.data(), indices.size()) };
 }
 
-Mesh fromGeometry(const phyz::Geometry g) {
+Mesh fromGeometry(const phyz::Geometry g, color model_color) {
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
 	int vertex_offset = 0;
 
 	for (const phyz::ConvexPoly& c : g.getPolyhedra()) {
 		for (mthz::Vec3 v : c.getPoints()) {
-			vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, frand(), frand(), frand() });
+			color col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+			vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b });
 		}
 
 		for (const phyz::Surface& s : c.getSurfaces()) {

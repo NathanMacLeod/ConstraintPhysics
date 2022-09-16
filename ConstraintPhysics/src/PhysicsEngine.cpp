@@ -36,6 +36,11 @@ namespace phyz {
 		}
 	}
 
+	//static float octree_maintain_time = 0;
+	//static float sat_time = 0;
+	//static float dfs_time = 0;
+	//static float pgs_time = 0;
+	//static int i = 0;
 	void PhysicsEngine::timeStep() {
 
 		while(!bodies_to_delete.empty()) {
@@ -45,6 +50,8 @@ namespace phyz {
 			bodies_to_delete.pop_back();
 		}
 
+		//auto t1 = std::chrono::system_clock::now();
+	
 		Octree<RigidBody> octree(mthz::Vec3(0, 0, 0), 2000, 1);
 		for (RigidBody* b : bodies) {
 			if (b->recievedWakingAction) {
@@ -72,6 +79,8 @@ namespace phyz {
 		maintainConstraintGraphApplyPoweredConstraints();
 
 		std::vector<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
+
+		//auto t2 = std::chrono::system_clock::now();
 
 		std::mutex action_mutex;
 		struct TriggeredActionPair {
@@ -161,9 +170,14 @@ namespace phyz {
 		if (use_multithread) {
 			thread_manager.do_all<Octree<RigidBody>::Pair>(n_threads, possible_intersections, collision_detect);
 		}
-		for (const Octree<RigidBody>::Pair& p : possible_intersections) {
-			collision_detect(p);
+		else {
+			for (const Octree<RigidBody>::Pair& p : possible_intersections) {
+				collision_detect(p);
+			}
 		}
+
+		//auto t3 = std::chrono::system_clock::now();
+
 		for (const TriggeredActionPair& pair : triggered_actions) {
 			for (const ColAction& c : pair.triggered_actions) {
 				c(pair.b1, pair.b2, pair.manifolds);
@@ -171,14 +185,8 @@ namespace phyz {
 		}
 
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
-		for (int i = 0; i < island_systems.size(); i++) {
-			for (int j = 0; j < island_systems[i].size()/2; j++) {
-				int swp = island_systems[i].size() - 1 - j;
-				Constraint* tmp = island_systems[i][j];
-				island_systems[i][j] = island_systems[i][swp];
-				island_systems[i][swp] = tmp;
-			}
-		}
+
+		//auto t4 = std::chrono::system_clock::now();
 
 		if (use_multithread) {
 			thread_manager.do_all<std::vector<Constraint*>>(n_threads, island_systems,
@@ -193,6 +201,7 @@ namespace phyz {
 			}
 		}
 		
+		//auto t5 = std::chrono::system_clock::now();
 
 		for (RigidBody* b : bodies) {
 			if (!b->fixed && !b->asleep) {
@@ -206,6 +215,27 @@ namespace phyz {
 				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
 			}
 		}
+
+		/*octree_maintain_time += std::chrono::duration<float>(t2 - t1).count();
+		sat_time += std::chrono::duration<float>(t3 - t2).count();
+		dfs_time += std::chrono::duration<float>(t4 - t3).count();
+		pgs_time += std::chrono::duration<float>(t5 - t4).count();
+
+		if (i++ % 1000 == 0) {
+			float total = maintain_time + octree_time + sat_time + dfs_time + pgs_time;
+			printf("maintain: %f, octree: %f, sat: %f, dfs: %f, pgs: %f\n", maintain_time / total, octree_time / total, sat_time / total, dfs_time / total, pgs_time / total);
+		}*/
+	}
+
+	template<typename Func>
+		void callFunction(Func f) {
+		f();
+	}
+
+	void executePrint(const char* s) {
+		callFunction([s]() {
+			std::printf("hello %s\n", s);
+		});
 	}
 
 	RigidBody* PhysicsEngine::createRigidBody(const Geometry& geometry, bool fixed, mthz::Vec3 position, mthz::Quaternion orientation) {
@@ -255,13 +285,15 @@ namespace phyz {
 		}
 	}
 
-	void PhysicsEngine::addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength) {
+	ConstraintID PhysicsEngine::addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength) {
+		int uniqueID = nextConstraintID++;
 		disallowCollision(b1, b2);
 		BallSocket* bs = new BallSocket{
 			BallSocketConstraint(),
 			b1->trackPoint(b1_attach_pos_local),
 			b2->trackPoint(b2_attach_pos_local),
-			pos_correct_strength
+			pos_correct_strength,
+			uniqueID
 		};
 
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
@@ -269,10 +301,14 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		e->ballSocketConstraints.push_back(bs);
+		
+		constraint_map[uniqueID] = e;
+		return ConstraintID{ ConstraintID::BALL, uniqueID };
 	}
 
-	MotorID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength, double rot_correct_strength) {
+	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength, double rot_correct_strength) {
 		disallowCollision(b1, b2);
+		int uniqueID = nextConstraintID++;
 
 		Hinge* h = new Hinge{
 			HingeConstraint(),
@@ -283,22 +319,24 @@ namespace phyz {
 			b2_rot_axis_local.normalize(),
 			pos_correct_strength,
 			rot_correct_strength,
-			0, 0
+			0, 0,
+			uniqueID
 		};
 
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
-		MotorID id = nextMotorID++;
 		e->hingeConstraints.push_back(h);
-		motor_map[id] = h;
-		return id;
+		
+		constraint_map[uniqueID] = e;
+		return ConstraintID{ ConstraintID::HINGE, uniqueID };
 	}
 
-	void PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, 
+	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, 
 		double pos_correct_strength, double rot_correct_strength, double positive_slide_limit, double negative_slide_limit) {
 		disallowCollision(b1, b2);
+		int uniqueID = nextConstraintID++;
 
 		Slider* s = new Slider{
 			SliderConstraint(),
@@ -312,14 +350,57 @@ namespace phyz {
 			positive_slide_limit,
 			negative_slide_limit,
 			false,
+			uniqueID
 		};
 
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
-		MotorID id = nextMotorID++;
 		e->sliderConstraints.push_back(s);
+		constraint_map[uniqueID] = e;
+		return ConstraintID{ ConstraintID::SLIDER, uniqueID };
+	}
+
+	void PhysicsEngine::removeConstraint(ConstraintID id, bool reenable_collision) {
+		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
+
+		SharedConstraintsEdge* e = constraint_map[id.uniqueID];
+		e->n1->b->alertWakingAction();
+		e->n2->b->alertWakingAction();
+		reallowCollision(e->n1->b, e->n2->b);
+		switch (id.type) {
+		case ConstraintID::BALL:
+			for (int i = 0; i < e->ballSocketConstraints.size(); i++) {
+				BallSocket* b = e->ballSocketConstraints[i];
+				if (b->uniqueID == id.uniqueID) {
+					delete b;
+					e->ballSocketConstraints.erase(e->ballSocketConstraints.begin() + i);
+				}
+			}
+			break;
+		case ConstraintID::HINGE:
+			for (int i = 0; i < e->hingeConstraints.size(); i++) {
+				Hinge* h = e->hingeConstraints[i];
+				if (h->uniqueID == id.uniqueID) {
+					delete h;
+					e->hingeConstraints.erase(e->hingeConstraints.begin() + i);
+				}
+			}
+			break;
+		case ConstraintID::SLIDER:
+			for (int i = 0; i < e->sliderConstraints.size(); i++) {
+				Slider* s = e->sliderConstraints[i];
+				if (s->uniqueID == id.uniqueID) {
+					delete s;
+					e->sliderConstraints.erase(e->sliderConstraints.begin() + i);
+				}
+			}
+			break;
+		}
+
+		constraint_map.erase(id.uniqueID);
+		
 	}
 
 	void PhysicsEngine::addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness) {
@@ -601,14 +682,23 @@ namespace phyz {
 		col_actions.erase(action_key);
 	}
 
-	void PhysicsEngine::setMotor(MotorID id, double target_velocity, double max_torque) {
-		assert(motor_map.find(id) != motor_map.end());
-		motor_map[id]->target_velocity = target_velocity;
-		motor_map[id]->max_torque = max_torque;
+	void PhysicsEngine::setMotor(ConstraintID id, double target_velocity, double max_torque) {
+		assert(id.type == ConstraintID::HINGE && constraint_map.find(id.uniqueID) != constraint_map.end());
+		Hinge* hinge = nullptr;
+		for (Hinge* h : constraint_map[id.uniqueID]->hingeConstraints) {
+			if (h->uniqueID == id.uniqueID) {
+				hinge = h;
+				break;
+			}
+		}
+		assert(hinge != nullptr);
 
-		if (motor_map[id]->constraint.a != nullptr) {
-			motor_map[id]->constraint.a->recievedWakingAction = true;
-			motor_map[id]->constraint.b->recievedWakingAction = true;
+		hinge->target_velocity = target_velocity;
+		hinge->max_torque = max_torque;
+
+		if (hinge->constraint.a != nullptr) {
+			hinge->constraint.a->alertWakingAction();
+			hinge->constraint.b->alertWakingAction();
 		}
 	}
 

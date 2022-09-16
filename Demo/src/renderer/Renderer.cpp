@@ -20,12 +20,15 @@ namespace rndr {
 
     static void keyEvent(GLFWwindow* window, int key, int scancode, int action, int mods);
 
+    static bool first_tick;
+
 	int init(int width, int height, const std::string& name) {
 		if (!glfwInit()) {
 			std::printf("glew init failed!\n");
 			return -1;
 		}
 
+        first_tick = true;
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
 		window = glfwCreateWindow(width, height, "Hello World", NULL, NULL);
@@ -101,15 +104,13 @@ namespace rndr {
     }
 
     bool render_loop(float* fElapsedTimeOut) {
-        static bool first = true;
-
         glfwSwapBuffers(window);
         glfwPollEvents();
 
         auto t_now = std::chrono::system_clock::now();
 
-        if (first) {
-            first = false;
+        if (first_tick) {
+            first_tick = false;
             *fElapsedTimeOut = 0;
         }
         else {

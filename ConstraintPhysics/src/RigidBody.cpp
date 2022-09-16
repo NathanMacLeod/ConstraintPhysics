@@ -53,13 +53,13 @@ namespace phyz {
 
 	void RigidBody::setToPosition(const mthz::Vec3& pos) {
 		translate(pos - getTrackedP(origin_pkey));
-		recievedWakingAction = true;
+		alertWakingAction();
 	}
 
 	void RigidBody::setCOMtoPosition(const mthz::Vec3& pos) {
 		com = pos;
 		updateGeometry();
-		recievedWakingAction = true;
+		alertWakingAction();
 	}
 
 	void RigidBody::translate(const mthz::Vec3& v) {
@@ -70,29 +70,29 @@ namespace phyz {
 	void RigidBody::setOrientation(const mthz::Quaternion orientation) {
 		this->orientation = orientation;
 		updateGeometry();
-		recievedWakingAction = true;
+		alertWakingAction();
 	}
 
 	void RigidBody::setVel(mthz::Vec3 vel) { 
 		this->vel = vel; 
-		recievedWakingAction = true;
+		alertWakingAction();
 	}
 
 	void RigidBody::setAngVel(mthz::Vec3 ang_vel) { 
 		this->ang_vel = ang_vel; 
-		recievedWakingAction = true;
+		alertWakingAction();
 	}
 
 	void RigidBody::setFixed(bool fixed) { 
 		this->fixed = fixed; 
 		if (!fixed) {
-			recievedWakingAction = true;
+			alertWakingAction();
 		}
 	}
 
 	void RigidBody::setNoCollision(bool no_collision) {
 		this->no_collision = no_collision;
-		recievedWakingAction = true;
+		alertWakingAction();
 	}
 
 	RigidBody::PKey RigidBody::trackPoint(mthz::Vec3 p) {
@@ -194,6 +194,12 @@ namespace phyz {
 			sleep_ready_counter = 0;
 			history.clear();
 		}
+	}
+
+	void RigidBody::alertWakingAction() {
+		recievedWakingAction = true;
+		sleep_ready_counter = 0;
+		history.clear();
 	}
 
 	void RigidBody::recordMovementState(int history_length) {

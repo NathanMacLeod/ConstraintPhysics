@@ -141,12 +141,12 @@ namespace phyz {
 		BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, NVec<3> warm_start_impulse=NVec<3>{ 0.0 });
 		
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
-		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
 		void performPGSConstraintStep() override;
 		void performPGSPsuedoConstraintStep() override;
 
-		NVec<3> getConstraintValue(const VelVec& va, const VelVec& vb);
-		void addVelocityChange(const NVec<3>& impulse, VelVec* va, VelVec* vb);
+		inline NVec<3> getConstraintValue(const VelVec& va, const VelVec& vb);
+		inline void addVelocityChange(const NVec<3>& impulse, VelVec* va, VelVec* vb);
 
 		NVec<3> impulse;
 		NVec<3> psuedo_impulse;
@@ -167,13 +167,13 @@ namespace phyz {
 		HingeConstraint() : impulse(NVec<5>{0.0, 0.0, 0.0, 0.0, 0.0}) {}
 		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse=NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u=mthz::Vec3(), mthz::Vec3 source_w=mthz::Vec3());
 
-		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
-		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		inline inline bool constraintWarmStarted() override { return !impulse.isZero(); }
+		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
 		void performPGSConstraintStep() override;
 		void performPGSPsuedoConstraintStep() override;
 
-		NVec<5> getConstraintValue(const VelVec& va, const VelVec& vb);
-		void addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb);
+		inline NVec<5> getConstraintValue(const VelVec& va, const VelVec& vb);
+		inline void addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb);
 
 		NVec<5> impulse;
 		NVec<5> psuedo_impulse;
@@ -197,12 +197,12 @@ namespace phyz {
 		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
-		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
 		void performPGSConstraintStep() override;
 		void performPGSPsuedoConstraintStep() override;
 
-		NVec<1> getConstraintValue(const VelVec& va, const VelVec& vb);
-		void addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb);
+		inline NVec<1> getConstraintValue(const VelVec& va, const VelVec& vb);
+		inline void addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb);
 
 		NVec<1> impulse;
 	private:
@@ -221,12 +221,12 @@ namespace phyz {
 		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, mthz::Vec3 slider_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse = NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
-		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
 		void performPGSConstraintStep() override;
 		void performPGSPsuedoConstraintStep() override;
 
-		NVec<5> getConstraintValue(const VelVec& va, const VelVec& vb);
-		void addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb);
+		inline NVec<5> getConstraintValue(const VelVec& va, const VelVec& vb);
+		inline void addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb);
 
 		NVec<5> impulse;
 		NVec<5> psuedo_impulse;

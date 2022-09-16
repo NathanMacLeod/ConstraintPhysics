@@ -16,10 +16,9 @@ namespace phyz {
 
 	static NVec<12> VelVectoNVec(const phyz::Constraint::VelVec& vel_a, const phyz::Constraint::VelVec& vel_b);
 
-	template<int n>
+	template<int n, typename ProjectFunc, typename AddVelFunc>
 	static void PGS_constraint_step(Constraint::VelVec* vel_change_a, Constraint::VelVec* vel_change_b, const NVec<n>& target_val, NVec<n>* impulse, 
-		const NVec<n>& current_constraint_value, const NMat<n,n>& inverse_inertia_mat, std::function<NVec<n>(const NVec<n>& impulse)> projectValidImpulse, 
-		std::function<void(const NVec<n>& impulse, Constraint::VelVec* vel_change_a, Constraint::VelVec* vel_change_b)> addVelocityChange) 
+		const NVec<n>& current_constraint_value, const NMat<n,n>& inverse_inertia_mat, ProjectFunc projectValidImpulse, AddVelFunc addVelocityChange) 
 	{
 		NVec<n> val_diff = target_val - current_constraint_value;
 		NVec<n> impulse_new = (*impulse) + inverse_inertia_mat * val_diff;
@@ -136,14 +135,14 @@ namespace phyz {
 			});
 	};
 
-	void ContactConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
+	inline void ContactConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
 		va->lin -= norm * impulse.v[0] * a->getInvMass();
 		vb->lin += norm * impulse.v[0] * b->getInvMass();
 		va->ang += rotDirA * impulse.v[0];
 		vb->ang -= rotDirB * impulse.v[0];
 	}
 
-	NVec<1> ContactConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+	inline NVec<1> ContactConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
 		return -jacobian * VelVectoNVec(va, vb);
 	}
 
@@ -207,7 +206,7 @@ namespace phyz {
 		target_val = -getConstraintValue({ a->getVel(), a->getAngVel()}, {b->getVel(), b->getAngVel()});
 	}
 
-	void FrictionConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+	inline void FrictionConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
 		addVelocityChange(impulse, va, vb);
 	}
 
@@ -233,14 +232,14 @@ namespace phyz {
 			});
 	};
 
-	void FrictionConstraint::addVelocityChange(const NVec<2>& impulse, VelVec* va, VelVec* vb) {
+	inline void FrictionConstraint::addVelocityChange(const NVec<2>& impulse, VelVec* va, VelVec* vb) {
 		va->lin += (u * impulse.v[0] + w * impulse.v[1]) * a->getInvMass();
 		vb->lin -= (u * impulse.v[0] + w * impulse.v[1]) * b->getInvMass();
 		va->ang += NVec3toVec3(rotDirA * impulse);
 		vb->ang -= NVec3toVec3(rotDirB * impulse);
 	}
 
-	NVec<2> FrictionConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+	inline NVec<2> FrictionConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
 		return jacobian * VelVectoNVec(va, vb);
 	}
 
@@ -267,7 +266,7 @@ namespace phyz {
 		psuedo_target_val = NVec<3>{ pos_correct_hardness * error.x, pos_correct_hardness * error.y, pos_correct_hardness * error.z };
 	}
 
-	void BallSocketConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+	inline void BallSocketConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
 		addVelocityChange(impulse, va, vb);
 	}
 
@@ -289,11 +288,11 @@ namespace phyz {
 			});
 	}
 
-	NVec<3> BallSocketConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+	inline NVec<3> BallSocketConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
 		return jacobian * VelVectoNVec(va, vb);
 	}
 
-	void BallSocketConstraint::addVelocityChange(const NVec<3>& impulse, VelVec* va, VelVec* vb) {
+	inline void BallSocketConstraint::addVelocityChange(const NVec<3>& impulse, VelVec* va, VelVec* vb) {
 		mthz::Vec3 impulse_vec(impulse.v[0], impulse.v[1], impulse.v[2]);
 		va->lin += impulse_vec * a->getInvMass();
 		vb->lin -= impulse_vec * b->getInvMass();
@@ -390,7 +389,7 @@ namespace phyz {
 		}
 	}
 
-	void HingeConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+	inline void HingeConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
 		addVelocityChange(impulse, va, vb);
 	}
 
@@ -412,11 +411,11 @@ namespace phyz {
 			});
 	}
 
-	NVec<5> HingeConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+	inline NVec<5> HingeConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
 		return jacobian * VelVectoNVec(va, vb);
 	}
 
-	void HingeConstraint::addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb) {
+	inline void HingeConstraint::addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb) {
 		mthz::Vec3 linear_impulse_vec(impulse.v[0], impulse.v[1], impulse.v[2]);
 		va->lin += linear_impulse_vec * a->getInvMass();
 		vb->lin -= linear_impulse_vec * b->getInvMass();
@@ -437,7 +436,7 @@ namespace phyz {
 		target_val = NVec<1>{ target_velocity - current_val };
 	}
 
-	void MotorConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+	inline void MotorConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
 		addVelocityChange(impulse, va, vb);
 	}
 
@@ -457,16 +456,16 @@ namespace phyz {
 			});
 	};
 
-	void MotorConstraint::performPGSPsuedoConstraintStep() {
+	inline void MotorConstraint::performPGSPsuedoConstraintStep() {
 		return;
 	};
 
-	void MotorConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
+	inline void MotorConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
 		va->ang += rotDirA * impulse.v[0];
 		vb->ang -= rotDirB * impulse.v[0];
 	}
 
-	NVec<1> MotorConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+	inline NVec<1> MotorConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
 		return NVec<1> {motor_axis.dot(va.ang) - motor_axis.dot(vb.ang)};
 	}
 
@@ -580,7 +579,7 @@ namespace phyz {
 		}
 	}
 
-	void SliderConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+	inline void SliderConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
 		addVelocityChange(impulse, va, vb);
 	}
 
@@ -596,7 +595,7 @@ namespace phyz {
 			});
 	}
 
-	void SliderConstraint::performPGSPsuedoConstraintStep() {
+	inline void SliderConstraint::performPGSPsuedoConstraintStep() {
 		PGS_constraint_step<5>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
 			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
 			[](const NVec<5>& impulse) { return impulse; },
@@ -605,11 +604,11 @@ namespace phyz {
 			});
 	}
 
-	NVec<5> SliderConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+	inline NVec<5> SliderConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
 		return jacobian * VelVectoNVec(va, vb);
 	}
 
-	void SliderConstraint::addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb) {
+	inline void SliderConstraint::addVelocityChange(const NVec<5>& impulse, VelVec* va, VelVec* vb) {
 		va->lin += (impulse.v[0] * u + impulse.v[1] * w) * a->getInvMass();
 		vb->lin -= (impulse.v[0] * u + impulse.v[1] * w) * b->getInvMass();
 		va->ang += NVec3toVec3(rotDirA * impulse);

@@ -63,6 +63,7 @@ namespace phyz {
 
 		void sleep();
 		void wake();
+		void alertWakingAction();
 
 		void applyGyroAccel(float fElapsedTime);
 		void updateGeometry();

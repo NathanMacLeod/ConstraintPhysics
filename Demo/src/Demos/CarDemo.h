@@ -49,13 +49,15 @@ public:
 
 		phyz::PhysicsEngine p;
 		//p.setSleepingEnabled(false);
-		p.setPGSIterations(35, 25);
+		p.setPGSIterations(45, 35);
 
 		bool paused = false;
 		bool slow = false;
 		bool lock_cam = true;
+		bool nuked = false;
 
 		std::vector<PhysBod> bodies;
+		std::vector<phyz::ConstraintID> constraints;
 
 		//************************
 		//*******BASE PLATE*******
@@ -534,63 +536,65 @@ public:
 		phyz::RigidBody* steering_wheel2_post_r = p.createRigidBody(steering_wheel2_post);
 		Mesh steering_wheel2_post_m = fromGeometry(steering_wheel2_post);
 
-		p.addHingeConstraint(base_r, drive_shaft_r, driveshaft_gear1_position, driveshaft_gear1_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(base_r, engine_gear2_r, engine_gear2_position, engine_gear2_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(base_r, crankshaft_r, engine_gear1_position, engine_gear1_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(crankshaft_r, piston_arm1_r, piston_arm1_pos, piston_arm1_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(crankshaft_r, piston_arm2_r, piston_arm2_pos, piston_arm2_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(crankshaft_r, piston_arm3_r, piston_arm3_pos, piston_arm3_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(crankshaft_r, piston_arm4_r, piston_arm4_pos, piston_arm4_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(crankshaft_r, piston_arm5_r, piston_arm5_pos, piston_arm5_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(crankshaft_r, piston_arm6_r, piston_arm6_pos, piston_arm6_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(crankshaft_r, piston_arm7_r, piston_arm7_pos, piston_arm7_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(crankshaft_r, piston_arm8_r, piston_arm8_pos, piston_arm8_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(piston_arm1_r, piston1_r, piston_arm1_pos + y_axis * piston_arm_length, piston1_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addSliderConstraint(base_r, piston1_r, piston1_pos, piston1_pos, piston1_axis, piston1_axis);
-		p.addHingeConstraint(piston_arm2_r, piston2_r, piston_arm2_pos + y_axis * piston_arm_length, piston2_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addSliderConstraint(base_r, piston2_r, piston2_pos, piston2_pos, piston1_axis, piston1_axis);
-		p.addHingeConstraint(piston_arm3_r, piston3_r, piston_arm3_pos + y_axis * piston_arm_length, piston3_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addSliderConstraint(base_r, piston3_r, piston3_pos, piston3_pos, piston1_axis, piston1_axis);
-		p.addHingeConstraint(piston_arm4_r, piston4_r, piston_arm4_pos + y_axis * piston_arm_length, piston4_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addSliderConstraint(base_r, piston4_r, piston4_pos, piston4_pos, piston1_axis, piston1_axis);
-		p.addHingeConstraint(piston_arm5_r, piston5_r, piston_arm5_pos + y_axis * piston_arm_length, piston5_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addSliderConstraint(base_r, piston5_r, piston5_pos, piston5_pos, piston5_axis, piston5_axis);
-		p.addHingeConstraint(piston_arm6_r, piston6_r, piston_arm6_pos + y_axis * piston_arm_length, piston6_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addSliderConstraint(base_r, piston6_r, piston6_pos, piston6_pos, piston5_axis, piston5_axis);
-		p.addHingeConstraint(piston_arm7_r, piston7_r, piston_arm7_pos + y_axis * piston_arm_length, piston7_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addSliderConstraint(base_r, piston7_r, piston7_pos, piston7_pos, piston5_axis, piston5_axis);
-		p.addHingeConstraint(piston_arm8_r, piston8_r, piston_arm8_pos + y_axis * piston_arm_length, piston8_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addSliderConstraint(base_r, piston8_r, piston8_pos, piston8_pos, piston5_axis, piston5_axis);
-		phyz::MotorID throttle = p.addHingeConstraint(base_r, drive_shaft_gear3_r, drive_shaft_gear3_position, drive_shaft_gear3_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
-		p.addHingeConstraint(base_r, differential_r, differential_gear1_position, differential_gear1_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
-		p.addHingeConstraint(differential_r, differential_gear2_r, differential_gear2_position, differential_gear2_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
-		p.addHingeConstraint(differential_r, differential_gear3_r, differential_gear3_position, differential_gear3_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
-		p.addHingeConstraint(base_r, rear_wheel1_r, axle1_gear_position, axle1_gear_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
-		p.addHingeConstraint(base_r, rear_wheel2_r, axle2_gear_position, axle2_gear_position, mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1));
-		phyz::MotorID steering = p.addHingeConstraint(base_r, steering_wheel_r, steering_wheel_position, steering_wheel_position, steering_wheel_axis, steering_wheel_axis);
-		p.addHingeConstraint(base_r, steering_wheel_rod2_r, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_pos_oriented, steering_wheel_rod2_axis, steering_wheel_rod2_axis);
+		constraints.push_back(p.addHingeConstraint(base_r, drive_shaft_r, driveshaft_gear1_position, driveshaft_gear1_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(base_r, engine_gear2_r, engine_gear2_position, engine_gear2_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		phyz::ConstraintID throttle = p.addHingeConstraint(base_r, crankshaft_r, engine_gear1_position, engine_gear1_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0));
+		constraints.push_back(throttle);
+		constraints.push_back(p.addHingeConstraint(crankshaft_r, piston_arm1_r, piston_arm1_pos, piston_arm1_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(crankshaft_r, piston_arm2_r, piston_arm2_pos, piston_arm2_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(crankshaft_r, piston_arm3_r, piston_arm3_pos, piston_arm3_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(crankshaft_r, piston_arm4_r, piston_arm4_pos, piston_arm4_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(crankshaft_r, piston_arm5_r, piston_arm5_pos, piston_arm5_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(crankshaft_r, piston_arm6_r, piston_arm6_pos, piston_arm6_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(crankshaft_r, piston_arm7_r, piston_arm7_pos, piston_arm7_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(crankshaft_r, piston_arm8_r, piston_arm8_pos, piston_arm8_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(piston_arm1_r, piston1_r, piston_arm1_pos + y_axis * piston_arm_length, piston1_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addSliderConstraint(base_r, piston1_r, piston1_pos, piston1_pos, piston1_axis, piston1_axis));
+		constraints.push_back(p.addHingeConstraint(piston_arm2_r, piston2_r, piston_arm2_pos + y_axis * piston_arm_length, piston2_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addSliderConstraint(base_r, piston2_r, piston2_pos, piston2_pos, piston1_axis, piston1_axis));
+		constraints.push_back(p.addHingeConstraint(piston_arm3_r, piston3_r, piston_arm3_pos + y_axis * piston_arm_length, piston3_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addSliderConstraint(base_r, piston3_r, piston3_pos, piston3_pos, piston1_axis, piston1_axis));
+		constraints.push_back(p.addHingeConstraint(piston_arm4_r, piston4_r, piston_arm4_pos + y_axis * piston_arm_length, piston4_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addSliderConstraint(base_r, piston4_r, piston4_pos, piston4_pos, piston1_axis, piston1_axis));
+		constraints.push_back(p.addHingeConstraint(piston_arm5_r, piston5_r, piston_arm5_pos + y_axis * piston_arm_length, piston5_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addSliderConstraint(base_r, piston5_r, piston5_pos, piston5_pos, piston5_axis, piston5_axis));
+		constraints.push_back(p.addHingeConstraint(piston_arm6_r, piston6_r, piston_arm6_pos + y_axis * piston_arm_length, piston6_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addSliderConstraint(base_r, piston6_r, piston6_pos, piston6_pos, piston5_axis, piston5_axis));
+		constraints.push_back(p.addHingeConstraint(piston_arm7_r, piston7_r, piston_arm7_pos + y_axis * piston_arm_length, piston7_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addSliderConstraint(base_r, piston7_r, piston7_pos, piston7_pos, piston5_axis, piston5_axis));
+		constraints.push_back(p.addHingeConstraint(piston_arm8_r, piston8_r, piston_arm8_pos + y_axis * piston_arm_length, piston8_pos, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addSliderConstraint(base_r, piston8_r, piston8_pos, piston8_pos, piston5_axis, piston5_axis));
+		constraints.push_back(p.addHingeConstraint(base_r, drive_shaft_gear3_r, drive_shaft_gear3_position, drive_shaft_gear3_position, mthz::Vec3(1, 0, 0), mthz::Vec3(1, 0, 0)));
+		constraints.push_back(p.addHingeConstraint(base_r, differential_r, differential_gear1_position, differential_gear1_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1)));
+		constraints.push_back(p.addHingeConstraint(differential_r, differential_gear2_r, differential_gear2_position, differential_gear2_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0)));
+		constraints.push_back(p.addHingeConstraint(differential_r, differential_gear3_r, differential_gear3_position, differential_gear3_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0)));
+		constraints.push_back(p.addHingeConstraint(base_r, rear_wheel1_r, axle1_gear_position, axle1_gear_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1)));
+		constraints.push_back(p.addHingeConstraint(base_r, rear_wheel2_r, axle2_gear_position, axle2_gear_position, mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1)));
+		phyz::ConstraintID steering = p.addHingeConstraint(base_r, steering_wheel_r, steering_wheel_position, steering_wheel_position, steering_wheel_axis, steering_wheel_axis);
+		constraints.push_back(steering);
+		constraints.push_back(p.addHingeConstraint(base_r, steering_wheel_rod2_r, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_pos_oriented, steering_wheel_rod2_axis, steering_wheel_rod2_axis));
 		mthz::Vec3 sw_joint1_pivot_axis1 = steering_wheel_orientation.applyRotation(mthz::Vec3(1, 0, 0));
 		mthz::Vec3 sw_joint1_pivot_axis2 = steering_wheel_orientation.applyRotation(mthz::Vec3(0, 0, 1));
 		mthz::Vec3 sw_joint1_pivot_axis3 = rod2_orientation.applyRotation(mthz::Vec3(0, 0, 1));
-		p.addHingeConstraint(steering_wheel_r, sw_joint1_pivot_r, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_axis1, sw_joint1_pivot_axis1);
-		p.addHingeConstraint(steering_wheel_rod2_r, sw_joint1_pivot_r, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_axis3, sw_joint1_pivot_axis2);
-		p.addHingeConstraint(base_r, steering_wheel_rod3_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, steering_wheel_rod3_axis, steering_wheel_rod3_axis);
+		constraints.push_back(p.addHingeConstraint(steering_wheel_r, sw_joint1_pivot_r, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_axis1, sw_joint1_pivot_axis1));
+		constraints.push_back(p.addHingeConstraint(steering_wheel_rod2_r, sw_joint1_pivot_r, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_pos_oriented, sw_joint1_pivot_axis3, sw_joint1_pivot_axis2));
+		constraints.push_back(p.addHingeConstraint(base_r, steering_wheel_rod3_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, steering_wheel_rod3_axis, steering_wheel_rod3_axis));
 		mthz::Vec3 sw_joint2_pivot_axis1 = rod2_orientation.applyRotation(mthz::Vec3(1, 0, 0));
 		mthz::Vec3 sw_joint2_pivot_axis2 = rod2_orientation.applyRotation(mthz::Vec3(0, 0, 1));
 		mthz::Vec3 sw_joint2_pivot_axis3 = rod3_orientation.applyRotation(mthz::Vec3(0, 0, 1));
-		p.addHingeConstraint(steering_wheel_rod2_r, sw_joint2_pivot_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_axis1, sw_joint2_pivot_axis1);
-		p.addHingeConstraint(steering_wheel_rod3_r, sw_joint2_pivot_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_axis3, sw_joint2_pivot_axis2);
-		p.addSliderConstraint(base_r, pinion_r, pinion_position, pinion_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1), 350, 350, 0.2, 0.2);
-		p.addHingeConstraint(front_wheel1_rod_r, front_wheel1_arm_r, front_wheel1_rod_arm_connect, front_wheel1_rod_arm_connect, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
-		p.addBallSocketConstraint(front_wheel1_rod_r, pinion_r, front_wheel1_rod_pinion_connect, front_wheel1_rod_pinion_connect);
-		p.addHingeConstraint(front_wheel1_arm_r, front_wheel1_r, front_wheel1_position, front_wheel1_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
-		p.addHingeConstraint(base_r, front_wheel1_arm_r, front_wheel1_arm_pos, front_wheel1_arm_pos, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
-		p.addHingeConstraint(front_wheel2_rod_r, front_wheel2_arm_r, front_wheel2_rod_arm_connect, front_wheel2_rod_arm_connect, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
-		p.addBallSocketConstraint(front_wheel2_rod_r, pinion_r, front_wheel2_rod_pinion_connect, front_wheel2_rod_pinion_connect);
-		p.addHingeConstraint(front_wheel2_arm_r, front_wheel2_r, front_wheel2_position, front_wheel2_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1));
-		p.addHingeConstraint(base_r, front_wheel2_arm_r, front_wheel2_arm_pos, front_wheel2_arm_pos, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
-		phyz::MotorID post1 = p.addHingeConstraint(base_r, steering_wheel1_post_r, steering_wheel1_post_position, steering_wheel1_post_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
-		phyz::MotorID post2 = p.addHingeConstraint(base_r, steering_wheel2_post_r, steering_wheel2_post_position, steering_wheel2_post_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0));
+		constraints.push_back(p.addHingeConstraint(steering_wheel_rod2_r, sw_joint2_pivot_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_axis1, sw_joint2_pivot_axis1));
+		constraints.push_back(p.addHingeConstraint(steering_wheel_rod3_r, sw_joint2_pivot_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_axis3, sw_joint2_pivot_axis2));
+		constraints.push_back(p.addSliderConstraint(base_r, pinion_r, pinion_position, pinion_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1), 350, 350, 0.2, 0.2));
+		constraints.push_back(p.addHingeConstraint(front_wheel1_rod_r, front_wheel1_arm_r, front_wheel1_rod_arm_connect, front_wheel1_rod_arm_connect, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0)));
+		constraints.push_back(p.addBallSocketConstraint(front_wheel1_rod_r, pinion_r, front_wheel1_rod_pinion_connect, front_wheel1_rod_pinion_connect));
+		constraints.push_back(p.addHingeConstraint(front_wheel1_arm_r, front_wheel1_r, front_wheel1_position, front_wheel1_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1)));
+		constraints.push_back(p.addHingeConstraint(base_r, front_wheel1_arm_r, front_wheel1_arm_pos, front_wheel1_arm_pos, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0)));
+		constraints.push_back(p.addHingeConstraint(front_wheel2_rod_r, front_wheel2_arm_r, front_wheel2_rod_arm_connect, front_wheel2_rod_arm_connect, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0)));
+		constraints.push_back(p.addBallSocketConstraint(front_wheel2_rod_r, pinion_r, front_wheel2_rod_pinion_connect, front_wheel2_rod_pinion_connect));
+		constraints.push_back(p.addHingeConstraint(front_wheel2_arm_r, front_wheel2_r, front_wheel2_position, front_wheel2_position, mthz::Vec3(0, 0, -1), mthz::Vec3(0, 0, -1)));
+		constraints.push_back(p.addHingeConstraint(base_r, front_wheel2_arm_r, front_wheel2_arm_pos, front_wheel2_arm_pos, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0)));
+		constraints.push_back(p.addHingeConstraint(base_r, steering_wheel1_post_r, steering_wheel1_post_position, steering_wheel1_post_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0)));
+		constraints.push_back(p.addHingeConstraint(base_r, steering_wheel2_post_r, steering_wheel2_post_position, steering_wheel2_post_position, mthz::Vec3(0, 1, 0), mthz::Vec3(0, 1, 0)));
 
 		base_r->setNoCollision(true);
 		p.disallowCollisionSet({ crankshaft_r,
@@ -644,7 +648,7 @@ public:
 		bodies.push_back({ steering_wheel1_post_m, steering_wheel1_post_r });
 		bodies.push_back({ steering_wheel2_post_m, steering_wheel2_post_r });
 
-		double throttle_torque = 100;
+		double throttle_torque = 300;
 		double steering_torque = 0.5;
 		double throttle_velocity = -1;
 		double steering_velocity = 3;
@@ -701,28 +705,52 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
-				throttle_velocity = std::max<double>(throttle_velocity - 1 * fElapsedTime, -6);
-				p.setMotor(throttle, throttle_velocity, throttle_torque);
+				if (!nuked) {
+					throttle_velocity = std::min<double>(throttle_velocity + 2 * fElapsedTime, 6);
+					p.setMotor(throttle, throttle_velocity, throttle_torque);
+				}
 			}
 			if (rndr::getKeyDown(GLFW_KEY_K)) {
-				throttle_velocity = std::min<double>(throttle_velocity + 1 * fElapsedTime, 0);
-				p.setMotor(throttle, throttle_velocity, throttle_torque);
+				if (!nuked) {
+					throttle_velocity = std::max<double>(throttle_velocity - 2 * fElapsedTime, 0);
+					p.setMotor(throttle, throttle_velocity, throttle_torque);
+				}
 			}
 			if (rndr::getKeyDown(GLFW_KEY_J)) {
-				p.setMotor(steering, steering_velocity, steering_torque);
+				if (!nuked) {
+					p.setMotor(steering, steering_velocity, steering_torque);
+				}
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_L)) {
-				p.setMotor(steering, -steering_velocity, steering_torque);
+				if (!nuked) {
+					p.setMotor(steering, -steering_velocity, steering_torque);
+				}
 			}
 			else {
-				p.setMotor(steering, 0, steering_torque);
+				if (!nuked) {
+					p.setMotor(steering, 0, steering_torque);
+				}
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_B)) {
 				rear_wheel2_r->setFixed(!rear_wheel2_r->getIsFixed());
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_G)) {
-				pos = base_r->getTrackedP(lock_cam_pos);
-				lock_cam = !lock_cam;
+				if (!nuked) {
+					pos = base_r->getTrackedP(lock_cam_pos);
+					lock_cam = !lock_cam;
+				}
+			}
+			if (rndr::getKeyPressed(GLFW_KEY_N)) {
+				if (!nuked) {
+					for (phyz::ConstraintID c : constraints) {
+						p.removeConstraint(c);
+						if (lock_cam) {
+							pos = base_r->getTrackedP(lock_cam_pos);
+							lock_cam = false;
+						}
+					}
+					nuked = true;
+				}
 			}
 
 			if (!paused) {
@@ -749,7 +777,7 @@ public:
 				mthz::Vec3 cam_pos = (lock_cam) ? base_r->getTrackedP(lock_cam_pos) : pos;
 				mthz::Quaternion cam_orient = (lock_cam) ? base_r->getOrientation() * orient : orient;
 				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-				shader.setUniform1i("u_Asleep", b.r->getAsleep());
+				//shader.setUniform1i("u_Asleep", b.r->getAsleep());
 				rndr::draw(*b.mesh.va, *b.mesh.ib, shader);
 				
 			}

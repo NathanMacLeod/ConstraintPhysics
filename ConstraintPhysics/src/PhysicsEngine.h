@@ -28,7 +28,17 @@ namespace phyz {
 	typedef int ColActionID;
 	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifold)> ColAction;
 
-	typedef int MotorID;
+	struct ConstraintID {
+		enum Type { BALL, HINGE, SLIDER };
+		inline Type getType() { return type; }
+
+		friend class PhysicsEngine;
+	private:
+		ConstraintID(Type type, int id) : type(type), uniqueID(id) {}
+
+		Type type;
+		int uniqueID;
+	};
 
 	class PhysicsEngine {
 	public:
@@ -58,12 +68,14 @@ namespace phyz {
 		ColActionID registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action);
 		void removeCollisionAction(ColActionID action_key);
 
-		void addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=350);
-		MotorID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=350, double rot_correct_strength=550);
-		void addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 350,
+		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=350);
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=350, double rot_correct_strength=350);
+		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 350,
 			double rot_correct_strength=350, double positive_slide_limit=std::numeric_limits<double>::infinity(), double negative_slide_limit=std::numeric_limits<double>::infinity());
 
-		void setMotor(MotorID id, double target_velocity, double max_torque);
+		void removeConstraint(ConstraintID id, bool reenable_collision=true);
+
+		void setMotor(ConstraintID id, double target_velocity, double max_torque);
 
 	private:
 
@@ -116,6 +128,7 @@ namespace phyz {
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			double pos_correct_hardness;
+			int uniqueID;
 		};
 
 		struct Hinge {
@@ -129,6 +142,7 @@ namespace phyz {
 			double rot_correct_hardness;
 			double max_torque;
 			double target_velocity;
+			int uniqueID;
 		};
 
 		struct Slider {
@@ -143,6 +157,7 @@ namespace phyz {
 			double positive_slide_limit;
 			double negative_slide_limit;
 			bool slide_limit_exceeded;
+			int uniqueID;
 		};
 
 		struct SharedConstraintsEdge {
@@ -175,8 +190,8 @@ namespace phyz {
 			SharedConstraintsEdge* getOrCreateEdgeTo(ConstraintGraphNode* n2);
 		};
 
-		MotorID nextMotorID = 0;
-		std::unordered_map<MotorID, Hinge*> motor_map;
+		int nextConstraintID = 0;
+		std::unordered_map<int, SharedConstraintsEdge*> constraint_map;
 
 		ColActionID nextActionID = 0;
 		inline static RigidBody* all() { return nullptr; }
