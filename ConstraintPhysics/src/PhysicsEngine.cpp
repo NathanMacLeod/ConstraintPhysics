@@ -36,11 +36,11 @@ namespace phyz {
 		}
 	}
 
-	//static float octree_maintain_time = 0;
-	//static float sat_time = 0;
-	//static float dfs_time = 0;
-	//static float pgs_time = 0;
-	//static int i = 0;
+	static float octree_maintain_time = 0;
+	static float sat_time = 0;
+	static float dfs_time = 0;
+	static float pgs_time = 0;
+	static int i = 0;
 	void PhysicsEngine::timeStep() {
 
 		while(!bodies_to_delete.empty()) {
@@ -50,7 +50,7 @@ namespace phyz {
 			bodies_to_delete.pop_back();
 		}
 
-		//auto t1 = std::chrono::system_clock::now();
+		auto t1 = std::chrono::system_clock::now();
 	
 		Octree<RigidBody> octree(mthz::Vec3(0, 0, 0), 2000, 1);
 		for (RigidBody* b : bodies) {
@@ -79,8 +79,7 @@ namespace phyz {
 		maintainConstraintGraphApplyPoweredConstraints();
 
 		std::vector<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
-
-		//auto t2 = std::chrono::system_clock::now();
+		auto t2 = std::chrono::system_clock::now();
 
 		std::mutex action_mutex;
 		struct TriggeredActionPair {
@@ -176,7 +175,7 @@ namespace phyz {
 			}
 		}
 
-		//auto t3 = std::chrono::system_clock::now();
+		auto t3 = std::chrono::system_clock::now();
 
 		for (const TriggeredActionPair& pair : triggered_actions) {
 			for (const ColAction& c : pair.triggered_actions) {
@@ -186,7 +185,7 @@ namespace phyz {
 
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
 
-		//auto t4 = std::chrono::system_clock::now();
+		auto t4 = std::chrono::system_clock::now();
 
 		if (use_multithread) {
 			thread_manager.do_all<std::vector<Constraint*>>(n_threads, island_systems,
@@ -201,7 +200,7 @@ namespace phyz {
 			}
 		}
 		
-		//auto t5 = std::chrono::system_clock::now();
+		auto t5 = std::chrono::system_clock::now();
 
 		for (RigidBody* b : bodies) {
 			if (!b->fixed && !b->asleep) {
@@ -222,8 +221,12 @@ namespace phyz {
 		pgs_time += std::chrono::duration<float>(t5 - t4).count();
 
 		if (i++ % 1000 == 0) {
-			float total = maintain_time + octree_time + sat_time + dfs_time + pgs_time;
-			printf("maintain: %f, octree: %f, sat: %f, dfs: %f, pgs: %f\n", maintain_time / total, octree_time / total, sat_time / total, dfs_time / total, pgs_time / total);
+			float total = octree_maintain_time + sat_time + dfs_time + pgs_time;
+			printf("total time: %f, octree/maintain: %f, sat: %f, dfs: %f, pgs: %f\n", total, octree_maintain_time / total, sat_time / total, dfs_time / total, pgs_time / total);
+			octree_maintain_time = 0;
+			sat_time = 0;
+			dfs_time = 0;
+			pgs_time = 0;
 		}*/
 	}
 
@@ -496,7 +499,7 @@ namespace phyz {
 	//Fixed bodies need to be treated a little weird. They should not bridge islands together (two seperate piles on the same floor should be different islands).
 	//Thus fixed bodies exist only as leaves, and can't be 'curr' in initial call to dfs
 	//Exception being where the very first node is fixed to propogate changes, such as translating a fixed object requires waking bodies around it
-	void PhysicsEngine::dfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action) {
+	/*void PhysicsEngine::dfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action) {
 		visited->insert(curr);
 		if (!curr->b->fixed) {
 			action(curr, in);
@@ -507,11 +510,33 @@ namespace phyz {
 				dfsVisitAll(n, visited, in, action);
 			}
 		}
+	}*/
+
+	void PhysicsEngine::bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action) {
+		std::vector<ConstraintGraphNode*> to_visit = { curr };
+
+		while (!to_visit.empty()) {
+			ConstraintGraphNode* visiting_node = to_visit.back();
+			to_visit.pop_back();
+
+			bool already_visited = !visited->insert(visiting_node).second;
+			if (already_visited) continue;
+
+			if (!visiting_node->b->fixed) {
+				action(visiting_node, in);
+			}
+			for (SharedConstraintsEdge* e : visiting_node->constraints) {
+				ConstraintGraphNode* n = e->other(visiting_node);
+				if (!n->b->fixed && visited->find(n) == visited->end()) {
+					to_visit.push_back(n);
+				}
+			}
+		}
 	}
 
 	void PhysicsEngine::wakeupIsland(ConstraintGraphNode* foothold) {
 		std::set<ConstraintGraphNode*> visited;
-		dfsVisitAll(foothold, &visited, nullptr, [this](ConstraintGraphNode* curr, void* in) {
+		bfsVisitAll(foothold, &visited, nullptr, [this](ConstraintGraphNode* curr, void* in) {
 			curr->b->wake();
 		});
 	}
@@ -608,7 +633,7 @@ namespace phyz {
 			
 			InStruct in = { &all_ready_to_sleep, &island_constraints, &island_bodies };
 			int new_contact_life = this->contact_life;
-			dfsVisitAll(n, &visited, (void*)&in, [&visited, new_contact_life, this](ConstraintGraphNode* curr, void* in) {
+			bfsVisitAll(n, &visited, (void*)&in, [&visited, new_contact_life, this](ConstraintGraphNode* curr, void* in) {
 				InStruct* output = (InStruct*)in;
 				if (*output->all_ready_to_sleep && !readyToSleep(curr->b)) {
 					*output->all_ready_to_sleep = false;

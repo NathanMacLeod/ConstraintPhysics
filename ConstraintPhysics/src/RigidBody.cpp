@@ -160,7 +160,7 @@ namespace phyz {
 
 		orientation = orientation.normalize();
 		mthz::Mat3 rot = orientation.getRotMatrix();
-		mthz::Mat3 rot_conjugate = rot.inverse();
+		mthz::Mat3 rot_conjugate = orientation.conjugate().getRotMatrix();
 		tensor = rot * reference_tensor * rot_conjugate;
 		invTensor = rot * reference_invTensor * rot_conjugate;
 

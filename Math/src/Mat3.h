@@ -20,7 +20,7 @@ namespace mthz {
 			return out;
 		}
 
-		static Mat3 cross_mat(mthz::Vec3 v) {
+		static Mat3 cross_mat(Vec3 v) {
 			Mat3 out;
 			out.v[0][0] =    0; out.v[0][1] = -v.z; out.v[0][2] =  v.y;
 			out.v[1][0] =  v.z; out.v[1][1] =    0; out.v[1][2] = -v.x;

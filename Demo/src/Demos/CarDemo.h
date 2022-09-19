@@ -777,7 +777,7 @@ public:
 				mthz::Vec3 cam_pos = (lock_cam) ? base_r->getTrackedP(lock_cam_pos) : pos;
 				mthz::Quaternion cam_orient = (lock_cam) ? base_r->getOrientation() * orient : orient;
 				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-				//shader.setUniform1i("u_Asleep", b.r->getAsleep());
+				shader.setUniform1i("u_Asleep", b.r->getAsleep());
 				rndr::draw(*b.mesh.va, *b.mesh.ib, shader);
 				
 			}

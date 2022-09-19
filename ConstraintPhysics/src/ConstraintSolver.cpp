@@ -765,9 +765,9 @@ namespace phyz {
 	static NVec<12> VelVectoNVec(const phyz::Constraint::VelVec& vel_a, const phyz::Constraint::VelVec& vel_b) {
 		return NVec<12> {
 			vel_a.lin.x, vel_a.lin.y, vel_a.lin.z,
-			vel_a.ang.x, vel_a.ang.y, vel_a.ang.z,
-			vel_b.lin.x, vel_b.lin.y, vel_b.lin.z,
-			vel_b.ang.x, vel_b.ang.y, vel_b.ang.z,
+				vel_a.ang.x, vel_a.ang.y, vel_a.ang.z,
+				vel_b.lin.x, vel_b.lin.y, vel_b.lin.z,
+				vel_b.ang.x, vel_b.ang.y, vel_b.ang.z,
 		};
 	}
 };

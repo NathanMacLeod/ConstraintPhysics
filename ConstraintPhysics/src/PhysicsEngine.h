@@ -3,6 +3,7 @@
 #include "CollisionDetect.h"
 #include "ConstraintSolver.h"
 #include "ThreadManager.h"
+#include "Octree.h"
 #include <set>
 #include <functional>
 #include <unordered_map>
@@ -89,7 +90,7 @@ namespace phyz {
 		struct ConstraintGraphNode; 
 		void addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
 		void maintainConstraintGraphApplyPoweredConstraints();
-		void dfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
+		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		std::vector<std::vector<Constraint*>> sleepOrSolveIslands();
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
 		bool bodySleepy(const std::vector<RigidBody::MovementState>& body_history);
