@@ -29,7 +29,9 @@ namespace rndr {
 		}
 
         first_tick = true;
+#ifndef NDEBUG
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+#endif
 
 		window = glfwCreateWindow(width, height, "Hello World", NULL, NULL);
 		if (!window)
@@ -47,8 +49,10 @@ namespace rndr {
 			return -1;
 		}
 
+#ifndef NDEBUG
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(GLDebugMessageCallback, NULL);
+#endif
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);

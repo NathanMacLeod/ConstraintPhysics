@@ -78,12 +78,10 @@ public:
 
 	std::vector<ControlDescription> controls() override {
 		return {
-			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
+			ControlDescription{"W, A, S, D", "Move the camera around when the simulation starts"},
 			ControlDescription{"UP, DOWN, LEFT, RIGHT", "Rotate the camera"},
-			ControlDescription{"G", "toggle free-look and lock to vehicle"},
-			ControlDescription{"B", "Lock the rear right wheel"},
-			ControlDescription{"I. K", "Incrase, Decrease throttle"},
-			ControlDescription{"J, L", "Steer left, right"},
+			ControlDescription{"R", "Re-run simulation"},
+			ControlDescription{"ESC", "Return to main menu"}
 		};
 	}
 
@@ -194,9 +192,9 @@ public:
 		phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
 		phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
 
-		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, spinner1_pos, mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1));
+		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
 		p.setMotor(spinner1_motor, 0.5, 1000000);
-		phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, spinner2_pos, mthz::Vec3(0, 0, 1), mthz::Vec3(0, 0, 1));
+		phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, mthz::Vec3(0, 0, 1));
 		p.setMotor(spinner2_motor, -0.5, 1000000);
 
 		pre_bodies.push_back(BodyHistory(base_r, base));
@@ -347,9 +345,16 @@ public:
 			else if (rndr::getKeyDown(GLFW_KEY_RIGHT)) {
 				cam_orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * cam_orient;
 			}
-
 			if (rndr::getKeyPressed(GLFW_KEY_R)) {
 				t = 0;
+			}
+			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
+				for (PhysBod b : bodies) {
+					delete b.mesh.ib;
+					delete b.mesh.va;
+				}
+				manager->deselectCurrentScene();
+				return;
 			}
 
 			rndr::clear(rndr::color(0.7f, 0.7f, 0.7f));

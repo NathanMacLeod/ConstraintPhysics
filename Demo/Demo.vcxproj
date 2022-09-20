@@ -119,6 +119,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)ConstraintPhysics\src;$(SolutionDir)Demo\Dependencies\GLFW\include;$(SolutionDir)Demo\Dependencies\GLEW\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);NDEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -151,6 +152,7 @@
     <ClInclude Include="src\Demos\DemoScene.h" />
     <ClInclude Include="src\Demos\ImageDemo.h" />
     <ClInclude Include="src\Demos\olcPixelGameEngine.h" />
+    <ClInclude Include="src\Demos\WreckingBallDemo.h" />
     <ClInclude Include="src\Mesh.h" />
     <ClInclude Include="src\renderer\IndexBuffer.h" />
     <ClInclude Include="src\renderer\Mat4.h" />
