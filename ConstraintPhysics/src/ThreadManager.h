@@ -78,8 +78,6 @@ namespace phyz {
 
 			
 			wait(&lk, &done_cv, [&]() -> bool { return all_done; });
-			
-			//while (!(num_jobs_exited.load() >= n_jobs));
 
 		}
 	private:
@@ -96,7 +94,6 @@ namespace phyz {
 				std::unique_lock<std::mutex> lk(*sleep_lock);
 				wait(&lk, sleep_cv, [&]() -> bool { return *terminated || jobs->size() > 0; });
 				lk.unlock();
-				//while (!(*terminated || jobs->size() > 0));
 				
 				if (*terminated) {
 					return;

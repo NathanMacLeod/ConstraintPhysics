@@ -15,12 +15,13 @@ class DemoManager;
 
 struct SceneLauncher {
 	std::string name;
+	std::string description;
 	std::function<DemoScene* (DemoManager*, DemoProperties)> createInstance;
 };
 
 class DemoManager {
 public:
-	void registerScene(const std::string& name, std::function<DemoScene* (DemoManager*, DemoProperties)> createInstance) { scene_suite.push_back({name, createInstance}); }
+	void registerScene(std::string name, std::string description, std::function<DemoScene* (DemoManager*, DemoProperties)> createInstance) { scene_suite.push_back({name, description, createInstance}); }
 	void selectProperties();
 	void selectDemoScene();
 	void displaySceneControls();

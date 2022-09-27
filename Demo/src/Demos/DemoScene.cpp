@@ -6,37 +6,6 @@
 #include <iostream>
 #include <cassert>
 
-//struct DemoProperties {
-//	double window_width;
-//	double window_height;
-//	int n_threads;
-//};
-//
-//class DemoScene;
-//
-//struct SceneLauncher {
-//	std::string name;
-//	std::function<DemoScene* (DemoProperties p)> createInstance;
-//};
-//
-//class DemoManager {
-//public:
-//	void registerScene(const std::string& name, std::function<DemoScene* (DemoProperties p)> createInstance);
-//	DemoProperties selectProperties();
-//	void selectDemoScene();
-//	void deselectCurrentScene();
-//private:
-//	std::vector<SceneLauncher> scene_suite;
-//	DemoScene* current_scene;
-//};
-//
-//class DemoScene {
-//public:
-//	DemoScene(DemoProperties properties);
-//	virtual ~DemoScene();
-//	virtual void mainLoop(double elapsed_time);
-//};
-
 static bool is_valid_int(const std::string& s) {
 	if (s.empty()) return false;
 
@@ -76,7 +45,7 @@ void DemoManager::selectDemoScene() {
 	printf("\nAvailable Demos:\n");
 	printf("=================\n");
 	for (int i = 0; i < scene_suite.size(); i++) {
-		printf("Demo %d: %s\n", i, scene_suite[i].name.c_str());
+		printf("(%d) %-26s %s\n", i, scene_suite[i].name.c_str(), scene_suite[i].description.c_str());
 	}
 	printf("=================\n\n");
 	int selected_index = -1;

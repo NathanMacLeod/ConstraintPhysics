@@ -3,8 +3,12 @@
 #include "DemoScene.h"
 #include "../Mesh.h"
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
-#include "iostream"
+#include <iostream>
 #include "olcPixelGameEngine.h"
+#include <inttypes.h>
+#include <io.h>
+#include <fcntl.h>
+#include <cassert>
 
 class ImageDemo : public DemoScene {
 private:
@@ -67,6 +71,62 @@ private:
 		}
 		average.r /= n_pixel; average.g /= n_pixel; average.b /= n_pixel;
 		return average;
+	}
+
+	static const int BUFFER_SIZE = 512;
+	int buffer_indx;
+	int buffer_capacity = 0;
+	double buffer[BUFFER_SIZE];
+
+	double read64(int fd) {
+		if (buffer_indx >= buffer_capacity) {
+			buffer_indx = 0;
+			buffer_capacity = _read(fd, buffer, sizeof(double) * BUFFER_SIZE) / sizeof(double);
+			assert(buffer_capacity != 0);
+		}
+		return buffer[buffer_indx++];
+	}
+
+	void write64(int fd, double v) {
+		if (buffer_indx >= BUFFER_SIZE) {
+			flush(fd);
+		}
+		buffer[buffer_indx++] = v;
+	}
+
+	void flush(int fd) {
+		_write(fd, buffer, sizeof(double) * buffer_indx);
+		buffer_indx = 0;
+	}
+
+	void readComputation(std::string filename, std::vector<BodyHistory>* bodies, int n_frames) {
+		int fd;
+		buffer_indx = 0;
+		buffer_capacity = 0;
+		_sopen_s(&fd, filename.c_str(), _O_BINARY | _O_RDONLY, _SH_DENYRW, _S_IREAD);
+		for (int i = 0; i < n_frames; i++) {
+			for (BodyHistory& b : *bodies) {
+				double x = read64(fd); double y = read64(fd); double z = read64(fd);
+				double r = read64(fd); double i = read64(fd); double j = read64(fd); double k = read64(fd);
+				b.history.push_back({ mthz::Vec3(x, y, z), mthz::Quaternion(r, i, j, k) });
+			}
+		}
+		_close(fd);
+	}
+
+	void writeComputation(std::string filename, const std::vector<BodyHistory>& bodies, int n_frames) {
+		int fd;
+		buffer_indx = 0;
+		_sopen_s(&fd, filename.c_str(), _O_CREAT | _O_BINARY | _O_WRONLY, _SH_DENYRW, _S_IWRITE);
+		for (int i = 0; i < n_frames; i++) {
+			for (const BodyHistory& b : bodies) {
+				PosState p = b.history[i];
+				write64(fd, p.pos.x); write64(fd, p.pos.y); write64(fd, p.pos.z);
+				write64(fd, p.orient.r); write64(fd, p.orient.i); write64(fd, p.orient.j); write64(fd, p.orient.k);
+			}
+		}
+		flush(fd);
+		_close(fd);
 	}
 
 public:
@@ -140,6 +200,8 @@ public:
 		phyz::Geometry posx_wall = phyz::Geometry::box(mthz::Vec3(base_dim.x - base_dim.y, base_dim.y, 0), base_dim.y, box_height, base_dim.z);
 		phyz::Geometry back_wall = phyz::Geometry::box(mthz::Vec3(0, 0, 0), base_dim.x, box_height + base_dim.y, -base_dim.y);
 		phyz::Geometry front_wall = phyz::Geometry::box(mthz::Vec3(0, 0, base_dim.z), base_dim.x, base_dim.y + box_height, base_dim.y);
+
+		p.setOctreeParams(60, 0.25, mthz::Vec3(base_dim.x/2.0, box_height/2.0, base_dim.z/2.0));
 
 		double effective_width = base_dim.x - 2 * base_dim.y;
 		int n_rows = 4;
@@ -215,43 +277,58 @@ public:
 
 		p.setGravity(mthz::Vec3(0, -4.9, 0));
 
-		printf("Precomputing...\n");
 		int curr_percent = -1;
 		double frame_time = 1 / 120.0;
 		int steps_per_frame = 2;
 		double simulation_time = 60;
-		int progress_bar_width = 50;
-
-		p.setStep_time(frame_time / steps_per_frame);
-		for (BodyHistory& b : pre_bodies) {
-			b.history.reserve(simulation_time / frame_time);
-			b.history.push_back({ b.r->getPos(), b.r->getOrientation() });
+		int n_frames = simulation_time / frame_time + 1;
+		
+		printf("Checking for existing precomputation...\n");
+		char precompute_file[256];
+		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d.txt", level_of_detail);
+		if (fileExists(precompute_file)) {
+			printf("File found\n");
+			readComputation(precompute_file, &pre_bodies, n_frames);
+			for (const BodyHistory& b : pre_bodies) {
+				b.r->setOrientation(b.history.back().orient);
+				b.r->setToPosition(b.history.back().pos);
+			}
 		}
-
-		int n_frames = 0;
-		float physics_time = 0;
-		float update_time = 0;
-		for (double t = 0; t <= simulation_time; t += frame_time) {
-			int new_percent = 100 * t / simulation_time;
-			if (new_percent > curr_percent) {
-				curr_percent = new_percent;
-				render_progress_bar(t / simulation_time, progress_bar_width, false);
-			}
-
-			auto t1 = std::chrono::system_clock::now();
-			for (int i = 0; i < steps_per_frame; i++) {
-				p.timeStep();
-			}
-			auto t2 = std::chrono::system_clock::now();
+		else {
+			printf("File not found. Computing...\n");
+			int progress_bar_width = 50;
+			p.setStep_time(frame_time / steps_per_frame);
 			for (BodyHistory& b : pre_bodies) {
+				b.history.reserve(simulation_time / frame_time);
 				b.history.push_back({ b.r->getPos(), b.r->getOrientation() });
 			}
-			auto t3 = std::chrono::system_clock::now();
-			update_time += std::chrono::duration<float>(t3 - t2).count();
-			physics_time += std::chrono::duration<float>(t2 - t1).count();
-			n_frames++;
+
+			float physics_time = 0;
+			float update_time = 0;
+			for (int i = 0; i < n_frames; i++) {
+				double t = i * frame_time;
+				int new_percent = 100 * t / simulation_time;
+				if (new_percent > curr_percent) {
+					curr_percent = new_percent;
+					render_progress_bar(t / simulation_time, progress_bar_width, false);
+				}
+
+				auto t1 = std::chrono::system_clock::now();
+				for (int i = 0; i < steps_per_frame; i++) {
+					p.timeStep();
+				}
+				auto t2 = std::chrono::system_clock::now();
+				for (BodyHistory& b : pre_bodies) {
+					b.history.push_back({ b.r->getPos(), b.r->getOrientation() });
+				}
+				auto t3 = std::chrono::system_clock::now();
+				update_time += std::chrono::duration<float>(t3 - t2).count();
+				physics_time += std::chrono::duration<float>(t2 - t1).count();
+			}
+			render_progress_bar(curr_percent, progress_bar_width, true);
+			printf("Saving computation to file...\n");
+			writeComputation(precompute_file, pre_bodies, n_frames);
 		}
-		render_progress_bar(curr_percent, progress_bar_width, true);
 
 		if (default_coloring) {
 			for (int indx : recolor_body_indexes) {
@@ -293,7 +370,7 @@ public:
 		std::string unused;
 		std::getline(std::cin, unused);
 
-		rndr::init(properties.window_width, properties.window_height, "Car Demo");
+		rndr::init(properties.window_width, properties.window_height, "Image Demo");
 
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();

@@ -52,7 +52,7 @@ namespace phyz {
 
 		auto t1 = std::chrono::system_clock::now();
 	
-		Octree<RigidBody> octree(mthz::Vec3(0, 0, 0), 2000, 1);
+		Octree<RigidBody> octree(octree_center, octree_size, octree_minsize);
 		for (RigidBody* b : bodies) {
 			if (b->recievedWakingAction) {
 				wakeupIsland(constraint_graph_nodes[b]);
@@ -215,7 +215,7 @@ namespace phyz {
 			}
 		}
 
-		/*octree_maintain_time += std::chrono::duration<float>(t2 - t1).count();
+		octree_maintain_time += std::chrono::duration<float>(t2 - t1).count();
 		sat_time += std::chrono::duration<float>(t3 - t2).count();
 		dfs_time += std::chrono::duration<float>(t4 - t3).count();
 		pgs_time += std::chrono::duration<float>(t5 - t4).count();
@@ -227,7 +227,7 @@ namespace phyz {
 			sat_time = 0;
 			dfs_time = 0;
 			pgs_time = 0;
-		}*/
+		}
 	}
 
 	template<typename Func>
@@ -471,6 +471,12 @@ namespace phyz {
 	void PhysicsEngine::setGravity(const mthz::Vec3& v) {
 		gravity = v;
 		cutoff_vel = getCutoffVel(step_time, gravity);
+	}
+
+	void PhysicsEngine::setOctreeParams(double size, double minsize, mthz::Vec3 center) {
+		octree_center = center;
+		octree_size = size;
+		octree_minsize = minsize;
 	}
 
 	void PhysicsEngine::setStep_time(double s) {

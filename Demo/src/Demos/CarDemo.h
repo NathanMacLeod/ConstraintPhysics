@@ -50,8 +50,8 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		//p.setSleepingEnabled(false);
 		p.setPGSIterations(45, 35);
+		p.setOctreeParams(100, 0.5);
 
 		bool lock_cam = true;
 		bool nuked = false;

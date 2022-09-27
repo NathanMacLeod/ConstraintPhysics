@@ -149,6 +149,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Demos\CarDemo.h" />
+    <ClInclude Include="src\Demos\ColActionDemo.h" />
     <ClInclude Include="src\Demos\DemoScene.h" />
     <ClInclude Include="src\Demos\ImageDemo.h" />
     <ClInclude Include="src\Demos\olcPixelGameEngine.h" />
@@ -161,6 +162,7 @@
     <ClInclude Include="src\renderer\VertexArray.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="resources\shaders\AgentColor.shader" />
     <None Include="resources\shaders\Basic.shader" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

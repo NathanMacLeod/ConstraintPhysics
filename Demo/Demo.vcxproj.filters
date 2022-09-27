@@ -77,9 +77,15 @@
     <ClInclude Include="src\Demos\WreckingBallDemo.h">
       <Filter>src\Demos</Filter>
     </ClInclude>
+    <ClInclude Include="src\Demos\ColActionDemo.h">
+      <Filter>src\Demos</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\shaders\Basic.shader">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="resources\shaders\AgentColor.shader">
       <Filter>resources\shaders</Filter>
     </None>
   </ItemGroup>

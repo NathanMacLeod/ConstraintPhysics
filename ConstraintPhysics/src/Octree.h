@@ -39,10 +39,7 @@ namespace phyz {
 		};
 
 		Octree(mthz::Vec3 origin, double size, double min_size)
-			: min_size(min_size), root()
-		{
-			root.aabb = { origin - mthz::Vec3(size / 2.0, size / 2.0, size / 2.0), origin + mthz::Vec3(size / 2.0, size / 2.0, size / 2.0) };
-		}
+			: min_size(min_size), root({ origin - mthz::Vec3(size / 2.0, size / 2.0, size / 2.0), origin + mthz::Vec3(size / 2.0, size / 2.0, size / 2.0) }) {}
 
 		void insert(const T& object, const AABB& object_bounds) {
 			OctElem e = { &object, &object_bounds };
@@ -62,13 +59,8 @@ namespace phyz {
 		};
 
 		struct OctreeNode {
-			AABB aabb;
-			std::vector<OctElem> elem;
+			OctreeNode(AABB aabb) : aabb(aabb), center((aabb.min + aabb.max) / 2.0), is_leaf(true) {}
 
-			bool is_leaf = true;
-			OctreeNode* children[8] = { nullptr };
-
-			inline double size() { return aabb.max.x - aabb.min.x; };
 			~OctreeNode() {
 				for (int i = 0; i < 8; i++) {
 					if (children[i] != nullptr) {
@@ -76,6 +68,16 @@ namespace phyz {
 					}
 				}
 			}
+
+			AABB aabb;
+			mthz::Vec3 center;
+			std::vector<OctElem> elem;
+
+			bool is_leaf;
+			OctreeNode* children[8] = { nullptr };
+
+			inline double size() { return aabb.max.x - aabb.min.x; };
+			
 		};
 
 		void insert_r(OctreeNode* curr, OctElem e) {
@@ -86,8 +88,7 @@ namespace phyz {
 				if (curr->elem.size() > LEAF_IDEAL_CAPACITY && curr->size() / 2.0 > min_size) {
 					curr->is_leaf = false;
 					for (int i = 0; i < 8; i++) {
-						curr->children[i] = new OctreeNode();
-						curr->children[i]->aabb = getSubAABB(*curr, (Oct)i);
+						curr->children[i] = new OctreeNode(getSubAABB(*curr, (Oct)i));
 					}
 					for (OctElem elem : curr->elem) {
 						insert_r(curr, elem);
@@ -96,9 +97,53 @@ namespace phyz {
 
 			}
 			else {
-				for (OctreeNode* child : curr->children) {
+				/*for (OctreeNode* child : curr->children) {
 					if (AABB::intersects(child->aabb, *e.aabb)) {
 						insert_r(child, e);
+					}
+				}*/
+				
+				bool intersects[8] = { true, true, true, true, true, true, true, true };
+				if (e.aabb->min.x > curr->center.x) {
+					intersects[LLL] = false;
+					intersects[LLG] = false;
+					intersects[LGL] = false;
+					intersects[LGG] = false;
+				}
+				else if (e.aabb->max.x < curr->center.x) {
+					intersects[GLL] = false;
+					intersects[GLG] = false;
+					intersects[GGL] = false;
+					intersects[GGG] = false;
+				}
+				if (e.aabb->min.y > curr->center.y) {
+					intersects[LLL] = false;
+					intersects[LLG] = false;
+					intersects[GLL] = false;
+					intersects[GLG] = false;
+				}
+				else if (e.aabb->max.y < curr->center.y) {
+					intersects[LGL] = false;
+					intersects[LGG] = false;
+					intersects[GGL] = false;
+					intersects[GGG] = false;
+				}
+				if (e.aabb->min.z > curr->center.z) {
+					intersects[LLL] = false;
+					intersects[LGL] = false;
+					intersects[GLL] = false;
+					intersects[GGL] = false;
+				}
+				else if (e.aabb->max.z < curr->center.z) {
+					intersects[LLG] = false;
+					intersects[LGG] = false;
+					intersects[GLG] = false;
+					intersects[GGG] = false;
+				}
+
+				for (int i = 0; i < 8; i++) {
+					if (intersects[i]) {
+						insert_r(curr->children[i], e);
 					}
 				}
 			}

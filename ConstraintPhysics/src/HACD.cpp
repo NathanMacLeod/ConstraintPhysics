@@ -62,7 +62,7 @@ namespace phyz {
 				else if (strcmp(token, "f") == 0) {
 					std::vector<unsigned int> indices;
 					while ((token = strtok_s(NULL, delim, &next_token)) != NULL) {
-						int index = atoi(token) - 1; //haha obj your so quirky starting at index 1, not 0 xd xd xd
+						int index = atoi(token) - 1;
 						referenced_index.insert(index);
 						assert(index >= 0 && index < out.vertices.size());
 						indices.push_back(index);
@@ -83,6 +83,128 @@ namespace phyz {
 		return out;
 	}
 
+	//namespace qkhl {
+	//	struct Face;
+
+	//	struct HalfEdge {
+	//		int p1, p2;
+	//		Face* face;
+	//		HalfEdge* twin;
+	//	};
+
+	//	class Face {
+	//	public:
+	//		Face(const std::vector<mthz::Vec3>& global_points, std::vector<, HalfEdge* h1_twin, HalfEdge* h2_twin, HalfEdge* h3_twin)
+	//			: p1(p1), p2(p2), p3(p3)
+	//		{
+	//			n = (points[p2] - points[p1]).cross(points[p3] - points[p2]).normalize();
+
+	//			h1 = new HalfEdge{ p1, p2, this, h1_twin };
+	//			h2 = new HalfEdge{ p2, p3, this, h2_twin };
+	//			h3 = new HalfEdge{ p3, p1, this, h3_twin };
+
+	//			if (h1_twin != nullptr) h1_twin->twin = h1;
+	//			if (h2_twin != nullptr) h2_twin->twin = h2;
+	//			if (h3_twin != nullptr) h3_twin->twin = h3;
+	//		}
+
+	//		~Face() {
+	//			if (h1->twin != nullptr) h1->twin->twin = nullptr;
+	//			if (h2->twin != nullptr) h2->twin->twin = nullptr;
+	//			if (h3->twin != nullptr) h3->twin->twin = nullptr;
+
+	//			delete h1;
+	//			delete h2;
+	//			delete h3;
+	//		}
+
+
+	//		int p1, p2, p3;
+	//		HalfEdge* h1; HalfEdge* h2; HalfEdge* h3;
+	//		mthz::Vec3 n;
+	//	};
+
+	//	struct MinMaxIndx {
+	//		int min, max;
+	//	};
+
+	//	MinMaxIndx minMaxDirectionQuery(const std::vector<mthz::Vec3>& points, mthz::Vec3 direction, std::vector<int> excluded_indxs = {}) {
+	//		MinMaxIndx out {-1, -1};
+	//		double min_val = std::numeric_limits<double>::infinity();
+	//		double max_val = -std::numeric_limits<double>::infinity();
+
+	//		for (int i = 0; i < points.size(); i++) {
+	//			bool skip = false;
+	//			for (int excluded : excluded_indxs) {
+	//				if (excluded == i) {
+	//					skip = true;
+	//					break;
+	//				}
+	//			}
+	//			if (skip) break;
+
+	//			double value = direction.dot(points[i]);
+	//			if (value < min_val) {
+	//				min_val = value;
+	//				out.min = i;
+	//			}
+	//			if (value > max_val) {
+	//				max_val = value;
+	//				out.max = i;
+	//			}
+	//		}
+
+	//		return out;
+	//	}
+	//}	
+
+	//ConvexPoly getConvexHull(const Mesh& m) {
+	//	//**********************************
+	//	//****Create Initial Tetrahedron****
+	//	//**********************************
+	//	qkhl::MinMaxIndx p1p2segment = qkhl::minMaxDirectionQuery(m.vertices, mthz::Vec3(1, 0, 0));
+	//	int p1 = p1p2segment.min;
+	//	int p2 = p1p2segment.max;
+
+	//	mthz::Vec3 u, w;
+	//	(m.vertices[p2] - m.vertices[p1]).getPerpendicularBasis(&u, &w);
+	//	double p1u = m.vertices[p1].dot(u);
+	//	double p1w = m.vertices[p1].dot(w);
+	//	double max_val = 0;
+	//	int p3 = -1;
+	//	for (int i = 0; i < m.vertices.size(); i++) {
+	//		double u_dist = m.vertices[i].dot(u) - p1u;
+	//		double w_dist = m.vertices[i].dot(w) - p1w;
+
+	//		double value = u_dist * u_dist + w_dist * w_dist;
+	//		if (value > max_val) {
+	//			max_val = value;
+	//			p3 = i;
+	//		}
+	//	}
+
+	//	mthz::Vec3 n = (m.vertices[p2] - m.vertices[p1]).cross(m.vertices[p3] - m.vertices[p2]);
+	//	double p1n = m.vertices[p1].dot(n);
+
+	//	qkhl::MinMaxIndx p4Candidates = qkhl::minMaxDirectionQuery(m.vertices, n, { p1, p2, p3 });
+	//	int p4 = p4Candidates.min;
+	//	if (m.vertices[p4Candidates.max].dot(n) - p1n > p1n - m.vertices[p4Candidates.min].dot(n)) {
+	//		p4 = p4Candidates.max;
+	//		//keep winding counterclockwise
+	//		int tmp = p2;
+	//		p2 = p3;
+	//		p3 = tmp;
+	//	}
+
+	//	qkhl::Face* f1 = new qkhl::Face(m.vertices, p1, p2, p3, nullptr, nullptr, nullptr);
+	//	qkhl::Face* f2 = new qkhl::Face(m.vertices, p1, p2, p4, f1->h1, nullptr, nullptr);
+	//	qkhl::Face* f3 = new qkhl::Face(m.vertices, p2, p3, p4, f1->h2, nullptr, f2->h2);
+	//	qkhl::Face* f4 = new qkhl::Face(m.vertices, p3, p1, p4, f1->h3, f2->h3, f3->h2);
+
+	//	
+	//	
+	//}
+
 	//static struct Face;
 
 	//static struct Face {
@@ -97,7 +219,7 @@ namespace phyz {
 	//		} while (abs(v2.dot(v1)) > 0.99 && i < indices.size());
 
 	//		normal = v1.cross(v2);
-	//		if (normal.dot(normalish) < 0) {
+	//		if (normal.dot(normalish) < 0) { 
 	//			normal = -normal;
 	//		}
 	//	}

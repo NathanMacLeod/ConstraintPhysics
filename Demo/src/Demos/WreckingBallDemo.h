@@ -22,27 +22,9 @@ public:
 		};
 	}
 
-	static void addBrickRing(phyz::PhysicsEngine* p, std::vector<PhysBod>* bodies, mthz::Vec3 block_dim, double radius, mthz::Vec3 pos, int n_layers, double offset_ratio) {
-		phyz::Geometry block = phyz::Geometry::box(mthz::Vec3(0, 0, 0), block_dim.x, block_dim.y, block_dim.z, phyz::Material::modified_density(0.05));
-
-		double outer_dTheta = acos(1 - block_dim.z * block_dim.z / (2 * radius * radius));
-		for (int i = 0; i < n_layers; i++) {
-			double offset_angle = outer_dTheta * i / offset_ratio;
-			for (double theta = 0; theta < 2 * 3.1415926563; theta += outer_dTheta) {
-				mthz::Vec3 block_pos = pos + mthz::Vec3(0, i * block_dim.y, 0) + mthz::Quaternion(theta + offset_angle, mthz::Vec3(0, 1, 0)).applyRotation(mthz::Vec3(radius, 0, 0));
-				mthz::Quaternion orient(theta + offset_angle + outer_dTheta / 2.0, mthz::Vec3(0, 1, 0));
-
-				phyz::Geometry block_oriented = block.getRotated(orient).getTranslated(block_pos);
-				phyz::RigidBody* r = p->createRigidBody(block_oriented);
-				Mesh m = { fromGeometry(block_oriented) };
-				bodies->push_back(PhysBod{ m, r });
-			}
-		}
-	}
-
 	void run() override {
 
-		rndr::init(properties.window_width, properties.window_height, "Car Demo");
+		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
 		}

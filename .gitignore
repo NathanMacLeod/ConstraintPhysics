@@ -2,5 +2,6 @@ x64/
 Math/x64
 Demo/x64
 ConstraintPhysics/x64
+Demo/resources/precomputations/*
 Debug
 .vs

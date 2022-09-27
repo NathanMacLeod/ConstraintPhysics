@@ -5,13 +5,15 @@
 #include "Demos/CarDemo.h"
 #include "Demos/ImageDemo.h"
 #include "Demos/WreckingBallDemo.h"
+#include "Demos/ColActionDemo.h"
 
 int main() {
 
 	DemoManager manager;
-	manager.registerScene("Car", [](DemoManager* m, DemoProperties p) { return new CarDemo(m, p); });
-	manager.registerScene("Image", [](DemoManager* m, DemoProperties p) { return new ImageDemo(m, p); });
-	manager.registerScene("Wrecking Ball", [](DemoManager* m, DemoProperties p) { return new WreckingBallDemo(m, p); });
+	manager.registerScene("Rock Paper Scissors", "Red converts green, green converts blue, and blue converts red.", [](DemoManager* m, DemoProperties p) { return new ColActionDemo(m, p); });
+	manager.registerScene("Wrecking Ball", "Knock over a tower with a simulated wrecking ball.", [](DemoManager* m, DemoProperties p) { return new WreckingBallDemo(m, p); });
+	manager.registerScene("Precomputed Simulation", "Precompute and view a simulation of colored falling blocks, whose final resting position will create an image.", [](DemoManager* m, DemoProperties p) { return new ImageDemo(m, p); });
+	manager.registerScene("Car", "Drive a simulated car, featuring a working steering wheel and differential.", [](DemoManager* m, DemoProperties p) { return new CarDemo(m, p); });
 
 	manager.selectProperties();
 	while (1) {
