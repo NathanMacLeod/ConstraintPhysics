@@ -50,6 +50,7 @@ https://medium.com/@nwarren_4475/roblox-physics-building-a-better-sleep-system-8
 Changing angular velocity in spinning bodies: Physics for Game Programmers: Numerical Methods (Erin Catto)
 https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical
 
-PGS solver: Iterative Dynamics with Temporal Coherence (Erin Catto) & Improving an Iterative Physics Solver Using a Direct Method (Maciej Mizersk)
+PGS solver: Iterative Dynamics with Temporal Coherence (Erin Catto)
 https://box2d.org/files/ErinCatto_IterativeDynamics_GDC2005.pdf
+Improving an Iterative Physics Solver Using a Direct Method (Maciej Mizersk)
 https://www.youtube.com/watch?v=P-WP1yMOkc4 (First part of the video talks about PGS)
