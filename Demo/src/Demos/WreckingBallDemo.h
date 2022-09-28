@@ -30,7 +30,7 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setSleepingEnabled(false);
+		p.setSleepingEnabled(true);
 		p.setPGSIterations(45, 35);
 
 		bool lock_cam = true;
@@ -205,7 +205,7 @@ public:
 		double phyz_time = 0;
 		double timestep = 1 / 90.0;
 		p.setStep_time(timestep);
-		p.setGravity(mthz::Vec3(0, -4.9, 0));
+		p.setGravity(mthz::Vec3(0, -6.0, 0));
 
 		while (rndr::render_loop(&fElapsedTime)) {
 

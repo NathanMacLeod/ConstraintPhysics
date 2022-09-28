@@ -9,7 +9,7 @@
 #include <chrono>
 
 static const double FLATTENING_BIAS_MAG = 0;
-static const double FLAT_ENOUGH = cos(3.1415926535 * 0.1 / 180.0);
+static const double FLAT_ENOUGH = cos(PI * 0.1 / 180.0);
 
 namespace phyz {
 
@@ -215,7 +215,7 @@ namespace phyz {
 			}
 		}
 
-		octree_maintain_time += std::chrono::duration<float>(t2 - t1).count();
+		/*octree_maintain_time += std::chrono::duration<float>(t2 - t1).count();
 		sat_time += std::chrono::duration<float>(t3 - t2).count();
 		dfs_time += std::chrono::duration<float>(t4 - t3).count();
 		pgs_time += std::chrono::duration<float>(t5 - t4).count();
@@ -227,7 +227,7 @@ namespace phyz {
 			sat_time = 0;
 			dfs_time = 0;
 			pgs_time = 0;
-		}
+		}*/
 	}
 
 	template<typename Func>
@@ -517,19 +517,6 @@ namespace phyz {
 	//Fixed bodies need to be treated a little weird. They should not bridge islands together (two seperate piles on the same floor should be different islands).
 	//Thus fixed bodies exist only as leaves, and can't be 'curr' in initial call to dfs
 	//Exception being where the very first node is fixed to propogate changes, such as translating a fixed object requires waking bodies around it
-	/*void PhysicsEngine::dfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action) {
-		visited->insert(curr);
-		if (!curr->b->fixed) {
-			action(curr, in);
-		}
-		for (SharedConstraintsEdge* e : curr->constraints) {
-			ConstraintGraphNode* n = e->other(curr);
-			if (!n->b->fixed && visited->find(n) == visited->end()) {
-				dfsVisitAll(n, visited, in, action);
-			}
-		}
-	}*/
-
 	void PhysicsEngine::bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action) {
 		std::vector<ConstraintGraphNode*> to_visit = { curr };
 

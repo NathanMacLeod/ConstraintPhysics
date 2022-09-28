@@ -6,6 +6,7 @@
 #include "Demos/ImageDemo.h"
 #include "Demos/WreckingBallDemo.h"
 #include "Demos/ColActionDemo.h"
+#include "Demos/DzhanibekovDemo.h"
 
 int main() {
 
@@ -14,6 +15,7 @@ int main() {
 	manager.registerScene("Wrecking Ball", "Knock over a tower with a simulated wrecking ball.", [](DemoManager* m, DemoProperties p) { return new WreckingBallDemo(m, p); });
 	manager.registerScene("Precomputed Simulation", "Precompute and view a simulation of colored falling blocks, whose final resting position will create an image.", [](DemoManager* m, DemoProperties p) { return new ImageDemo(m, p); });
 	manager.registerScene("Car", "Drive a simulated car, featuring a working steering wheel and differential.", [](DemoManager* m, DemoProperties p) { return new CarDemo(m, p); });
+	manager.registerScene("Dzhanibekov Effect", "Demonstration of dzhanibekov effect simulated in engine.", [](DemoManager* m, DemoProperties p) { return new DzhanibekovDemo(m, p); });
 
 	manager.selectProperties();
 	while (1) {

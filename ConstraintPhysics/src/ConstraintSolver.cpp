@@ -573,8 +573,6 @@ namespace phyz {
 
 			mthz::Quaternion orientation_diff = b->getOrientation() * a->getOrientation().conjugate();
 			mthz::Vec3 rot_correct = mthz::Vec3(orientation_diff.i, orientation_diff.j, orientation_diff.k) * rot_correct_hardness;
-			//printf("Rot error: %f\n", rot_correct.mag());
-			//printf("pos error: %f\n", sqrt(u_correct * u_correct + w_correct * w_correct));
 			psuedo_target_val = NVec<5>{ u_correct, w_correct, rot_correct.x, rot_correct.y, rot_correct.z };
 		}
 	}

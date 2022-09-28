@@ -8,6 +8,8 @@
 
 namespace phyz {
 
+	//Cut feature for now but keeping around in case I want to continue it later
+
 	struct Mesh {
 		std::vector<mthz::Vec3> vertices;
 		std::vector<std::vector<unsigned int>> face_indices;

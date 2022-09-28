@@ -52,7 +52,6 @@ namespace phyz {
 		return out;
 	}
 
-	//kinda brute forcey might redo later
 	static ContactArea findContactArea(const ConvexPoly& c, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
 
 		for (int surface_index : c.getFaceIndicesAdjacentToPointI(p_ID)) {
@@ -311,7 +310,7 @@ namespace phyz {
 						man_pool.push_back(out);
 						uint64_t m = 0;
 						m |= 0x000000000000FFFF & a1_ID;
-						m |= 0x00000000FFFF0000 & a2_ID;
+						m |= 0x00000000FFFF0000 & (a2_ID << 16);
 						m |= 0x0000FFFF00000000 & (uint64_t(b1_ID) << 32);
 						m |= 0xFFFF000000000000 & (uint64_t(b2_ID) << 48);
 						man_pool_magics.push_back(m);

@@ -97,12 +97,6 @@ namespace phyz {
 
 			}
 			else {
-				/*for (OctreeNode* child : curr->children) {
-					if (AABB::intersects(child->aabb, *e.aabb)) {
-						insert_r(child, e);
-					}
-				}*/
-				
 				bool intersects[8] = { true, true, true, true, true, true, true, true };
 				if (e.aabb->min.x > curr->center.x) {
 					intersects[LLL] = false;

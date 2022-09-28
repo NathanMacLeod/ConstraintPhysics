@@ -19,8 +19,8 @@ public:
 	}
 
 	static mthz::Vec3 randVec(double mag) {
-		double theta = frand() * 2 * 3.1415926535;
-		double phi = frand() * 3.1415926535;
+		double theta = frand() * 2 * PI;
+		double phi = frand() * PI;
 
 		mthz::Quaternion direction = mthz::Quaternion(theta, mthz::Vec3(0, 1, 0)) * mthz::Quaternion(phi, mthz::Vec3(1, 0, 0));
 		return direction.applyRotation(mthz::Vec3(0, mag, 0));

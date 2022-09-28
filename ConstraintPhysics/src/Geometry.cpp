@@ -79,7 +79,7 @@ namespace phyz {
 		std::vector<std::vector<int>> surface_indices(2 + n_faces);
 
 		for (int i = 0; i < n_faces; i++) {
-			double theta = 2 * 3.1415926535 * i / n_faces;
+			double theta = 2 * PI * i / n_faces;
 			points[i] = mthz::Vec3(pos.x + radius * cos(theta), pos.y, pos.z + radius * sin(theta));
 			points[i + n_faces] = mthz::Vec3(pos.x + radius * cos(theta), pos.y + height, pos.z + radius * sin(theta));
 		}
@@ -104,7 +104,7 @@ namespace phyz {
 
 		Geometry out;
 		for (int i = 0; i < n_faces; i++) {
-			double theta = 2 * 3.1415926535 * i / n_faces;
+			double theta = 2 * PI * i / n_faces;
 			points[i + 0 * n_faces] = mthz::Vec3(pos.x + inner_radius * cos(theta), pos.y, pos.z + inner_radius * sin(theta)); //lower inner radius
 			points[i + 1 * n_faces] = mthz::Vec3(pos.x + outer_radius * cos(theta), pos.y, pos.z + outer_radius * sin(theta)); //lower outer radius
 			points[i + 2 * n_faces] = mthz::Vec3(pos.x + inner_radius * cos(theta), pos.y + height, pos.z + inner_radius * sin(theta)); //upper inner radius
@@ -168,11 +168,11 @@ namespace phyz {
 	Geometry Geometry::gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity, Material material, double tooth_width) {
 
 		Geometry wheel = cylinder(pos, radius, height, 2 * n_teeth - 3, material);
-		double default_tooth_width = radius * 3.1415926535 / n_teeth;
+		double default_tooth_width = radius * PI / n_teeth;
 		tooth_width = (tooth_width == -1)?  default_tooth_width : tooth_width;
 		Geometry toothG= tooth(pos + mthz::Vec3(radius, 0, -0.5 * (tooth_width - default_tooth_width)), tooth_width, tooth_length, height, material);
 
-		double d_theta = 2 * 3.1415926535 / (n_teeth);
+		double d_theta = 2 * PI / (n_teeth);
 		toothG = toothG.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
 		for (int i = 0; i < n_teeth; i++) {
 			toothG= toothG.getRotated(mthz::Quaternion(d_theta, mthz::Vec3(0, 1, 0)), pos);
@@ -185,9 +185,9 @@ namespace phyz {
 	Geometry Geometry::bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity, Material material, double hole_radius, int circle_detail) {
 		Geometry wheel = (hole_radius == 0) ? cylinder(pos, radius, height, circle_detail, material) : ring(pos, hole_radius, radius, height, circle_detail, material);
 		mthz::Vec3 tooth_pos = pos + mthz::Vec3(radius - tooth_radius, height, 0);
-		Geometry toothG = tooth(tooth_pos, tooth_width, tooth_height, -tooth_radius, material).getRotated(mthz::Quaternion(3.1415926535/2.0, mthz::Vec3(0, 0, 1)), tooth_pos);
+		Geometry toothG = tooth(tooth_pos, tooth_width, tooth_height, -tooth_radius, material).getRotated(mthz::Quaternion(PI/2.0, mthz::Vec3(0, 0, 1)), tooth_pos);
 
-		double d_theta = 2 * 3.1415926535 / (n_teeth);
+		double d_theta = 2 * PI / (n_teeth);
 		toothG = toothG.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
 		for (int i = 0; i < n_teeth; i++) {
 			toothG = toothG.getRotated(mthz::Quaternion(d_theta, mthz::Vec3(0, 1, 0)), pos);
@@ -200,7 +200,7 @@ namespace phyz {
 	Geometry Geometry::pinion(mthz::Vec3 pos, double height, double width, double tooth_height, double tooth_width, double gap_width, int n_teeth, Material material) {
 		double length = (1 + n_teeth) * gap_width + n_teeth * tooth_width;
 		Geometry pinion = box(pos, width, height, length, material);
-		Geometry toothG = tooth(mthz::Vec3(0, 0, 0), tooth_width, tooth_height, -width, material).getRotated(mthz::Quaternion(3.1415926535 / 2.0, mthz::Vec3(0, 0, 1)));
+		Geometry toothG = tooth(mthz::Vec3(0, 0, 0), tooth_width, tooth_height, -width, material).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)));
 		for (int i = 0; i < n_teeth; i++) {
 			mthz::Vec3 tooth_pos = pos + mthz::Vec3(0, height, (1 + i) * gap_width + i * tooth_width);
 			pinion = pinion.merge(pinion, toothG.getTranslated(tooth_pos));
