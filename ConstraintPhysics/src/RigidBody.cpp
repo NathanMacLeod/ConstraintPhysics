@@ -132,28 +132,44 @@ namespace phyz {
 	}
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical
-	void RigidBody::applyGyroAccel(float fElapsedTime) {
+	void RigidBody::rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr) {
 		const int CUTOFF_MAG = 0.00000000001;
 		const int NEWTON_STEPS = 2;
 		if (ang_vel.magSqrd() == 0) {
 			return;
 		}
 
-		mthz::Vec3 w = ang_vel; //initial guess
+		mthz::Mat3 itr_tensor = tensor;
+		mthz::Quaternion itr_orientation = orientation;
+		mthz::Vec3 itr_ang_vel = ang_vel;
 
-		//n_itr is number of sub-timesteps
-		float t_step = fElapsedTime;
-		//using newtons method to approximate result of implicit integration
-		for (int i = 0; i < NEWTON_STEPS; i++) {
-			mthz::Vec3 f = t_step * w.cross(tensor * w) - tensor * (ang_vel - w);
-			mthz::Mat3 jacobian = tensor + t_step * (mthz::Mat3::cross_mat(w) * tensor - mthz::Mat3::cross_mat(tensor * w));
-			if (abs(jacobian.det()) > CUTOFF_MAG) {
-				w -= jacobian.inverse() * f;
+		for (int i = 0; i < n_itr; i++) {
+
+			mthz::Vec3 w = itr_ang_vel; //initial guess
+
+			//n_itr is number of sub-timesteps
+			float t_step = fElapsedTime / n_itr;
+			//using newtons method to approximate result of implicit integration
+			for (int i = 0; i < NEWTON_STEPS; i++) {
+				mthz::Vec3 f = t_step * w.cross(itr_tensor * w) - itr_tensor * (itr_ang_vel - w);
+				mthz::Mat3 jacobian = itr_tensor + t_step * (mthz::Mat3::cross_mat(w) * itr_tensor - mthz::Mat3::cross_mat(itr_tensor * w));
+				if (abs(jacobian.det()) > CUTOFF_MAG) {
+					w -= jacobian.inverse() * f;
+				}
+			}
+
+			itr_ang_vel = w;
+			itr_orientation = mthz::Quaternion(t_step * itr_ang_vel.mag(), itr_ang_vel) * itr_orientation;
+			if (i + 1 < n_itr) {
+				//update for next step
+				mthz::Mat3 rot = itr_orientation.getRotMatrix();
+				mthz::Mat3 rot_conjugate = itr_orientation.conjugate().getRotMatrix();
+				itr_tensor = rot * reference_tensor * rot_conjugate;
 			}
 		}
-		
-		
-		ang_vel = w;
+
+		orientation = itr_orientation;
+		ang_vel = itr_ang_vel;
 	}
 
 	void RigidBody::updateGeometry() {

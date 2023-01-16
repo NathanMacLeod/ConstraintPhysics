@@ -70,7 +70,6 @@ namespace phyz {
 				
 				b->updateGeometry();
 				b->vel += gravity * step_time;
-				b->applyGyroAccel(step_time);
 			}
 
 			octree.insert(*b, b->aabb);
@@ -206,8 +205,9 @@ namespace phyz {
 			if (!b->fixed && !b->asleep) {
 				b->com += (b->vel + b->psuedo_vel) * step_time;
 				if (b->ang_vel.magSqrd() != 0) {
-					mthz::Vec3 rot = b->ang_vel + b->psuedo_ang_vel;
-					b->orientation = mthz::Quaternion(step_time * rot.mag(), rot) * b->orientation;
+					b->rotateWhileApplyingGyroAccel(step_time, 4);
+					mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
+					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
 				}
 
 				b->psuedo_vel = mthz::Vec3(0, 0, 0);
@@ -228,17 +228,6 @@ namespace phyz {
 			dfs_time = 0;
 			pgs_time = 0;
 		}*/
-	}
-
-	template<typename Func>
-		void callFunction(Func f) {
-		f();
-	}
-
-	void executePrint(const char* s) {
-		callFunction([s]() {
-			std::printf("hello %s\n", s);
-		});
 	}
 
 	RigidBody* PhysicsEngine::createRigidBody(const Geometry& geometry, bool fixed, mthz::Vec3 position, mthz::Quaternion orientation) {

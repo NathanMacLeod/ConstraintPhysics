@@ -65,7 +65,7 @@ namespace phyz {
 		void wake();
 		void alertWakingAction();
 
-		void applyGyroAccel(float fElapsedTime);
+		void rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr = 1);
 		void updateGeometry();
 
 		struct MovementState {
