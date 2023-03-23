@@ -14,7 +14,7 @@
 namespace rndr {
 
 	ShaderProgramSource ParseShader(const std::string& filepath);
-	unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader);
+	unsigned int CreateShader(const std::string& vertexShader, const std::string& geometryShader, const std::string& fragmentShader);
 	unsigned int CompileShader(unsigned int type, const std::string& source);
 
 	Shader::Shader(const std::string& filePath) {
@@ -22,7 +22,7 @@ namespace rndr {
 		shaderID = 0;
 
 		ShaderProgramSource source = ParseShader(filePath);
-		shaderID = CreateShader(source.VertexSource, source.FragmentSource);
+		shaderID = CreateShader(source.VertexSource, source.GeometrySource, source.FragmentSource);
 	}
 
 	Shader::~Shader() {
@@ -38,6 +38,10 @@ namespace rndr {
 
 	void Shader::setUniform1i(const std::string& name, int i) {
 		glUniform1i(getUniformLocation(name), i);
+	}
+
+	void Shader::setUniform3f(const std::string& name, float v0, float v1, float v2) {
+		glUniform3f(getUniformLocation(name), v0, v1, v2);
 	}
 
 	void Shader::setUniform4f(const std::string& name, float v0, float v1, float v2, float v3) {
@@ -66,16 +70,19 @@ namespace rndr {
 	ShaderProgramSource ParseShader(const std::string& filepath) {
 		std::ifstream stream = std::ifstream(filepath);
 
-		enum ShaderType { NONE = -1, VERTEX = 0, FRAGMENT = 1 };
+		enum ShaderType { NONE = -1, VERTEX = 0, GEOMETRY = 1, FRAGMENT = 2 };
 
 		std::string line;
-		std::stringstream ss[2];
+		std::stringstream ss[3];
 		ShaderType type = ShaderType::NONE;
 
 		while (getline(stream, line)) {
 			if (line.find("#shader") != std::string::npos) {
 				if (line.find("vertex") != std::string::npos) {
 					type = ShaderType::VERTEX;
+				}
+				else if (line.find("geometry") != std::string::npos) {
+					type = ShaderType::GEOMETRY;
 				}
 				else if (line.find("fragment") != std::string::npos) {
 					type = ShaderType::FRAGMENT;
@@ -86,15 +93,17 @@ namespace rndr {
 			}
 		}
 
-		return ShaderProgramSource{ ss[0].str(), ss[1].str() };
+		return ShaderProgramSource{ ss[0].str(), ss[1].str(), ss[2].str() };
 	}
 
-	unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader) {
+	unsigned int CreateShader(const std::string& vertexShader, const std::string& geometryShader, const std::string& fragmentShader) {
 		unsigned int program = glCreateProgram();
 		unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
+		unsigned int gs = CompileShader(GL_GEOMETRY_SHADER, geometryShader);
 		unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
 		glAttachShader(program, vs);
+		glAttachShader(program, gs);
 		glAttachShader(program, fs);
 		glLinkProgram(program);
 		glValidateProgram(program);
@@ -103,6 +112,15 @@ namespace rndr {
 		glDeleteShader(fs);
 
 		return program;
+	}
+
+	std::string getShaderTypeName(unsigned int type) {
+		switch (type) {
+		case GL_VERTEX_SHADER: return "vertex";
+		case GL_GEOMETRY_SHADER: return "geometry";
+		case GL_FRAGMENT_SHADER: return "fragment";
+		default: return "(type not recognized)";
+		}
 	}
 
 	unsigned int CompileShader(unsigned int type, const std::string& source) {
@@ -118,7 +136,7 @@ namespace rndr {
 			glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
 			char* message = (char*)alloca(length * sizeof(char));
 			glGetShaderInfoLog(id, length, &length, message);
-			printf("Failed to compile %s shader\n%s\n", (type == GL_VERTEX_SHADER) ? "vertex" : "fragment", message);
+			printf("Failed to compile %s shader\n%s\n", getShaderTypeName(type).c_str(), message);
 			return 0;
 		}
 

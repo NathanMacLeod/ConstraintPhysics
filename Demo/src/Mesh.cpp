@@ -10,7 +10,7 @@ Mesh fromPhyzMesh(const phyz::Mesh& m) {
 	std::vector<Vertex> vertices;
 	vertices.reserve(m.vertices.size());
 	for (mthz::Vec3 v : m.vertices) {
-		vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, frand(), frand(), frand() });
+		vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, frand(), frand(), frand(), 0.5f, 0.5f, 0.5f, 5.0f });
 	}
 
 	std::vector<unsigned int> indices;
@@ -26,6 +26,10 @@ Mesh fromPhyzMesh(const phyz::Mesh& m) {
 	rndr::VertexArrayLayout layout;
 	layout.Push<float>(3);
 	layout.Push<float>(3);
+	layout.Push<float>(1);//ambient_constant
+	layout.Push<float>(1);//diffuse_constant
+	layout.Push<float>(1);//specular_constant
+	layout.Push<float>(1);//specular_pow
 	return { new rndr::VertexArray(vertices.data(), vertices.size() * sizeof(Vertex), layout), new rndr::IndexBuffer(indices.data(), indices.size()) };
 }
 
@@ -36,8 +40,8 @@ Mesh fromGeometry(const phyz::Geometry g, color model_color) {
 
 	for (const phyz::ConvexPoly& c : g.getPolyhedra()) {
 		for (mthz::Vec3 v : c.getPoints()) {
-			color col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
-			vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b });
+			color col = (model_color == auto_generate) ? color{ 0, 0, 1 } : model_color;
+			vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, 0.2f, 0.7f, 0.7f, 5.0f });
 		}
 
 		for (const phyz::Surface& s : c.getSurfaces()) {
@@ -55,5 +59,9 @@ Mesh fromGeometry(const phyz::Geometry g, color model_color) {
 	rndr::VertexArrayLayout layout;
 	layout.Push<float>(3);
 	layout.Push<float>(3);
+	layout.Push<float>(1);//ambient_constant
+	layout.Push<float>(1);//diffuse_constant
+	layout.Push<float>(1);//specular_constant
+	layout.Push<float>(1);//specular_pow
 	return { new rndr::VertexArray(vertices.data(), vertices.size() * sizeof(Vertex), layout), new rndr::IndexBuffer(indices.data(), indices.size()) };
 }

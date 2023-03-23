@@ -10,6 +10,10 @@ struct Vertex {
 	float r;
 	float g;
 	float b;
+	float ambient_k;
+	float diffuse_k;
+	float specular_k;
+	float specular_p;
 };
 
 static struct Mesh {
