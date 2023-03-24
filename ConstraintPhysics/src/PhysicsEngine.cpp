@@ -16,6 +16,7 @@ namespace phyz {
 	int PhysicsEngine::n_threads = 0;
 	ThreadManager PhysicsEngine::thread_manager;
 	bool PhysicsEngine::use_multithread = false;
+	bool PhysicsEngine::print_performance_data = false;
 
 	void PhysicsEngine::enableMultithreading(int n_threads) {
 		assert(n_threads >= 1);
@@ -27,6 +28,10 @@ namespace phyz {
 	void PhysicsEngine::disableMultithreading() {
 		thread_manager.terminate_threads();
 		use_multithread = false;
+	}
+
+	void PhysicsEngine::setPrintPerformanceData(bool print_data) {
+		print_performance_data = print_data;
 	}
 
 	PhysicsEngine::~PhysicsEngine() {
@@ -43,6 +48,7 @@ namespace phyz {
 	static int i = 0;
 	void PhysicsEngine::timeStep() {
 
+		//remove deleted bodies from relevant structures
 		while(!bodies_to_delete.empty()) {
 			RigidBody* to_delete = bodies_to_delete.back();
 			assert(std::find(bodies.begin(), bodies.end(), to_delete) != bodies.end());
@@ -53,6 +59,7 @@ namespace phyz {
 		auto t1 = std::chrono::system_clock::now();
 	
 		Octree<RigidBody> octree(octree_center, octree_size, octree_minsize);
+		//determine which bodies are active, apply gravity and pass them to broad-phase collision detection
 		for (RigidBody* b : bodies) {
 			if (b->recievedWakingAction) {
 				wakeupIsland(constraint_graph_nodes[b]);
@@ -68,7 +75,6 @@ namespace phyz {
 					b->sleep_ready_counter = 0;
 				}
 				
-				b->updateGeometry();
 				b->vel += gravity * step_time;
 			}
 
@@ -99,7 +105,8 @@ namespace phyz {
 					for (int j = 0; j < b2->geometry.size(); j++) {
 						const ConvexPoly& c1 = b1->geometry[i];
 						const ConvexPoly& c2 = b2->geometry[j];
-						if ((b1->geometry.size() > 1 || b2->geometry.size() > 1) && !AABB::intersects(b1->geometry_AABB[i], b2->geometry_AABB[j])) {
+						bool checking_AABB_redundant = b1->geometry.size() == 1 && b2->geometry.size() == 1;
+						if (!checking_AABB_redundant && !AABB::intersects(b1->geometry_AABB[i], b2->geometry_AABB[j])) {
 							continue;
 						}
 
@@ -129,7 +136,8 @@ namespace phyz {
 								
 							}
 						}
-						Manifold man = cull_manifold(manifolds[i], 4);
+						int cull_target_point_count = 4;
+						Manifold man = cull_manifold(manifolds[i], cull_target_point_count);
 
 						mthz::Vec3 u, w;
 						man.normal.getPerpendicularBasis(&u, &w);
@@ -210,24 +218,30 @@ namespace phyz {
 					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
 				}
 
+				b->updateGeometry();
+
 				b->psuedo_vel = mthz::Vec3(0, 0, 0);
 				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
 			}
 		}
 
-		/*octree_maintain_time += std::chrono::duration<float>(t2 - t1).count();
-		sat_time += std::chrono::duration<float>(t3 - t2).count();
-		dfs_time += std::chrono::duration<float>(t4 - t3).count();
-		pgs_time += std::chrono::duration<float>(t5 - t4).count();
+		if (print_performance_data) {
 
-		if (i++ % 1000 == 0) {
-			float total = octree_maintain_time + sat_time + dfs_time + pgs_time;
-			printf("total time: %f, octree/maintain: %f, sat: %f, dfs: %f, pgs: %f\n", total, octree_maintain_time / total, sat_time / total, dfs_time / total, pgs_time / total);
-			octree_maintain_time = 0;
-			sat_time = 0;
-			dfs_time = 0;
-			pgs_time = 0;
-		}*/
+			octree_maintain_time += std::chrono::duration<float>(t2 - t1).count();
+			sat_time += std::chrono::duration<float>(t3 - t2).count();
+			dfs_time += std::chrono::duration<float>(t4 - t3).count();
+			pgs_time += std::chrono::duration<float>(t5 - t4).count();
+
+			if (i++ % 1000 == 0) {
+				float total = octree_maintain_time + sat_time + dfs_time + pgs_time;
+				printf("total time: %f, octree/maintain: %f, sat: %f, dfs: %f, pgs: %f\n", total, octree_maintain_time / total, sat_time / total, dfs_time / total, pgs_time / total);
+				octree_maintain_time = 0;
+				sat_time = 0;
+				dfs_time = 0;
+				pgs_time = 0;
+			}
+
+		}
 	}
 
 	RigidBody* PhysicsEngine::createRigidBody(const Geometry& geometry, bool fixed, mthz::Vec3 position, mthz::Quaternion orientation) {

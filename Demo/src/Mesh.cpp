@@ -40,7 +40,7 @@ Mesh fromGeometry(const phyz::Geometry g, color model_color) {
 
 	for (const phyz::ConvexPoly& c : g.getPolyhedra()) {
 		for (mthz::Vec3 v : c.getPoints()) {
-			color col = (model_color == auto_generate) ? color{ 0, 0, 1 } : model_color;
+			color col = (model_color == auto_generate) ? color{ frand(), frand(), frand()} : model_color;
 			vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, 0.2f, 0.7f, 0.7f, 5.0f });
 		}
 

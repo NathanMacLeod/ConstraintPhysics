@@ -47,6 +47,7 @@ namespace phyz {
 
 		static void enableMultithreading(int n_threads);
 		static void disableMultithreading();
+		static void setPrintPerformanceData(bool print_data);
 
 		void timeStep();
 		RigidBody* createRigidBody(const Geometry& geometry, bool fixed=false, mthz::Vec3 position=mthz::Vec3(), mthz::Quaternion orientation=mthz::Quaternion());
@@ -89,6 +90,7 @@ namespace phyz {
 		static int n_threads;
 		static ThreadManager thread_manager;
 		static bool use_multithread;
+		static bool print_performance_data;
 
 		int pgsVelIterations = 20;
 		int pgsPosIterations = 15;
