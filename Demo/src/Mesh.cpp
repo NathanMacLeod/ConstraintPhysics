@@ -38,22 +38,95 @@ Mesh fromGeometry(const phyz::Geometry g, color model_color) {
 	std::vector<unsigned int> indices;
 	int vertex_offset = 0;
 
-	for (const phyz::ConvexPoly& c : g.getPolyhedra()) {
-		for (mthz::Vec3 v : c.getPoints()) {
-			color col = (model_color == auto_generate) ? color{ frand(), frand(), frand()} : model_color;
-			vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, 0.2f, 0.7f, 0.7f, 5.0f });
-		}
+	for (const phyz::ConvexPrimitive& prim : g.getPolyhedra()) {
+		switch (prim.getType()) {
+		case phyz::POLYHEDRON:
+		{
+			const phyz::Polyhedron& c = (const phyz::Polyhedron&)*prim.getGeometry();
 
-		for (const phyz::Surface& s : c.getSurfaces()) {
-			//naive- only works if all faces are convex
-			for (int i = 2; i < s.n_points(); i++) {
-				indices.push_back(s.point_indexes[0] + vertex_offset);
-				indices.push_back(s.point_indexes[i - 1] + vertex_offset);
-				indices.push_back(s.point_indexes[i] + vertex_offset);
+			for (mthz::Vec3 v : c.getPoints()) {
+				color col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+				vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, 1.0f, 1.0f, 0.7f, 5.0f });
 			}
+
+			for (const phyz::Surface& s : c.getSurfaces()) {
+				//naive- only works if all faces are convex
+				for (int i = 2; i < s.n_points(); i++) {
+					indices.push_back(s.point_indexes[0] + vertex_offset);
+					indices.push_back(s.point_indexes[i - 1] + vertex_offset);
+					indices.push_back(s.point_indexes[i] + vertex_offset);
+				}
+			}
+
+			vertex_offset += c.getPoints().size();
+			break;
 		}
 
-		vertex_offset += c.getPoints().size();
+		case phyz::SPHERE:
+		{
+			const phyz::Sphere& s = (const phyz::Sphere&)*prim.getGeometry();
+			int n_rows = 15;
+			int n_cols = 20;
+
+			mthz::Vec3 bottom_pole = s.getCenter() - mthz::Vec3(0, s.getRadius(), 0);
+			mthz::Vec3 top_pole = s.getCenter() + mthz::Vec3(0, s.getRadius(), 0);
+			color bot_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+			color top_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+			vertices.push_back(Vertex{ (float)bottom_pole.x, (float)bottom_pole.y, (float)bottom_pole.z, bot_col.r, bot_col.g, bot_col.b, 1.0f, 1.0f, 0.7f, 5.0f });
+			vertices.push_back(Vertex{ (float)top_pole.x, (float)top_pole.y, (float)top_pole.z, top_col.r, top_col.g, top_col.b, 1.0f, 1.0f, 0.7f, 5.0f });
+
+			//create other vertices
+			for (int row = 1; row < n_rows; row++) {
+				for (int col = 0; col < n_cols; col++) {
+					//polar coordinates
+					double theta = -2 * PI * col / n_cols;
+					double phi = PI - PI * row / n_rows;
+
+					mthz::Vec3 v = s.getCenter() + s.getRadius() * mthz::Vec3(cos(theta) * sin(phi), cos(phi), sin(theta) * sin(phi));
+					color v_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+					vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, v_col.r, v_col.g, v_col.b, 1.0f, 1.0f, 0.7f, 5.0f });
+				}
+			}
+
+			int bottom_pole_index = 0;
+			int top_pole_index = 1;
+			int nonpole_offset = 2;
+			//create triangles
+			for (int col = 0; col < n_cols; col++) {
+				int i1 = col;
+				int i2 = (col + 1) % n_cols;
+				indices.push_back(bottom_pole_index + vertex_offset);
+				indices.push_back(i2 + nonpole_offset + vertex_offset);
+				indices.push_back(i1 + nonpole_offset + vertex_offset);
+			}
+			for (int row = 1; row < n_rows - 1; row++) {
+				for (int col = 0; col < n_cols; col++) {
+					int i1 = col;
+					int i2 = (col + 1) % n_cols;
+					int row_offset = (row - 1) * n_cols;
+
+					indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i2 + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i2 + n_cols + row_offset + nonpole_offset + vertex_offset);
+
+					indices.push_back(i2 + n_cols + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i1 + n_cols + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
+				}
+			}
+			for (int col = 0; col < n_cols; col++) {
+				int i1 = col;
+				int i2 = (col + 1) % n_cols;
+				int row_offset = (n_rows - 2) * n_cols;
+				indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
+				indices.push_back(i2 + row_offset + nonpole_offset + vertex_offset);
+				indices.push_back(top_pole_index + vertex_offset);
+			}
+
+			vertex_offset += 2 + (n_rows - 1) * n_cols;
+			break;
+		}
+		}
 	}
 
 	rndr::VertexArrayLayout layout;

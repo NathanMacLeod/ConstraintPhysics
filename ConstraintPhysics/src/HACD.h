@@ -1,6 +1,6 @@
 #pragma once
 #include "../../Math/src/Vec3.h"
-#include "ConvexPoly.h"
+#include "ConvexPrimitive.h"
 #include "AABB.h"
 
 #include <vector>
@@ -18,5 +18,5 @@ namespace phyz {
 	};
 
 	Mesh readOBJ(const std::string& file_path, double scale=1.0);
-	ConvexPoly getConvexHull(const Mesh& m);
+	//ConvexPoly getConvexHull(const Mesh& m);
 }

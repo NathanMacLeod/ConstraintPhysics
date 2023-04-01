@@ -4,7 +4,7 @@
 #include "../../Math/src/Quaternion.h"
 #include "../../Math/src/Mat3.h"
 #include "Geometry.h"
-#include "ConvexPoly.h"
+#include "ConvexPrimitive.h"
 #include "AABB.h"
 #include <Vector>
 #include <set>
@@ -48,7 +48,6 @@ namespace phyz {
 		friend class PhysicsEngine;
 	private:
 		AABB aabb;
-		double radius;
 		bool fixed;
 		mthz::Vec3 local_coord_origin;
 		PKey origin_pkey;
@@ -87,11 +86,9 @@ namespace phyz {
 		bool no_collision;
 		double sleep_ready_counter;
 		
-		std::vector<ConvexPoly> geometry;
+		std::vector<ConvexPrimitive> geometry;
 		std::vector<AABB> geometry_AABB;
-		std::vector<ConvexPoly> reference_geometry;
-		std::vector<GaussMap> gauss_maps;
-		std::vector<GaussMap> reference_gauss_maps;
+		std::vector<ConvexPrimitive> reference_geometry;
 		
 		std::vector<mthz::Vec3> track_p;
 	};

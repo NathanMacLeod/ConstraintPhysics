@@ -17,28 +17,15 @@ namespace phyz {
 		tensor = reference_tensor;
 		invTensor = reference_invTensor;
 
-		radius = 0;
-		for (ConvexPoly& c : reference_geometry) {
-			c.interior_point -= com;
-			for (mthz::Vec3& p : c.points) {
-				p -= com;
-				double r = p.magSqrd();
-				if (r > radius) {
-					radius = r;
-				}
-			}
+		for (ConvexPrimitive& c : reference_geometry) {
+			c.recomputeFromReference(*c.getGeometry(), mthz::Mat3::iden(), -com);
 		}
 
-		for (const ConvexPoly& c : reference_geometry) {
-			reference_gauss_maps.push_back(c.computeGaussMap());
-		}
 		geometry_AABB = std::vector<AABB>(geometry.size());
 		for (int i = 0; i < reference_geometry.size(); i++) {
 			geometry_AABB[i] = geometry[i].gen_AABB();
 		}
 		aabb = AABB::combine(geometry_AABB);
-		gauss_maps = reference_gauss_maps;
-		radius = sqrt(radius);
 		local_coord_origin = -com;
 		origin_pkey = trackPoint(mthz::Vec3(0,0,0));
 		setToPosition(pos);
@@ -181,17 +168,7 @@ namespace phyz {
 		invTensor = rot * reference_invTensor * rot_conjugate;
 
 		for (int i = 0; i < reference_geometry.size(); i++) {
-			for (int j = 0; j < reference_geometry[i].points.size(); j++) {
-				geometry[i].points[j] = com + rot * reference_geometry[i].points[j];
-			}
-			geometry[i].interior_point = com + rot * reference_geometry[i].interior_point;
-		}
-		for (int i = 0; i < reference_gauss_maps.size(); i++) {
-			for (int j = 0; j < reference_gauss_maps[i].face_verts.size(); j++) {
-				gauss_maps[i].face_verts[j].v = rot * reference_gauss_maps[i].face_verts[j].v;
-			}
-		}
-		for (int i = 0; i < reference_geometry.size(); i++) {
+			geometry[i].recomputeFromReference(*reference_geometry[i].getGeometry(), rot, com);
 			geometry_AABB[i] = geometry[i].gen_AABB();
 		}
 		aabb = AABB::combine(geometry_AABB);
@@ -274,136 +251,169 @@ namespace phyz {
 		}
 	}
 
+	static mthz::Mat3 recenterTensor(double mass, const mthz::Mat3& tensor, mthz::Vec3 new_center_of_rotation, mthz::Vec3 old_center_of_rotation = mthz::Vec3(0, 0, 0)) {
+		mthz::Mat3 out = tensor;
+		
+		//transposition of inertia tensor to be relative to new point
+		mthz::Vec3 d = new_center_of_rotation - old_center_of_rotation;
+		mthz::Vec3 com = new_center_of_rotation;
+		out.v[0][0] += mass * (d.y * d.y + d.z * d.z - 2 * d.y * com.y - 2 * d.z * com.z);
+		out.v[0][1] += mass * (d.x * com.y + d.y * com.x - d.x * d.y);
+		out.v[0][2] += mass * (d.x * com.z + d.z * com.x - d.x * d.z);
+		out.v[1][1] += mass * (d.x * d.x + d.z * d.z - 2 * d.x * com.x - 2 * d.z * com.z);
+		out.v[1][2] += mass * (d.y * com.z + d.z * com.y - d.y * d.z);
+		out.v[2][2] += mass * (d.x * d.x + d.y * d.y - 2 * d.x * com.x - 2 * d.y * com.y);
+
+		//intertia tensor is symmetric
+		out.v[1][0] = out.v[0][1];
+		out.v[2][0] = out.v[0][2];
+		out.v[2][1] = out.v[1][2];
+
+		return out;
+	}
+
 	//based off of 'Fast and Accurate Computation of Polyhedral Mass Properties' (Brian Miritch)
 	static void calculateMassProperties(const Geometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass) {
 		*com = mthz::Vec3(0, 0, 0);
 		*mass = 0;
 		*tensor = mthz::Mat3(); //default zeroed
-		for (const ConvexPoly& g : geometry.getPolyhedra()) {
-			double vol = 0, vol_x = 0, vol_y = 0, vol_z = 0, vol_xy = 0, vol_yz = 0, vol_zx = 0, vol_x2 = 0, vol_y2 = 0, vol_z2 = 0;
+		for (const ConvexPrimitive& primitive : geometry.getPolyhedra()) {
 
-			for (const Surface& s : g.getSurfaces()) {
-				mthz::Vec3 n = s.normal();
-				IntrgVals a, b, c;
-				Axis proj_axis;
+			switch (primitive.getType()) {
+			case POLYHEDRON:
+			{
+				const Polyhedron& g = (const Polyhedron&)*primitive.getGeometry();
+				double vol = 0, vol_x = 0, vol_y = 0, vol_z = 0, vol_xy = 0, vol_yz = 0, vol_zx = 0, vol_x2 = 0, vol_y2 = 0, vol_z2 = 0;
 
-				//project onto most parralel plane
-				if (abs(n.x) >= abs(n.y) && abs(n.x) >= abs(n.z)) {
-					proj_axis = X;
+				for (const Surface& s : g.getSurfaces()) {
+					mthz::Vec3 n = s.normal();
+					IntrgVals a, b, c;
+					Axis proj_axis;
+
+					//project onto most parralel plane
+					if (abs(n.x) >= abs(n.y) && abs(n.x) >= abs(n.z)) {
+						proj_axis = X;
+					}
+					else if (abs(n.y) >= abs(n.x) && abs(n.y) >= abs(n.z)) {
+						proj_axis = Y;
+					}
+					else {
+						proj_axis = Z;
+					}
+
+					//green's theorem
+					double g1 = 0, ga = 0, gb = 0, gab = 0, ga2 = 0, gb2 = 0, ga2b = 0, gab2 = 0, ga3 = 0, gb3 = 0;
+					for (int i = 0; i < s.n_points(); i++) {
+						mthz::Vec3 v = s.getPointI(i);
+						mthz::Vec3 v2 = s.getPointI((i + 1) % s.n_points());
+
+						double va = getAxisVal(v, A, proj_axis);
+						double vb = getAxisVal(v, B, proj_axis);
+						double dA = getAxisVal(v2, A, proj_axis) - va;
+						double dB = getAxisVal(v2, B, proj_axis) - vb;
+
+						//o_o
+						g1 += dB * (va + dA / 2.0);
+						ga += dB * (dA * dA / 3.0 + va * dA + va * va) / 2.0;
+						gb -= dA * (dB * dB / 3.0 + vb * dB + vb * vb) / 2.0;
+						gab -= dA * (va * vb * vb + dA * vb * vb / 2.0 + va * vb * dB + (va * dB * dB + 2 * vb * dA * dB) / 3.0 + dA * dB * dB / 4.0) / 2.0;
+						ga2 += dB * (va * va * va + 3 * va * va * dA / 2.0 + va * dA * dA + dA * dA * dA / 4.0) / 3.0;
+						gb2 -= dA * (vb * vb * vb + 3 * vb * vb * dB / 2.0 + vb * dB * dB + dB * dB * dB / 4.0) / 3.0;
+						ga2b -= dA * (va * va * vb * vb + va * va * vb * dB + va * vb * vb * dA + (va * va * dB * dB + vb * vb * dA * dA + 4 * va * vb * dA * dB) / 3.0
+							+ (va * dA * dB * dB + vb * dB * dA * dA) / 2.0 + dA * dA * dB * dB / 5.0) / 2.0;
+						gab2 += dB * (va * va * vb * vb + va * va * vb * dB + va * vb * vb * dA + (va * va * dB * dB + vb * vb * dA * dA + 4 * va * vb * dA * dB) / 3.0
+							+ (va * dA * dB * dB + vb * dB * dA * dA) / 2.0 + dA * dA * dB * dB / 5.0) / 2.0;
+						ga3 += dB * (va * va * va * va + 2 * va * va * va * dA + 2 * va * va * dA * dA + va * dA * dA * dA + dA * dA * dA * dA / 5.0) / 4.0;
+						gb3 -= dA * (vb * vb * vb * vb + 2 * vb * vb * vb * dB + 2 * vb * vb * dB * dB + vb * dB * dB * dB + dB * dB * dB * dB / 5.0) / 4.0;
+					}
+
+					double na = getAxisVal(n, A, proj_axis);
+					double nb = getAxisVal(n, B, proj_axis);
+					double nc = getAxisVal(n, C, proj_axis);
+					double nc_i = 1.0 / nc;
+
+					mthz::Vec3 sample_point = s.getPointI(0);
+					//constant from projecting surface integral onto the AB plane
+					double k = nc * getAxisVal(sample_point, C, proj_axis) + nb * getAxisVal(sample_point, B, proj_axis) + na * getAxisVal(sample_point, A, proj_axis);
+
+					//value propogation from projected surface integrals to the actual surface integrals
+					a.v = nc_i * ga;
+					b.v = nc_i * gb;
+					c.v = nc_i * nc_i * (k * g1 - na * ga - nb * gb);
+					a.v2 = nc_i * ga2;
+					b.v2 = nc_i * gb2;
+					c.v2 = nc_i * nc_i * nc_i * (k * k * g1 + na * na * ga2 + nb * nb * gb2 + 2 * (na * nb * gab - k * na * ga - k * nb * gb));
+					a.v2t = nc_i * ga2b;
+					b.v2t = nc_i * nc_i * (k * gb2 - na * gab2 - nb * gb3);
+					c.v2t = nc_i * nc_i * nc_i * (k * k * ga + na * na * ga3 + nb * nb * gab2 + 2 * (na * nb * ga2b - k * na * ga2 - k * nb * gab));
+					a.v3 = nc_i * ga3;
+					b.v3 = nc_i * gb3;
+					c.v3 = nc_i * nc_i * nc_i * nc_i * (k * k * k * g1 - na * na * na * ga3 - nb * nb * nb * gb3 - 3 * k * k * na * ga + 3 * k * na * na * ga2 - 3 * na * na * nb * ga2b - 3 * na * nb * nb * gab2
+						+ 3 * k * nb * nb * gb2 - 3 * k * k * nb * gb + 6 * k * na * nb * gab);
+
+					//map back from a,b,c to x,y,z
+					IntrgVals x, y, z;
+					switch (proj_axis) {
+					case X:
+						x = c;
+						y = a;
+						z = b;
+						break;
+					case Y:
+						x = b;
+						y = c;
+						z = a;
+						break;
+					case Z:
+						x = a;
+						y = b;
+						z = c;
+						break;
+					}
+					//value propogation from surface integral to volume integral (divergence theorem)
+					vol += n.x * x.v;
+					vol_x += n.x * x.v2 / 2.0;
+					vol_y += n.y * y.v2 / 2.0;
+					vol_z += n.z * z.v2 / 2.0;
+					vol_xy += n.x * x.v2t / 2.0;
+					vol_yz += n.y * y.v2t / 2.0;
+					vol_zx += n.z * z.v2t / 2.0;
+					vol_x2 += n.x * x.v3 / 3.0;
+					vol_y2 += n.y * y.v3 / 3.0;
+					vol_z2 += n.z * z.v3 / 3.0;
 				}
-				else if (abs(n.y) >= abs(n.x) && abs(n.y) >= abs(n.z)) {
-					proj_axis = Y;
-				}
-				else {
-					proj_axis = Z;
-				}
 
-				//green's theorem
-				double g1 = 0, ga = 0, gb = 0, gab = 0, ga2 = 0, gb2 = 0, ga2b = 0, gab2 = 0, ga3 = 0, gb3 = 0;
-				for (int i = 0; i < s.n_points(); i++) {
-					mthz::Vec3 v = s.getPointI(i);
-					mthz::Vec3 v2 = s.getPointI((i + 1) % s.n_points());
+				*mass += primitive.material.density * vol;
+				*com += mthz::Vec3(vol_x, vol_y, vol_z) * primitive.material.density;
 
-					double va = getAxisVal(v, A, proj_axis);
-					double vb = getAxisVal(v, B, proj_axis);
-					double dA = getAxisVal(v2, A, proj_axis) - va;
-					double dB = getAxisVal(v2, B, proj_axis) - vb;
-
-					//o_o
-					g1 += dB * (va + dA / 2.0);
-					ga += dB * (dA * dA / 3.0 + va * dA + va * va) / 2.0;
-					gb -= dA * (dB * dB / 3.0 + vb * dB + vb * vb) / 2.0;
-					gab -= dA * (va * vb * vb + dA * vb * vb / 2.0 + va * vb * dB + (va * dB * dB + 2 * vb * dA * dB) / 3.0 + dA * dB * dB / 4.0) / 2.0;
-					ga2 += dB * (va * va * va + 3 * va * va * dA / 2.0 + va * dA * dA + dA * dA * dA / 4.0) / 3.0;
-					gb2 -= dA * (vb * vb * vb + 3 * vb * vb * dB / 2.0 + vb * dB * dB + dB * dB * dB / 4.0) / 3.0;
-					ga2b -= dA * (va * va * vb * vb + va * va * vb * dB + va * vb * vb * dA + (va * va * dB * dB + vb * vb * dA * dA + 4 * va * vb * dA * dB) / 3.0
-						+ (va * dA * dB * dB + vb * dB * dA * dA) / 2.0 + dA * dA * dB * dB / 5.0) / 2.0;
-					gab2 += dB * (va * va * vb * vb + va * va * vb * dB + va * vb * vb * dA + (va * va * dB * dB + vb * vb * dA * dA + 4 * va * vb * dA * dB) / 3.0
-						+ (va * dA * dB * dB + vb * dB * dA * dA) / 2.0 + dA * dA * dB * dB / 5.0) / 2.0;
-					ga3 += dB * (va * va * va * va + 2 * va * va * va * dA + 2 * va * va * dA * dA + va * dA * dA * dA + dA * dA * dA * dA / 5.0) / 4.0;
-					gb3 -= dA * (vb * vb * vb * vb + 2 * vb * vb * vb * dB + 2 * vb * vb * dB * dB + vb * dB * dB * dB + dB * dB * dB * dB / 5.0) / 4.0;
-				}
-
-				double na = getAxisVal(n, A, proj_axis);
-				double nb = getAxisVal(n, B, proj_axis);
-				double nc = getAxisVal(n, C, proj_axis);
-				double nc_i = 1.0 / nc;
-
-				mthz::Vec3 sample_point = s.getPointI(0);
-				//constant from projecting surface integral onto the AB plane
-				double k = nc * getAxisVal(sample_point, C, proj_axis) + nb * getAxisVal(sample_point, B, proj_axis) + na * getAxisVal(sample_point, A, proj_axis);
-
-				//value propogation from projected surface integrals to the actual surface integrals
-				a.v = nc_i * ga;
-				b.v = nc_i * gb;
-				c.v = nc_i * nc_i * (k * g1 - na * ga - nb * gb);
-				a.v2 = nc_i * ga2;
-				b.v2 = nc_i * gb2;
-				c.v2 = nc_i * nc_i * nc_i * (k * k * g1 + na * na * ga2 + nb * nb * gb2 + 2 * (na * nb * gab - k * na * ga - k * nb * gb));
-				a.v2t = nc_i * ga2b;
-				b.v2t = nc_i * nc_i * (k * gb2 - na * gab2 - nb * gb3);
-				c.v2t = nc_i * nc_i * nc_i * (k * k * ga + na * na * ga3 + nb * nb * gab2 + 2 * (na * nb * ga2b - k * na * ga2 - k * nb * gab));
-				a.v3 = nc_i * ga3;
-				b.v3 = nc_i * gb3;
-				c.v3 = nc_i * nc_i * nc_i * nc_i * (k * k * k * g1 - na * na * na * ga3 - nb * nb * nb * gb3 - 3 * k * k * na * ga + 3 * k * na * na * ga2 - 3 * na * na * nb * ga2b - 3 * na * nb * nb * gab2
-					+ 3 * k * nb * nb * gb2 - 3 * k * k * nb * gb + 6 * k * na * nb * gab);
-
-				//map back from a,b,c to x,y,z
-				IntrgVals x, y, z;
-				switch (proj_axis) {
-				case X:
-					x = c;
-					y = a;
-					z = b;
-					break;
-				case Y:
-					x = b;
-					y = c;
-					z = a;
-					break;
-				case Z:
-					x = a;
-					y = b;
-					z = c;
-					break;
-				}
-				//value propogation from surface integral to volume integral (divergence theorem)
-				vol += n.x * x.v;
-				vol_x += n.x * x.v2 / 2.0;
-				vol_y += n.y * y.v2 / 2.0;
-				vol_z += n.z * z.v2 / 2.0;
-				vol_xy += n.x * x.v2t / 2.0;
-				vol_yz += n.y * y.v2t / 2.0;
-				vol_zx += n.z * z.v2t / 2.0;
-				vol_x2 += n.x * x.v3 / 3.0;
-				vol_y2 += n.y * y.v3 / 3.0;
-				vol_z2 += n.z * z.v3 / 3.0;
+				tensor->v[0][0] += (vol_y2 + vol_z2) * primitive.material.density;
+				tensor->v[0][1] -= vol_xy * primitive.material.density;
+				tensor->v[0][2] -= vol_zx * primitive.material.density;
+				tensor->v[1][1] += (vol_x2 + vol_z2) * primitive.material.density;
+				tensor->v[1][2] -= vol_yz * primitive.material.density;
+				tensor->v[2][2] += (vol_x2 + vol_y2) * primitive.material.density;
 			}
+			break;
+			case SPHERE:
+			{
+				const Sphere& s = (const Sphere&)*primitive.getGeometry();
+				double sphere_mass = (4.0 / 3.0) * PI * s.getRadius() * s.getRadius() * s.getRadius() * primitive.material.density;
 
-			*mass += g.material.density * vol;
-			*com += mthz::Vec3(vol_x, vol_y, vol_z) * g.material.density;
+				*mass += sphere_mass;
+				*com += sphere_mass * s.getCenter();
 
-			tensor->v[0][0] += (vol_y2 + vol_z2) * g.material.density;
-			tensor->v[0][1] -= vol_xy * g.material.density;
-			tensor->v[0][2] -= vol_zx * g.material.density;
-			tensor->v[1][1] += (vol_x2 + vol_z2) * g.material.density;
-			tensor->v[1][2] -= vol_yz * g.material.density;
-			tensor->v[2][2] += (vol_x2 + vol_y2) * g.material.density;
+				double k = 2.0 / 5.0 * sphere_mass * s.getRadius() * s.getRadius();
+				mthz::Mat3 sphere_tensor = recenterTensor(sphere_mass, k * mthz::Mat3::iden(), mthz::Vec3(0, 0, 0), s.getCenter());
+
+				*tensor += sphere_tensor;
+			}
+			break;
+			}
+			
+
 		}
 
 		*com /= *mass;
-
-		//transposition of inertia tensor to be relative to CoM
-		tensor->v[0][0] -= *mass * (com->y * com->y + com->z * com->z);
-		tensor->v[0][1] += *mass * com->x * com->y;
-		tensor->v[0][2] += *mass * com->z * com->x;
-		tensor->v[1][1] -= *mass * (com->x * com->x + com->z * com->z);
-		tensor->v[1][2] += *mass * com->y * com->z;
-		tensor->v[2][2] -= *mass * (com->x * com->x + com->y * com->y);
-
-		//intertia tensor is symmetric
-		tensor->v[1][0] = tensor->v[0][1];
-		tensor->v[2][0] = tensor->v[0][2];
-		tensor->v[2][1] = tensor->v[1][2];
+		*tensor = recenterTensor(*mass, *tensor, *com);
 	}
 }

@@ -1,10 +1,40 @@
 #include "CollisionDetect.h"
-#include "ConvexPoly.h"
+#include "ConvexPrimitive.h"
 
 namespace phyz {
 
 	bool operator==(const MagicID& m1, const MagicID& m2) {
 		return m1.bID == m2.bID && m1.cID == m2.cID;
+	}
+
+	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat);
+	static Manifold detectSphereSphere(const Sphere& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
+	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
+
+	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b) {
+		switch (a.getType()) {
+		case POLYHEDRON:
+			switch (b.getType()) {
+			case POLYHEDRON:
+				return SAT_PolyPoly((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Polyhedron&)*b.getGeometry(), b.getID(), b.material);
+			case SPHERE:
+				return SAT_PolySphere((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
+			}
+			break;
+		case SPHERE:
+			switch (b.getType()) {
+			case POLYHEDRON:
+			{
+				Manifold out = SAT_PolySphere((const Polyhedron&)*b.getGeometry(), b.getID(), b.material, (const Sphere&)*a.getGeometry(), a.getID(), a.material);
+				out.normal = -out.normal; //physics engine expects the manifold to be facing away from a. SAT_PolySphere generates normal facing away from the polyhedron
+				return out;
+			}
+			case SPHERE:
+				return detectSphereSphere((const Sphere&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
+			}
+			break;
+		}
+		
 	}
 
 	static struct CheckNormResults {
@@ -52,7 +82,7 @@ namespace phyz {
 		return out;
 	}
 
-	static ContactArea findContactArea(const ConvexPoly& c, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
+	static ContactArea findContactArea(const Polyhedron& c, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
 
 		for (int surface_index : c.getFaceIndicesAdjacentToPointI(p_ID)) {
 			const Surface& s = c.getSurfaces()[surface_index];
@@ -152,7 +182,7 @@ namespace phyz {
 		return ExtremaInfo{ info.min_pID, info.max_pID, info.min_val + diff, info.max_val + diff};
 	}
 
-	ExtremaInfo findExtrema(const ConvexPoly& c, mthz::Vec3 axis) {
+	ExtremaInfo findExtrema(const Polyhedron& c, mthz::Vec3 axis) {
 		ExtremaInfo extrema;
 
 		for (int i = 0; i < c.getPoints().size(); i++) {
@@ -183,10 +213,12 @@ namespace phyz {
 		}
 	}
 
-	Manifold SAT(const ConvexPoly& a, const GaussMap& ag, const ConvexPoly& b, const GaussMap& bg) {
+	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat) {
 		Manifold out;
 		double pen_depth;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		const GaussMap& ag = a.getGaussMap();
+		const GaussMap& bg = b.getGaussMap();
 
 		for (const GaussVert& g : ag.face_verts) {
 			if (!g.SAT_redundant) {
@@ -324,8 +356,8 @@ namespace phyz {
 		mthz::Vec3 n_offset = norm * a_dot_val;
 
 		uint64_t cID = 0;
-		cID |= 0x00000000FFFFFFFF & a.getID();
-		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.getID()) << 32);
+		cID |= 0x00000000FFFFFFFF & a_id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b_id) << 32);
 
 		out.points.reserve(man_pool.size());
 		for (int i = 0; i < man_pool.size(); i++) {
@@ -333,12 +365,117 @@ namespace phyz {
 			ContactP cp;
 			cp.pos = u * p.u + w * p.w + n_offset;
 			cp.pen_depth = cp.pos.dot(norm) - a_dot_val + a_pen;
-			cp.restitution = std::max<double>(a.material.restitution, b.material.restitution);
-			cp.kinetic_friction_coeff = (a.material.kinetic_friction_coeff + b.material.kinetic_friction_coeff) / 2.0;
-			cp.static_friction_coeff = (a.material.static_friction_coeff + b.material.static_friction_coeff) / 2.0;
+			cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
+			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
+			cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
 			cp.magicID = MagicID{ cID, man_pool_magics[i] };
 			out.points.push_back(cp);
 		}
+		out.max_pen_depth = min_pen.pen_depth;
+
+		return out;
+	}
+
+	static Manifold detectSphereSphere(const Sphere& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat) {
+		Manifold out;
+		mthz::Vec3 diff = b.getCenter() - a.getCenter();
+		double center_distance = diff.mag();
+		out.max_pen_depth = a.getRadius() + b.getRadius() - center_distance;
+		
+		//check if spheres touch or not
+		if (out.max_pen_depth < 0) {
+			return out;
+		}
+
+		out.normal = diff.normalize();
+
+		ContactP cp;
+		cp.pos = a.getCenter() + out.normal * a.getRadius();
+		cp.pen_depth = out.max_pen_depth;
+		
+		uint64_t cID = 0;
+		cID |= 0x00000000FFFFFFFF & a_id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b_id) << 32);
+		cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
+		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
+		cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+		cp.magicID = MagicID{ cID, 0x0 }; //second term is used to identify different points or faces on polyhedron. just using flat 0 for spheres.
+
+		out.points.push_back(cp);
+		return out;
+	}
+
+	ExtremaInfo getSphereExtrema(const Sphere& s, mthz::Vec3 dir) {
+		ExtremaInfo out;
+		double center_val = dir.dot(s.getCenter());
+		out.max_val = center_val + s.getRadius();
+		out.min_val = center_val - s.getRadius();
+		out.min_pID = -1;
+		out.max_pID = -1;
+
+		return out;
+	}
+
+	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat) {
+		Manifold out;
+		double pen_depth;
+		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		const GaussMap& gauss_map = a.getGaussMap();
+
+		for (const GaussVert& g : gauss_map.face_verts) {
+			if (!g.SAT_redundant) {
+				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(a.getPoints()[g.SAT_reference_point_index]));
+				CheckNormResults x = sat_checknorm(recentered_g_extrema, getSphereExtrema(b, g.v), g.v);
+				if (x.seprAxisExists()) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+				else if (x.pen_depth < min_pen.pen_depth) {
+					min_pen = x;
+				}
+			}
+		}
+		for (mthz::Vec3 p : a.getPoints()) {
+			mthz::Vec3 n = (p - b.getCenter()).normalize();
+			CheckNormResults x = sat_checknorm(findExtrema(a, n), getSphereExtrema(b, n), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+		for (const Edge& e : a.getEdges()) {
+			mthz::Vec3 edge_dir = (e.p2() - e.p1()).normalize();
+			mthz::Vec3 sample = e.p1() - b.getCenter();
+			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
+			CheckNormResults x = sat_checknorm(findExtrema(a, n), getSphereExtrema(b, n), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+
+		out.normal = min_pen.norm;
+		
+		ContactP cp;
+		cp.pos = b.getCenter() - out.normal * b.getRadius(); //sat_checknorm ensures normals always point away from a. to get normal pointing away from b - sign added
+		cp.pen_depth = min_pen.pen_depth;
+		cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
+		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
+		cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+
+		uint64_t cID = 0;
+		cID |= 0x00000000FFFFFFFF & a_id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b_id) << 32);
+		cp.magicID = MagicID{ cID, 0x0 }; //not bothering with featureid
+ 
+		out.points.push_back(cp);
+		
 		out.max_pen_depth = min_pen.pen_depth;
 
 		return out;

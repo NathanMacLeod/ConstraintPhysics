@@ -8,6 +8,15 @@ namespace mthz {
 	public:
 		double v[3][3] = { {0, 0, 0}, {0, 0, 0}, {0, 0, 0} };
 
+		Mat3() {}
+		Mat3(const Mat3& m) {
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					v[i][j] = m.v[i][j];
+				}
+			}
+		}
+
 		static Mat3 zero() {
 			return Mat3();
 		}
@@ -51,6 +60,14 @@ namespace mthz {
 			return Vec3(v[0][0] * w.x + v[0][1] * w.y + v[0][2] * w.z,
 				v[1][0] * w.x + v[1][1] * w.y + v[1][2] * w.z,
 				v[2][0] * w.x + v[2][1] * w.y + v[2][2] * w.z);
+		}
+
+		void operator+=(const Mat3& m) {
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					v[i][j] += m.v[i][j];
+				}
+			}
 		}
 
 		Mat3 operator-() const {

@@ -106,8 +106,8 @@ public:
 		}
 
 		mthz::Vec3 final_chain_pos = chain_start_pos + mthz::Vec3(0, -n_chain * chain_height, 0);
-		double ball_size = 0.75;
-		phyz::Geometry ball = phyz::Geometry::box(final_chain_pos + mthz::Vec3(-ball_size/2.0, -ball_size, -ball_size/2.0), ball_size, ball_size, ball_size, phyz::Material::modified_density(2));
+		double ball_size = 0.65;
+		phyz::Geometry ball = phyz::Geometry::sphere(final_chain_pos + mthz::Vec3(0, -ball_size, 0), ball_size, phyz::Material::modified_density(1));
 		phyz::RigidBody* ball_r = p.createRigidBody(ball);
 		p.addBallSocketConstraint(ball_r, previous_chain, final_chain_pos);
 		bodies.push_back({ fromGeometry(ball), ball_r });

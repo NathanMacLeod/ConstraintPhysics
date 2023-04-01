@@ -7,7 +7,10 @@
 #include <vector>
 
 namespace phyz {
-	class ConvexPoly;
+	class ConvexPrimitive;
+	class Polyhedron;
+	class Sphere;
+	struct Material;
 	struct GaussMap;
 
 	static const double M_PI = 3.14159265358979323846;
@@ -58,8 +61,8 @@ namespace phyz {
 	};
 
 	inline ExtremaInfo recenter(const ExtremaInfo& info, double old_ref_value, double new_ref_value);
-	inline ExtremaInfo findExtrema(const ConvexPoly& c, mthz::Vec3 axis);
-	Manifold SAT(const ConvexPoly& a, const GaussMap& ag, const ConvexPoly& b, const GaussMap& bg);
+	inline ExtremaInfo findExtrema(const Polyhedron& c, mthz::Vec3 axis);
+	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b);
 
 }
 

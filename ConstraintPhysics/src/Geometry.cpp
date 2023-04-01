@@ -5,7 +5,7 @@ namespace phyz {
 	Geometry::Geometry(const std::initializer_list<Geometry>& in) {
 		for (const Geometry& g : in) {
 			polyhedra.reserve(g.polyhedra.size());
-			for (const ConvexPoly& c : g.polyhedra) {
+			for (const ConvexPrimitive& c : g.polyhedra) {
 				polyhedra.push_back(c);
 			}
 		}
@@ -33,11 +33,15 @@ namespace phyz {
 		surface_indices[4] = { 3, 0, 4, 7 };
 		surface_indices[5] = { 4, 5, 6, 7 };
 
-		return Geometry(ConvexPoly(points, surface_indices, material));
+		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+	}
+
+	Geometry Geometry::sphere(mthz::Vec3 center, double radius, Material material) {
+		return Geometry(ConvexPrimitive((const ConvexGeometry&)Sphere(center, radius), material));
 	}
 
 	Geometry Geometry::tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4, Material material) {
-		ConvexPoly out;
+		ConvexPrimitive out;
 
 		const double rt3 = sqrt(3.0);
 
@@ -49,7 +53,7 @@ namespace phyz {
 		surface_indices[2] = { 2, 3, 0 };
 		surface_indices[3] = { 3, 0, 1 };
 
-		return Geometry(ConvexPoly(points, surface_indices, material));
+		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
 	Geometry Geometry::triPrism(double x1, double z1, double x2, double z2, double x3, double z3, double y, double height, Material material) {
@@ -70,7 +74,7 @@ namespace phyz {
 		surface_indices[3] = { 2, 0, 3, 5 };
 		surface_indices[4] = { 3, 4, 5 };
 
-		return Geometry(ConvexPoly(points, surface_indices, material));
+		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
 	Geometry Geometry::cylinder(mthz::Vec3 pos, double radius, double height, int detail, Material material) {
@@ -94,7 +98,7 @@ namespace phyz {
 			surface_indices[i + 2] = { i, j, n_faces + j, n_faces + i };
 		}
 
-		return ConvexPoly(points, surface_indices, material);
+		return ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material);
 	}
 
 	Geometry Geometry::ring(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int detail, Material material) {
@@ -127,7 +131,7 @@ namespace phyz {
 				{ { 4, 5, 7, 6 } }  //inside edge 1
 			};
 
-			out = out.merge(out, Geometry(ConvexPoly(segment_points, surface_indices, material)));
+			out = out.merge(out, Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(segment_points, surface_indices), material)));
 		}
 
 		return out;
@@ -162,7 +166,7 @@ namespace phyz {
 		surface_indices[6] = { 4, 5, 11, 10 };
 		surface_indices[7] = { 5, 0, 6, 11 };
 	
-		return Geometry(ConvexPoly(points, surface_indices, material));
+		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
 	Geometry Geometry::gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity, Material material, double tooth_width) {
@@ -211,10 +215,10 @@ namespace phyz {
 	Geometry Geometry::merge(const Geometry& g1, const Geometry& g2) {
 		Geometry out;
 		out.polyhedra.reserve(g1.polyhedra.size() + g2.polyhedra.size());
-		for (const ConvexPoly& c : g1.polyhedra) {
+		for (const ConvexPrimitive& c : g1.polyhedra) {
 			out.polyhedra.push_back(c);
 		}
-		for (const ConvexPoly& c : g2.polyhedra) {
+		for (const ConvexPrimitive& c : g2.polyhedra) {
 			out.polyhedra.push_back(c);
 		}
 		return out;
@@ -223,7 +227,7 @@ namespace phyz {
 	Geometry Geometry::getTranslated(const mthz::Vec3 v) const {
 		Geometry out;
 		out.polyhedra.reserve(polyhedra.size());
-		for (const ConvexPoly& c : polyhedra) {
+		for (const ConvexPrimitive& c : polyhedra) {
 			out.polyhedra.push_back(c.getTranslated(v));
 		}
 		return out;
@@ -232,7 +236,7 @@ namespace phyz {
 	Geometry Geometry::getRotated(const mthz::Quaternion q, const mthz::Vec3& rot_point) const {
 		Geometry out;
 		out.polyhedra.reserve(polyhedra.size());
-		for (const ConvexPoly& c : polyhedra) {
+		for (const ConvexPrimitive& c : polyhedra) {
 			out.polyhedra.push_back(c.getRotated(q, rot_point));
 		}
 		return out;

@@ -1,4 +1,4 @@
-#include "ConvexPoly.h"
+#include "ConvexPrimitive.h"
 
 #include <limits>
 #include <algorithm>
@@ -8,8 +8,84 @@ namespace phyz {
 
 	static int next_id;
 	
-	ConvexPoly::ConvexPoly(const ConvexPoly& c)
-		: points(c.points), interior_point(c.interior_point), id(next_id++), material(c.material), adjacent_faces_to_vertex(c.adjacent_faces_to_vertex), adjacent_edges_to_vertex(c.adjacent_edges_to_vertex)
+	ConvexPrimitive::ConvexPrimitive(const ConvexPrimitive& c)
+		: material(c.material), type(c.type), id(next_id++)
+	{
+		switch (c.type) {
+		case POLYHEDRON:
+			geometry = (ConvexGeometry*) new Polyhedron((const Polyhedron&)*c.geometry);
+			break;
+		case SPHERE:
+			geometry = (ConvexGeometry*)new Sphere((const Sphere&)*c.geometry);
+			break;
+		}
+	}
+
+	ConvexPrimitive::ConvexPrimitive(const ConvexGeometry& geometry_primitive, Material material) 
+		: material(material), type(geometry_primitive.getType()), id(next_id++)
+	{
+		switch (geometry_primitive.getType()) {
+		case POLYHEDRON:
+			geometry = (ConvexGeometry*)new Polyhedron((const Polyhedron&)geometry_primitive);
+			break;
+		case SPHERE:
+			geometry = (ConvexGeometry*)new Sphere((const Sphere&)geometry_primitive);
+			break;
+		}
+	}
+
+	ConvexPrimitive ConvexPrimitive::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
+		ConvexPrimitive copy(*this);
+		switch (type) {
+		case POLYHEDRON:
+			*(Polyhedron*)copy.geometry = ((Polyhedron*)geometry)->getRotated(q, pivot_point);
+			break;
+		}
+		
+		return copy;
+	};
+
+	ConvexPrimitive ConvexPrimitive::getTranslated(mthz::Vec3 t) const {
+		ConvexPrimitive copy(*this);
+		switch (type) {
+		case POLYHEDRON:
+			*(Polyhedron*)copy.geometry = ((Polyhedron*)geometry)->getTranslated(t);
+			break;
+		}
+
+		return copy;
+	};
+
+	Sphere::Sphere(const Sphere& c) 
+		: center(c.center), radius(c.radius)
+	{}
+
+	Sphere::Sphere(mthz::Vec3 center, double radius) 
+		: center(center), radius(radius)
+	{}
+
+	Sphere Sphere::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
+		return Sphere(pivot_point + q.applyRotation(pivot_point - pivot_point), radius);
+	}
+
+	Sphere Sphere::getTranslated(mthz::Vec3 t) const {
+		return Sphere(center + t, radius);
+	}
+
+	void Sphere::recomputeFromReference(const ConvexGeometry& reference_geometry, const mthz::Mat3& rot, mthz::Vec3 trans) {
+		assert(getType() == reference_geometry.getType());
+		const Sphere& reference = (const Sphere&)reference_geometry;
+		center = trans + rot * reference.center;
+	}
+
+	AABB Sphere::gen_AABB() const {
+		mthz::Vec3 min = center - mthz::Vec3(radius, radius, radius);
+		mthz::Vec3 max = center + mthz::Vec3(radius, radius, radius);
+		return AABB{ min, max };
+	}
+
+	Polyhedron::Polyhedron(const Polyhedron& c)
+		: gauss_map(c.gauss_map), points(c.points), interior_point(c.interior_point), adjacent_faces_to_vertex(c.adjacent_faces_to_vertex), adjacent_edges_to_vertex(c.adjacent_edges_to_vertex)
 	{
 		for (int i = 0; i < c.surfaces.size(); i++) {
 			surfaces.push_back(Surface(c.surfaces[i], this));
@@ -19,8 +95,8 @@ namespace phyz {
 		}
 	}
 
-	ConvexPoly::ConvexPoly(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices, Material material)
-		: points(points), id(next_id++), material(material), adjacent_faces_to_vertex(points.size()), adjacent_edges_to_vertex(points.size())
+	Polyhedron::Polyhedron(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices)
+		: points(points), adjacent_faces_to_vertex(points.size()), adjacent_edges_to_vertex(points.size())
 	{
 		assert(points.size() >= 4);
 
@@ -78,9 +154,11 @@ namespace phyz {
 			adjacent_edges_to_vertex[pair.p1].push_back(i);
 			adjacent_edges_to_vertex[pair.p2].push_back(i);
 		}
+
+		gauss_map = computeGaussMap();
 	}
 
-	AABB ConvexPoly::gen_AABB() const {
+	AABB Polyhedron::gen_AABB() const {
 		const double inf = std::numeric_limits<double>::infinity();
 		mthz::Vec3 min(inf, inf, inf);
 		mthz::Vec3 max(-inf, -inf, -inf);
@@ -98,8 +176,8 @@ namespace phyz {
 		return { min, max };
 	}
 
-	ConvexPoly ConvexPoly::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
-		ConvexPoly copy(*this);
+	Polyhedron Polyhedron::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
+		Polyhedron copy(*this);
 
 		mthz::Mat3 rotMat = q.getRotMatrix();
 		for (int i = 0; i < points.size(); i++) {
@@ -107,11 +185,14 @@ namespace phyz {
 		}
 		copy.interior_point = pivot_point + rotMat * (interior_point - pivot_point);
 
+		for (int i = 0; i < gauss_map.face_verts.size(); i++) {
+			copy.gauss_map.face_verts[i].v = rotMat * gauss_map.face_verts[i].v;
+		}
 		return copy;
 	}
 
-	ConvexPoly ConvexPoly::getTranslated(mthz::Vec3 t) const {
-		ConvexPoly copy(*this);
+	Polyhedron Polyhedron::getTranslated(mthz::Vec3 t) const {
+		Polyhedron copy(*this);
 
 		for (int i = 0; i < points.size(); i++) {
 			copy.points[i] += t;
@@ -121,13 +202,29 @@ namespace phyz {
 		return copy;
 	}
 
-	Edge::Edge(int p1_indx, int p2_indx, ConvexPoly* poly) {
+	void Polyhedron::recomputeFromReference(const ConvexGeometry& reference_geometry, const mthz::Mat3& rot, mthz::Vec3 trans) {
+		assert(getType() == reference_geometry.getType());
+		const Polyhedron& reference = (const Polyhedron&) reference_geometry;
+		assert(reference.points.size() == points.size());
+
+		for (int i = 0; i < points.size(); i++) {
+			points[i] = trans + rot * reference.points[i];
+		}
+		interior_point = trans + rot * reference.interior_point;
+
+		for (int i = 0; i < gauss_map.face_verts.size(); i++) {
+			gauss_map.face_verts[i].v = rot * reference.gauss_map.face_verts[i].v;
+		}
+
+	}
+
+	Edge::Edge(int p1_indx, int p2_indx, Polyhedron* poly) {
 		this->poly = poly;
 		this->p1_indx = p1_indx;
 		this->p2_indx = p2_indx;
 	}
 
-	Edge::Edge(const Edge& e, ConvexPoly* poly) {
+	Edge::Edge(const Edge& e, Polyhedron* poly) {
 		this->poly = poly;
 		p1_indx = e.p1_indx;
 		p2_indx = e.p2_indx;
@@ -138,7 +235,7 @@ namespace phyz {
 		poly = nullptr;
 	}
 
-	Surface::Surface(const std::vector<int>& point_indexes, ConvexPoly* poly, mthz::Vec3 interior_point, int surfaceID)
+	Surface::Surface(const std::vector<int>& point_indexes, Polyhedron* poly, mthz::Vec3 interior_point, int surfaceID)
 		: point_indexes(point_indexes), poly(poly), surfaceID(surfaceID)
 	{
 		assert(point_indexes.size() >= 3);
@@ -147,7 +244,7 @@ namespace phyz {
 		setWindingAntiClockwise(normal());
 	}
 
-	Surface::Surface(const Surface& s, ConvexPoly* poly)
+	Surface::Surface(const Surface& s, Polyhedron* poly)
 		: point_indexes(s.point_indexes), normalDirection(s.normalDirection), poly(poly), surfaceID(s.surfaceID),
 		normal_calc_index(s.normal_calc_index)
 	{}
@@ -225,7 +322,7 @@ namespace phyz {
  		}
 	}
 
-	GaussMap ConvexPoly::computeGaussMap() const {
+	GaussMap Polyhedron::computeGaussMap() const {
 		GaussMap g;
 		for (int i = 0; i < surfaces.size(); i++) {
 			const Surface& s1 = surfaces[i];

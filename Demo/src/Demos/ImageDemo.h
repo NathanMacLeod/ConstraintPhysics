@@ -234,14 +234,14 @@ public:
 		double block_start_height = box_height;
 		double cube_size = effective_width / (16 * level_of_detail);
 		for (int i = 0; i < 8 * level_of_detail; i++) {
-			for (int j = 0; j < 32 * level_of_detail; j++) {
+			for (int j = 0; j < 56 * level_of_detail; j++) {
 				for (int k = 0; k < level_of_detail; k++) {
-					mthz::Vec3 pos(base_dim.y + effective_width/2.0 + (i - 2) * cube_size, block_start_height + 1.5 * j * cube_size, base_dim.y + k * cube_size);
-					phyz::Geometry cube = phyz::Geometry::box(pos, cube_size, cube_size, cube_size);
-					phyz::RigidBody* r = p.createRigidBody(cube);
+					mthz::Vec3 pos(base_dim.y + effective_width/2.0 + (i - 4 * level_of_detail) * cube_size, block_start_height + 1.5 * j * cube_size, base_dim.y + k * cube_size);
+					phyz::Geometry ball = phyz::Geometry::sphere(pos, cube_size/2.0);
+					phyz::RigidBody* r = p.createRigidBody(ball);
 
 					recolor_body_indexes.push_back(pre_bodies.size());
-					pre_bodies.push_back(BodyHistory(r, cube));
+					pre_bodies.push_back(BodyHistory(r, ball));
 				}
 			}
 		}
@@ -263,7 +263,7 @@ public:
 
 		pre_bodies.push_back(BodyHistory(negx_wall_r, negx_wall));
 		pre_bodies.push_back(BodyHistory(posx_wall_r, posx_wall));
-		//pre_bodies.push_back(BodyHistory(back_wall_r, back_wall));
+		pre_bodies.push_back(BodyHistory(back_wall_r, back_wall));
 		pre_bodies.push_back(BodyHistory(spinner1_r, spinner1, color{ 130, 0, 0 }));
 		pre_bodies.push_back(BodyHistory(spinner2_r, spinner2, color{ 130, 0, 0 }));
 
@@ -273,14 +273,12 @@ public:
 		double mv_speed = 2;
 		double rot_speed = 1;
 
-		double phyz_time = 0;
-
 		p.setGravity(mthz::Vec3(0, -4.9, 0));
 
 		int curr_percent = -1;
 		double frame_time = 1 / 120.0;
 		int steps_per_frame = 2;
-		double simulation_time = 60;
+		double simulation_time = 75;
 		int n_frames = simulation_time / frame_time + 1;
 		
 		printf("Checking for existing precomputation...\n");
@@ -437,9 +435,17 @@ public:
 			rndr::clear(rndr::color(0.7f, 0.7f, 0.7f));
 
 			for (const PhysBod& b : bodies) {
-				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-				shader.setUniform1i("u_Asleep", false && b.r->getAsleep());
+				mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
+				mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
+
+				shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
+				shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0));
+				shader.setUniform3f("u_ambient_light", 1.0f, 1.0f, 1.0f);
+				shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
+				shader.setUniform3f("u_pointlight_col", 0.0, 0.0, 0.0);
+				shader.setUniform1i("u_Asleep", false);
 				rndr::draw(*b.mesh.va, *b.mesh.ib, shader);
+
 			}
 		}
 	}

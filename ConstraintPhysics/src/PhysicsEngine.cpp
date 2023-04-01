@@ -103,14 +103,14 @@ namespace phyz {
 				std::vector<Manifold> manifolds;
 				for (int i = 0; i < b1->geometry.size(); i++) {
 					for (int j = 0; j < b2->geometry.size(); j++) {
-						const ConvexPoly& c1 = b1->geometry[i];
-						const ConvexPoly& c2 = b2->geometry[j];
+						const ConvexPrimitive& c1 = b1->geometry[i];
+						const ConvexPrimitive& c2 = b2->geometry[j];
 						bool checking_AABB_redundant = b1->geometry.size() == 1 && b2->geometry.size() == 1;
 						if (!checking_AABB_redundant && !AABB::intersects(b1->geometry_AABB[i], b2->geometry_AABB[j])) {
 							continue;
 						}
 
-						Manifold man = SAT(c1, b1->gauss_maps[i], c2, b2->gauss_maps[j]);
+						Manifold man = detectCollision(c1, c2);
 
 						if (man.max_pen_depth > 0) {
 							manifolds.push_back(man);
@@ -219,6 +219,10 @@ namespace phyz {
 				}
 
 				b->updateGeometry();
+
+				if (isnan(b->ang_vel.x)) {
+					int a = 1 + 2;
+				}
 
 				b->psuedo_vel = mthz::Vec3(0, 0, 0);
 				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
