@@ -327,6 +327,10 @@ namespace phyz {
 	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength, double rot_correct_strength) {
 		disallowCollision(b1, b2);
 		int uniqueID = nextConstraintID++;
+		mthz::Vec3 u1, w1;
+		b1_rot_axis_local.getPerpendicularBasis(&u1, &w1);
+		mthz::Vec3 u2, tmp;
+		b2_rot_axis_local.getPerpendicularBasis(&u2, &tmp);
 
 		Hinge* h = new Hinge{
 			HingeConstraint(),
@@ -340,6 +344,18 @@ namespace phyz {
 			0, 0,
 			uniqueID
 		};
+
+		h->b1_u_axis_reference = u1;
+		h->b1_w_axis_reference = w1;
+		h->b2_rot_comparison_axis = u2;
+		mthz::Vec3 rot_ref_axis_u = b1->orientation.applyRotation(h->b1_u_axis_reference);
+		mthz::Vec3 rot_ref_axis_w = b1->orientation.applyRotation(h->b1_w_axis_reference);
+		mthz::Vec3 rot_compare_axis = b2->orientation.applyRotation(h->b2_rot_comparison_axis);
+		mthz::Vec3 b1_hinge_axis = b1->orientation.applyRotation(h->b1_rot_axis_body_space);
+		h->motor_angular_position = calculateMotorPosition(0, b1_hinge_axis, rot_ref_axis_u, rot_ref_axis_w, rot_compare_axis, mthz::Vec3(), mthz::Vec3(), 0);
+
+		h->min_motor_position = -std::numeric_limits<double>::infinity();
+		h->max_motor_position = std::numeric_limits<double>::infinity();
 
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
@@ -553,6 +569,41 @@ namespace phyz {
 		});
 	}
 
+	double PhysicsEngine::calculateMotorPosition(double current_position, mthz::Vec3 rot_axis, mthz::Vec3 ref_axis_u, mthz::Vec3 ref_axis_w, mthz::Vec3 compare_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double timestep) {
+		//estimate based on velocity
+		double relative_angular_velocity = rot_axis.dot(b1_ang_vel) - rot_axis.dot(b2_ang_vel);
+		double predicted_new_angle = current_position + relative_angular_velocity * step_time;
+
+		//use concrete orientations to eliminate drifting error
+		if (abs(compare_axis.dot(rot_axis)) > 0.999) {
+			//doesnt work if compairson is perp to rotation plane. just give up.
+			return predicted_new_angle;
+		}
+		else {
+			
+
+			//normalize compare axis to rotation plane.
+			mthz::Vec3 compare_norm = (compare_axis - rot_axis * rot_axis.dot(compare_axis)).normalize();
+			//relative angle is flipped such that angles are clockwise. this is because i did things weird and this easiest way to fix it
+			double relative_angle = 2 * PI - acos(compare_norm.dot(ref_axis_u));
+			if (compare_norm.dot(ref_axis_w) < 0) relative_angle = 2 * PI - relative_angle;
+
+			//pred_angle = n * 2PI + r
+			double r = fmod(predicted_new_angle, 2 * PI);
+			double n2PI = predicted_new_angle - r;
+
+			//this is to handle edge cases where we are crossing the threshold between n2PI and (n+1)2PI, or n2PI to (n-1)2PI
+			double corrected_angle_candidates[] = { n2PI + relative_angle - 2 * PI, n2PI + relative_angle, n2PI + relative_angle + 2 * PI };
+			double closest = std::numeric_limits<double>::infinity();
+			for (double c : corrected_angle_candidates) {
+				if (abs(predicted_new_angle - c) < abs(predicted_new_angle - closest))
+					closest = c;
+			}
+			
+			return closest;
+		}
+	}
+
 	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints() {
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
@@ -583,8 +634,14 @@ namespace phyz {
 					mthz::Vec3 b1_hinge_axis = b1->orientation.applyRotation(h->b1_rot_axis_body_space);
 					mthz::Vec3 b2_hinge_axis = b2->orientation.applyRotation(h->b2_rot_axis_body_space);
 
-					if (h->max_torque > 0) {
-						h->motor_constraint = MotorConstraint(b1, b2, b1_hinge_axis, h->target_velocity, h->max_torque, h->motor_constraint.impulse);
+					mthz::Vec3 rot_ref_axis_u = b1->orientation.applyRotation(h->b1_u_axis_reference);
+					mthz::Vec3 rot_ref_axis_w = b1->orientation.applyRotation(h->b1_w_axis_reference);
+					mthz::Vec3 rot_compare_axis = b2->orientation.applyRotation(h->b2_rot_comparison_axis);
+					h->motor_angular_position = calculateMotorPosition(h->motor_angular_position, b1_hinge_axis, rot_ref_axis_u, rot_ref_axis_w, rot_compare_axis, b1->getAngVel(), b2->getAngVel(), step_time);
+					
+
+					if (h->max_torque > 0 || h->min_motor_position != -std::numeric_limits<double>::infinity() || h->max_motor_position != std::numeric_limits<double>::infinity()) {
+						h->motor_constraint = MotorConstraint(b1, b2, b1_hinge_axis, h->target_velocity, h->max_torque, h->motor_angular_position, h->min_motor_position, h->max_motor_position, h->rot_correct_hardness, h->motor_constraint.impulse);
 					}
 
 					h->constraint = HingeConstraint(b1, b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, posCorrectCoeff(h->pos_correct_hardness, step_time), 
@@ -665,7 +722,7 @@ namespace phyz {
 						}
 						for (Hinge* h : e->hingeConstraints) {
 							output->island_constraints->push_back(&h->constraint);
-							if (h->max_torque != 0) {
+							if (h->max_torque > 0 || h->min_motor_position != -std::numeric_limits<double>::infinity() || h->max_motor_position != std::numeric_limits<double>::infinity()) {
 								output->island_constraints->push_back(&h->motor_constraint);
 							}
 						}
@@ -719,7 +776,28 @@ namespace phyz {
 		col_actions.erase(action_key);
 	}
 
-	void PhysicsEngine::setMotor(ConstraintID id, double target_velocity, double max_torque) {
+	void PhysicsEngine::setMotorProperties(ConstraintID id, double max_torque, double min_angle, double max_angle) {
+		assert(id.type == ConstraintID::HINGE && constraint_map.find(id.uniqueID) != constraint_map.end());
+		Hinge* hinge = nullptr;
+		for (Hinge* h : constraint_map[id.uniqueID]->hingeConstraints) {
+			if (h->uniqueID == id.uniqueID) {
+				hinge = h;
+				break;
+			}
+		}
+		assert(hinge != nullptr);
+
+		hinge->max_torque = max_torque;
+		hinge->min_motor_position = min_angle;
+		hinge->max_motor_position = max_angle;
+
+		if (hinge->constraint.a != nullptr) {
+			hinge->constraint.a->alertWakingAction();
+			hinge->constraint.b->alertWakingAction();
+		}
+	}
+
+	void PhysicsEngine::setMotorTargetVelocity(ConstraintID id, double target_velocity) {
 		assert(id.type == ConstraintID::HINGE && constraint_map.find(id.uniqueID) != constraint_map.end());
 		Hinge* hinge = nullptr;
 		for (Hinge* h : constraint_map[id.uniqueID]->hingeConstraints) {
@@ -731,12 +809,25 @@ namespace phyz {
 		assert(hinge != nullptr);
 
 		hinge->target_velocity = target_velocity;
-		hinge->max_torque = max_torque;
 
 		if (hinge->constraint.a != nullptr) {
 			hinge->constraint.a->alertWakingAction();
 			hinge->constraint.b->alertWakingAction();
 		}
+	}
+
+	double PhysicsEngine::getMotorAngularPosition(ConstraintID id) {
+		assert(id.type == ConstraintID::HINGE && constraint_map.find(id.uniqueID) != constraint_map.end());
+		Hinge* hinge = nullptr;
+		for (Hinge* h : constraint_map[id.uniqueID]->hingeConstraints) {
+			if (h->uniqueID == id.uniqueID) {
+				hinge = h;
+				break;
+			}
+		}
+		assert(hinge != nullptr);
+
+		return hinge->motor_angular_position;
 	}
 
 	PhysicsEngine::SharedConstraintsEdge::~SharedConstraintsEdge() {

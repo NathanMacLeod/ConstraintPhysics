@@ -83,7 +83,9 @@ namespace phyz {
 
 		void removeConstraint(ConstraintID id, bool reenable_collision=true);
 
-		void setMotor(ConstraintID id, double target_velocity, double max_torque);
+		void setMotorProperties(ConstraintID id, double max_torque, double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
+		void setMotorTargetVelocity(ConstraintID id, double target_velocity);
+		double getMotorAngularPosition(ConstraintID id);
 
 	private:
 
@@ -156,6 +158,13 @@ namespace phyz {
 			double max_torque;
 			double target_velocity;
 			int uniqueID;
+
+			mthz::Vec3 b1_u_axis_reference;
+			mthz::Vec3 b1_w_axis_reference;
+			mthz::Vec3 b2_rot_comparison_axis;
+			double motor_angular_position;
+			double min_motor_position;
+			double max_motor_position;
 		};
 
 		struct Slider {
@@ -172,6 +181,8 @@ namespace phyz {
 			bool slide_limit_exceeded;
 			int uniqueID;
 		};
+	
+		double calculateMotorPosition(double current_position, mthz::Vec3 rot_axis, mthz::Vec3 u_ref_axis, mthz::Vec3 w_ref_axis, mthz::Vec3 compare_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double timestep);
 
 		struct SharedConstraintsEdge {
 			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contactConstraints(std::vector<Contact*>()) {}

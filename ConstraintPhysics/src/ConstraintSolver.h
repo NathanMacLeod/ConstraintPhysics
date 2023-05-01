@@ -194,7 +194,7 @@ namespace phyz {
 	class MotorConstraint : public Constraint {
 	public:
 		MotorConstraint() : impulse(NVec<1>{0.0}) {}
-		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -205,6 +205,7 @@ namespace phyz {
 		inline void addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb);
 
 		NVec<1> impulse;
+		NVec<1> psuedo_impulse;
 	private:
 		double max_torque;
 		mthz::Vec3 motor_axis;

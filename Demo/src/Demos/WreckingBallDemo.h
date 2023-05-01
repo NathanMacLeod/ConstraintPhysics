@@ -118,8 +118,8 @@ public:
 		double lift_torque = 60;
 		phyz::ConstraintID lift_motor = p.addHingeConstraint(cabin_r, crane_r, crane_pos, mthz::Vec3(0, 0, 1));
 
-		p.setMotor(rotate_motor, 0, rotate_torque);
-		p.setMotor(lift_motor, 0, lift_torque);
+		p.setMotorProperties(rotate_motor, rotate_torque, -4*PI, 2.33*PI);
+		p.setMotorProperties(lift_motor, lift_torque);
 
 		//*************
 		//****TOWER****
@@ -238,22 +238,22 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
-				p.setMotor(lift_motor, -1, lift_torque);
+				p.setMotorTargetVelocity(lift_motor, -1);
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_K)) {
-				p.setMotor(lift_motor, 1, lift_torque);
+				p.setMotorTargetVelocity(lift_motor, 1);
 			}
 			else {
-				p.setMotor(lift_motor, 0, lift_torque);
+				p.setMotorTargetVelocity(lift_motor, 0);
 			}
 			if (rndr::getKeyDown(GLFW_KEY_J)) {
-				p.setMotor(rotate_motor, -3, rotate_torque);
+				p.setMotorTargetVelocity(rotate_motor, -3);
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_L)) {
-				p.setMotor(rotate_motor, 3, rotate_torque);
+				p.setMotorTargetVelocity(rotate_motor, 3);
 			}
 			else {
-				p.setMotor(rotate_motor, 0, rotate_torque);
+				p.setMotorTargetVelocity(rotate_motor, 0);
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_R)) {
 				for (phyz::RigidBody* r : tower_bodies) {

@@ -426,14 +426,32 @@ namespace phyz {
 	//******************************
 	//*****MOTOR CONSTRAINT*********
 	//******************************
-	MotorConstraint::MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque, NVec<1> warm_start_impulse)
-		: Constraint(a, b), motor_axis(motor_axis), max_torque(max_torque), impulse(warm_start_impulse)
+	MotorConstraint::MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, NVec<1> warm_start_impulse)
+		: Constraint(a, b), motor_axis(motor_axis), impulse(warm_start_impulse)
 	{
+		double real_target_velocity;
+
+		if (current_angle > max_angle) {
+			psuedo_target_val = NVec<1>{ (max_angle - current_angle) * rot_correct_hardness };
+			real_target_velocity = std::min<double>(0, target_velocity);
+			this->max_torque = std::numeric_limits<double>::infinity();
+		}
+		else if (current_angle < min_angle) {
+			psuedo_target_val = NVec<1>{ (min_angle - current_angle) * rot_correct_hardness };
+			real_target_velocity = std::max<double>(0, target_velocity);
+			this->max_torque = std::numeric_limits<double>::infinity();
+		}
+		else {
+			psuedo_target_val = NVec<1>{ 0 };
+			real_target_velocity = target_velocity;
+			this->max_torque = max_torque;
+		}
+
 		rotDirA = a->getInvTensor() * motor_axis;
 		rotDirB = b->getInvTensor() * motor_axis;
 		inverse_inertia = NMat<1, 1>{ {1.0 / (motor_axis.dot(rotDirA) + motor_axis.dot(rotDirB))} };
 		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
-		target_val = NVec<1>{ target_velocity - current_val };
+		target_val = NVec<1>{ real_target_velocity - current_val };
 	}
 
 	inline void MotorConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
@@ -457,7 +475,14 @@ namespace phyz {
 	};
 
 	inline void MotorConstraint::performPGSPsuedoConstraintStep() {
-		return;
+		if (psuedo_target_val.v[0] == 0) return;
+
+		PGS_constraint_step<1>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
+			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
+			[&](const NVec<1>& impulse) { return impulse; },
+			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
 	};
 
 	inline void MotorConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
@@ -613,6 +638,10 @@ namespace phyz {
 		vb->ang -= NVec3toVec3(rotDirB * impulse);
 	}
 
+
+	//******************************
+	//******** NVEC / NMAT *********
+	//******************************
 	template<int n>
 	bool NVec<n>::isZero() {
 		for (int i = 0; i < n; i++) {
