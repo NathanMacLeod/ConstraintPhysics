@@ -219,7 +219,7 @@ namespace phyz {
 				double current_impulse_mag = sqrt(impulse.v[0] * impulse.v[0] + impulse.v[1] * impulse.v[1]);
 				if (current_impulse_mag > max_impulse_mag) {
 					static_ready = false;
-					double r = max_impulse_mag / current_impulse_mag;
+					double r = max_impuiiiiiiiiiiiiiiilse_mag / current_impulse_mag;
 					return NVec<2>{ impulse.v[0] * r, impulse.v[1] * r };
 				}
 				else {
@@ -523,21 +523,21 @@ namespace phyz {
 
 		//IMPULSE TO ROTATION MATRICES
 		{
-			mthz::Vec3 l = Ia_inv * rAxU + u.cross(pos_error); //left block
-			mthz::Vec3 m = Ia_inv * rAxW + w.cross(pos_error); //middle block
+			//mthz::Vec3 l = Ia_inv * rAxU + u.cross(pos_error); //left block
+			//mthz::Vec3 m = Ia_inv * rAxW + w.cross(pos_error); //middle block
 
-			rotDirA.v[0][0] = l.x; rotDirA.v[0][1] = m.x;
-			rotDirA.v[1][0] = l.y; rotDirA.v[1][1] = m.y;
-			rotDirA.v[2][0] = l.z; rotDirA.v[2][1] = m.z;
+			//rotDirA.v[0][0] = l.x; rotDirA.v[0][1] = m.x;
+			//rotDirA.v[1][0] = l.y; rotDirA.v[1][1] = m.y;
+			//rotDirA.v[2][0] = l.z; rotDirA.v[2][1] = m.z;
 			rotDirA.copyInto(Ia_inv_mat, 0, 2);
 		}
 		{
-			mthz::Vec3 l = Ib_inv * rBxU; //left block
-			mthz::Vec3 m = Ib_inv * rBxW; //middle block
+			//mthz::Vec3 l = Ib_inv * rBxU; //left block
+			//mthz::Vec3 m = Ib_inv * rBxW; //middle block
 
-			rotDirB.v[0][0] = l.x; rotDirB.v[0][1] = m.x;
-			rotDirB.v[1][0] = l.y; rotDirB.v[1][1] = m.y;
-			rotDirB.v[2][0] = l.z; rotDirB.v[2][1] = m.z;
+			//rotDirB.v[0][0] = l.x; rotDirB.v[0][1] = m.x;
+			//rotDirB.v[1][0] = l.y; rotDirB.v[1][1] = m.y;
+			//rotDirB.v[2][0] = l.z; rotDirB.v[2][1] = m.z;
 			rotDirB.copyInto(Ib_inv_mat, 0, 2);
 		}
 
@@ -552,7 +552,7 @@ namespace phyz {
 			NMat<3, 3> w_skew = Mat3toNMat33(mthz::Mat3::cross_mat(w));
 			NMat<3, 3> zero = Mat3toNMat33(mthz::Mat3::zero());
 
-			jacobian.copyInto(u_dot, 0, 0);
+			/*jacobian.copyInto(u_dot, 0, 0);
 			jacobian.copyInto(-u_dot * rA_skew - Pe_dot * u_skew, 0, 3);
 			jacobian.copyInto(-u_dot, 0, 6);
 			jacobian.copyInto(u_dot * rB_skew, 0, 9);
@@ -565,28 +565,38 @@ namespace phyz {
 			jacobian.copyInto(zero, 2, 0);
 			jacobian.copyInto(idenMat<3>(), 2, 3);
 			jacobian.copyInto(zero, 2, 6);
-			jacobian.copyInto(-idenMat<3>(), 2, 9);
+			jacobian.copyInto(-idenMat<3>(), 2, 9);*/
+
+			jacobian.copyInto(u_dot, 0, 0); jacobian.copyInto(-u_dot, 0, 6);
+			jacobian.copyInto(w_dot, 1, 0); jacobian.copyInto(-w_dot, 1, 6);
+			jacobian.copyInto(idenMat<3>(), 2, 3); jacobian.copyInto(-idenMat<3>(), 2, 9);
 
 			//top row
-			inverse_inertia.v[0][0] = a->getInvMass() + b->getInvMass() - u.dot(rA.cross(Ia_inv * (rAxU + UxPe))) - pos_error.dot(u.cross(Ia_inv * (rAxU + UxPe))) - u.dot(rB.cross(Ib_inv * (rBxU)));
-			inverse_inertia.v[0][1] = -u.dot(rA.cross(Ia_inv * (rAxW + WxPe))) - pos_error.dot(u.cross(Ia_inv * (rAxW))) - u.dot(rB.cross(Ib_inv * (rBxW)));
-			NMat<1, 3> ur = -(u_dot * rA_skew + Pe_dot * u_skew) * Ia_inv_mat - u_dot * rB_skew * Ib_inv_mat;
-			inverse_inertia.v[0][2] = ur.v[0][0]; inverse_inertia.v[0][3] = ur.v[0][1]; inverse_inertia.v[0][4] = ur.v[0][2];
+			//inverse_inertia.v[0][0] = a->getInvMass() + b->getInvMass() - u.dot(rA.cross(Ia_inv * (rAxU + UxPe))) - pos_error.dot(u.cross(Ia_inv * (rAxU + UxPe))) - u.dot(rB.cross(Ib_inv * (rBxU)));
+			//inverse_inertia.v[0][1] = -u.dot(rA.cross(Ia_inv * (rAxW + WxPe))) - pos_error.dot(u.cross(Ia_inv * (rAxW))) - u.dot(rB.cross(Ib_inv * (rBxW)));
+			//NMat<1, 3> ur = -(u_dot * rA_skew + Pe_dot * u_skew) * Ia_inv_mat - u_dot * rB_skew * Ib_inv_mat;
+			//inverse_inertia.v[0][2] = ur.v[0][0]; inverse_inertia.v[0][3] = ur.v[0][1]; inverse_inertia.v[0][4] = ur.v[0][2];
 
-			//middle row
-			inverse_inertia.v[1][0] = -w.dot(rA.cross(Ia_inv * (rAxU + UxPe))) - pos_error.dot(w.cross(Ia_inv * (rAxU + UxPe))) - w.dot(rB.cross(Ib_inv * (rBxU)));
-			inverse_inertia.v[1][1] = a->getInvMass() + b->getInvMass() - w.dot(rA.cross(Ia_inv * (rAxW))) - pos_error.dot(w.cross(Ia_inv * (rAxW + WxPe))) - w.dot(rB.cross(Ib_inv * (rBxW)));
-			NMat<1, 3> mr = -(w_dot * rA_skew + Pe_dot * w_skew) * Ia_inv_mat - w_dot * rB_skew * Ib_inv_mat;
-			inverse_inertia.v[1][2] = mr.v[0][0]; inverse_inertia.v[1][3] = mr.v[0][1]; inverse_inertia.v[1][4] = mr.v[0][2];
+			////middle row
+			//inverse_inertia.v[1][0] = -w.dot(rA.cross(Ia_inv * (rAxU + UxPe))) - pos_error.dot(w.cross(Ia_inv * (rAxU + UxPe))) - w.dot(rB.cross(Ib_inv * (rBxU)));
+			//inverse_inertia.v[1][1] = a->getInvMass() + b->getInvMass() - w.dot(rA.cross(Ia_inv * (rAxW))) - pos_error.dot(w.cross(Ia_inv * (rAxW + WxPe))) - w.dot(rB.cross(Ib_inv * (rBxW)));
+			//NMat<1, 3> mr = -(w_dot * rA_skew + Pe_dot * w_skew) * Ia_inv_mat - w_dot * rB_skew * Ib_inv_mat;
+			//inverse_inertia.v[1][2] = mr.v[0][0]; inverse_inertia.v[1][3] = mr.v[0][1]; inverse_inertia.v[1][4] = mr.v[0][2];
 
-			mthz::Vec3 ll = Ia_inv * (rAxU + UxPe) + Ib_inv * rBxU;
-			mthz::Vec3 lm = Ia_inv * (rAxW + WxPe) + Ib_inv * rBxW;
-			NMat<3, 3> lr = Mat3toNMat33(Ia_inv + Ib_inv);
+			//mthz::Vec3 ll = Ia_inv * (rAxU + UxPe) + Ib_inv * rBxU;
+			//mthz::Vec3 lm = Ia_inv * (rAxW + WxPe) + Ib_inv * rBxW;
+			//NMat<3, 3> lr = Mat3toNMat33(Ia_inv + Ib_inv);
 
-			inverse_inertia.v[2][0] = ll.x; inverse_inertia.v[2][1] = lm.x;
-			inverse_inertia.v[3][0] = ll.y; inverse_inertia.v[3][1] = lm.y;
-			inverse_inertia.v[4][0] = ll.z; inverse_inertia.v[4][1] = lm.z;
-			inverse_inertia.copyInto(lr, 2, 2);
+			//inverse_inertia.v[2][0] = ll.x; inverse_inertia.v[2][1] = lm.x;
+			//inverse_inertia.v[3][0] = ll.y; inverse_inertia.v[3][1] = lm.y;
+			//inverse_inertia.v[4][0] = ll.z; inverse_inertia.v[4][1] = lm.z;
+			//inverse_inertia.copyInto(lr, 2, 2);
+
+			//inverse_inertia = inverse_inertia.inverse();
+
+			inverse_inertia.v[0][0] = a->getInvMass() + b->getInvMass();
+			inverse_inertia.v[1][1] = a->getInvMass() + b->getInvMass();
+			inverse_inertia.copyInto(Ia_inv_mat + Ib_inv_mat, 2, 2);
 
 			inverse_inertia = inverse_inertia.inverse();
 		}
@@ -611,10 +621,7 @@ namespace phyz {
 			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
 			[](const NVec<5>& impulse) { return impulse; },
 			[&](const NVec<5>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
-				NVec<5> old_val = getConstraintValue(*a_velocity_changes, *b_velocity_changes);
 				this->addVelocityChange(impulse, va, vb);
-				NVec<5> new_val = getConstraintValue(*a_velocity_changes, *b_velocity_changes);
-				int a = 1 + 2;
 			});
 	}
 
@@ -638,6 +645,80 @@ namespace phyz {
 		vb->ang -= NVec3toVec3(rotDirB * impulse);
 	}
 
+	//******************************
+	//*****PISTON CONSTRAINT********
+	//******************************
+	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_force, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse)
+		: Constraint(a, b), slide_axis(slide_axis), impulse(warm_start_impulse)
+	{
+		double real_target_velocity;
+		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
+
+		//note that a positive constraint value from current val represents the objects coming together, whereas the positive direction for the position is objects separating
+
+		if (slide_position > positive_slide_limit) {
+			psuedo_target_val = NVec<1>{ -(positive_slide_limit - slide_position) * pos_correct_hardness };
+			this->max_force = std::numeric_limits<double>::infinity();
+			real_target_velocity = std::max<double>(0, target_velocity);
+		}
+		else if (slide_position < negative_slide_limit) {
+			psuedo_target_val = NVec<1>{ -(negative_slide_limit - slide_position) * pos_correct_hardness };
+			this->max_force = std::numeric_limits<double>::infinity();
+			real_target_velocity = std::min<double>(0, target_velocity);
+		}
+		else {
+			psuedo_target_val = NVec<1>{ 0 };
+			this->max_force = max_force;
+			real_target_velocity = target_velocity;
+		}
+
+		a_inv_mass = a->getInvMass();
+		b_inv_mass = b->getInvMass();
+
+		inverse_inertia = NMat<1, 1>{ 1.0 / (a->getInvMass() + b->getInvMass()) };
+		target_val = NVec<1>{ real_target_velocity - current_val };
+	}
+
+	inline void PistonConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+		addVelocityChange(impulse, va, vb);
+	}
+
+	void PistonConstraint::performPGSConstraintStep() {
+		PGS_constraint_step<1>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
+			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
+			[&](const NVec<1>& impulse) {
+				printf("impulse: %f\n", impulse.v[0]);
+				if (impulse.v[0] > 0) {
+					return NVec<1>{ std::min<double>(impulse.v[0], max_force) };
+				}
+				else {
+					return NVec<1>{ std::max<double>(impulse.v[0], -max_force) };
+				}
+			},
+			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	};
+
+	inline void PistonConstraint::performPGSPsuedoConstraintStep() {
+		if (psuedo_target_val.v[0] == 0) return;
+
+		PGS_constraint_step<1>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
+			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
+			[&](const NVec<1>& impulse) { return impulse; },
+			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	};
+
+	inline void PistonConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
+		va->lin += a_inv_mass * slide_axis * impulse.v[0];
+		vb->lin -= b_inv_mass * slide_axis * impulse.v[0];
+	}
+
+	inline NVec<1> PistonConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+		return NVec<1> {slide_axis.dot(va.lin) - slide_axis.dot(vb.lin)};
+	}
 
 	//******************************
 	//******** NVEC / NMAT *********
@@ -792,9 +873,9 @@ namespace phyz {
 	static NVec<12> VelVectoNVec(const phyz::Constraint::VelVec& vel_a, const phyz::Constraint::VelVec& vel_b) {
 		return NVec<12> {
 			vel_a.lin.x, vel_a.lin.y, vel_a.lin.z,
-				vel_a.ang.x, vel_a.ang.y, vel_a.ang.z,
-				vel_b.lin.x, vel_b.lin.y, vel_b.lin.z,
-				vel_b.ang.x, vel_b.ang.y, vel_b.ang.z,
+			vel_a.ang.x, vel_a.ang.y, vel_a.ang.z,
+			vel_b.lin.x, vel_b.lin.y, vel_b.lin.z,
+			vel_b.ang.x, vel_b.ang.y, vel_b.ang.z,
 		};
 	}
 };

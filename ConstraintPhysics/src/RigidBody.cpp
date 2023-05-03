@@ -35,7 +35,8 @@ namespace phyz {
 	void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
 		mthz::Vec3 torque = (position - com).cross(impulse);
 		vel += getInvMass() * impulse;
-		ang_vel += getInvTensor() * impulse;
+		ang_vel += getInvTensor() * torque;
+		alertWakingAction();
 	}
 
 	void RigidBody::setToPosition(const mthz::Vec3& pos) {
@@ -52,6 +53,7 @@ namespace phyz {
 	void RigidBody::translate(const mthz::Vec3& v) {
 		com += v;
 		updateGeometry();
+		alertWakingAction();
 	}
 
 	void RigidBody::setOrientation(const mthz::Quaternion orientation) {

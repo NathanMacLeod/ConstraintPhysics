@@ -573,7 +573,7 @@ public:
 		mthz::Vec3 sw_joint2_pivot_axis3 = rod3_orientation.applyRotation(mthz::Vec3(0, 0, 1));
 		constraints.push_back(p.addHingeConstraint(steering_wheel_rod2_r, sw_joint2_pivot_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_axis1));
 		constraints.push_back(p.addHingeConstraint(steering_wheel_rod3_r, sw_joint2_pivot_r, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_pos_oriented, sw_joint2_pivot_axis3, sw_joint2_pivot_axis2));
-		constraints.push_back(p.addSliderConstraint(base_r, pinion_r, pinion_position, mthz::Vec3(0, 0, -1), 350, 350, 0.2, 0.2));
+		constraints.push_back(p.addSliderConstraint(base_r, pinion_r, pinion_position, mthz::Vec3(0, 0, -1)));
 		constraints.push_back(p.addHingeConstraint(front_wheel1_rod_r, front_wheel1_arm_r, front_wheel1_rod_arm_connect, mthz::Vec3(0, 1, 0)));
 		constraints.push_back(p.addBallSocketConstraint(front_wheel1_rod_r, pinion_r, front_wheel1_rod_pinion_connect));
 		constraints.push_back(p.addHingeConstraint(front_wheel1_arm_r, front_wheel1_r, front_wheel1_position, mthz::Vec3(0, 0, -1)));
@@ -760,8 +760,6 @@ public:
 				phyz_time -= timestep;
 				p.timeStep();
 			}
-
-			printf("%f\n", p.getMotorAngularPosition(front_wheel1_turn_c));
 
 			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));
 

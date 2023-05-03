@@ -9,7 +9,7 @@ namespace phyz {
 
 	template <int n>
 	struct NVec {
-		double v[n];
+		double v[n] = {0};
 
 		bool isZero();
 
@@ -21,7 +21,7 @@ namespace phyz {
 
 	template <int n_row, int n_col>
 	struct NMat {
-		double v[n_row][n_col];
+		double v[n_row][n_col] = {0};
 
 		NMat<n_row, n_col> inverse() const;
 		template<int r, int c>
@@ -244,4 +244,28 @@ namespace phyz {
 		NVec<5> psuedo_target_val;
 	};
 
+	class PistonConstraint : public Constraint {
+	public:
+		PistonConstraint() : impulse(NVec<1>{0.0}) {}
+		PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_force, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+
+		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
+		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		void performPGSConstraintStep() override;
+		void performPGSPsuedoConstraintStep() override;
+
+		inline NVec<1> getConstraintValue(const VelVec& va, const VelVec& vb);
+		inline void addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb);
+
+		NVec<1> psuedo_impulse;
+		NVec<1> impulse;
+	private:
+		double max_force;
+		double a_inv_mass;
+		double b_inv_mass;
+		mthz::Vec3 slide_axis;
+		NMat<1, 1> inverse_inertia;
+		NVec<1> target_val;
+		NVec<1> psuedo_target_val;
+	};
 }
