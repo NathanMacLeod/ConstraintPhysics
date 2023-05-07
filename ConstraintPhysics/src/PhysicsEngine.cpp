@@ -644,10 +644,49 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints() {
+		static int current_visit_tag_value = 0;
+		current_visit_tag_value++; //used to avoid visiting same constraint twice
+
+		//Spring forces are not included in the PGS solver, so in order for other constraints to be aware of their influence they must be applied before the target velocities of constraints are calculated
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
+
+				if (e->visited_tag == current_visit_tag_value)
+					continue; //skip
+				e->visited_tag = current_visit_tag_value;
+
+				RigidBody* b1 = e->n1->b;
+				RigidBody* b2 = e->n2->b;
+
+				for (Spring* s : e->springs) {
+					mthz::Vec3 b1_pos = b1->getTrackedP(s->b1_point_key);
+					mthz::Vec3 b2_pos = b2->getTrackedP(s->b2_point_key);
+					mthz::Vec3 diff = b2_pos - b1_pos;
+					double distance = diff.mag();
+					mthz::Vec3 dir = (distance != 0) ? (b2_pos - b1_pos).normalize() : mthz::Vec3(0, -1, 0);
+
+					double velocity = b2->getVelOfPoint(b1_pos).dot(dir) - b1->getVelOfPoint(b2_pos).dot(dir);
+					double force = s->stiffness * (distance - s->resting_length) + s->damping * velocity;
+
+					b1->applyImpulse(dir * force * step_time, b1_pos);
+					b2->applyImpulse(-dir * force * step_time, b2_pos);
+				}
+			}
+		}
+
+
+		current_visit_tag_value++; //need to update this value again
+		for (const auto& kv_pair : constraint_graph_nodes) {
+			ConstraintGraphNode* n = kv_pair.second;
+			for (auto i = 0; i < n->constraints.size(); i++) {
+				SharedConstraintsEdge* e = n->constraints[i];
+
+				if (e->visited_tag == current_visit_tag_value) 
+					continue; //skip
+				e->visited_tag = current_visit_tag_value;
+
 				RigidBody* b1 = e->n1->b;
 				RigidBody* b2 = e->n2->b;
 				for (auto j = e->contactConstraints.begin(); j != e->contactConstraints.end();) {
@@ -679,7 +718,7 @@ namespace phyz {
 					h->motor_angular_position = calculateMotorPosition(h->motor_angular_position, b1_hinge_axis, rot_ref_axis_u, rot_ref_axis_w, rot_compare_axis, b1->getAngVel(), b2->getAngVel(), step_time);
 					
 					if (h->max_torque > 0 || h->motor_angular_position < h->min_motor_position || h->motor_angular_position > h->max_motor_position) {
-						h->motor_constraint = MotorConstraint(b1, b2, b1_hinge_axis, h->target_velocity, h->max_torque, h->motor_angular_position, h->min_motor_position, h->max_motor_position, posCorrectCoeff(h->rot_correct_hardness, step_time), h->motor_constraint.impulse);
+						h->motor_constraint = MotorConstraint(b1, b2, b1_hinge_axis, h->target_velocity, h->max_torque * step_time, h->motor_angular_position, h->min_motor_position, h->max_motor_position, posCorrectCoeff(h->rot_correct_hardness, step_time), h->motor_constraint.impulse);
 					}
 
 					h->constraint = HingeConstraint(b1, b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, posCorrectCoeff(h->pos_correct_hardness, step_time), 
@@ -695,25 +734,11 @@ namespace phyz {
 					s->slide_limit_exceeded = slider_value < s->negative_slide_limit || slider_value > s->positive_slide_limit;
 
 					if (s->max_piston_force != 0 || s->slide_limit_exceeded) {
-						s->piston_force = PistonConstraint(b1, b2, b1_slide_axis, s->target_velocity, s->max_piston_force, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->piston_force.impulse);
+						s->piston_force = PistonConstraint(b1, b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->piston_force.impulse);
 					}
 
 					s->constraint = SliderConstraint(b1, b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
 						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse, s->constraint.u, s->constraint.w);
-				}
-				for (Spring* s : e->springs) {
-					mthz::Vec3 b1_pos = b1->getTrackedP(s->b1_point_key);
-					mthz::Vec3 b2_pos = b2->getTrackedP(s->b2_point_key);
-					mthz::Vec3 diff = b2_pos - b1_pos;
-					double distance = diff.mag();
-					mthz::Vec3 dir = (distance != 0) ? (b2_pos - b1_pos).normalize() : mthz::Vec3(0, -1, 0);
-					
-					double velocity = b2->getVelOfPoint(b1_pos).dot(dir) - b1->getVelOfPoint(b2_pos).dot(dir);
-					double force = s->stiffness * (distance - s->resting_length) + s->damping * velocity;
-					printf("%f\n", force);
-
-					b1->applyImpulse(dir * force * step_time, b1_pos);
-					b2->applyImpulse(-dir * force * step_time, b2_pos);
 				}
 
 				if (e->noConstraintsLeft()) {

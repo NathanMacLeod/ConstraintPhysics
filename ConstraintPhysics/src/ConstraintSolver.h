@@ -194,7 +194,7 @@ namespace phyz {
 	class MotorConstraint : public Constraint {
 	public:
 		MotorConstraint() : impulse(NVec<1>{0.0}) {}
-		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -207,7 +207,10 @@ namespace phyz {
 		NVec<1> impulse;
 		NVec<1> psuedo_impulse;
 	private:
-		double max_torque;
+		enum LimitStatus { NOT_EXCEEDED = 0, BELOW_MIN, ABOVE_MAX };
+
+		LimitStatus rot_limit_status;
+		double max_torque_impulse;
 		mthz::Vec3 motor_axis;
 		mthz::Vec3 rotDirA;
 		mthz::Vec3 rotDirB;
@@ -247,7 +250,7 @@ namespace phyz {
 	class PistonConstraint : public Constraint {
 	public:
 		PistonConstraint() : impulse(NVec<1>{0.0}) {}
-		PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_force, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+		PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_impulse, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -260,7 +263,10 @@ namespace phyz {
 		NVec<1> psuedo_impulse;
 		NVec<1> impulse;
 	private:
-		double max_force;
+		enum LimitStatus { NOT_EXCEEDED=0, BELOW_MIN, ABOVE_MAX };
+
+		LimitStatus slide_limit_status;
+		double max_impulse;
 		double a_inv_mass;
 		double b_inv_mass;
 		mthz::Vec3 slide_axis;

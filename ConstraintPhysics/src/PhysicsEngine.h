@@ -214,6 +214,8 @@ namespace phyz {
 			std::vector<Slider*> sliderConstraints;
 			std::vector<Spring*> springs;
 
+			int visited_tag = 0;
+
 			inline ConstraintGraphNode* other(ConstraintGraphNode* c) { return (c->b == n1->b ? n2 : n1); }
 			bool noConstraintsLeft() { 
 				return contactConstraints.empty() 

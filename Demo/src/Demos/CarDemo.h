@@ -638,8 +638,8 @@ public:
 		bodies.push_back({ front_wheel2_arm_m, front_wheel2_arm_r });
 		bodies.push_back({ front_wheel2_rod_m, front_wheel2_rod_r });
 
-		double throttle_torque = 300;
-		double steering_torque = 0.5;
+		double throttle_torque = 300 * 90;
+		double steering_torque = 0.5 * 90;
 		double throttle_velocity = -1;
 		double steering_velocity = 3;
 

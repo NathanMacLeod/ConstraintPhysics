@@ -30,7 +30,7 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setSleepingEnabled(true);
+		p.setSleepingEnabled(false);
 		p.setPGSIterations(45, 35);
 
 		bool lock_cam = true;
@@ -67,21 +67,21 @@ public:
 		phyz::Geometry leg3 = phyz::Geometry::box(frog_pos + mthz::Vec3(frog_length - leg_width, - leg_height, frog_width - leg_width), leg_width, leg_height, leg_width);
 		phyz::Geometry leg4 = phyz::Geometry::box(frog_pos + mthz::Vec3(0, -leg_height, frog_width - leg_width), leg_width, leg_height, leg_width);
 
-		phyz::RigidBody* frog_base_r = p.createRigidBody(frog_base, true);
+		phyz::RigidBody* frog_base_r = p.createRigidBody(frog_base);
 		phyz::RigidBody* leg1_r = p.createRigidBody(leg1);
 		phyz::RigidBody* leg2_r = p.createRigidBody(leg2);
 		phyz::RigidBody* leg3_r = p.createRigidBody(leg3);
 		phyz::RigidBody* leg4_r = p.createRigidBody(leg4);
 
 		phyz::ConstraintID leg1_c = p.addSliderConstraint(frog_base_r, leg1_r, frog_pos, mthz::Vec3(0, -1, 0), 350, 350, std::numeric_limits<double>::infinity(), 0);
-		//p.addSliderConstraint(frog_base_r, leg2_r, frog_pos, mthz::Vec3(0, -1, 0), 350, 350, std::numeric_limits<double>::infinity(), 0);
-		//p.addSliderConstraint(frog_base_r, leg3_r, frog_pos, mthz::Vec3(0, -1, 0), 350, 350, std::numeric_limits<double>::infinity(), 0);
-		//phyz::ConstraintID leg4_c = p.addSliderConstraint(frog_base_r, leg4_r, frog_pos, mthz::Vec3(0, -1, 0), 350, 350, std::numeric_limits<double>::infinity(), 0);
+		p.addSliderConstraint(frog_base_r, leg2_r, frog_pos, mthz::Vec3(0, -1, 0), 350, 350, std::numeric_limits<double>::infinity(), 0);
+		p.addSliderConstraint(frog_base_r, leg3_r, frog_pos, mthz::Vec3(0, -1, 0), 350, 350, std::numeric_limits<double>::infinity(), 0);
+		phyz::ConstraintID leg4_c = p.addSliderConstraint(frog_base_r, leg4_r, frog_pos, mthz::Vec3(0, -1, 0), 350, 350, std::numeric_limits<double>::infinity(), 0);
 
-		p.addSpring(frog_base_r, leg1_r, leg1_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg1_r->getCOM(), 0.05, 15.0, gap);
-		//p.addSpring(frog_base_r, leg2_r, leg2_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg2_r->getCOM(), 0.05, 15.0, gap);
-		//p.addSpring(frog_base_r, leg3_r, leg3_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg3_r->getCOM(), 0.05, 15.0, gap);
-		//p.addSpring(frog_base_r, leg4_r, leg4_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg4_r->getCOM(), 0.05, 15.0, gap);
+		p.addSpring(frog_base_r, leg1_r, leg1_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg1_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.05, 1.0, gap);
+		p.addSpring(frog_base_r, leg2_r, leg2_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg2_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.05, 1.0, gap);
+		p.addSpring(frog_base_r, leg3_r, leg3_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg3_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.05, 1.0, gap);
+		p.addSpring(frog_base_r, leg4_r, leg4_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg4_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.05, 1.0, gap);
 
 		bodies.push_back({ fromGeometry(frog_base), frog_base_r });
 		bodies.push_back({ fromGeometry(leg1), leg1_r });
@@ -136,16 +136,16 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
-				p.setPistonForce(leg1_c, 10);
-				//p.setPistonForce(leg4_c, 10);
+				p.setPistonForce(leg1_c, 10 * 90);
+				p.setPistonForce(leg4_c, 10 * 90);
 				p.setPistonTargetVelocity(leg1_c, 1);
-				//p.setPistonTargetVelocity(leg4_c, 1);
+				p.setPistonTargetVelocity(leg4_c, 1);
 			}
 			else {
 				p.setPistonForce(leg1_c, 0);
-				//p.setPistonForce(leg4_c, 0);
+				p.setPistonForce(leg4_c, 0);
 				p.setPistonTargetVelocity(leg1_c, 0);
-				//p.setPistonTargetVelocity(leg4_c, 0);
+				p.setPistonTargetVelocity(leg4_c, 0);
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
 				for (PhysBod b : bodies) {

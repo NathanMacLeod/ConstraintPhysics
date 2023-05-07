@@ -113,13 +113,13 @@ public:
 		bodies.push_back({ fromGeometry(ball), ball_r });
 
 
-		double rotate_torque = 0.2;
+		double rotate_torque = 0.2 * 90;
 		phyz::ConstraintID rotate_motor = p.addHingeConstraint(base_r, cabin_r, crane_tower_pos + mthz::Vec3(0, crane_tower_height + crane_tower_width, 0), mthz::Vec3(0, 1, 0));
-		double lift_torque = 60;
+		double lift_torque = 60 * 90;
 		phyz::ConstraintID lift_motor = p.addHingeConstraint(cabin_r, crane_r, crane_pos, mthz::Vec3(0, 0, 1));
 
 		p.setMotorProperties(rotate_motor, rotate_torque);
-		p.setMotorProperties(lift_motor, lift_torque);
+		p.setMotorProperties(lift_motor, lift_torque, 0.9 * -PI/2.0, PI/4.0);
 
 		//*************
 		//****TOWER****
