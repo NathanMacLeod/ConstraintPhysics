@@ -50,7 +50,6 @@ namespace phyz {
 			}
 			return out;
 		}
-
 	};
 
 	class Constraint {
@@ -222,7 +221,7 @@ namespace phyz {
 	class SliderConstraint : public Constraint {
 	public:
 		SliderConstraint() : impulse(NVec<5>{0.0, 0.0, 0.0, 0.0, 0.0}) {}
-		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, mthz::Vec3 slider_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse = NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
+		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse = NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -273,5 +272,34 @@ namespace phyz {
 		NMat<1, 1> inverse_inertia;
 		NVec<1> target_val;
 		NVec<1> psuedo_target_val;
+	};
+
+	class SlidingHingeConstraint : public Constraint {
+	public:
+		SlidingHingeConstraint() : impulse(NVec<4>{0.0, 0.0, 0.0, 0.0}) {}
+		SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<4> warm_start_impulse = NVec<4>{ 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
+
+		inline inline bool constraintWarmStarted() override { return !impulse.isZero(); }
+		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		void performPGSConstraintStep() override;
+		void performPGSPsuedoConstraintStep() override;
+
+		inline NVec<4> getConstraintValue(const VelVec& va, const VelVec& vb);
+		inline void addVelocityChange(const NVec<4>& impulse, VelVec* va, VelVec* vb);
+
+		NVec<4> impulse;
+		NVec<4> psuedo_impulse;
+		mthz::Vec3 u;
+		mthz::Vec3 w;
+	private:
+		mthz::Vec3 rA;
+		mthz::Vec3 rB;
+		mthz::Vec3 n;
+		NMat<3, 4> rotDirA;
+		NMat<3, 4> rotDirB;
+		NMat<4, 12> jacobian;
+		NMat<4, 4> inverse_inertia;
+		NVec<4> target_val;
+		NVec<4> psuedo_target_val;
 	};
 }

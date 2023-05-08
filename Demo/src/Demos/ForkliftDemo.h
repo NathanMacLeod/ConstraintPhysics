@@ -78,10 +78,10 @@ public:
 		p.addSliderConstraint(frog_base_r, leg3_r, frog_pos, mthz::Vec3(0, -1, 0), 350, 350, std::numeric_limits<double>::infinity(), 0);
 		phyz::ConstraintID leg4_c = p.addSliderConstraint(frog_base_r, leg4_r, frog_pos, mthz::Vec3(0, -1, 0), 350, 350, std::numeric_limits<double>::infinity(), 0);
 
-		p.addSpring(frog_base_r, leg1_r, leg1_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg1_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.05, 1.0, gap);
-		p.addSpring(frog_base_r, leg2_r, leg2_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg2_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.05, 1.0, gap);
-		p.addSpring(frog_base_r, leg3_r, leg3_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg3_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.05, 1.0, gap);
-		p.addSpring(frog_base_r, leg4_r, leg4_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg4_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.05, 1.0, gap);
+		p.addSpring(frog_base_r, leg1_r, leg1_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg1_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.15, 15.0, gap);
+		p.addSpring(frog_base_r, leg2_r, leg2_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg2_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.15, 15.0, gap);
+		p.addSpring(frog_base_r, leg3_r, leg3_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg3_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.15, 15.0, gap);
+		p.addSpring(frog_base_r, leg4_r, leg4_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg4_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.15, 15.0, gap);
 
 		bodies.push_back({ fromGeometry(frog_base), frog_base_r });
 		bodies.push_back({ fromGeometry(leg1), leg1_r });
@@ -136,16 +136,12 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
-				p.setPistonForce(leg1_c, 10 * 90);
-				p.setPistonForce(leg4_c, 10 * 90);
-				p.setPistonTargetVelocity(leg1_c, 1);
-				p.setPistonTargetVelocity(leg4_c, 1);
+				p.setPiston(leg1_c, 10 * 90, 1);
+				p.setPiston(leg4_c, 10 * 90, 1);
 			}
 			else {
-				p.setPistonForce(leg1_c, 0);
-				p.setPistonForce(leg4_c, 0);
-				p.setPistonTargetVelocity(leg1_c, 0);
-				p.setPistonTargetVelocity(leg4_c, 0);
+				p.setPiston(leg1_c, 0, 0);
+				p.setPiston(leg4_c, 0, 0);
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
 				for (PhysBod b : bodies) {

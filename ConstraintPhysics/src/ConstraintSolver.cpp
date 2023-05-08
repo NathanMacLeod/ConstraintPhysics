@@ -501,14 +501,13 @@ namespace phyz {
 		return NVec<1> {motor_axis.dot(va.ang) - motor_axis.dot(vb.ang)};
 	}
 
-	//******************************
-	//*****SLIDER CONSTRAINT********
-	//******************************
-	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, mthz::Vec3 slider_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	////******************************
+	////*****SLIDER CONSTRAINT********
+	////******************************
+	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: Constraint(a, b), rA(slider_point_b - a->getCOM()), rB(slider_point_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 })
 	{
 		slider_axis_a = slider_axis_a.normalize();
-		slider_axis_b = slider_axis_b.normalize();
 		slider_axis_a.getPerpendicularBasis(&u, &w);
 
 		impulse.v[0] = u.dot(source_u) * warm_start_impulse.v[0] + u.dot(source_w) * warm_start_impulse.v[1];
@@ -641,6 +640,7 @@ namespace phyz {
 		vb->ang -= NVec3toVec3(rotDirB * impulse);
 	}
 
+
 	//******************************
 	//*****PISTON CONSTRAINT********
 	//******************************
@@ -721,6 +721,138 @@ namespace phyz {
 
 	inline NVec<1> PistonConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
 		return NVec<1> {slide_axis.dot(va.lin) - slide_axis.dot(vb.lin)};
+	}
+
+	//******************************
+	//***SLIDING HINGE CONSTRAINT***
+	//******************************
+	SlidingHingeConstraint::SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_pos_a, mthz::Vec3 slide_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<4> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+		: Constraint(a, b), rA(slide_pos_a - a->getCOM()), rB(slide_pos_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<4>{ 0.0, 0.0, 0.0, 0.0 })
+	{
+		rot_axis_a.getPerpendicularBasis(&u, &w);
+		n = rot_axis_b;
+
+		impulse.v[3] = u.dot(source_u) * warm_start_impulse.v[3] + u.dot(source_w) * warm_start_impulse.v[4];
+		impulse.v[4] = w.dot(source_u) * warm_start_impulse.v[3] + w.dot(source_w) * warm_start_impulse.v[4];
+
+		mthz::Mat3 Ia_inv = a->getInvTensor();
+		mthz::Mat3 Ib_inv = b->getInvTensor();
+
+		mthz::Mat3 rA_skew = mthz::Mat3::cross_mat(rA);
+		mthz::Mat3 rB_skew = mthz::Mat3::cross_mat(rB);
+
+		mthz::Vec3 pos_diff = slide_pos_a - slide_pos_b;
+
+		//IMPULSE TO ROTATION MATRICES
+		{
+			mthz::Vec3 l = -Ia_inv * (u.cross(rA));		//left block
+			mthz::Vec3 lm = -Ia_inv * (w.cross(rA));    //left middle block
+			mthz::Vec3 rm = -Ia_inv * (u.cross(n));     //left middle block
+			mthz::Vec3 r = -Ia_inv * (w.cross(n));      //right block
+
+			rotDirA.v[0][0] = l.x; rotDirA.v[0][1] = lm.x; rotDirA.v[0][2] = rm.x; rotDirA.v[0][3] = r.x;
+			rotDirA.v[1][0] = l.y; rotDirA.v[1][1] = lm.y; rotDirA.v[1][2] = rm.y; rotDirA.v[1][3] = r.y;
+			rotDirA.v[2][0] = l.z; rotDirA.v[2][1] = lm.z; rotDirA.v[2][2] = rm.z; rotDirA.v[2][3] = r.z;
+		}
+		{
+			mthz::Vec3 l = Ib_inv * (u.cross(rB) - pos_diff.cross(u));  //left block
+			mthz::Vec3 lm = Ib_inv * (w.cross(rB) - pos_diff.cross(w)); //left middle block
+			mthz::Vec3 rm = Ib_inv * (u.cross(n));                      //left middle block
+			mthz::Vec3 r = Ib_inv * (w.cross(n));                       //right block
+
+			rotDirB.v[0][0] = l.x; rotDirB.v[0][1] = lm.x; rotDirB.v[0][2] = rm.x; rotDirB.v[0][3] = r.x;
+			rotDirB.v[1][0] = l.y; rotDirB.v[1][1] = lm.y; rotDirB.v[1][2] = rm.y; rotDirB.v[1][3] = r.y;
+			rotDirB.v[2][0] = l.z; rotDirB.v[2][1] = lm.z; rotDirB.v[2][2] = rm.z; rotDirB.v[2][3] = r.z;
+		}
+
+		//INVERSE INERTIA MATRIX
+		{
+			NMat<3, 3> ul = Mat3toNMat33(mthz::Mat3::iden() * a->getInvMass() + mthz::Mat3::iden() * b->getInvMass() - rA_skew * Ia_inv * rA_skew - rB_skew * Ib_inv * rB_skew); //upper left
+			mthz::Vec3 um = -(rA_skew * Ia_inv + rB_skew * Ib_inv) * (n.cross(u)); //upper middle
+			mthz::Vec3 ur = -(rA_skew * Ia_inv + rB_skew * Ib_inv) * (n.cross(w)); //upper right
+
+			NMat<3, 3> rA_skew_mat = Mat3toNMat33(rA_skew);
+			NMat<3, 3> rB_skew_mat = Mat3toNMat33(rB_skew);
+			NMat<3, 3> u_skew = Mat3toNMat33(mthz::Mat3::cross_mat(u));
+			NMat<3, 3> w_skew = Mat3toNMat33(mthz::Mat3::cross_mat(w));
+			NMat<3, 3> n_skew = Mat3toNMat33(mthz::Mat3::cross_mat(n));
+			NMat<1, 3> u_dot = NMat<1, 3>{ {u.x, u.y, u.z} };
+			NMat<1, 3> w_dot = NMat<1, 3>{ {w.x, w.y, w.z} };
+			NMat<1, 3> n_dot = NMat<1, 3>{ {n.x, n.y, n.z} };
+			NMat<1, 3> pd_dot = NMat<1, 3>{ {pos_diff.x, pos_diff.y, pos_diff.z} };
+
+			jacobian.copyInto(u_dot, 0, 0); jacobian.copyInto(-u_dot * rA_skew_mat, 0, 3); jacobian.copyInto(-u_dot, 0, 6); jacobian.copyInto(u_dot * rB_skew_mat - pd_dot * u_skew, 0, 9);
+			jacobian.copyInto(w_dot, 1, 0); jacobian.copyInto(-w_dot * rA_skew_mat, 1, 3); jacobian.copyInto(-w_dot, 1, 6); jacobian.copyInto(w_dot * rB_skew_mat - pd_dot * w_skew, 1, 9);
+											jacobian.copyInto(-u_dot * n_skew, 2, 3);										jacobian.copyInto(-n_dot * u_skew, 2, 9);
+											jacobian.copyInto(-w_dot * n_skew, 3, 3);										jacobian.copyInto(-n_dot * w_skew, 3, 9);
+
+			NMat<12, 4> imp_to_vel;
+
+			mthz::Vec3 uma = u * a->getInvMass();
+			mthz::Vec3 wma = w * a->getInvMass();
+
+			imp_to_vel.v[0][0] = uma.x; imp_to_vel.v[0][1] = wma.x;
+			imp_to_vel.v[1][0] = uma.y; imp_to_vel.v[1][1] = wma.y;
+			imp_to_vel.v[2][0] = uma.z; imp_to_vel.v[2][1] = wma.z;
+
+			imp_to_vel.copyInto(rotDirA, 3, 0);
+
+			mthz::Vec3 umb = u * b->getInvMass();
+			mthz::Vec3 wmb = w * b->getInvMass();
+
+			imp_to_vel.v[6][0] = -umb.x; imp_to_vel.v[6][1] = -wmb.x;
+			imp_to_vel.v[7][0] = -umb.y; imp_to_vel.v[7][1] = -wmb.y;
+			imp_to_vel.v[8][0] = -umb.z; imp_to_vel.v[8][1] = -wmb.z;
+
+			imp_to_vel.copyInto(rotDirB, 9, 0);
+
+			inverse_inertia = (jacobian * imp_to_vel).inverse(); //not effient, could expand out eventually
+		}
+
+		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
+		{
+			double u_correct = -u.dot(pos_diff) * pos_correct_hardness;
+			double w_correct = -w.dot(pos_diff) * pos_correct_hardness;
+			double u_rot_correct = u.dot(n) * rot_correct_hardness;
+			double w_rot_correct = w.dot(n) * rot_correct_hardness;
+			psuedo_target_val = NVec<4>{ u_correct, w_correct, u_rot_correct, w_rot_correct };
+		}
+	}
+
+	inline void SlidingHingeConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+		addVelocityChange(impulse, va, vb);
+	}
+
+	void SlidingHingeConstraint::performPGSConstraintStep() {
+		PGS_constraint_step<4>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
+			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
+			[](const NVec<4>& impulse) { return impulse; },
+			[&](const NVec<4>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	}
+
+	void SlidingHingeConstraint::performPGSPsuedoConstraintStep() {
+		return;
+
+		PGS_constraint_step<4>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
+			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
+			[](const NVec<4>& impulse) { return impulse; },
+			[&](const NVec<4>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	}
+
+	inline NVec<4> SlidingHingeConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+		return jacobian * VelVectoNVec(va, vb);
+	}
+
+	inline void SlidingHingeConstraint::addVelocityChange(const NVec<4>& impulse, VelVec* va, VelVec* vb) {
+		mthz::Vec3 linear_impulse_vec(impulse.v[0], impulse.v[1], impulse.v[2]);
+		va->lin += linear_impulse_vec * a->getInvMass();
+		vb->lin -= linear_impulse_vec * b->getInvMass();
+		va->ang += NVec3toVec3(rotDirA * impulse);
+		vb->ang += NVec3toVec3(rotDirB * impulse);
 	}
 
 	//******************************
