@@ -644,23 +644,20 @@ namespace phyz {
 	//******************************
 	//*****PISTON CONSTRAINT********
 	//******************************
-	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_impulse, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse)
-		: Constraint(a, b), slide_axis(slide_axis), impulse(warm_start_impulse), max_impulse(max_impulse)
+	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse)
+		: Constraint(a, b), slide_axis(slide_axis_a), impulse(warm_start_impulse), max_impulse(max_impulse)
 	{
 		double real_target_velocity;
-		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
-
-		//note that a positive constraint value from current val represents the objects coming together, whereas the positive values of slide position represent separation
-
+		
 		if (slide_position > positive_slide_limit) {
-			psuedo_target_val = NVec<1>{ -(positive_slide_limit - slide_position) * pos_correct_hardness };
+			psuedo_target_val = NVec<1>{ (positive_slide_limit - slide_position) * pos_correct_hardness };
 			slide_limit_status = ABOVE_MAX;
-			real_target_velocity = std::max<double>(0, target_velocity);
+			real_target_velocity = std::min<double>(0, target_velocity);
 		}
 		else if (slide_position < negative_slide_limit) {
-			psuedo_target_val = NVec<1>{ -(negative_slide_limit - slide_position) * pos_correct_hardness };
+			psuedo_target_val = NVec<1>{ (negative_slide_limit - slide_position) * pos_correct_hardness };
 			slide_limit_status = BELOW_MIN;
-			real_target_velocity = std::min<double>(0, target_velocity);
+			real_target_velocity = std::max<double>(0, target_velocity);
 		}
 		else {
 			psuedo_target_val = NVec<1>{ 0 };
@@ -668,10 +665,14 @@ namespace phyz {
 			real_target_velocity = target_velocity;
 		}
 
-		a_inv_mass = a->getInvMass();
-		b_inv_mass = b->getInvMass();
+		mthz::Mat3 Ia_inv = a->getInvTensor();
 
-		inverse_inertia = NMat<1, 1>{ 1.0 / (a->getInvMass() + b->getInvMass()) };
+		pos_diff = b->getCOM() - a->getCOM();
+		rot_dir = Ia_inv * (pos_diff.cross(slide_axis_a));
+
+		inverse_inertia = NMat<1, 1>{ 1.0 / (a->getInvMass() + b->getInvMass() + pos_diff.dot(slide_axis_a.cross(rot_dir))) };
+
+		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
 		target_val = NVec<1>{ real_target_velocity - current_val };
 	}
 
@@ -691,9 +692,9 @@ namespace phyz {
 					else 
 						return NVec<1>{ std::max<double>(impulse.v[0], -max_impulse) };
 				case ABOVE_MAX:
-					return NVec<1>{ std::max<double>(impulse.v[0], 0)};
-				case BELOW_MIN:
 					return NVec<1>{ std::min<double>(impulse.v[0], 0)};
+				case BELOW_MIN:
+					return NVec<1>{ std::max<double>(impulse.v[0], 0)};
 				}
 
 				
@@ -715,12 +716,18 @@ namespace phyz {
 	};
 
 	inline void PistonConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
-		va->lin += a_inv_mass * slide_axis * impulse.v[0];
-		vb->lin -= b_inv_mass * slide_axis * impulse.v[0];
+		NVec<1> v1 = getConstraintValue(*va, *vb);
+
+		va->lin -= a->getInvMass() * slide_axis * impulse.v[0];
+		vb->lin += b->getInvMass() * slide_axis * impulse.v[0];
+		va->ang -= rot_dir * impulse.v[0];
+
+		NVec<1> v2 = getConstraintValue(*va, *vb);
+		int a = 1 + 2;
 	}
 
 	inline NVec<1> PistonConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
-		return NVec<1> {slide_axis.dot(va.lin) - slide_axis.dot(vb.lin)};
+		return NVec<1>{ slide_axis.dot(vb.lin) - slide_axis.dot(va.lin) - pos_diff.dot(slide_axis.cross(va.ang)) };
 	}
 
 	//******************************
@@ -729,8 +736,8 @@ namespace phyz {
 	SlidingHingeConstraint::SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_pos_a, mthz::Vec3 slide_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<4> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: Constraint(a, b), rA(slide_pos_a - a->getCOM()), rB(slide_pos_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<4>{ 0.0, 0.0, 0.0, 0.0 })
 	{
-		rot_axis_a.getPerpendicularBasis(&u, &w);
-		n = rot_axis_b;
+		rot_axis_b.getPerpendicularBasis(&u, &w);
+		n = rot_axis_a;
 
 		impulse.v[3] = u.dot(source_u) * warm_start_impulse.v[3] + u.dot(source_w) * warm_start_impulse.v[4];
 		impulse.v[4] = w.dot(source_u) * warm_start_impulse.v[3] + w.dot(source_w) * warm_start_impulse.v[4];
@@ -828,7 +835,10 @@ namespace phyz {
 			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
 			[](const NVec<4>& impulse) { return impulse; },
 			[&](const NVec<4>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				NVec<4> v1 = getConstraintValue(*va, *vb);
 				this->addVelocityChange(impulse, va, vb);
+				NVec<4> v2 = getConstraintValue(*va, *vb);
+				int a = 1 + 2;
 			});
 	}
 
@@ -848,9 +858,8 @@ namespace phyz {
 	}
 
 	inline void SlidingHingeConstraint::addVelocityChange(const NVec<4>& impulse, VelVec* va, VelVec* vb) {
-		mthz::Vec3 linear_impulse_vec(impulse.v[0], impulse.v[1], impulse.v[2]);
-		va->lin += linear_impulse_vec * a->getInvMass();
-		vb->lin -= linear_impulse_vec * b->getInvMass();
+		va->lin += (impulse.v[0] * u + impulse.v[1] * w) * a->getInvMass();
+		vb->lin -= (impulse.v[0] * u + impulse.v[1] * w) * b->getInvMass();
 		va->ang += NVec3toVec3(rotDirA * impulse);
 		vb->ang += NVec3toVec3(rotDirB * impulse);
 	}

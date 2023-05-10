@@ -502,8 +502,18 @@ namespace phyz {
 
 			}
 			break;
-	}
+		case ConstraintID::SLIDING_HINGE:
+			for (int i = 0; i < e->springs.size(); i++) {
+				SlidingHinge* s = e->slidingHingeConstraints[i];
+				if (s->uniqueID == id.uniqueID) {
+					delete s;
+					e->slidingHingeConstraints.erase(e->slidingHingeConstraints.begin() + i);
 
+				}
+
+			}
+			break;
+		}
 
 		constraint_map.erase(id.uniqueID);
 		
@@ -769,6 +779,15 @@ namespace phyz {
 					s->constraint = SliderConstraint(b1, b2, b1_pos, b2_pos, b1_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
 						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse, s->constraint.u, s->constraint.w);
 				}
+				for (SlidingHinge* s : e->slidingHingeConstraints) {
+					mthz::Vec3 b1_pos = b1->getTrackedP(s->b1_point_key);
+					mthz::Vec3 b2_pos = b2->getTrackedP(s->b2_point_key);
+					mthz::Vec3 b1_slide_axis = b1->orientation.applyRotation(s->b1_slide_axis_body_space);
+					mthz::Vec3 b2_slide_axis = b2->orientation.applyRotation(s->b2_slide_axis_body_space);
+
+					s->constraint = SlidingHingeConstraint(b1, b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
+						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse, s->constraint.u, s->constraint.w);
+				}
 
 				if (e->noConstraintsLeft()) {
 					delete e;
@@ -831,6 +850,9 @@ namespace phyz {
 							if (s->max_piston_force != 0 || s->slide_limit_exceeded) {
 								output->island_constraints->push_back(&s->piston_force);
 							}
+						}
+						for (SlidingHinge* s : e->slidingHingeConstraints) {
+							output->island_constraints->push_back(&s->constraint);
 						}
 					}
 				}

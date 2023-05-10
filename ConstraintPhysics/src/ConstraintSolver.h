@@ -266,8 +266,8 @@ namespace phyz {
 
 		LimitStatus slide_limit_status;
 		double max_impulse;
-		double a_inv_mass;
-		double b_inv_mass;
+		mthz::Vec3 rot_dir;
+		mthz::Vec3 pos_diff;
 		mthz::Vec3 slide_axis;
 		NMat<1, 1> inverse_inertia;
 		NVec<1> target_val;
