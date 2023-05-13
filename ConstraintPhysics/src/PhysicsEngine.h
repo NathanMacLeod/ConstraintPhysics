@@ -72,19 +72,23 @@ namespace phyz {
 		void removeCollisionAction(ColActionID action_key);
 
 		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=350);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=350, double rot_correct_strength=350, double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=350, double rot_correct_strength=350,
+			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
 		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 350,
-			double rot_correct_strength=350, double positive_slide_limit=std::numeric_limits<double>::infinity(), double negative_slide_limit=std::numeric_limits<double>::infinity());
+			double rot_correct_strength=350, double negative_slide_limit=-std::numeric_limits<double>::infinity(), double positive_slide_limit=std::numeric_limits<double>::infinity());
 		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 350,
-			double rot_correct_strength = 350);
+			double rot_correct_strength = 350, double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity(),
+			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
 
 
 		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength = 350);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength = 350, double rot_correct_strength = 350, double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength = 350, double rot_correct_strength = 350,
+			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
 		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = 350,
-			double rot_correct_strength = 350, double positive_slide_limit = std::numeric_limits<double>::infinity(), double negative_slide_limit = -std::numeric_limits<double>::infinity());
+			double rot_correct_strength = 350, double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity());
 		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = 350,
-			double rot_correct_strength = 350);
+			double rot_correct_strength = 350, double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity(),
+			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
 		ConstraintID addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length = -1);
 
 
@@ -154,25 +158,28 @@ namespace phyz {
 			int uniqueID;
 		};
 
-		struct Hinge {
-			HingeConstraint constraint;
+		struct Motor {
 			MotorConstraint motor_constraint;
-			RigidBody::PKey b1_point_key;
-			RigidBody::PKey b2_point_key;
-			mthz::Vec3 b1_rot_axis_body_space;
-			mthz::Vec3 b2_rot_axis_body_space;
-			double pos_correct_hardness;
-			double rot_correct_hardness;
-			double max_torque;
-			double target_velocity;
-			int uniqueID;
-
 			mthz::Vec3 b1_u_axis_reference;
 			mthz::Vec3 b1_w_axis_reference;
 			mthz::Vec3 b2_rot_comparison_axis;
 			double motor_angular_position;
 			double min_motor_position;
 			double max_motor_position;
+			double max_torque;
+			double target_velocity;
+		};
+
+		struct Hinge {
+			HingeConstraint constraint;
+			Motor motor;
+			RigidBody::PKey b1_point_key;
+			RigidBody::PKey b2_point_key;
+			mthz::Vec3 b1_rot_axis_body_space;
+			mthz::Vec3 b2_rot_axis_body_space;
+			double pos_correct_hardness;
+			double rot_correct_hardness;
+			int uniqueID;
 		};
 
 		struct Slider {
@@ -194,12 +201,19 @@ namespace phyz {
 
 		struct SlidingHinge {
 			SlidingHingeConstraint constraint;
+			PistonConstraint piston_force;
+			Motor motor;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_slide_axis_body_space;
 			mthz::Vec3 b2_slide_axis_body_space;
+			double max_piston_force;
+			double target_velocity;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
+			double positive_slide_limit;
+			double negative_slide_limit;
+			bool slide_limit_exceeded;
 			int uniqueID;
 		};
 
@@ -214,6 +228,7 @@ namespace phyz {
 
 	
 		double calculateMotorPosition(double current_position, mthz::Vec3 rot_axis, mthz::Vec3 u_ref_axis, mthz::Vec3 w_ref_axis, mthz::Vec3 compare_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double timestep);
+		Motor initMotor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle);
 
 		struct SharedConstraintsEdge {
 			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contactConstraints(std::vector<Contact*>()) {}

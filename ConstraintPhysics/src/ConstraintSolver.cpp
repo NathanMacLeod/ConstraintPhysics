@@ -716,14 +716,9 @@ namespace phyz {
 	};
 
 	inline void PistonConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
-		NVec<1> v1 = getConstraintValue(*va, *vb);
-
 		va->lin -= a->getInvMass() * slide_axis * impulse.v[0];
 		vb->lin += b->getInvMass() * slide_axis * impulse.v[0];
 		va->ang -= rot_dir * impulse.v[0];
-
-		NVec<1> v2 = getConstraintValue(*va, *vb);
-		int a = 1 + 2;
 	}
 
 	inline NVec<1> PistonConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
@@ -820,8 +815,8 @@ namespace phyz {
 		{
 			double u_correct = -u.dot(pos_diff) * pos_correct_hardness;
 			double w_correct = -w.dot(pos_diff) * pos_correct_hardness;
-			double u_rot_correct = u.dot(n) * rot_correct_hardness;
-			double w_rot_correct = w.dot(n) * rot_correct_hardness;
+			double u_rot_correct = -u.dot(n) * rot_correct_hardness;
+			double w_rot_correct = -w.dot(n) * rot_correct_hardness;
 			psuedo_target_val = NVec<4>{ u_correct, w_correct, u_rot_correct, w_rot_correct };
 		}
 	}
@@ -835,16 +830,11 @@ namespace phyz {
 			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
 			[](const NVec<4>& impulse) { return impulse; },
 			[&](const NVec<4>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
-				NVec<4> v1 = getConstraintValue(*va, *vb);
 				this->addVelocityChange(impulse, va, vb);
-				NVec<4> v2 = getConstraintValue(*va, *vb);
-				int a = 1 + 2;
 			});
 	}
 
 	void SlidingHingeConstraint::performPGSPsuedoConstraintStep() {
-		return;
-
 		PGS_constraint_step<4>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
 			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
 			[](const NVec<4>& impulse) { return impulse; },

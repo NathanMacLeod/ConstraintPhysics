@@ -56,7 +56,7 @@ public:
 		double frog_length = 2;
 		double frog_width = 1;
 		double frog_thickness = 0.33;
-		phyz::Geometry frog_base = phyz::Geometry::box(frog_pos, frog_length, frog_thickness, frog_width);
+		phyz::Geometry frog_base = phyz::Geometry::box(frog_pos, frog_length, frog_thickness, frog_width, phyz::Material::modified_density(0.1));
 
 		double leg_width = 0.15;
 		double leg_height = 0.4;
@@ -73,19 +73,19 @@ public:
 		phyz::RigidBody* leg3_r = p.createRigidBody(leg3);
 		phyz::RigidBody* leg4_r = p.createRigidBody(leg4);
 
-		phyz::ConstraintID leg1_c = p.addSlidingHingeConstraint(frog_base_r, leg1_r, leg1_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0));
-		phyz::ConstraintID leg2_c = p.addSlidingHingeConstraint(frog_base_r, leg2_r, leg2_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0));
-		phyz::ConstraintID leg3_c = p.addSlidingHingeConstraint(frog_base_r, leg3_r, leg3_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0));
-		phyz::ConstraintID leg4_c = p.addSlidingHingeConstraint(frog_base_r, leg4_r, leg4_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0));
-		//p.addSliderConstraint(frog_base_r, leg1_r, leg1_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, gap, 0);
-		//p.addSliderConstraint(frog_base_r, leg2_r, leg2_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, gap, 0);
-		//p.addSliderConstraint(frog_base_r, leg3_r, leg3_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, gap, 0);
-		//phyz::ConstraintID leg4_c = p.addSliderConstraint(frog_base_r, leg4_r, leg4_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, gap, 0);
+		phyz::ConstraintID leg1_c = p.addSlidingHingeConstraint(frog_base_r, leg1_r, leg1_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, 0);
+		phyz::ConstraintID leg2_c = p.addSlidingHingeConstraint(frog_base_r, leg2_r, leg2_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, 0);
+		phyz::ConstraintID leg3_c = p.addSlidingHingeConstraint(frog_base_r, leg3_r, leg3_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, 0);
+		phyz::ConstraintID leg4_c = p.addSlidingHingeConstraint(frog_base_r, leg4_r, leg4_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, 0);
+		//p.addSliderConstraint(frog_base_r, leg1_r, leg1_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, 0, gap);
+		//p.addSliderConstraint(frog_base_r, leg2_r, leg2_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, 0, gap);
+		//p.addSliderConstraint(frog_base_r, leg3_r, leg3_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, 0, gap);
+		//phyz::ConstraintID leg4_c = p.addSliderConstraint(frog_base_r, leg4_r, leg4_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), mthz::Vec3(0, -1, 0), 350, 350, 0, gap);
 
-		p.reallowCollision(leg1_r, frog_base_r);
-		p.reallowCollision(leg2_r, frog_base_r);
-		p.reallowCollision(leg3_r, frog_base_r);
-		p.reallowCollision(leg4_r, frog_base_r);
+		//p.reallowCollision(leg1_r, frog_base_r);
+		//p.reallowCollision(leg2_r, frog_base_r);
+		//p.reallowCollision(leg3_r, frog_base_r);
+		//p.reallowCollision(leg4_r, frog_base_r);
 
 		p.addSpring(frog_base_r, leg1_r, leg1_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg1_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.15, 15.0, gap);
 		p.addSpring(frog_base_r, leg2_r, leg2_r->getCOM() + mthz::Vec3(0, leg_height, 0), leg2_r->getCOM() + mthz::Vec3(0, leg_height / 2.0, 0), 0.15, 15.0, gap);
@@ -145,11 +145,17 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
-				//p.setPiston(leg1_c, 10 * 90, 1);
+				p.setPiston(leg1_c, -1 * 90, 1);
+				//p.setPiston(leg2_c, 1 * 90, 1);
+				//p.setPiston(leg3_c, 1 * 90, 1);
+				p.setPiston(leg4_c, -1 * 90, 1);
 				//p.setPiston(leg4_c, 10 * 90, 1);
 			}
 			else {
-				//p.setPiston(leg1_c, 0, 0);
+				p.setPiston(leg1_c, 0, 0);
+				p.setPiston(leg2_c, 0, 0);
+				p.setPiston(leg3_c, 0, 0);
+				p.setPiston(leg4_c, 0, 0);
 				//p.setPiston(leg4_c, 0, 0);
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {

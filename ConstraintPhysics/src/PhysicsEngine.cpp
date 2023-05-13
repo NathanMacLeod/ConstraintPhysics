@@ -327,35 +327,19 @@ namespace phyz {
 	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength, double rot_correct_strength, double min_angle, double max_angle) {
 		disallowCollision(b1, b2);
 		int uniqueID = nextConstraintID++;
-		mthz::Vec3 u1, w1;
-		b1_rot_axis_local.getPerpendicularBasis(&u1, &w1);
-		mthz::Vec3 u2, tmp;
-		b2_rot_axis_local.getPerpendicularBasis(&u2, &tmp);
+
 
 		Hinge* h = new Hinge{
 			HingeConstraint(),
-			MotorConstraint(),
+			initMotor(b1, b2, b1_rot_axis_local, b2_rot_axis_local, min_angle, max_angle),
 			b1->trackPoint(b1_attach_pos_local),
 			b2->trackPoint(b2_attach_pos_local),
 			b1_rot_axis_local.normalize(),
 			b2_rot_axis_local.normalize(),
 			pos_correct_strength,
 			rot_correct_strength,
-			0, 0,
 			uniqueID
 		};
-
-		h->b1_u_axis_reference = u1;
-		h->b1_w_axis_reference = w1;
-		h->b2_rot_comparison_axis = u2;
-		mthz::Vec3 rot_ref_axis_u = b1->orientation.applyRotation(h->b1_u_axis_reference);
-		mthz::Vec3 rot_ref_axis_w = b1->orientation.applyRotation(h->b1_w_axis_reference);
-		mthz::Vec3 rot_compare_axis = b2->orientation.applyRotation(h->b2_rot_comparison_axis);
-		mthz::Vec3 b1_hinge_axis = b1->orientation.applyRotation(h->b1_rot_axis_body_space);
-		h->motor_angular_position = calculateMotorPosition(0, b1_hinge_axis, rot_ref_axis_u, rot_ref_axis_w, rot_compare_axis, mthz::Vec3(), mthz::Vec3(), 0);
-
-		h->min_motor_position = min_angle;
-		h->max_motor_position = max_angle;
 
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
@@ -367,12 +351,12 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::HINGE, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength, double rot_correct_strength, double positive_slide_limit, double negative_slide_limit) {
-		return addSliderConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, pos_correct_strength, rot_correct_strength, positive_slide_limit, negative_slide_limit);
+	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength, double rot_correct_strength, double negative_slide_limit, double positive_slide_limit) {
+		return addSliderConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, pos_correct_strength, rot_correct_strength, negative_slide_limit, positive_slide_limit);
 	}
 
 	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, 
-		double pos_correct_strength, double rot_correct_strength, double positive_slide_limit, double negative_slide_limit) {
+		double pos_correct_strength, double rot_correct_strength, double negative_slide_limit, double positive_slide_limit) {
 		disallowCollision(b1, b2);
 		int uniqueID = nextConstraintID++;
 
@@ -401,23 +385,29 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::SLIDER, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength, double rot_correct_strength) {
-		return addSlidingHingeConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, pos_correct_strength, rot_correct_strength);
+	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength, double rot_correct_strength, double negative_slide_limit, double positive_slide_limit, double min_angle, double max_angle) {
+		return addSlidingHingeConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, pos_correct_strength, rot_correct_strength, negative_slide_limit, positive_slide_limit, min_angle, max_angle);
 	}
 
 	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local,
-		double pos_correct_strength, double rot_correct_strength) {
+		double pos_correct_strength, double rot_correct_strength, double negative_slide_limit, double positive_slide_limit, double min_angle, double max_angle) {
 		disallowCollision(b1, b2);
 		int uniqueID = nextConstraintID++;
 
 		SlidingHinge* s = new SlidingHinge{
 			SlidingHingeConstraint(),
+			PistonConstraint(),
+			initMotor(b1, b2, b1_slider_axis_local, b2_slider_axis_local, min_angle, max_angle),
 			b1->trackPoint(b1_slider_pos_local),
 			b2->trackPoint(b2_slider_pos_local),
 			b1_slider_axis_local.normalize(),
 			b2_slider_axis_local.normalize(),
+			0, 0,
 			pos_correct_strength,
 			rot_correct_strength,
+			positive_slide_limit,
+			negative_slide_limit,
+			false,
 			uniqueID
 		};
 
@@ -454,7 +444,6 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::SPRING, uniqueID };
 		
 	}
-
 
 	void PhysicsEngine::removeConstraint(ConstraintID id, bool reenable_collision) {
 		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
@@ -647,6 +636,32 @@ namespace phyz {
 		});
 	}
 
+	PhysicsEngine::Motor PhysicsEngine::initMotor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle) {
+		Motor m;
+
+		mthz::Vec3 u1, w1;
+		b1_rot_axis_local.getPerpendicularBasis(&u1, &w1);
+		mthz::Vec3 u2, tmp;
+		b2_rot_axis_local.getPerpendicularBasis(&u2, &tmp);
+
+		m.b1_u_axis_reference = u1;
+		m.b1_w_axis_reference = w1;
+		m.b2_rot_comparison_axis = u2;
+		mthz::Vec3 rot_ref_axis_u = b1->orientation.applyRotation(m.b1_u_axis_reference);
+		mthz::Vec3 rot_ref_axis_w = b1->orientation.applyRotation(m.b1_w_axis_reference);
+		mthz::Vec3 rot_compare_axis = b2->orientation.applyRotation(m.b2_rot_comparison_axis);
+		mthz::Vec3 b1_hinge_axis = b1->orientation.applyRotation(b1_rot_axis_local);
+		m.motor_angular_position = calculateMotorPosition(0, b1_hinge_axis, rot_ref_axis_u, rot_ref_axis_w, rot_compare_axis, mthz::Vec3(), mthz::Vec3(), 0);
+
+		m.min_motor_position = min_angle;
+		m.max_motor_position = max_angle;
+
+		m.target_velocity = 0;
+		m.max_torque = 0;
+
+		return m;
+	}
+
 	double PhysicsEngine::calculateMotorPosition(double current_position, mthz::Vec3 rot_axis, mthz::Vec3 ref_axis_u, mthz::Vec3 ref_axis_w, mthz::Vec3 compare_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double timestep) {
 		//estimate based on velocity
 		double relative_angular_velocity = rot_axis.dot(b1_ang_vel) - rot_axis.dot(b2_ang_vel);
@@ -658,8 +673,6 @@ namespace phyz {
 			return predicted_new_angle;
 		}
 		else {
-			
-
 			//normalize compare axis to rotation plane.
 			mthz::Vec3 compare_norm = (compare_axis - rot_axis * rot_axis.dot(compare_axis)).normalize();
 			//relative angle is flipped such that angles are clockwise. this is because i did things weird and this easiest way to fix it
@@ -751,13 +764,13 @@ namespace phyz {
 					mthz::Vec3 b1_hinge_axis = b1->orientation.applyRotation(h->b1_rot_axis_body_space);
 					mthz::Vec3 b2_hinge_axis = b2->orientation.applyRotation(h->b2_rot_axis_body_space);
 
-					mthz::Vec3 rot_ref_axis_u = b1->orientation.applyRotation(h->b1_u_axis_reference);
-					mthz::Vec3 rot_ref_axis_w = b1->orientation.applyRotation(h->b1_w_axis_reference);
-					mthz::Vec3 rot_compare_axis = b2->orientation.applyRotation(h->b2_rot_comparison_axis);
-					h->motor_angular_position = calculateMotorPosition(h->motor_angular_position, b1_hinge_axis, rot_ref_axis_u, rot_ref_axis_w, rot_compare_axis, b1->getAngVel(), b2->getAngVel(), step_time);
+					mthz::Vec3 rot_ref_axis_u = b1->orientation.applyRotation(h->motor.b1_u_axis_reference);
+					mthz::Vec3 rot_ref_axis_w = b1->orientation.applyRotation(h->motor.b1_w_axis_reference);
+					mthz::Vec3 rot_compare_axis = b2->orientation.applyRotation(h->motor.b2_rot_comparison_axis);
+					h->motor.motor_angular_position = calculateMotorPosition(h->motor.motor_angular_position, b1_hinge_axis, rot_ref_axis_u, rot_ref_axis_w, rot_compare_axis, b1->getAngVel(), b2->getAngVel(), step_time);
 					
-					if (h->max_torque > 0 || h->motor_angular_position < h->min_motor_position || h->motor_angular_position > h->max_motor_position) {
-						h->motor_constraint = MotorConstraint(b1, b2, b1_hinge_axis, h->target_velocity, h->max_torque * step_time, h->motor_angular_position, h->min_motor_position, h->max_motor_position, posCorrectCoeff(h->rot_correct_hardness, step_time), h->motor_constraint.impulse);
+					if (h->motor.max_torque > 0 || h->motor.motor_angular_position < h->motor.min_motor_position || h->motor.motor_angular_position > h->motor.max_motor_position) {
+						h->motor.motor_constraint = MotorConstraint(b1, b2, b1_hinge_axis, h->motor.target_velocity, h->motor.max_torque * step_time, h->motor.motor_angular_position, h->motor.min_motor_position, h->motor.max_motor_position, posCorrectCoeff(h->rot_correct_hardness, step_time), h->motor.motor_constraint.impulse);
 					}
 
 					h->constraint = HingeConstraint(b1, b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, posCorrectCoeff(h->pos_correct_hardness, step_time), 
@@ -784,6 +797,22 @@ namespace phyz {
 					mthz::Vec3 b2_pos = b2->getTrackedP(s->b2_point_key);
 					mthz::Vec3 b1_slide_axis = b1->orientation.applyRotation(s->b1_slide_axis_body_space);
 					mthz::Vec3 b2_slide_axis = b2->orientation.applyRotation(s->b2_slide_axis_body_space);
+
+					double slider_value = b2_pos.dot(b1_slide_axis) - b1_pos.dot(b1_slide_axis);
+					s->slide_limit_exceeded = slider_value < s->negative_slide_limit || slider_value > s->positive_slide_limit;
+
+					if (s->max_piston_force != 0 || s->slide_limit_exceeded) {
+						s->piston_force = PistonConstraint(b1, b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->piston_force.impulse);
+					}
+
+					mthz::Vec3 rot_ref_axis_u = b1->orientation.applyRotation(s->motor.b1_u_axis_reference);
+					mthz::Vec3 rot_ref_axis_w = b1->orientation.applyRotation(s->motor.b1_w_axis_reference);
+					mthz::Vec3 rot_compare_axis = b2->orientation.applyRotation(s->motor.b2_rot_comparison_axis);
+					s->motor.motor_angular_position = calculateMotorPosition(s->motor.motor_angular_position, b1_slide_axis, rot_ref_axis_u, rot_ref_axis_w, rot_compare_axis, b1->getAngVel(), b2->getAngVel(), step_time);
+
+					if (s->motor.max_torque > 0 || s->motor.motor_angular_position < s->motor.min_motor_position || s->motor.motor_angular_position > s->motor.max_motor_position) {
+						s->motor.motor_constraint = MotorConstraint(b1, b2, b1_slide_axis, s->motor.target_velocity, s->motor.max_torque * step_time, s->motor.motor_angular_position, s->motor.min_motor_position, s->motor.max_motor_position, posCorrectCoeff(s->rot_correct_hardness, step_time), s->motor.motor_constraint.impulse);
+					}
 
 					s->constraint = SlidingHingeConstraint(b1, b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
 						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse, s->constraint.u, s->constraint.w);
@@ -841,8 +870,8 @@ namespace phyz {
 						}
 						for (Hinge* h : e->hingeConstraints) {
 							output->island_constraints->push_back(&h->constraint);
-							if (h->max_torque > 0 || h->motor_angular_position < h->min_motor_position || h->motor_angular_position > h->max_motor_position) {
-								output->island_constraints->push_back(&h->motor_constraint);
+							if (h->motor.max_torque > 0 || h->motor.motor_angular_position < h->motor.min_motor_position || h->motor.motor_angular_position > h->motor.max_motor_position) {
+								output->island_constraints->push_back(&h->motor.motor_constraint);
 							}
 						}
 						for (Slider* s : e->sliderConstraints) {
@@ -853,6 +882,12 @@ namespace phyz {
 						}
 						for (SlidingHinge* s : e->slidingHingeConstraints) {
 							output->island_constraints->push_back(&s->constraint);
+							if (s->max_piston_force != 0 || s->slide_limit_exceeded) {
+								output->island_constraints->push_back(&s->piston_force);
+							}
+							if (s->motor.max_torque > 0 || s->motor.motor_angular_position < s->motor.min_motor_position || s->motor.motor_angular_position > s->motor.max_motor_position) {
+								output->island_constraints->push_back(&s->motor.motor_constraint);
+							}
 						}
 					}
 				}
@@ -899,57 +934,118 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::setPiston(ConstraintID id, double max_force, double target_velocity) {
-		assert(id.type == ConstraintID::SLIDER && constraint_map.find(id.uniqueID) != constraint_map.end());
-		Slider* slider = nullptr;
-		for (Slider* s : constraint_map[id.uniqueID]->sliderConstraints) {
-			if (s->uniqueID == id.uniqueID) {
-				slider = s;
-				break;
+		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
+		if (id.type == ConstraintID::SLIDER) {
+			Slider* slider = nullptr;
+			for (Slider* s : constraint_map[id.uniqueID]->sliderConstraints) {
+				if (s->uniqueID == id.uniqueID) {
+					slider = s;
+					break;
+				}
+			}
+			assert(slider != nullptr);
+
+			slider->target_velocity = target_velocity;
+			slider->max_piston_force = max_force;
+
+			if (slider->constraint.a != nullptr) {
+				slider->constraint.a->alertWakingAction();
+				slider->constraint.b->alertWakingAction();
 			}
 		}
-		assert(slider != nullptr);
+		else if (id.type == ConstraintID::SLIDING_HINGE) {
+			SlidingHinge* slider = nullptr;
+			for (SlidingHinge* s : constraint_map[id.uniqueID]->slidingHingeConstraints) {
+				if (s->uniqueID == id.uniqueID) {
+					slider = s;
+					break;
+				}
+			}
+			assert(slider != nullptr);
 
-		slider->target_velocity = target_velocity;
-		slider->max_piston_force = max_force;
+			slider->target_velocity = target_velocity;
+			slider->max_piston_force = max_force;
 
-		if (slider->constraint.a != nullptr) {
-			slider->constraint.a->alertWakingAction();
-			slider->constraint.b->alertWakingAction();
+			if (slider->constraint.a != nullptr) {
+				slider->constraint.a->alertWakingAction();
+				slider->constraint.b->alertWakingAction();
+			}
 		}
 	}
 
 	void PhysicsEngine::setMotor(ConstraintID id, double max_torque, double target_velocity) {
-		assert(id.type == ConstraintID::HINGE && constraint_map.find(id.uniqueID) != constraint_map.end());
-		Hinge* hinge = nullptr;
-		for (Hinge* h : constraint_map[id.uniqueID]->hingeConstraints) {
-			if (h->uniqueID == id.uniqueID) {
-				hinge = h;
-				break;
+		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
+		if (id.type == ConstraintID::HINGE) {
+
+			Hinge* hinge = nullptr;
+			for (Hinge* h : constraint_map[id.uniqueID]->hingeConstraints) {
+				if (h->uniqueID == id.uniqueID) {
+					hinge = h;
+					break;
+				}
+			}
+			assert(hinge != nullptr);
+
+			hinge->motor.target_velocity = target_velocity;
+			hinge->motor.max_torque = max_torque;
+
+			if (hinge->constraint.a != nullptr) {
+				hinge->constraint.a->alertWakingAction();
+				hinge->constraint.b->alertWakingAction();
 			}
 		}
-		assert(hinge != nullptr);
+		else if (id.type == ConstraintID::SLIDING_HINGE) {
+			
+			SlidingHinge* hinge = nullptr;
+			for (SlidingHinge* h : constraint_map[id.uniqueID]->slidingHingeConstraints) {
+				if (h->uniqueID == id.uniqueID) {
+					hinge = h;
+					break;
+				}
+			}
+			assert(hinge != nullptr);
 
-		hinge->target_velocity = target_velocity;
-		hinge->max_torque = max_torque;
+			hinge->motor.target_velocity = target_velocity;
+			hinge->motor.max_torque = max_torque;
 
-		if (hinge->constraint.a != nullptr) {
-			hinge->constraint.a->alertWakingAction();
-			hinge->constraint.b->alertWakingAction();
+			if (hinge->constraint.a != nullptr) {
+				hinge->constraint.a->alertWakingAction();
+				hinge->constraint.b->alertWakingAction();
+			}
+		}
+		else {
+			assert(false);
 		}
 	}
 
 	double PhysicsEngine::getMotorAngularPosition(ConstraintID id) {
-		assert(id.type == ConstraintID::HINGE && constraint_map.find(id.uniqueID) != constraint_map.end());
-		Hinge* hinge = nullptr;
-		for (Hinge* h : constraint_map[id.uniqueID]->hingeConstraints) {
-			if (h->uniqueID == id.uniqueID) {
-				hinge = h;
-				break;
+		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
+		if (id.type == ConstraintID::HINGE) {
+			Hinge* hinge = nullptr;
+			for (Hinge* h : constraint_map[id.uniqueID]->hingeConstraints) {
+				if (h->uniqueID == id.uniqueID) {
+					hinge = h;
+					break;
+				}
 			}
-		}
-		assert(hinge != nullptr);
+			assert(hinge != nullptr);
 
-		return hinge->motor_angular_position;
+			return hinge->motor.motor_angular_position;
+		}
+		else if (id.type == ConstraintID::SLIDING_HINGE) {
+			SlidingHinge* hinge = nullptr;
+			for (SlidingHinge* h : constraint_map[id.uniqueID]->slidingHingeConstraints) {
+				if (h->uniqueID == id.uniqueID) {
+					hinge = h;
+					break;
+				}
+			}
+			assert(hinge != nullptr);
+
+			return hinge->motor.motor_angular_position;
+		}
+
+		
 	}
 
 	PhysicsEngine::SharedConstraintsEdge::~SharedConstraintsEdge() {
