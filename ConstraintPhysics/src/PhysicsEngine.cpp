@@ -362,6 +362,7 @@ namespace phyz {
 
 		Slider* s = new Slider{
 			SliderConstraint(),
+			SlideLimitConstraint(),
 			PistonConstraint(),
 			b1->trackPoint(b1_slider_pos_local),
 			b2->trackPoint(b2_slider_pos_local),
@@ -396,6 +397,7 @@ namespace phyz {
 
 		SlidingHinge* s = new SlidingHinge{
 			SlidingHingeConstraint(),
+			SlideLimitConstraint(),
 			PistonConstraint(),
 			initMotor(b1, b2, b1_slider_axis_local, b2_slider_axis_local, min_angle, max_angle),
 			b1->trackPoint(b1_slider_pos_local),
@@ -418,6 +420,32 @@ namespace phyz {
 		e->slidingHingeConstraints.push_back(s);
 		constraint_map[uniqueID] = e;
 		return ConstraintID{ ConstraintID::SLIDING_HINGE, uniqueID };
+	}
+
+	ConstraintID PhysicsEngine::addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strength, double rot_correct_strength) {
+		return addWeldConstraint(b1, b2, attach_point_local, attach_point_local, pos_correct_strength, rot_correct_strength);
+	}
+
+	ConstraintID PhysicsEngine::addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_point_local, mthz::Vec3 b2_attach_point_local, double pos_correct_strength, double rot_correct_strength) {
+		disallowCollision(b1, b2);
+		int uniqueID = nextConstraintID++;
+
+		Weld* w = new Weld{
+			WeldConstraint(),
+			b1->trackPoint(b1_attach_point_local),
+			b2->trackPoint(b2_attach_point_local),
+			pos_correct_strength,
+			rot_correct_strength,
+			uniqueID
+		};
+
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		e->weldConstraints.push_back(w);
+		constraint_map[uniqueID] = e;
+		return ConstraintID{ ConstraintID::WELD, uniqueID };
 	}
 
 	ConstraintID PhysicsEngine::addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length) {
@@ -480,23 +508,34 @@ namespace phyz {
 				}
 			}
 			break;
+		case ConstraintID::SLIDING_HINGE:
+			for (int i = 0; i < e->slidingHingeConstraints.size(); i++) {
+				SlidingHinge* s = e->slidingHingeConstraints[i];
+				if (s->uniqueID == id.uniqueID) {
+					delete s;
+					e->slidingHingeConstraints.erase(e->slidingHingeConstraints.begin() + i);
+
+				}
+
+			}
+			break;
+		case ConstraintID::WELD:
+			for (int i = 0; i < e->weldConstraints.size(); i++) {
+				Weld* w = e->weldConstraints[i];
+				if (w->uniqueID == id.uniqueID) {
+					delete w;
+					e->weldConstraints.erase(e->weldConstraints.begin() + i);
+
+				}
+
+			}
+			break;
 		case ConstraintID::SPRING:
 			for (int i = 0; i < e->springs.size(); i++) {
 				Spring* s = e->springs[i];
 				if (s->uniqueID == id.uniqueID) {
 					delete s;
 					e->springs.erase(e->springs.begin() + i);
-
-				}
-
-			}
-			break;
-		case ConstraintID::SLIDING_HINGE:
-			for (int i = 0; i < e->springs.size(); i++) {
-				SlidingHinge* s = e->slidingHingeConstraints[i];
-				if (s->uniqueID == id.uniqueID) {
-					delete s;
-					e->slidingHingeConstraints.erase(e->slidingHingeConstraints.begin() + i);
 
 				}
 
@@ -785,8 +824,12 @@ namespace phyz {
 					double slider_value = b2_pos.dot(b1_slide_axis) - b1_pos.dot(b1_slide_axis);
 					s->slide_limit_exceeded = slider_value < s->negative_slide_limit || slider_value > s->positive_slide_limit;
 
-					if (s->max_piston_force != 0 || s->slide_limit_exceeded) {
-						s->piston_force = PistonConstraint(b1, b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->piston_force.impulse);
+					if (s->slide_limit_exceeded) {
+						s->slide_limit = SlideLimitConstraint(b1, b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->slide_limit.impulse);
+					}
+
+					if (s->max_piston_force != 0) {
+						s->piston_force = PistonConstraint(b1, b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, s->piston_force.impulse);
 					}
 
 					s->constraint = SliderConstraint(b1, b2, b1_pos, b2_pos, b1_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
@@ -801,8 +844,12 @@ namespace phyz {
 					double slider_value = b2_pos.dot(b1_slide_axis) - b1_pos.dot(b1_slide_axis);
 					s->slide_limit_exceeded = slider_value < s->negative_slide_limit || slider_value > s->positive_slide_limit;
 
-					if (s->max_piston_force != 0 || s->slide_limit_exceeded) {
-						s->piston_force = PistonConstraint(b1, b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->piston_force.impulse);
+					if (s->slide_limit_exceeded) {
+						s->slide_limit = SlideLimitConstraint(b1, b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->slide_limit.impulse);
+					}
+
+					if (s->max_piston_force != 0) {
+						s->piston_force = PistonConstraint(b1, b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, s->piston_force.impulse);
 					}
 
 					mthz::Vec3 rot_ref_axis_u = b1->orientation.applyRotation(s->motor.b1_u_axis_reference);
@@ -816,6 +863,12 @@ namespace phyz {
 
 					s->constraint = SlidingHingeConstraint(b1, b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
 						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse, s->constraint.u, s->constraint.w);
+				}
+				for (Weld* w : e->weldConstraints) {
+					mthz::Vec3 b1_pos = b1->getTrackedP(w->b1_point_key);
+					mthz::Vec3 b2_pos = b2->getTrackedP(w->b2_point_key);
+
+					w->constraint = WeldConstraint(b1, b2, b1_pos, b2_pos, posCorrectCoeff(w->pos_correct_hardness, step_time), posCorrectCoeff(w->rot_correct_hardness, step_time), w->constraint.impulse);
 				}
 
 				if (e->noConstraintsLeft()) {
@@ -876,18 +929,27 @@ namespace phyz {
 						}
 						for (Slider* s : e->sliderConstraints) {
 							output->island_constraints->push_back(&s->constraint);
-							if (s->max_piston_force != 0 || s->slide_limit_exceeded) {
+							if (s->max_piston_force != 0) {
 								output->island_constraints->push_back(&s->piston_force);
+							}
+							if (s->slide_limit_exceeded) {
+								output->island_constraints->push_back(&s->slide_limit);
 							}
 						}
 						for (SlidingHinge* s : e->slidingHingeConstraints) {
 							output->island_constraints->push_back(&s->constraint);
-							if (s->max_piston_force != 0 || s->slide_limit_exceeded) {
+							if (s->max_piston_force != 0) {
 								output->island_constraints->push_back(&s->piston_force);
+							}
+							if (s->slide_limit_exceeded) {
+								output->island_constraints->push_back(&s->slide_limit);
 							}
 							if (s->motor.max_torque > 0 || s->motor.motor_angular_position < s->motor.min_motor_position || s->motor.motor_angular_position > s->motor.max_motor_position) {
 								output->island_constraints->push_back(&s->motor.motor_constraint);
 							}
+						}
+						for (Weld* w : e->weldConstraints) {
+							output->island_constraints->push_back(&w->constraint);
 						}
 					}
 				}

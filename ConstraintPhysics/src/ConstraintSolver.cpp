@@ -644,26 +644,9 @@ namespace phyz {
 	//******************************
 	//*****PISTON CONSTRAINT********
 	//******************************
-	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse)
+	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, NVec<1> warm_start_impulse)
 		: Constraint(a, b), slide_axis(slide_axis_a), impulse(warm_start_impulse), max_impulse(max_impulse)
 	{
-		double real_target_velocity;
-		
-		if (slide_position > positive_slide_limit) {
-			psuedo_target_val = NVec<1>{ (positive_slide_limit - slide_position) * pos_correct_hardness };
-			slide_limit_status = ABOVE_MAX;
-			real_target_velocity = std::min<double>(0, target_velocity);
-		}
-		else if (slide_position < negative_slide_limit) {
-			psuedo_target_val = NVec<1>{ (negative_slide_limit - slide_position) * pos_correct_hardness };
-			slide_limit_status = BELOW_MIN;
-			real_target_velocity = std::max<double>(0, target_velocity);
-		}
-		else {
-			psuedo_target_val = NVec<1>{ 0 };
-			slide_limit_status = NOT_EXCEEDED;
-			real_target_velocity = target_velocity;
-		}
 
 		mthz::Mat3 Ia_inv = a->getInvTensor();
 
@@ -673,7 +656,7 @@ namespace phyz {
 		inverse_inertia = NMat<1, 1>{ 1.0 / (a->getInvMass() + b->getInvMass() + pos_diff.dot(slide_axis_a.cross(rot_dir))) };
 
 		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
-		target_val = NVec<1>{ real_target_velocity - current_val };
+		target_val = NVec<1>{ target_velocity - current_val };
 	}
 
 	inline void PistonConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
@@ -684,32 +667,11 @@ namespace phyz {
 		PGS_constraint_step<1>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
 			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
 			[&](const NVec<1>& impulse) {
-			
-				switch (slide_limit_status) {
-				case NOT_EXCEEDED:
-					if (impulse.v[0] > 0) 
-						return NVec<1>{ std::min<double>(impulse.v[0], max_impulse) };
-					else 
-						return NVec<1>{ std::max<double>(impulse.v[0], -max_impulse) };
-				case ABOVE_MAX:
-					return NVec<1>{ std::min<double>(impulse.v[0], 0)};
-				case BELOW_MIN:
-					return NVec<1>{ std::max<double>(impulse.v[0], 0)};
-				}
-
-				
+				if (impulse.v[0] > 0)
+					return NVec<1>{ std::min<double>(impulse.v[0], max_impulse) };
+				else
+					return NVec<1>{ std::max<double>(impulse.v[0], -max_impulse) };
 			},
-			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
-				this->addVelocityChange(impulse, va, vb);
-			});
-	};
-
-	inline void PistonConstraint::performPGSPsuedoConstraintStep() {
-		if (psuedo_target_val.v[0] == 0) return;
-
-		PGS_constraint_step<1>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
-			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
-			[&](const NVec<1>& impulse) { return impulse; },
 			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
 				this->addVelocityChange(impulse, va, vb);
 			});
@@ -722,6 +684,74 @@ namespace phyz {
 	}
 
 	inline NVec<1> PistonConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+		return NVec<1>{ slide_axis.dot(vb.lin) - slide_axis.dot(va.lin) - pos_diff.dot(slide_axis.cross(va.ang)) };
+	}
+
+	//******************************
+	//****Slide Limit Constraint****
+	//******************************
+	SlideLimitConstraint::SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse)
+		: Constraint(a, b), slide_axis(slide_axis_a), impulse(warm_start_impulse)
+	{
+
+		if (slide_position > positive_slide_limit) {
+			psuedo_target_val = NVec<1>{ (positive_slide_limit - slide_position) * pos_correct_hardness };
+			slide_limit_status = ABOVE_MAX;
+		}
+		else if (slide_position < negative_slide_limit) {
+			psuedo_target_val = NVec<1>{ (negative_slide_limit - slide_position) * pos_correct_hardness };
+			slide_limit_status = BELOW_MIN;
+		}
+
+		mthz::Mat3 Ia_inv = a->getInvTensor();
+
+		pos_diff = b->getCOM() - a->getCOM();
+		rot_dir = Ia_inv * (pos_diff.cross(slide_axis_a));
+
+		inverse_inertia = NMat<1, 1>{ 1.0 / (a->getInvMass() + b->getInvMass() + pos_diff.dot(slide_axis_a.cross(rot_dir))) };
+
+		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
+		target_val = NVec<1>{ -current_val };
+	}
+
+	inline void SlideLimitConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+		addVelocityChange(impulse, va, vb);
+	}
+
+	void SlideLimitConstraint::performPGSConstraintStep() {
+		PGS_constraint_step<1>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
+			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
+			[&](const NVec<1>& impulse) {
+				switch (slide_limit_status) {
+				case ABOVE_MAX:
+					return NVec<1>{ std::min<double>(impulse.v[0], 0)};
+				case BELOW_MIN:
+					return NVec<1>{ std::max<double>(impulse.v[0], 0)};
+				}
+			},
+			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	};
+
+	inline void SlideLimitConstraint::performPGSPsuedoConstraintStep() {
+		if (psuedo_target_val.v[0] == 0) return;
+
+		PGS_constraint_step<1>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
+			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
+			[&](const NVec<1>& impulse) { return impulse; },
+			[&](const NVec<1>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	};
+
+	inline void SlideLimitConstraint::addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb) {
+		va->lin -= a->getInvMass() * slide_axis * impulse.v[0];
+		vb->lin += b->getInvMass() * slide_axis * impulse.v[0];
+		va->ang -= rot_dir * impulse.v[0];
+	}
+
+	inline NVec<1> SlideLimitConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
 		return NVec<1>{ slide_axis.dot(vb.lin) - slide_axis.dot(va.lin) - pos_diff.dot(slide_axis.cross(va.ang)) };
 	}
 
@@ -852,6 +882,78 @@ namespace phyz {
 		vb->lin -= (impulse.v[0] * u + impulse.v[1] * w) * b->getInvMass();
 		va->ang += NVec3toVec3(rotDirA * impulse);
 		vb->ang += NVec3toVec3(rotDirB * impulse);
+	}
+
+	////******************************
+	////*******WELD CONSTRAINT********
+	////******************************
+	WeldConstraint::WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 pos_a, mthz::Vec3 pos_b, double pos_correct_hardness, double rot_correct_hardness, NVec<6> warm_start_impulse)
+		: Constraint(a, b), rA(pos_a - a->getCOM()), rB(pos_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<6>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 })
+	{
+
+		mthz::Mat3 Ia_inv = a->getInvTensor();
+		mthz::Mat3 Ib_inv = b->getInvTensor();
+		NMat<3, 3> Ia_inv_mat = Mat3toNMat33(Ia_inv);
+		NMat<3, 3> Ib_inv_mat = Mat3toNMat33(Ib_inv);
+		NMat<3, 3> rA_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rA));
+		NMat<3, 3> rB_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rB));
+		NMat<3, 3> iden_mat = idenMat<3>();
+
+		rotDirA.copyInto(Ia_inv_mat * rA_skew, 0, 0); rotDirA.copyInto(Ia_inv_mat, 0, 3);
+
+		rotDirB.copyInto(Ib_inv_mat * rB_skew, 0, 0); rotDirB.copyInto(Ib_inv_mat, 0, 3);
+
+		inverse_inertia.copyInto(iden_mat * a->getInvMass() + iden_mat * b->getInvMass() - rA_skew * Ia_inv_mat * rA_skew - rB_skew * Ib_inv_mat * rB_skew, 0, 0);
+		inverse_inertia.copyInto(-rA_skew * Ia_inv_mat - rB_skew * Ib_inv_mat, 0, 3);
+		inverse_inertia.copyInto(Ia_inv_mat * rA_skew + Ib_inv_mat * rB_skew, 3, 0);
+		inverse_inertia.copyInto(Ia_inv_mat + Ib_inv_mat, 3, 3);
+
+		inverse_inertia = inverse_inertia.inverse();
+
+		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
+		{
+			mthz::Vec3 pos_correct = (pos_b - pos_a) * pos_correct_hardness;
+
+			mthz::Quaternion orientation_diff = b->getOrientation() * a->getOrientation().conjugate();
+			mthz::Vec3 rot_correct =  mthz::Vec3(orientation_diff.i, orientation_diff.j, orientation_diff.k)* rot_correct_hardness;
+			psuedo_target_val = NVec<6>{ pos_correct.x, pos_correct.y, pos_correct.z, rot_correct.x, rot_correct.y, rot_correct.z };
+		}
+	}
+
+	inline void WeldConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
+		addVelocityChange(impulse, va, vb);
+	}
+
+	void WeldConstraint::performPGSConstraintStep() {
+		PGS_constraint_step<6>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
+			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
+			[](const NVec<6>& impulse) { return impulse; },
+			[&](const NVec<6>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	}
+
+	inline void WeldConstraint::performPGSPsuedoConstraintStep() {
+		PGS_constraint_step<6>(a_psuedo_velocity_changes, b_psuedo_velocity_changes, psuedo_target_val, &psuedo_impulse,
+			getConstraintValue(*a_psuedo_velocity_changes, *b_psuedo_velocity_changes), inverse_inertia,
+			[](const NVec<6>& impulse) { return impulse; },
+			[&](const NVec<6>& impulse, Constraint::VelVec* va, Constraint::VelVec* vb) {
+				this->addVelocityChange(impulse, va, vb);
+			});
+	}
+
+	inline NVec<6> WeldConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
+		mthz::Vec3 pos_value = va.lin - rA.cross(va.ang) - vb.lin + rB.cross(vb.ang);
+		mthz::Vec3 rot_value = va.ang - vb.ang;
+
+		return NVec<6>{ pos_value.x, pos_value.y, pos_value.z, rot_value.x, rot_value.y, rot_value.z };
+	}
+
+	inline void WeldConstraint::addVelocityChange(const NVec<6>& impulse, VelVec* va, VelVec* vb) {
+		va->lin += mthz::Vec3(impulse.v[0], impulse.v[1], impulse.v[2]) * a->getInvMass();
+		vb->lin -= mthz::Vec3(impulse.v[0], impulse.v[1], impulse.v[2]) * b->getInvMass();
+		va->ang += NVec3toVec3(rotDirA * impulse);
+		vb->ang -= NVec3toVec3(rotDirB * impulse);
 	}
 
 	//******************************

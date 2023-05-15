@@ -50,6 +50,15 @@ namespace phyz {
 			}
 			return out;
 		}
+		NMat<n_row, n_col> operator*(const double d) const {
+			NMat<n_row, n_col> out;
+			for (int i = 0; i < n_row; i++) {
+				for (int j = 0; j < n_col; j++) {
+					out.v[i][j] = v[i][j] * d;
+				}
+			}
+			return out;
+		}
 	};
 
 	class Constraint {
@@ -249,7 +258,31 @@ namespace phyz {
 	class PistonConstraint : public Constraint {
 	public:
 		PistonConstraint() : impulse(NVec<1>{0.0}) {}
-		PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_impulse, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+		PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_impulse, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+
+		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
+		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		void performPGSConstraintStep() override;
+		void performPGSPsuedoConstraintStep() override { return; }
+
+		inline NVec<1> getConstraintValue(const VelVec& va, const VelVec& vb);
+		inline void addVelocityChange(const NVec<1>& impulse, VelVec* va, VelVec* vb);
+
+		NVec<1> impulse;
+	private:
+
+		double max_impulse;
+		mthz::Vec3 rot_dir;
+		mthz::Vec3 pos_diff;
+		mthz::Vec3 slide_axis;
+		NMat<1, 1> inverse_inertia;
+		NVec<1> target_val;
+	};
+
+	class SlideLimitConstraint : public Constraint {
+	public:
+		SlideLimitConstraint() : impulse(NVec<1>{0.0}) {}
+		SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -262,10 +295,9 @@ namespace phyz {
 		NVec<1> psuedo_impulse;
 		NVec<1> impulse;
 	private:
-		enum LimitStatus { NOT_EXCEEDED=0, BELOW_MIN, ABOVE_MAX };
+		enum LimitStatus { BELOW_MIN, ABOVE_MAX };
 
 		LimitStatus slide_limit_status;
-		double max_impulse;
 		mthz::Vec3 rot_dir;
 		mthz::Vec3 pos_diff;
 		mthz::Vec3 slide_axis;
@@ -301,5 +333,31 @@ namespace phyz {
 		NMat<4, 4> inverse_inertia;
 		NVec<4> target_val;
 		NVec<4> psuedo_target_val;
+	};
+
+	class WeldConstraint : public Constraint {
+	public:
+		WeldConstraint() : impulse(NVec<6>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}) {}
+		WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 a_attach_point, mthz::Vec3 b_attach_point, double pos_correct_hardness, double rot_correct_hardness, NVec<6> warm_start_impulse = NVec<6>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 });
+
+		inline inline bool constraintWarmStarted() override { return !impulse.isZero(); }
+		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
+		void performPGSConstraintStep() override;
+		void performPGSPsuedoConstraintStep() override;
+
+		inline NVec<6> getConstraintValue(const VelVec& va, const VelVec& vb);
+		inline void addVelocityChange(const NVec<6>& impulse, VelVec* va, VelVec* vb);
+
+		NVec<6> impulse;
+		NVec<6> psuedo_impulse;
+	private:
+		mthz::Vec3 rA;
+		mthz::Vec3 rB;
+		mthz::Vec3 n;
+		NMat<3, 6> rotDirA;
+		NMat<3, 6> rotDirB;
+		NMat<6, 6> inverse_inertia;
+		NVec<6> target_val;
+		NVec<6> psuedo_target_val;
 	};
 }
