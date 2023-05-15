@@ -147,8 +147,8 @@ public:
 		bodies.push_back({ fromGeometry(release_pins), release_pins_r });
 		bodies.push_back({ fromGeometry(trebuchet_arm), trebuchet_arm_r });
 
-		phyz::ConstraintID release = p.addSliderConstraint(trebuchet_frame_r, release_pins_r, release_pins_r->getCOM(), mthz::Vec3(0, 0, -1), 350, 350, -2 * release_pin_excess - drop_channel_width - drop_channel_support_width, 0);
-		p.setPiston(release, 10, 1);
+		phyz::ConstraintID release = p.addSliderConstraint(trebuchet_frame_r, release_pins_r, release_pins_r->getCOM(), mthz::Vec3(0, 0, -1), 350, 350, 0, 2 * release_pin_excess + drop_channel_width + drop_channel_support_width);
+		p.setPiston(release, 10, -1);
 
 		p.addHingeConstraint(trebuchet_arm_r, weight_r, weight_center, mthz::Vec3(1, 0, 0));
 
@@ -199,7 +199,7 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyDown(GLFW_KEY_F)) {
-				p.setPiston(release, 10, -1);
+				p.setPiston(release, 10, 1);
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
 				for (PhysBod b : bodies) {
