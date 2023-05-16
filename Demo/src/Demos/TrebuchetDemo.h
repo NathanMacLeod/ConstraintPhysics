@@ -53,8 +53,8 @@ public:
 		mthz::Vec3 trebuchet_pos = mthz::Vec3(0, 0, 0);
 		double arm_channel_width = 0.5;
 		double rail_width = 0.25;
-		double rail_length = 5;
-		double rail_height = 2;
+		double rail_length = 4.3;
+		double rail_height = 2.25;
 		double drop_channel_width = 0.21;
 		double drop_channel_height = 5;
 		double drop_channel_support_width = 0.33;
@@ -88,6 +88,7 @@ public:
 		mthz::Vec3 rail4_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width, rail_height - rail_width, drop_channel_width / 2.0);
 		phyz::Geometry rail4 = phyz::Geometry::box(rail4_pos, rail_width, rail_width, (rail_length - drop_channel_width) / 2.0);
 
+		phyz::Geometry arm_rest_box = phyz::Geometry::box(rail3_pos + mthz::Vec3(rail_width, 0, 0), arm_channel_width, rail_width, rail_width);
 
 		double weight_width = 0.6;
 		double weight_thickness = 0.5;
@@ -96,14 +97,16 @@ public:
 		double weight_height = drop_channel_height - weight_axle_radius;
 		double weight_axle_excess = 0.05;
 
+		phyz::Material weight_material = phyz::Material::modified_density(5);
+
 		double weight_dist = arm_channel_width/2.0 + (rail_width + drop_channel_support_width + weight_gap);
 		double weight_axle_length = 2 * (weight_dist + weight_thickness + weight_axle_excess);
 		mthz::Vec3 weight_center = trebuchet_pos + mthz::Vec3(0, weight_height, 0);
 		phyz::Geometry weight_axle = phyz::Geometry::cylinder(weight_center - mthz::Vec3(0, weight_axle_length / 2.0, 0), weight_axle_radius, weight_axle_length)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), weight_center);
 
-		phyz::Geometry weight1 = phyz::Geometry::box(weight_center + mthz::Vec3(weight_dist, -weight_width / 2.0, -weight_width / 2.0), weight_thickness, weight_width, weight_width);
-		phyz::Geometry weight2 = phyz::Geometry::box(weight_center + mthz::Vec3(-weight_dist - weight_thickness, -weight_width / 2.0, -weight_width / 2.0), weight_thickness, weight_width, weight_width);
+		phyz::Geometry weight1 = phyz::Geometry::box(weight_center + mthz::Vec3(weight_dist, -weight_width / 2.0, -weight_width / 2.0), weight_thickness, weight_width, weight_width, weight_material);
+		phyz::Geometry weight2 = phyz::Geometry::box(weight_center + mthz::Vec3(-weight_dist - weight_thickness, -weight_width / 2.0, -weight_width / 2.0), weight_thickness, weight_width, weight_width, weight_material);
 
 
 		double release_pin_radius = 0.06;
@@ -122,15 +125,36 @@ public:
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), release_pin2_pos);
 
 
-		double trebuchet_arm_length = 4;
+		double trebuchet_arm_length = 5.75;
 		double trebuchet_arm_height = 0.5;
 		double trebuchet_arm_thickness = 0.3;
 
 		mthz::Vec3 trebuchet_arm_pos = weight_center + mthz::Vec3(-trebuchet_arm_thickness / 2.0, -trebuchet_arm_height / 2.0, -trebuchet_arm_length + trebuchet_arm_height / 2.0);
 		phyz::Geometry trebuchet_main_arm = phyz::Geometry::box(trebuchet_arm_pos, trebuchet_arm_thickness, trebuchet_arm_height, trebuchet_arm_length);
 
+		double roller_distance = 1.8;
+		double roller_axle_excess = 0.05;
+		double roller_axle_radius = 0.1;
+		double roller_gap_to_arm = 0.01;
+		double roller_gap_to_wall = 0.075;
 
-		phyz::Geometry trebuchet_frame = { channel_beam1, channel_beam2, channel_beam3, channel_beam4, drop_channel_cap1, drop_channel_cap2, rail1, rail2, rail3, rail4 };
+		double roller_axle_length = arm_channel_width + 2 * (rail_width - roller_gap_to_wall + roller_axle_excess);
+		mthz::Vec3 roller_center_position = weight_center + mthz::Vec3(0, 0, -roller_distance);
+
+		phyz::Geometry roller_axle = phyz::Geometry::cylinder(roller_center_position + mthz::Vec3(0, -roller_axle_length / 2.0, 0), roller_axle_radius, roller_axle_length)
+			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), roller_center_position);
+
+		double roller_radius = 0.25;
+		double roller_length = arm_channel_width / 2.0 + rail_width - roller_gap_to_wall - roller_gap_to_arm - trebuchet_arm_thickness / 2.0;
+
+		phyz::Geometry roller_wheel1 = phyz::Geometry::cylinder(roller_center_position + mthz::Vec3(0, trebuchet_arm_thickness/2.0 + roller_gap_to_arm, 0), roller_radius, roller_length)
+			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), roller_center_position);
+
+		phyz::Geometry roller_wheel2 = phyz::Geometry::cylinder(roller_center_position + mthz::Vec3(0, trebuchet_arm_thickness / 2.0 + roller_gap_to_arm, 0), roller_radius, roller_length)
+			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), roller_center_position);
+
+
+		phyz::Geometry trebuchet_frame = { channel_beam1, channel_beam2, channel_beam3, channel_beam4, drop_channel_cap1, drop_channel_cap2, rail1, rail2, rail3, rail4, arm_rest_box };
 		phyz::RigidBody* trebuchet_frame_r = p.createRigidBody(trebuchet_frame, true);
 
 		phyz::Geometry release_pins = { release_pin1, release_pin2 };
@@ -139,18 +163,24 @@ public:
 		phyz::Geometry weight = { weight_axle, weight1, weight2 };
 		phyz::RigidBody* weight_r = p.createRigidBody(weight);
 
-		phyz::Geometry trebuchet_arm = { trebuchet_main_arm };
-		phyz::RigidBody* trebuchet_arm_r = p.createRigidBody(trebuchet_arm, true);
+		phyz::Geometry trebuchet_arm = { trebuchet_main_arm, roller_axle };
+		phyz::RigidBody* trebuchet_arm_r = p.createRigidBody(trebuchet_arm, false);
+
+		phyz::Geometry roller = { roller_wheel1, roller_wheel2 };
+		phyz::RigidBody* roller_r = p.createRigidBody(roller);
 
 		bodies.push_back({ fromGeometry(trebuchet_frame), trebuchet_frame_r });
 		bodies.push_back({ fromGeometry(weight), weight_r });
 		bodies.push_back({ fromGeometry(release_pins), release_pins_r });
 		bodies.push_back({ fromGeometry(trebuchet_arm), trebuchet_arm_r });
+		bodies.push_back({ fromGeometry(roller), roller_r });
 
 		phyz::ConstraintID release = p.addSliderConstraint(trebuchet_frame_r, release_pins_r, release_pins_r->getCOM(), mthz::Vec3(0, 0, -1), 350, 350, 0, 2 * release_pin_excess + drop_channel_width + drop_channel_support_width);
 		p.setPiston(release, 10, -1);
 
 		p.addHingeConstraint(trebuchet_arm_r, weight_r, weight_center, mthz::Vec3(1, 0, 0));
+
+		p.addHingeConstraint(trebuchet_arm_r, roller_r, roller_center_position, mthz::Vec3(1, 0, 0));
 
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
@@ -158,8 +188,8 @@ public:
 		float t = 0;
 		float fElapsedTime;
 
-		mthz::Vec3 pos(0, 10, 10);
-		mthz::Quaternion orient;
+		mthz::Vec3 pos(-10, 3, 0);
+		mthz::Quaternion orient(-PI/2.0, mthz::Vec3(0, 1, 0));
 		double mv_speed = 2;
 		double rot_speed = 1;
 
