@@ -145,6 +145,8 @@ namespace phyz {
 		std::mutex constraint_graph_lock;
 
 		struct Contact {
+			RigidBody* b1;
+			RigidBody* b2;
 			ContactConstraint contact;
 			FrictionConstraint friction;
 			MagicID magic;
@@ -153,6 +155,8 @@ namespace phyz {
 		};
 
 		struct BallSocket {
+			RigidBody* b1;
+			RigidBody* b2;
 			BallSocketConstraint constraint;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
@@ -173,6 +177,8 @@ namespace phyz {
 		};
 
 		struct Hinge {
+			RigidBody* b1;
+			RigidBody* b2;
 			HingeConstraint constraint;
 			Motor motor;
 			RigidBody::PKey b1_point_key;
@@ -185,6 +191,8 @@ namespace phyz {
 		};
 
 		struct Slider {
+			RigidBody* b1;
+			RigidBody* b2;
 			SliderConstraint constraint;
 			SlideLimitConstraint slide_limit;
 			PistonConstraint piston_force;
@@ -203,6 +211,8 @@ namespace phyz {
 		};
 
 		struct SlidingHinge {
+			RigidBody* b1;
+			RigidBody* b2;
 			SlidingHingeConstraint constraint;
 			SlideLimitConstraint slide_limit;
 			PistonConstraint piston_force;
@@ -222,6 +232,8 @@ namespace phyz {
 		};
 
 		struct Weld {
+			RigidBody* b1;
+			RigidBody* b2;
 			WeldConstraint constraint;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
@@ -231,6 +243,8 @@ namespace phyz {
 		};
 
 		struct Spring {
+			RigidBody* b1;
+			RigidBody* b2;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			double stiffness;

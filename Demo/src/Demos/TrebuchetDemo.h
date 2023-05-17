@@ -108,7 +108,7 @@ public:
 		//****TREBUCHET FRAME*****
 		//************************
 		mthz::Vec3 trebuchet_pos = mthz::Vec3(0, 0, 0);
-		double arm_channel_width = 0.35;
+		double arm_channel_width = 0.575;
 		double rail_width = 0.25;
 		double rail_length = 5;
 		double rail_height = 2.5;
@@ -132,20 +132,62 @@ public:
 
 		phyz::Geometry drop_channel_cap2 = phyz::Geometry::box(channel_beam3_pos + mthz::Vec3(0, drop_channel_height, 0), drop_channel_support_width, drop_channel_support_width, 2 * drop_channel_support_width + drop_channel_width);
 
-
+		double each_rail_length = (rail_length - drop_channel_width) / 2.0;
 		mthz::Vec3 rail1_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0, rail_height - rail_width, -rail_length / 2.0);
-		phyz::Geometry rail1 = phyz::Geometry::box(rail1_pos, rail_width, rail_width, (rail_length - drop_channel_width) / 2.0);
+		phyz::Geometry rail1 = phyz::Geometry::box(rail1_pos, rail_width, rail_width, each_rail_length);
 
 		mthz::Vec3 rail2_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0, rail_height - rail_width, drop_channel_width / 2.0);
-		phyz::Geometry rail2 = phyz::Geometry::box(rail2_pos, rail_width, rail_width, (rail_length - drop_channel_width) / 2.0);
+		phyz::Geometry rail2 = phyz::Geometry::box(rail2_pos, rail_width, rail_width, each_rail_length);
 
 		mthz::Vec3 rail3_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width, rail_height - rail_width, -rail_length / 2.0);
-		phyz::Geometry rail3 = phyz::Geometry::box(rail3_pos, rail_width, rail_width, (rail_length - drop_channel_width) / 2.0);
+		phyz::Geometry rail3 = phyz::Geometry::box(rail3_pos, rail_width, rail_width, each_rail_length);
 
 		mthz::Vec3 rail4_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width, rail_height - rail_width, drop_channel_width / 2.0);
-		phyz::Geometry rail4 = phyz::Geometry::box(rail4_pos, rail_width, rail_width, (rail_length - drop_channel_width) / 2.0);
+		phyz::Geometry rail4 = phyz::Geometry::box(rail4_pos, rail_width, rail_width, each_rail_length);
 
 		phyz::Geometry arm_rest_box = phyz::Geometry::box(rail3_pos + mthz::Vec3(rail_width, 0, 0), arm_channel_width, rail_width, rail_width);
+
+		mthz::Vec3 bot_rail1_position = rail1_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y, 0);
+		phyz::Geometry bot_rail1 = phyz::Geometry::box(bot_rail1_position, rail_width, rail_width, each_rail_length);
+		
+		mthz::Vec3 bot_rail2_position = rail2_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y, 0);
+		phyz::Geometry bot_rail2 = phyz::Geometry::box(bot_rail2_position, rail_width, rail_width, each_rail_length);
+
+		mthz::Vec3 bot_rail3_position = rail3_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y, 0);
+		phyz::Geometry bot_rail3 = phyz::Geometry::box(bot_rail3_position, rail_width, rail_width, each_rail_length);
+
+		mthz::Vec3 bot_rail4_position = rail4_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y, 0);
+		phyz::Geometry bot_rail4 = phyz::Geometry::box(bot_rail4_position, rail_width, rail_width, each_rail_length);
+
+		double leg_height = rail1_pos.y - trebuchet_pos.y;
+		phyz::Geometry leg1 = phyz::Geometry::box(rail1_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, 0), rail_width, leg_height - rail_width, rail_width);
+		phyz::Geometry leg2 = phyz::Geometry::box(rail2_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, each_rail_length - rail_width), rail_width, leg_height - rail_width, rail_width); 
+		phyz::Geometry leg3 = phyz::Geometry::box(rail3_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, 0), rail_width, leg_height - rail_width, rail_width);
+		phyz::Geometry leg4 = phyz::Geometry::box(rail4_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, each_rail_length - rail_width), rail_width, leg_height - rail_width, rail_width);
+
+		double support_width = drop_channel_support_width * 0.75;
+		double support_height = 4;
+		double support_floor_length = rail_length/2.0 - drop_channel_width/2.0 - drop_channel_support_width;
+		double support_hypotenous = sqrt(support_height * support_height + support_floor_length + support_floor_length);
+		double support_angle = PI/2.0 - atan(support_height / support_floor_length);
+		double support_gap = 0.01;
+
+		mthz::Vec3 support1_pos = bot_rail1_position + mthz::Vec3(rail_width + support_gap, 0, 0);
+		phyz::Geometry support1 = phyz::Geometry::box(support1_pos, support_width, support_hypotenous, support_width)
+			.getRotated(mthz::Quaternion(support_angle, mthz::Vec3(1, 0, 0)), support1_pos);
+
+		mthz::Vec3 support2_pos = bot_rail2_position + mthz::Vec3(rail_width + support_gap, 0, each_rail_length);
+		phyz::Geometry support2 = phyz::Geometry::box(support2_pos + mthz::Vec3(0, 0, -support_width), support_width, support_hypotenous, support_width)
+			.getRotated(mthz::Quaternion(-support_angle, mthz::Vec3(1, 0, 0)), support2_pos);
+
+		mthz::Vec3 support3_pos = bot_rail3_position + mthz::Vec3(-support_width - support_gap, 0, 0);
+		phyz::Geometry support3 = phyz::Geometry::box(support3_pos, support_width, support_hypotenous, support_width)
+			.getRotated(mthz::Quaternion(support_angle, mthz::Vec3(1, 0, 0)), support3_pos);
+
+		mthz::Vec3 support4_pos = bot_rail4_position + mthz::Vec3(-support_width - support_gap, 0, each_rail_length);
+		phyz::Geometry support4 = phyz::Geometry::box(support4_pos + mthz::Vec3(0, 0, -support_width), support_width, support_hypotenous, support_width)
+			.getRotated(mthz::Quaternion(-support_angle, mthz::Vec3(1, 0, 0)), support4_pos);
+
 
 		double weight_width = 0.6;
 		double weight_thickness = 0.5;
@@ -284,7 +326,8 @@ public:
 
 		std::vector<phyz::RigidBody*> trebuchet_bodies;
 
-		phyz::Geometry trebuchet_frame = { channel_beam1, channel_beam2, channel_beam3, channel_beam4, drop_channel_cap1, drop_channel_cap2, rail1, rail2, rail3, rail4, arm_rest_box };
+		phyz::Geometry trebuchet_frame = { channel_beam1, channel_beam2, channel_beam3, channel_beam4, drop_channel_cap1, drop_channel_cap2, 
+			rail1, rail2, rail3, rail4, bot_rail1, bot_rail2, bot_rail3, bot_rail4, arm_rest_box, leg1, leg2, leg3, leg4, support1, support2, support3, support4 };
 		phyz::RigidBody* trebuchet_frame_r = p.createRigidBody(trebuchet_frame, true);
 
 		phyz::Geometry release_pins = { release_pin1, release_pin2 };
@@ -513,7 +556,7 @@ public:
 			double slow_factor = 1;
 
 			phyz_time += fElapsedTime;
-			//phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
 			while (phyz_time > slow_factor * timestep) {
 				phyz_time -= slow_factor * timestep;
 				p.timeStep();

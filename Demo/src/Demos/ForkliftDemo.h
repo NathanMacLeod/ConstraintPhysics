@@ -175,7 +175,7 @@ public:
 			double slow_factor = 1;
 
 			phyz_time += fElapsedTime;
-			//phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
 			while (phyz_time > slow_factor * timestep) {
 				phyz_time -= slow_factor * timestep;
 				p.timeStep();
