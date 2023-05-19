@@ -13,11 +13,11 @@ public:
 
 	std::vector<ControlDescription> controls() override {
 		return {
-			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
+			ControlDescription{"W, A, S, D", "Move the camera around"},
 			ControlDescription{"UP, DOWN, LEFT, RIGHT", "Rotate the camera"},
-			ControlDescription{"I. K", "Raise, Lower crane arm"},
-			ControlDescription{"J, L", "Rotate crane counter-clockwise, clockwise"},
-			ControlDescription{"R", "Reset tower"},
+			ControlDescription{"R", "Reset the trebuchet"},
+			ControlDescription{"F", "Launch the trebuchet"},
+			ControlDescription{"T", "Reset tower"},
 			ControlDescription{"ESC", "Return to main menu"},
 		};
 	}

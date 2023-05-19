@@ -97,18 +97,21 @@ namespace rndr {
 	}
 
 	unsigned int CreateShader(const std::string& vertexShader, const std::string& geometryShader, const std::string& fragmentShader) {
+		bool geometryShaderExists = geometryShader.size() > 0;
+
 		unsigned int program = glCreateProgram();
 		unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
-		unsigned int gs = CompileShader(GL_GEOMETRY_SHADER, geometryShader);
+		unsigned int gs = (geometryShaderExists)? CompileShader(GL_GEOMETRY_SHADER, geometryShader) : -1;
 		unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
 		glAttachShader(program, vs);
-		glAttachShader(program, gs);
+		if (geometryShaderExists) glAttachShader(program, gs);
 		glAttachShader(program, fs);
 		glLinkProgram(program);
 		glValidateProgram(program);
 
 		glDeleteShader(vs);
+		if (geometryShaderExists) glDeleteShader(gs);
 		glDeleteShader(fs);
 
 		return program;
