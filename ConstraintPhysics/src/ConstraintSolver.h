@@ -16,6 +16,7 @@ namespace phyz {
 		NVec<n> operator+(const NVec<n>& r) const;
 		NVec<n> operator-(const NVec<n>& r) const;
 		NVec<n> operator-() const;
+		double mag() const;
 		void operator+=(const NVec<n>& r);
 	};
 

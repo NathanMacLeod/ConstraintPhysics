@@ -149,16 +149,16 @@ public:
 		phyz::RigidBody* chasis_r = p.createRigidBody(chasis);
 
 		phyz::RigidBody* suspension_block1_r = p.createRigidBody(suspension_block1);
-		phyz::RigidBody* suspension_block2_r = p.createRigidBody(suspension_block2);
+		//phyz::RigidBody* suspension_block2_r = p.createRigidBody(suspension_block2);
 
-		phyz::RigidBody* front_wheel1_r = p.createRigidBody(front_wheel1);
-		phyz::RigidBody* front_wheel2_r = p.createRigidBody(front_wheel2);
+		//phyz::RigidBody* front_wheel1_r = p.createRigidBody(front_wheel1);
+		//phyz::RigidBody* front_wheel2_r = p.createRigidBody(front_wheel2);
 
-		phyz::RigidBody* steering_block1_r = p.createRigidBody(steering_block1);
-		phyz::RigidBody* steering_block2_r = p.createRigidBody(steering_block2);
+		//phyz::RigidBody* steering_block1_r = p.createRigidBody(steering_block1);
+		//phyz::RigidBody* steering_block2_r = p.createRigidBody(steering_block2);
 
-		phyz::RigidBody* rear_wheel1_r = p.createRigidBody(rear_wheel1);
-		phyz::RigidBody* rear_wheel2_r = p.createRigidBody(rear_wheel2);
+		//phyz::RigidBody* rear_wheel1_r = p.createRigidBody(rear_wheel1);
+		//phyz::RigidBody* rear_wheel2_r = p.createRigidBody(rear_wheel2);
 
 		double steer_torque = 30;
 		double steer_speed = 1;
@@ -170,8 +170,8 @@ public:
 		double spring_stiffness = 10;
 		double spring_damping = 0.5;
 
-		p.addSliderConstraint(chasis_r, suspension_block1_r, front_wheel1_position, mthz::Vec3(0, -1, 0), 350, 350, -hard_suspension_limit_dist, hard_suspension_limit_dist);
-		p.addSliderConstraint(chasis_r, suspension_block2_r, front_wheel2_position, mthz::Vec3(0, -1, 0), 350, 350, -hard_suspension_limit_dist, hard_suspension_limit_dist);
+		phyz::ConstraintID test_piston = p.addSliderConstraint(chasis_r, suspension_block1_r, front_wheel1_position, mthz::Vec3(0, -1, 0), 350, 350, -hard_suspension_limit_dist, hard_suspension_limit_dist);
+		//p.addSliderConstraint(chasis_r, suspension_block2_r, front_wheel2_position, mthz::Vec3(0, -1, 0), 350, 350, -hard_suspension_limit_dist, hard_suspension_limit_dist);
 
 		//phyz::ConstraintID steer_motor1 = p.addSliderConstraint(chasis_r, steering_block1_r, rear_wheel1_position, mthz::Vec3(0, -1, 0), 350, 350, -hard_suspension_limit_dist, hard_suspension_limit_dist);
 		//phyz::ConstraintID steer_motor2 = p.addSliderConstraint(chasis_r, steering_block2_r, rear_wheel2_position, mthz::Vec3(0, -1, 0), 350, 350, -hard_suspension_limit_dist, hard_suspension_limit_dist);
@@ -181,36 +181,36 @@ public:
 		//p.addSpring(chasis_r, steering_block1_r, rear_wheel1_position + mthz::Vec3(0, spring_dist, 0), rear_wheel1_position, spring_damping, spring_stiffness);
 		//p.addSpring(chasis_r, steering_block2_r, rear_wheel2_position + mthz::Vec3(0, spring_dist, 0), rear_wheel2_position, spring_damping, spring_stiffness);
 
-		phyz::ConstraintID power_motor1 = p.addHingeConstraint(front_wheel1_r, suspension_block1_r, front_wheel1_position, mthz::Vec3(1, 0, 0));
-		phyz::ConstraintID power_motor2 = p.addHingeConstraint(front_wheel2_r, suspension_block2_r, front_wheel2_position, mthz::Vec3(1, 0, 0));
+		//phyz::ConstraintID power_motor1 = p.addHingeConstraint(front_wheel1_r, suspension_block1_r, front_wheel1_position, mthz::Vec3(1, 0, 0));
+		//phyz::ConstraintID power_motor2 = p.addHingeConstraint(front_wheel2_r, suspension_block2_r, front_wheel2_position, mthz::Vec3(1, 0, 0));
 
-		
+		p.setPiston(test_piston, 100, 1);
 
-		p.setMotor(power_motor1, power_torque, 0);
-		p.setMotor(power_motor2, power_torque, 0);
+		//p.setMotor(power_motor1, power_torque, 0);
+		//p.setMotor(power_motor2, power_torque, 0);
 		//p.setMotor(steer_motor1, steer_torque, 0);
 		//p.setMotor(steer_motor2, steer_torque, 0);
 
-		p.addHingeConstraint(steering_block1_r, rear_wheel1_r, rear_wheel1_position, mthz::Vec3(-1, 0, 0));
-		p.addHingeConstraint(steering_block2_r, rear_wheel2_r, rear_wheel2_position, mthz::Vec3(1, 0, 0));
+		//p.addHingeConstraint(steering_block1_r, rear_wheel1_r, rear_wheel1_position, mthz::Vec3(-1, 0, 0));
+		//p.addHingeConstraint(steering_block2_r, rear_wheel2_r, rear_wheel2_position, mthz::Vec3(1, 0, 0));
+		
+		//p.disallowCollision(rear_wheel1_r, chasis_r);
+		//p.disallowCollision(rear_wheel2_r, chasis_r);
 
-		p.disallowCollision(rear_wheel1_r, chasis_r);
-		p.disallowCollision(rear_wheel2_r, chasis_r);
-
-		suspension_block1_r->setNoCollision(true);
-		suspension_block2_r->setNoCollision(true);
-		steering_block1_r->setNoCollision(true);
-		steering_block2_r->setNoCollision(true);
+		//suspension_block1_r->setNoCollision(true);
+		//suspension_block2_r->setNoCollision(true);
+		//steering_block1_r->setNoCollision(true);
+		//steering_block2_r->setNoCollision(true);
 
 		bodies.push_back({ fromGeometry(chasis), chasis_r });
-		bodies.push_back({ fromGeometry(front_wheel1), front_wheel1_r });
-		bodies.push_back({ fromGeometry(front_wheel2), front_wheel2_r });
-		bodies.push_back({ fromGeometry(rear_wheel1), rear_wheel1_r });
-		bodies.push_back({ fromGeometry(rear_wheel2), rear_wheel2_r });
-		bodies.push_back({ fromGeometry(steering_block1), steering_block1_r });
-		bodies.push_back({ fromGeometry(steering_block2), steering_block2_r });
+		//bodies.push_back({ fromGeometry(front_wheel1), front_wheel1_r });
+		//bodies.push_back({ fromGeometry(front_wheel2), front_wheel2_r });
+		//bodies.push_back({ fromGeometry(rear_wheel1), rear_wheel1_r });
+		//bodies.push_back({ fromGeometry(rear_wheel2), rear_wheel2_r });
+		//bodies.push_back({ fromGeometry(steering_block1), steering_block1_r });
+		//bodies.push_back({ fromGeometry(steering_block2), steering_block2_r });
 		bodies.push_back({ fromGeometry(suspension_block1), suspension_block1_r });
-		bodies.push_back({ fromGeometry(suspension_block2), suspension_block2_r });
+		//bodies.push_back({ fromGeometry(suspension_block2), suspension_block2_r });
 
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
@@ -259,16 +259,19 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
-				p.setMotor(power_motor1, power_torque, forward_speed);
-				p.setMotor(power_motor2, power_torque, forward_speed);
+				p.setPiston(test_piston, 100, 1);
+				//p.setMotor(power_motor1, power_torque, forward_speed);
+				//p.setMotor(power_motor2, power_torque, forward_speed);
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_K)) {
-				p.setMotor(power_motor1, power_torque, -reverse_speed);
-				p.setMotor(power_motor2, power_torque, -reverse_speed);
+				//p.setPiston(test_piston, 100, -1);
+				//p.setMotor(power_motor1, power_torque, -reverse_speed);
+				//p.setMotor(power_motor2, power_torque, -reverse_speed);
 			}
 			else {
-				p.setMotor(power_motor1, power_torque, 0);
-				p.setMotor(power_motor2, power_torque, 0);
+				//p.setPiston(test_piston, 0, 0);
+				//p.setMotor(power_motor1, power_torque, 0);
+				//p.setMotor(power_motor2, power_torque, 0);
 			}
 
 			if (rndr::getKeyDown(GLFW_KEY_J)) {
@@ -283,6 +286,8 @@ public:
 				//p.setMotor(steer_motor1, steer_torque, 0);
 				//p.setMotor(steer_motor2, steer_torque, 0);
 			}
+
+			//printf("%f, %f, %f\n", chasis_r->getCOM().x, chasis_r->getCOM().y, chasis_r->getCOM().z);
 
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
 				for (PhysBod b : bodies) {

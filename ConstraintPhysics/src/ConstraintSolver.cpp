@@ -638,11 +638,15 @@ namespace phyz {
 		vb->lin -= (impulse.v[0] * u + impulse.v[1] * w) * b->getInvMass();
 		va->ang += NVec3toVec3(rotDirA * impulse);
 		vb->ang -= NVec3toVec3(rotDirB * impulse);
+
+		if (impulse.mag() > 10) {
+			int a = 1 + 2;
+		}
 	}
 
 
 	//******************************
-	//*****PISTON CONSTRAINT********
+	//******PISTON CONSTRAINT*******
 	//******************************
 	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, NVec<1> warm_start_impulse)
 		: Constraint(a, b), slide_axis(slide_axis_a), impulse(warm_start_impulse), max_impulse(max_impulse)
@@ -995,6 +999,15 @@ namespace phyz {
 		}
 		return out;
 	};
+
+	template<int n>
+	double NVec<n>::mag() const {
+		double sum = 0;
+		for (int i = 0; i < n; i++) {
+			sum += v[i] * v[i];
+		}
+		return sqrt(sum);
+	}
 
 	template<int n>
 	void NVec<n>::operator+=(const NVec<n>& r) {
