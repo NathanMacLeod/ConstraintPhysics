@@ -89,6 +89,9 @@
     <ClInclude Include="src\Demos\TrebuchetDemo.h">
       <Filter>src\Demos</Filter>
     </ClInclude>
+    <ClInclude Include="src\Demos\AngularMomentumDemo.h">
+      <Filter>src\Demos</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\shaders\Basic.shader">

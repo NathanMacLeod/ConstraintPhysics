@@ -528,8 +528,8 @@ namespace phyz {
 
 		//IMPULSE TO ROTATION MATRICES
 		{
-			mthz::Vec3 l = Ia_inv * rAxU + u.cross(pos_error); //left block
-			mthz::Vec3 m = Ia_inv * rAxW + w.cross(pos_error); //middle block
+			mthz::Vec3 l = Ia_inv * (rAxU + u.cross(pos_error)); //left block
+			mthz::Vec3 m = Ia_inv * (rAxW + w.cross(pos_error)); //middle block
 
 			rotDirA.v[0][0] = l.x; rotDirA.v[0][1] = m.x;
 			rotDirA.v[1][0] = l.y; rotDirA.v[1][1] = m.y;
@@ -638,10 +638,6 @@ namespace phyz {
 		vb->lin -= (impulse.v[0] * u + impulse.v[1] * w) * b->getInvMass();
 		va->ang += NVec3toVec3(rotDirA * impulse);
 		vb->ang -= NVec3toVec3(rotDirB * impulse);
-
-		if (impulse.mag() > 10) {
-			int a = 1 + 2;
-		}
 	}
 
 
@@ -768,8 +764,8 @@ namespace phyz {
 		rot_axis_b.getPerpendicularBasis(&u, &w);
 		n = rot_axis_a;
 
-		impulse.v[3] = u.dot(source_u) * warm_start_impulse.v[3] + u.dot(source_w) * warm_start_impulse.v[4];
-		impulse.v[4] = w.dot(source_u) * warm_start_impulse.v[3] + w.dot(source_w) * warm_start_impulse.v[4];
+		impulse.v[2] = u.dot(source_u) * warm_start_impulse.v[2] + u.dot(source_w) * warm_start_impulse.v[3];
+		impulse.v[3] = w.dot(source_u) * warm_start_impulse.v[2] + w.dot(source_w) * warm_start_impulse.v[3];
 
 		mthz::Mat3 Ia_inv = a->getInvTensor();
 		mthz::Mat3 Ib_inv = b->getInvTensor();

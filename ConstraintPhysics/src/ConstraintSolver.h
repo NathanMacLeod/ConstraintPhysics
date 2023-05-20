@@ -252,6 +252,7 @@ namespace phyz {
 		NMat<3, 5> rotDirB;
 		NMat<5, 12> jacobian;
 		NMat<5, 5> inverse_inertia;
+
 		NVec<5> target_val;
 		NVec<5> psuedo_target_val;
 	};

@@ -150,6 +150,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Demos\AngularMomentumDemo.h" />
     <ClInclude Include="src\Demos\CarDemo.h" />
     <ClInclude Include="src\Demos\ColActionDemo.h" />
     <ClInclude Include="src\Demos\DemoScene.h" />
