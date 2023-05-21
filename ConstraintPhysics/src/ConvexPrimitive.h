@@ -16,7 +16,7 @@ namespace phyz {
 		const static Material default_material() { return {1.0, 0.3, 0.6, 1.1}; }
 		static Material ice() { return { 0.6, 0.3, 0.1, 0.2 }; }
 		static Material rubber() { return { 0.8, 0.6, 1.0, 1.4 }; }
-		static Material super_friction() { return { 0.8, 0.6, 150.0, 250.0 }; }
+		static Material super_friction() { return { 0.8, 0.6, 40.0, 100.0 }; }
 		const static Material modified_density(double d) {
 			Material m = default_material();
 			m.density = d;

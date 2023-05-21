@@ -124,6 +124,7 @@ namespace phyz {
 	void RigidBody::rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr) {
 		const int CUTOFF_MAG = 0.00000000001;
 		const int NEWTON_STEPS = 2;
+
 		if (ang_vel.magSqrd() == 0) {
 			return;
 		}

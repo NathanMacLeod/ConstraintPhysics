@@ -16,7 +16,13 @@ namespace phyz {
 		NVec<n> operator+(const NVec<n>& r) const;
 		NVec<n> operator-(const NVec<n>& r) const;
 		NVec<n> operator-() const;
-		double mag() const;
+		double mag() const {
+			double sum = 0;
+			for (int i = 0; i < n; i++) {
+				sum += v[i] * v[i];
+			}
+			return sqrt(sum);
+		}
 		void operator+=(const NVec<n>& r);
 	};
 

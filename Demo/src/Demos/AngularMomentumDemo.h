@@ -15,16 +15,15 @@ public:
 		return {
 			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
 			ControlDescription{"UP, DOWN, LEFT, RIGHT", "Rotate the camera"},
-			ControlDescription{"I. K", "Raise, Lower crane arm"},
-			ControlDescription{"J, L", "Rotate crane counter-clockwise, clockwise"},
-			ControlDescription{"R", "Reset tower"},
+			ControlDescription{"I. K", "Spin flywheel"},
+			ControlDescription{"J, L", "Rotate flywheel"},
 			ControlDescription{"ESC", "Return to main menu"},
 		};
 	}
 
 	void run() override {
 
-		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
+		rndr::init(properties.window_width, properties.window_height, "Angular Momentum Demo");
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
 		}
@@ -71,14 +70,49 @@ public:
 		phyz::Geometry spinner_base = phyz::Geometry::cylinder(spinner_base_position + mthz::Vec3(0, -spinner_base_length / 2.0, 0), spinner_base_radius, spinner_base_length)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner_base_position);
 
-		mthz::Vec3 spinner_plate = 
+		mthz::Vec3 spinner_plate_position = spinner_base_position + mthz::Vec3(0, 0, spinner_base_length / 2.0);
+		double spinner_plate_radius = spinner_base_radius - 0.05;
+		double spinner_plate_thickness = 0.1;
+
+		phyz::Geometry spinner_plate = phyz::Geometry::cylinder(spinner_plate_position, spinner_plate_radius, spinner_plate_thickness)
+			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner_plate_position);
+
+		double flywheel_thickness = 0.25;
+		double arm_thickness = 0.1;
+		double arm_width = 0.2;
+		double arm_length = 0.85;
+
+		mthz::Vec3 arm1_pos = spinner_plate_position + mthz::Vec3(-arm_width / 2.0, flywheel_thickness / 2.0, spinner_plate_thickness);
+		phyz::Geometry arm1 = phyz::Geometry::box(arm1_pos, arm_width, arm_thickness, arm_length);
+
+		mthz::Vec3 arm2_pos = spinner_plate_position + mthz::Vec3(-arm_width / 2.0, -flywheel_thickness / 2.0 - arm_thickness, spinner_plate_thickness);
+		phyz::Geometry arm2 = phyz::Geometry::box(arm2_pos, arm_width, arm_thickness, arm_length);
+
+		mthz::Vec3 flywheel_position = spinner_plate_position + mthz::Vec3(0, 0, spinner_plate_thickness + arm_length - arm_thickness / 2.0);
+		double flywheel_radius = 0.65;
+		phyz::Geometry flywheel = phyz::Geometry::cylinder(flywheel_position + mthz::Vec3(0, -flywheel_thickness/2.0, 0), flywheel_radius, flywheel_thickness);
 
 		phyz::Geometry base = { base_plate, column, spinner_base };
+		phyz::Geometry arm = { spinner_plate, arm1, arm2 };
 
 		phyz::RigidBody* base_r = p.createRigidBody(base);
 		p.addHingeConstraint(base_r, r2, base_position, mthz::Vec3(0, 1, 0));
 
+		phyz::RigidBody* arm_r = p.createRigidBody(arm);
+		phyz::ConstraintID rotate_motor = p.addHingeConstraint(base_r, arm_r, spinner_plate_position, mthz::Vec3(0, 0, 1));
+
+		phyz::RigidBody* flywheel_r = p.createRigidBody(flywheel);
+		phyz::ConstraintID spin_motor = p.addHingeConstraint(arm_r, flywheel_r, flywheel_position, mthz::Vec3(0, 1, 0));
+
+		double rotate_speed = 1;
+		double rotate_torque = 10;
+
+		double spin_speed = 25;
+		double spin_torque = 0.5;
+
 		bodies.push_back({ fromGeometry(base), base_r });
+		bodies.push_back({ fromGeometry(arm), arm_r });
+		bodies.push_back({ fromGeometry(flywheel), flywheel_r });
 
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
@@ -127,13 +161,24 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
-				//p.setMotor(lift_motor, lift_torque, -1);
+				p.setMotorTargetVelocity(spin_motor, spin_torque, -spin_speed);
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_K)) {
-				//p.setMotor(lift_motor, lift_torque, 1);
+				p.setMotorTargetVelocity(spin_motor, spin_torque, spin_speed);
 			}
 			else {
-				//p.setMotor(lift_motor, lift_torque, 0);
+				p.setMotorOff(spin_motor);
+			}
+
+
+			if (rndr::getKeyDown(GLFW_KEY_J)) {
+				p.setMotorTargetVelocity(rotate_motor, rotate_torque, rotate_speed);
+			}
+			else if (rndr::getKeyDown(GLFW_KEY_L)) {
+				p.setMotorTargetVelocity(rotate_motor, rotate_torque, -rotate_speed);
+			}
+			else {
+				p.setMotorTargetVelocity(rotate_motor, rotate_torque, 0);
 			}
 
 

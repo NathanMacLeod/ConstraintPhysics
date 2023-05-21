@@ -53,12 +53,14 @@ public:
 		//reference: https://youtu.be/mq18jajrx68?t=13
 
 		mthz::Vec3 forklift_position = mthz::Vec3(0, 2, 0);
+		mthz::Vec3 forward_dir(0, 0, 1);
 
+		phyz::Material chasis_material = phyz::Material::modified_density(3.0);
 		double chasis_base_width = 2.25;
 		double chasis_base_length = 5;
 		double chasis_base_height = 1;
 		mthz::Vec3 chasis_base_pos = forklift_position + mthz::Vec3(-chasis_base_length / 2.0, -chasis_base_width / 2.0, -chasis_base_height / 2.0);
-		phyz::Geometry chasis_base = phyz::Geometry::box(chasis_base_pos, chasis_base_width, chasis_base_height, chasis_base_length);
+		phyz::Geometry chasis_base = phyz::Geometry::box(chasis_base_pos, chasis_base_width, chasis_base_height, chasis_base_length, chasis_material);
 
 		double chasis_layer2_height = 0.6;
 		double layer2_front_length = 0.5;
@@ -106,8 +108,6 @@ public:
 			.getRotated(mthz::Quaternion(-front_support_angle, mthz::Vec3(1, 0, 0)), front_support2_position);
 
 
-
-
 		double front_wheel_radius = 0.9;
 		double wheel_width = 0.55;
 		double front_wheel_attach_height = 0.25;
@@ -144,9 +144,23 @@ public:
 
 		phyz::Geometry steering_block2 = phyz::Geometry::box(rear_wheel2_position + mthz::Vec3(-suspension_block_size, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
 
+		double mast_width = 0.4;
+		double mast_height = 5;
+		double mast_thickness = 0.35;
+		double mast_gap = 0.25;
+		double mast_separation = 0.8;
+
+		mthz::Vec3 mast_position = chasis_base_pos + mthz::Vec3(chasis_base_width / 2.0, 0, chasis_base_length + mast_gap);
+
+		mthz::Vec3 mast1_position = mast_position + mthz::Vec3(-mast_separation / 2.0 - mast_width, 0, 0);
+		phyz::Geometry mast1 = phyz::Geometry::box(mast1_position, mast_width, mast_height, mast_thickness);
+
+		mthz::Vec3 mast2_position = mast_position + mthz::Vec3(mast_separation / 2.0, 0, 0);
+		phyz::Geometry mast2 = phyz::Geometry::box(mast2_position, mast_width, mast_height, mast_thickness);
+
 
 		phyz::Geometry chasis = { chasis_base, layer2_front_block, layer2_rear_block, layer3_block, roof_rear_support1, roof_rear_support2, front_support1, front_support2, roof};
-		phyz::RigidBody* chasis_r = p.createRigidBody(chasis);
+		phyz::RigidBody* chasis_r = p.createRigidBody(chasis, true);
 
 		phyz::RigidBody* suspension_block1_r = p.createRigidBody(suspension_block1);
 		phyz::RigidBody* suspension_block2_r = p.createRigidBody(suspension_block2);
@@ -160,15 +174,23 @@ public:
 		phyz::RigidBody* rear_wheel1_r = p.createRigidBody(rear_wheel1);
 		phyz::RigidBody* rear_wheel2_r = p.createRigidBody(rear_wheel2);
 
-		double steer_torque = 800;
-		double steer_speed = 1;
-		double power_torque = 20;
+		phyz::Geometry mast = { mast1, mast2 };
+		phyz::RigidBody* mast_r = p.createRigidBody(mast);
+
+		double mast_rotation = 0.06;
+		double mast_torque = 300;
+		phyz::ConstraintID mast_motor = p.addHingeConstraint(chasis_r, mast_r, mast_position, mthz::Vec3(1, 0, 0), 350, 350, 0, mast_rotation);
+
+		double break_torque = 150;
+		double steer_torque = 65;
+		double steer_angle = 0.45;
+		double power_torque = 30;
 		double forward_speed = 30;
 		double reverse_speed = 10;
 		double hard_suspension_limit_dist = std::numeric_limits<double>::infinity();
 		double spring_dist = 1.0;
-		double spring_stiffness = 200;
-		double spring_damping = 15.5;
+		double spring_stiffness = 600;
+		double spring_damping = 25.5;
 
 		p.addSliderConstraint(chasis_r, suspension_block1_r, front_wheel1_position, mthz::Vec3(0, -1, 0), 350, 350, -hard_suspension_limit_dist, hard_suspension_limit_dist);
 		p.addSliderConstraint(chasis_r, suspension_block2_r, front_wheel2_position, mthz::Vec3(0, -1, 0), 350, 350, -hard_suspension_limit_dist, hard_suspension_limit_dist);
@@ -200,10 +222,11 @@ public:
 		bodies.push_back({ fromGeometry(front_wheel2), front_wheel2_r });
 		bodies.push_back({ fromGeometry(rear_wheel1), rear_wheel1_r });
 		bodies.push_back({ fromGeometry(rear_wheel2), rear_wheel2_r });
-		bodies.push_back({ fromGeometry(steering_block1), steering_block1_r });
+		/*bodies.push_back({ fromGeometry(steering_block1), steering_block1_r });
 		bodies.push_back({ fromGeometry(steering_block2), steering_block2_r });
 		bodies.push_back({ fromGeometry(suspension_block1), suspension_block1_r });
-		bodies.push_back({ fromGeometry(suspension_block2), suspension_block2_r });
+		bodies.push_back({ fromGeometry(suspension_block2), suspension_block2_r });*/
+		bodies.push_back({ fromGeometry(mast), mast_r });
 
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
@@ -251,30 +274,46 @@ public:
 
 			t += fElapsedTime;
 
+			mthz::Vec3 oriented_forward = chasis_r->getOrientation().applyRotation(forward_dir);
+
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
-				p.setMotor(power_motor1, power_torque, forward_speed);
-				p.setMotor(power_motor2, power_torque, forward_speed);
+				bool breaking = oriented_forward.dot(chasis_r->getVel()) < 0;
+
+				p.setMotorTargetVelocity(power_motor1, breaking? break_torque : power_torque, forward_speed);
+				p.setMotorTargetVelocity(power_motor2, breaking ? break_torque : power_torque, forward_speed);
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_K)) {
-				p.setMotor(power_motor1, power_torque, -reverse_speed);
-				p.setMotor(power_motor2, power_torque, -reverse_speed);
+				bool breaking = oriented_forward.dot(chasis_r->getVel()) > 0;
+
+				p.setMotorTargetVelocity(power_motor1, breaking ? break_torque : power_torque, -reverse_speed);
+				p.setMotorTargetVelocity(power_motor2, breaking ? break_torque : power_torque, -reverse_speed);
 			}
 			else {
-				p.setMotor(power_motor1, power_torque, 0);
-				p.setMotor(power_motor2, power_torque, 0);
+				p.setMotorTargetVelocity(power_motor1, power_torque, 0);
+				p.setMotorTargetVelocity(power_motor2, power_torque, 0);
+			}
+
+			if (rndr::getKeyDown(GLFW_KEY_H)) {
+				p.setMotorTargetVelocity(mast_motor, mast_torque, 0.15);
+			}
+			else if (rndr::getKeyDown(GLFW_KEY_F)) {
+				p.setMotorTargetVelocity(mast_motor, mast_torque, -0.15);
+			}
+			else {
+				p.setMotorTargetVelocity(mast_motor, mast_torque, 0);
 			}
 
 			if (rndr::getKeyDown(GLFW_KEY_J)) {
-				p.setMotor(steer_motor1, steer_torque, steer_speed);
-				p.setMotor(steer_motor2, steer_torque, steer_speed);
+				p.setMotorTargetPosition(steer_motor1, steer_torque, -steer_angle);
+				p.setMotorTargetPosition(steer_motor2, steer_torque, -steer_angle);
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_L)) {
-				p.setMotor(steer_motor1, steer_torque, -steer_speed);
-				p.setMotor(steer_motor2, steer_torque, -steer_speed);
+				p.setMotorTargetPosition(steer_motor1, steer_torque, steer_angle);
+				p.setMotorTargetPosition(steer_motor2, steer_torque, steer_angle);
 			}
 			else {
-				p.setMotor(steer_motor1, steer_torque, 0);
-				p.setMotor(steer_motor2, steer_torque, 0);
+				p.setMotorTargetPosition(steer_motor1, steer_torque, 0);
+				p.setMotorTargetPosition(steer_motor2, steer_torque, 0);
 			}
 
 			//printf("%f, %f, %f\n", chasis_r->getCOM().x, chasis_r->getCOM().y, chasis_r->getCOM().z);

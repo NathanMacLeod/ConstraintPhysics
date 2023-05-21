@@ -647,7 +647,7 @@ namespace phyz {
 	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, NVec<1> warm_start_impulse)
 		: Constraint(a, b), slide_axis(slide_axis_a), impulse(warm_start_impulse), max_impulse(max_impulse)
 	{
-
+		
 		mthz::Mat3 Ia_inv = a->getInvTensor();
 
 		pos_diff = b->getCOM() - a->getCOM();
@@ -995,15 +995,6 @@ namespace phyz {
 		}
 		return out;
 	};
-
-	template<int n>
-	double NVec<n>::mag() const {
-		double sum = 0;
-		for (int i = 0; i < n; i++) {
-			sum += v[i] * v[i];
-		}
-		return sqrt(sum);
-	}
 
 	template<int n>
 	void NVec<n>::operator+=(const NVec<n>& r) {

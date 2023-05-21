@@ -640,8 +640,8 @@ public:
 		double throttle_velocity = -1;
 		double steering_velocity = 3;
 
-		p.setMotor(throttle, throttle_torque, throttle_velocity);
-		p.setMotor(steering, steering_torque, 0);
+		p.setMotorTargetVelocity(throttle, throttle_torque, throttle_velocity);
+		p.setMotorTargetVelocity(steering, steering_torque, 0);
 
 		phyz::RigidBody::PKey lock_cam_pos = base_r->trackPoint(steering_wheel_position + mthz::Vec3(0.45, 0.55, 0));
 		pos = mthz::Vec3(0, 3, 3);
@@ -694,28 +694,28 @@ public:
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
 				if (!nuked) {
 					throttle_velocity = std::min<double>(throttle_velocity + 2 * fElapsedTime, 6);
-					p.setMotor(throttle, throttle_torque, throttle_velocity);
+					p.setMotorTargetVelocity(throttle, throttle_torque, throttle_velocity);
 				}
 			}
 			if (rndr::getKeyDown(GLFW_KEY_K)) {
 				if (!nuked) {
 					throttle_velocity = std::max<double>(throttle_velocity - 2 * fElapsedTime, 0);
-					p.setMotor(throttle, throttle_torque, throttle_velocity);
+					p.setMotorTargetVelocity(throttle, throttle_torque, throttle_velocity);
 				}
 			}
 			if (rndr::getKeyDown(GLFW_KEY_J)) {
 				if (!nuked) {
-					p.setMotor(steering, steering_torque, steering_velocity);
+					p.setMotorTargetVelocity(steering, steering_torque, steering_velocity);
 				}
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_L)) {
 				if (!nuked) {
-					p.setMotor(steering, steering_torque, -steering_velocity);
+					p.setMotorTargetVelocity(steering, steering_torque, -steering_velocity);
 				}
 			}
 			else {
 				if (!nuked) {
-					p.setMotor(steering, steering_torque, 0);
+					p.setMotorTargetVelocity(steering, steering_torque, 0);
 				}
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_B)) {

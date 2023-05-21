@@ -97,7 +97,11 @@ namespace phyz {
 
 		void removeConstraint(ConstraintID id, bool reenable_collision=true);
 
-		void setMotor(ConstraintID id, double max_torque, double target_velocity);
+		void setMotorOff(ConstraintID id);
+		void setMotorConstantTorque(ConstraintID id, double torque);
+		void setMotorTargetVelocity(ConstraintID id, double max_torque, double target_velocity);
+		void setMotorTargetPosition(ConstraintID id, double max_torque, double target_position);
+
 		void setPiston(ConstraintID id, double max_force, double target_velocity);
 		double getMotorAngularPosition(ConstraintID id);
 
@@ -164,16 +168,29 @@ namespace phyz {
 			int uniqueID;
 		};
 
+		enum MotorMode { OFF, CONST_TORQUE, TARGET_VELOCITY, TARGET_POSITION };
+
 		struct Motor {
+			Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle);
+			double calculatePosition(mthz::Vec3 rot_axis, mthz::Vec3 ang_vel_b1, mthz::Vec3 ang_vel_b2, double timestep);
+			double getConstraintTargetVelocityValue(mthz::Vec3 rot_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double step_time);
+			void writePrevVel(mthz::Vec3 rot_axis, mthz::Vec3 ang_vel_b1, mthz::Vec3 ang_vel_b2);
+			bool constraintIsActive();
+
+			RigidBody* b1;
+			RigidBody* b2;
 			MotorConstraint motor_constraint;
 			mthz::Vec3 b1_u_axis_reference;
 			mthz::Vec3 b1_w_axis_reference;
 			mthz::Vec3 b2_rot_comparison_axis;
+			MotorMode mode;
 			double motor_angular_position;
 			double min_motor_position;
 			double max_motor_position;
 			double max_torque;
 			double target_velocity;
+			double target_position;
+			double prev_velocity;
 		};
 
 		struct Hinge {
@@ -253,10 +270,6 @@ namespace phyz {
 			int uniqueID;
 		};
 
-	
-		double calculateMotorPosition(double current_position, mthz::Vec3 rot_axis, mthz::Vec3 u_ref_axis, mthz::Vec3 w_ref_axis, mthz::Vec3 compare_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double timestep);
-		Motor initMotor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle);
-
 		struct SharedConstraintsEdge {
 			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contactConstraints(std::vector<Contact*>()) {}
 			~SharedConstraintsEdge();
@@ -294,6 +307,8 @@ namespace phyz {
 
 			SharedConstraintsEdge* getOrCreateEdgeTo(ConstraintGraphNode* n2);
 		};
+
+		Motor* fetchMotor(ConstraintID id);
 
 		int nextConstraintID = 0;
 		std::unordered_map<int, SharedConstraintsEdge*> constraint_map;

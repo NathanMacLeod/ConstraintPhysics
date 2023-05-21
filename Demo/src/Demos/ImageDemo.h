@@ -255,9 +255,9 @@ public:
 		phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
 
 		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
-		p.setMotor(spinner1_motor, 10000000, 0.5);
+		p.setMotorTargetVelocity(spinner1_motor, 10000000, 0.5);
 		phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, mthz::Vec3(0, 0, 1));
-		p.setMotor(spinner2_motor, 10000000, -0.5);
+		p.setMotorTargetVelocity(spinner2_motor, 10000000, -0.5);
 
 		pre_bodies.push_back(BodyHistory(base_r, base));
 
