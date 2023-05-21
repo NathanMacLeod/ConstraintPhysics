@@ -9,11 +9,20 @@
 #include <io.h>
 #include <fcntl.h>
 #include <cassert>
+#include <chrono>
 
 class ImageDemo : public DemoScene {
 private:
 	void render_progress_bar(float percent, int width, bool done) {
+		static auto t_start = std::chrono::system_clock::now();
 		if (!done) {
+			auto t_now = std::chrono::system_clock::now();
+			double t_elapsed = std::chrono::duration<float>(t_now - t_start).count();
+			double remaining_time = percent == 0? 0 : t_elapsed / percent * (1.0 - percent);
+			
+			int remaining_minutes = remaining_time / 60;
+			int remaining_seconds = remaining_time - remaining_minutes * 60;
+
 			printf("[");
 			int prog = percent * width;
 			for (int i = 0; i < width; i++) {
@@ -24,7 +33,7 @@ private:
 					printf("-");
 				}
 			}
-			printf("] %d%% %\r", (int)(100 * percent));
+			printf("] %d%%         Time Remaining: %02d:%02d\r\r", (int)(100 * percent), remaining_minutes, remaining_seconds);
 		}
 		else {
 			printf("[");
