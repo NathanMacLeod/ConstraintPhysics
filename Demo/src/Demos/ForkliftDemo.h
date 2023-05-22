@@ -31,7 +31,9 @@ public:
 
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(false);
-		p.setPGSIterations(45, 35);
+		p.setPGSIterations(45, 65);
+		double timestep = 1 / 90.0;
+		p.setStep_time(timestep);
 
 		bool lock_cam = true;
 
@@ -114,7 +116,7 @@ public:
 		double rear_wheel_radius = 0.8;
 		double rear_wheel_attach_height = front_wheel_attach_height - front_wheel_radius + rear_wheel_radius;
 		double rear_wheel_attach_dist = 0.5;
-		double front_wheel_attach_dist = chasis_base_length - 0.2;
+		double front_wheel_attach_dist = chasis_base_length - 0.5;
 		double wheel_attach_gap = 0.1;
 		int wheel_detail = 60;
 
@@ -158,9 +160,38 @@ public:
 		mthz::Vec3 mast2_position = mast_position + mthz::Vec3(mast_separation / 2.0, 0, 0);
 		phyz::Geometry mast2 = phyz::Geometry::box(mast2_position, mast_width, mast_height, mast_thickness);
 
+		double backrest_height_diff = 0.2;
+		double backrest_thickness = 0.25;
+		double backrest_beam_thickness = 0.15;
+		double backrest_section1_height = 1.25;
+		double backrest_section2_height = 1.0;
+		double backrest_width = 3;
+		const int n_section2_supports = 7;
+		const int n_section1_bars = 4;
+
+		mthz::Vec3 backrest_position = mast_position + mthz::Vec3(-backrest_width / 2.0, -backrest_height_diff, mast_thickness);
+
+		phyz::Geometry backrest_vert_bar1 = phyz::Geometry::box(backrest_position, backrest_beam_thickness, backrest_section1_height + backrest_section2_height, backrest_thickness);
+		phyz::Geometry backrest_vert_bar2 = phyz::Geometry::box(backrest_position + mthz::Vec3(backrest_width - backrest_beam_thickness, 0, 0), backrest_beam_thickness, backrest_section1_height + backrest_section2_height, backrest_thickness);
+		phyz::Geometry backrest_bar = phyz::Geometry::box(backrest_position + mthz::Vec3(backrest_beam_thickness, 0, 0), backrest_width - 2 * backrest_beam_thickness, backrest_beam_thickness, backrest_thickness);
+		phyz::Geometry backrest_top_bar = backrest_bar.getTranslated(mthz::Vec3(0, backrest_section1_height + backrest_section2_height - backrest_beam_thickness, 0));
+
+		phyz::Geometry backrest_bars[n_section1_bars];
+		double dy = (backrest_section1_height - backrest_beam_thickness) / (n_section1_bars - 1);
+		for (int i = 0; i < n_section1_bars; i++) {
+			backrest_bars[i] = backrest_bar.getTranslated(mthz::Vec3(0, i*dy, 0));
+		}
+
+		phyz::Geometry backrest_support = phyz::Geometry::box(backrest_position + mthz::Vec3(0, backrest_section1_height, 0), backrest_beam_thickness, backrest_section2_height - backrest_beam_thickness, backrest_thickness);
+		phyz::Geometry backrest_supports[n_section2_supports - 2];
+		double dx = (backrest_width - backrest_beam_thickness) / (n_section2_supports - 1);
+		for (int i = 1; i < n_section2_supports - 1; i++) {
+			backrest_supports[i - 1] = backrest_support.getTranslated(mthz::Vec3(dx * i, 0, 0));
+		}
+		
 
 		phyz::Geometry chasis = { chasis_base, layer2_front_block, layer2_rear_block, layer3_block, roof_rear_support1, roof_rear_support2, front_support1, front_support2, roof};
-		phyz::RigidBody* chasis_r = p.createRigidBody(chasis, true);
+		phyz::RigidBody* chasis_r = p.createRigidBody(chasis);
 
 		phyz::RigidBody* suspension_block1_r = p.createRigidBody(suspension_block1);
 		phyz::RigidBody* suspension_block2_r = p.createRigidBody(suspension_block2);
@@ -177,9 +208,23 @@ public:
 		phyz::Geometry mast = { mast1, mast2 };
 		phyz::RigidBody* mast_r = p.createRigidBody(mast);
 
+		phyz::Geometry backrest = { backrest_vert_bar1, backrest_vert_bar2, backrest_top_bar };
+		for (const phyz::Geometry& b : backrest_bars) {
+			backrest = phyz::Geometry::merge(b, backrest);
+		}
+		for (const phyz::Geometry& b : backrest_supports) {
+			backrest = phyz::Geometry::merge(b, backrest);
+		}
+		phyz::RigidBody* backrest_r = p.createRigidBody(backrest);
+
 		double mast_rotation = 0.06;
 		double mast_torque = 300;
 		phyz::ConstraintID mast_motor = p.addHingeConstraint(chasis_r, mast_r, mast_position, mthz::Vec3(1, 0, 0), 350, 350, 0, mast_rotation);
+
+		double backrest_positive_slide_limit = 4.5;
+		double backrest_negative_slide_limit = 0;
+		double backrest_force = 300;
+		phyz::ConstraintID backrest_piston = p.addSliderConstraint(mast_r, backrest_r, mast_position, mthz::Vec3(0, 1, 0), 350, 350, backrest_negative_slide_limit, backrest_positive_slide_limit);
 
 		double break_torque = 150;
 		double steer_torque = 65;
@@ -227,6 +272,7 @@ public:
 		bodies.push_back({ fromGeometry(suspension_block1), suspension_block1_r });
 		bodies.push_back({ fromGeometry(suspension_block2), suspension_block2_r });*/
 		bodies.push_back({ fromGeometry(mast), mast_r });
+		bodies.push_back({ fromGeometry(backrest), backrest_r });
 
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
@@ -240,8 +286,6 @@ public:
 		double rot_speed = 1;
 
 		double phyz_time = 0;
-		double timestep = 1 / 90.0;
-		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
 
 		while (rndr::render_loop(&fElapsedTime)) {
@@ -301,6 +345,16 @@ public:
 			}
 			else {
 				p.setMotorTargetVelocity(mast_motor, mast_torque, 0);
+			}
+
+			if (rndr::getKeyDown(GLFW_KEY_T)) {
+				p.setPiston(backrest_piston, backrest_force, 1);
+			}
+			else if (rndr::getKeyDown(GLFW_KEY_G)) {
+				p.setPiston(backrest_piston, backrest_force, -1);
+			}
+			else {
+				p.setPiston(backrest_piston, backrest_force, 0);
 			}
 
 			if (rndr::getKeyDown(GLFW_KEY_J)) {

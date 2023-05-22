@@ -528,8 +528,8 @@ namespace phyz {
 
 		//IMPULSE TO ROTATION MATRICES
 		{
-			mthz::Vec3 l = Ia_inv * (rAxU + u.cross(pos_error)); //left block
-			mthz::Vec3 m = Ia_inv * (rAxW + w.cross(pos_error)); //middle block
+			mthz::Vec3 l = Ia_inv * (rAxU + UxPe); //left block
+			mthz::Vec3 m = Ia_inv * (rAxW + WxPe); //middle block
 
 			rotDirA.v[0][0] = l.x; rotDirA.v[0][1] = m.x;
 			rotDirA.v[1][0] = l.y; rotDirA.v[1][1] = m.y;
@@ -572,7 +572,7 @@ namespace phyz {
 			jacobian.copyInto(zero, 2, 6);
 			jacobian.copyInto(-idenMat<3>(), 2, 9);
 
-			//top row
+			////top row
 			inverse_inertia.v[0][0] = a->getInvMass() + b->getInvMass() - u.dot(rA.cross(Ia_inv * (rAxU + UxPe))) - pos_error.dot(u.cross(Ia_inv * (rAxU + UxPe))) - u.dot(rB.cross(Ib_inv * (rBxU)));
 			inverse_inertia.v[0][1] = -u.dot(rA.cross(Ia_inv * (rAxW + WxPe))) - pos_error.dot(u.cross(Ia_inv * (rAxW))) - u.dot(rB.cross(Ib_inv * (rBxW)));
 			NMat<1, 3> ur = -(u_dot * rA_skew + Pe_dot * u_skew) * Ia_inv_mat - u_dot * rB_skew * Ib_inv_mat;
@@ -594,6 +594,7 @@ namespace phyz {
 			inverse_inertia.copyInto(lr, 2, 2);
 
 			inverse_inertia = inverse_inertia.inverse();
+			
 		}
 
 		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
