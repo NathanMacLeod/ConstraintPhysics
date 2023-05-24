@@ -505,7 +505,7 @@ namespace phyz {
 	////*****SLIDER CONSTRAINT********
 	////******************************
 	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
-		: Constraint(a, b), rA(slider_point_b - a->getCOM()), rB(slider_point_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 })
+		: Constraint(a, b), rA(slider_point_a - a->getCOM()), rB(slider_point_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 })
 	{
 		slider_axis_a = slider_axis_a.normalize();
 		slider_axis_a.getPerpendicularBasis(&u, &w);

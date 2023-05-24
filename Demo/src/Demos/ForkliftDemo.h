@@ -30,7 +30,7 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setSleepingEnabled(false);
+		p.setSleepingEnabled(true);
 		p.setPGSIterations(45, 65);
 		double timestep = 1 / 90.0;
 		p.setStep_time(timestep);
@@ -189,6 +189,21 @@ public:
 			backrest_supports[i - 1] = backrest_support.getTranslated(mthz::Vec3(dx * i, 0, 0));
 		}
 		
+		double fork_width = 0.3;
+		double fork_gap = 1.8;
+		double fork_thickness = 0.1;
+		double fork_depression = 0.2;
+		double fork_height = 1.3;
+		double fork_length = 4;
+
+		mthz::Vec3 fork1_pos = backrest_position + mthz::Vec3(backrest_width / 2.0 - fork_gap / 2.0 - fork_width, -fork_depression, backrest_thickness);
+		phyz::Geometry fork1_vert = phyz::Geometry::box(fork1_pos, fork_width, fork_height, fork_thickness);
+		phyz::Geometry fork1_horz = phyz::Geometry::box(fork1_pos + mthz::Vec3(0, 0, fork_thickness), fork_width, fork_thickness, fork_length - fork_thickness, phyz::Material::high_friction());
+
+		mthz::Vec3 fork2_pos = backrest_position + mthz::Vec3(backrest_width / 2.0 + fork_gap / 2.0, -fork_depression, backrest_thickness);
+		phyz::Geometry fork2_vert = phyz::Geometry::box(fork2_pos, fork_width, fork_height, fork_thickness);
+		phyz::Geometry fork2_horz = phyz::Geometry::box(fork2_pos + mthz::Vec3(0, 0, fork_thickness), fork_width, fork_thickness, fork_length - fork_thickness, phyz::Material::high_friction());
+
 
 		phyz::Geometry chasis = { chasis_base, layer2_front_block, layer2_rear_block, layer3_block, roof_rear_support1, roof_rear_support2, front_support1, front_support2, roof};
 		phyz::RigidBody* chasis_r = p.createRigidBody(chasis);
@@ -208,7 +223,7 @@ public:
 		phyz::Geometry mast = { mast1, mast2 };
 		phyz::RigidBody* mast_r = p.createRigidBody(mast);
 
-		phyz::Geometry backrest = { backrest_vert_bar1, backrest_vert_bar2, backrest_top_bar };
+		phyz::Geometry backrest = { backrest_vert_bar1, backrest_vert_bar2, backrest_top_bar, fork1_vert, fork1_horz, fork2_vert, fork2_horz };
 		for (const phyz::Geometry& b : backrest_bars) {
 			backrest = phyz::Geometry::merge(b, backrest);
 		}
@@ -217,7 +232,7 @@ public:
 		}
 		phyz::RigidBody* backrest_r = p.createRigidBody(backrest);
 
-		double mast_rotation = 0.06;
+		double mast_rotation = 0.1;
 		double mast_torque = 300;
 		phyz::ConstraintID mast_motor = p.addHingeConstraint(chasis_r, mast_r, mast_position, mthz::Vec3(1, 0, 0), 350, 350, 0, mast_rotation);
 
@@ -234,7 +249,7 @@ public:
 		double reverse_speed = 10;
 		double hard_suspension_limit_dist = std::numeric_limits<double>::infinity();
 		double spring_dist = 1.0;
-		double spring_stiffness = 600;
+		double spring_stiffness = 900;
 		double spring_damping = 25.5;
 
 		p.addSliderConstraint(chasis_r, suspension_block1_r, front_wheel1_position, mthz::Vec3(0, -1, 0), 350, 350, -hard_suspension_limit_dist, hard_suspension_limit_dist);
@@ -273,6 +288,46 @@ public:
 		bodies.push_back({ fromGeometry(suspension_block2), suspension_block2_r });*/
 		bodies.push_back({ fromGeometry(mast), mast_r });
 		bodies.push_back({ fromGeometry(backrest), backrest_r });
+
+		//************************
+		//*********Pallet*********
+		//************************
+
+		double pallet_width = 4;
+		double pallet_height = 0.65;
+		double board_thickness = 0.05;
+		double board_width = 0.45;
+		double spacer_height = pallet_height - 3 * board_thickness;
+		int num_top_boards = 5;
+
+		phyz::Geometry xlong_board = phyz::Geometry::box(mthz::Vec3(), pallet_width, board_thickness, board_width, phyz::Material::high_friction());
+		phyz::Geometry zlong_board = phyz::Geometry::box(mthz::Vec3(), board_width, board_thickness, pallet_width, phyz::Material::high_friction());
+		phyz::Geometry spacer = phyz::Geometry::box(mthz::Vec3(), board_width, spacer_height, board_width, phyz::Material::high_friction());
+
+		double mid_d = (pallet_width - board_width) / 2.0;
+		double far_d = pallet_width - board_width;
+
+		phyz::Geometry pallet_geom = {
+			xlong_board.getTranslated(mthz::Vec3(0, 0, 0)), xlong_board.getTranslated(mthz::Vec3(0, 0, mid_d)), xlong_board.getTranslated(mthz::Vec3(0, 0, far_d)),
+
+			spacer.getTranslated(mthz::Vec3(0, board_thickness, 0)), spacer.getTranslated(mthz::Vec3(mid_d, board_thickness, 0)), spacer.getTranslated(mthz::Vec3(far_d, board_thickness, 0)),
+			spacer.getTranslated(mthz::Vec3(0, board_thickness, mid_d)), spacer.getTranslated(mthz::Vec3(mid_d, board_thickness, mid_d)), spacer.getTranslated(mthz::Vec3(far_d, board_thickness, mid_d)),
+			spacer.getTranslated(mthz::Vec3(0, board_thickness, far_d)), spacer.getTranslated(mthz::Vec3(mid_d, board_thickness, far_d)), spacer.getTranslated(mthz::Vec3(far_d, board_thickness, far_d)),
+
+			zlong_board.getTranslated(mthz::Vec3(0, board_thickness + spacer_height, 0)), zlong_board.getTranslated(mthz::Vec3(mid_d, board_thickness + spacer_height, 0)), zlong_board.getTranslated(mthz::Vec3(far_d, board_thickness + spacer_height, 0)),
+		};
+		for (int i = 0; i < num_top_boards; i++) {
+			double dz = (pallet_width - board_width) / (num_top_boards - 1);
+			phyz::Geometry board = xlong_board.getTranslated(mthz::Vec3(0, 2 * board_thickness + spacer_height, i * dz));
+
+			pallet_geom = phyz::Geometry::merge(pallet_geom, board);
+		}
+
+		phyz::Geometry pallet = pallet_geom.getTranslated(mthz::Vec3(0, 1, 10));
+		phyz::RigidBody* pallet_r = p.createRigidBody(pallet);
+
+		bodies.push_back({ fromGeometry(pallet), pallet_r });
+
 
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
