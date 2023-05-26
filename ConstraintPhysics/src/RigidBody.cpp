@@ -1,6 +1,7 @@
 #include "RigidBody.h"
 #include <limits>
 #include <algorithm>
+#include <cassert>
 
 
 namespace phyz {
@@ -33,6 +34,8 @@ namespace phyz {
 	}
 
 	void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
+		assert(!isnan(impulse.mag()) && !isnan(position.mag()));
+
 		mthz::Vec3 torque = (position - com).cross(impulse);
 		vel += getInvMass() * impulse;
 		ang_vel += getInvTensor() * torque;
@@ -68,6 +71,7 @@ namespace phyz {
 	}
 
 	void RigidBody::setAngVel(mthz::Vec3 ang_vel) { 
+		assert(!isnan(ang_vel.mag()));
 		this->ang_vel = ang_vel; 
 		alertWakingAction();
 	}
@@ -157,6 +161,8 @@ namespace phyz {
 				itr_tensor = rot * reference_tensor * rot_conjugate;
 			}
 		}
+
+		assert(!isnan(itr_ang_vel.mag()));
 
 		orientation = itr_orientation;
 		ang_vel = itr_ang_vel;

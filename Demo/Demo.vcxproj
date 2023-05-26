@@ -156,6 +156,7 @@
     <ClInclude Include="src\Demos\DemoScene.h" />
     <ClInclude Include="src\Demos\DzhanibekovDemo.h" />
     <ClInclude Include="src\Demos\ForkliftDemo.h" />
+    <ClInclude Include="src\Demos\GyroscopeDemo.h" />
     <ClInclude Include="src\Demos\ImageDemo.h" />
     <ClInclude Include="src\Demos\olcPixelGameEngine.h" />
     <ClInclude Include="src\Demos\TrebuchetDemo.h" />

@@ -67,6 +67,7 @@ namespace phyz {
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
 		void setOctreeParams(double size, double minsize, mthz::Vec3 center = mthz::Vec3(0, 0, 0));
+		void setAngleVelUpdateTickCount(int n);
 		
 		ColActionID registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action);
 		void removeCollisionAction(ColActionID action_key);
@@ -118,6 +119,8 @@ namespace phyz {
 		mthz::Vec3 octree_center = mthz::Vec3(0, 0, 0);
 		double octree_size = 2000;
 		double octree_minsize = 1;
+
+		int angle_velocity_update_tick_count = 4;
 
 		struct ConstraintGraphNode; 
 		void addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);

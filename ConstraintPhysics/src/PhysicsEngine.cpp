@@ -213,7 +213,7 @@ namespace phyz {
 			if (!b->fixed && !b->asleep) {
 				b->com += (b->vel + b->psuedo_vel) * step_time;
 				if (b->ang_vel.magSqrd() != 0) {
-					b->rotateWhileApplyingGyroAccel(step_time, 4);
+					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count);
 					mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
 					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
 				}
@@ -590,6 +590,10 @@ namespace phyz {
 		b->ang_vel += delta_ang_vel;
 		b->psuedo_vel += delta_psuedo_vel;
 		b->psuedo_ang_vel += delta_psuedo_ang_vel;
+
+		assert(!(isnan(b->vel.mag()) || isnan(b->ang_vel.mag()) || isnan(b->psuedo_vel.mag()) || isnan(b->psuedo_ang_vel.mag())));
+		assert(!std::isinf(b->ang_vel.mag()) && !std::isinf(b->vel.mag()) && !std::isinf(b->psuedo_ang_vel.mag()) && !std::isinf(b->psuedo_vel.mag()));
+
 		double wake_vel = 0.25 * vel_sleep_coeff * gravity.mag(); //a little extra sensitive
 		if (b->asleep && (b->vel.mag() > wake_vel || b->ang_vel.mag() > wake_vel)) {
 			constraint_graph_lock.lock();
@@ -617,6 +621,11 @@ namespace phyz {
 		octree_center = center;
 		octree_size = size;
 		octree_minsize = minsize;
+	}
+
+	void PhysicsEngine::setAngleVelUpdateTickCount(int n) {
+		assert(n >= 0);
+		angle_velocity_update_tick_count = n;
 	}
 
 	void PhysicsEngine::setStep_time(double s) {
@@ -767,8 +776,10 @@ namespace phyz {
 			//account for fixed/unfixed potentially changing after constraint created
 			double vel_diff_respect_time = abs((rot_axis.dot(b1_ang_vel) - rot_axis.dot(b2_ang_vel)) - prev_velocity);
 
+			const double EPS = 0.0000001;
+
 			double inertia;
-			if (vel_diff_respect_time < 0.000000001) {
+			if (vel_diff_respect_time < EPS || abs(motor_constraint.impulse.v[0] < EPS)) {
 				//avoid dividing by 0, just try a different way (not the most accurate which is why is not used for general method)
 				inertia = 1.0 / (rot_axis.dot(b1->getInvTensor() * rot_axis) + rot_axis.dot(b2->getInvTensor() * rot_axis));
 			}
@@ -776,7 +787,9 @@ namespace phyz {
 				inertia = abs(motor_constraint.impulse.v[0]) / vel_diff_respect_time;
 			}
 
-			return target_dir * sqrt(2 * abs(ang_diff) * max_torque / inertia);
+			double returnval = target_dir * sqrt(2 * abs(ang_diff) * max_torque / inertia);
+			assert(!std::isinf(returnval));
+			return returnval;
 		}
 	}
 
