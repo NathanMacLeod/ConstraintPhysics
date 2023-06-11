@@ -59,5 +59,8 @@
     <ClInclude Include="src\Geometry.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\AABB_Tree.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

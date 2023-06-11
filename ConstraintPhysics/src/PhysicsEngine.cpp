@@ -253,6 +253,10 @@ namespace phyz {
 		r->fixed = fixed;
 		bodies.push_back(r);
 		constraint_graph_nodes[r] = new ConstraintGraphNode(r);
+
+		if (broadphase == AABB_TREE) {
+			aabb_tree.add(*r, r->aabb);
+		}
 		return r;
 	}
 
@@ -262,6 +266,10 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::deleteRigidBody(RigidBody* r) {
+		if (broadphase == AABB_TREE) {
+			aabb_tree.remove(*r);
+		}
+
 		assert(std::find(bodies.begin(), bodies.end(), r) != bodies.end());
 		bodies.erase(std::remove(bodies.begin(), bodies.end(), r));
 		ConstraintGraphNode* n = constraint_graph_nodes[r];
@@ -615,6 +623,27 @@ namespace phyz {
 	void PhysicsEngine::setGravity(const mthz::Vec3& v) {
 		gravity = v;
 		cutoff_vel = getCutoffVel(step_time, gravity);
+	}
+
+	void PhysicsEngine::setBroadphase(BroadPhaseStructure b) {
+		if (broadphase != AABB_TREE && b == AABB_TREE) {
+			//resets aabb tree, ensures all rigid bodies will be inserted in it (doing this to catch any new rigid bodies removed/deleted while AABBtree wasn't set as broadphase type)
+			setAABBTreeMarginSize(aabbtree_margin_size);
+		}
+
+		broadphase = b;
+	}
+
+	void PhysicsEngine::setAABBTreeMarginSize(double d) {
+		assert(d >= 0);
+		aabbtree_margin_size = d;
+		aabb_tree = AABBTree<RigidBody>(aabbtree_margin_size); //resets tree
+
+		//reinsert all elements
+		for (RigidBody* r : bodies) {
+			aabb_tree.add(*r, r->aabb);
+		}
+		
 	}
 
 	void PhysicsEngine::setOctreeParams(double size, double minsize, mthz::Vec3 center) {

@@ -4,6 +4,7 @@
 #include "ConstraintSolver.h"
 #include "ThreadManager.h"
 #include "Octree.h"
+#include "AABB_Tree.h"
 #include <set>
 #include <functional>
 #include <unordered_map>
@@ -41,8 +42,11 @@ namespace phyz {
 		int uniqueID;
 	};
 
+	enum BroadPhaseStructure { NONE, OCTREE, AABB_TREE};
+
 	class PhysicsEngine {
 	public:
+		PhysicsEngine();
 		~PhysicsEngine();
 
 		static void enableMultithreading(int n_threads);
@@ -66,6 +70,8 @@ namespace phyz {
 		void setSleepingEnabled(bool sleeping);
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
+		void setBroadphase(BroadPhaseStructure b);
+		void setAABBTreeMarginSize(double d);
 		void setOctreeParams(double size, double minsize, mthz::Vec3 center = mthz::Vec3(0, 0, 0));
 		void setAngleVelUpdateTickCount(int n);
 		
@@ -116,9 +122,14 @@ namespace phyz {
 		int pgsVelIterations = 20;
 		int pgsPosIterations = 15;
 
+
+		BroadPhaseStructure broadphase = AABB_TREE;
+		double aabbtree_margin_size = 0.25;
+		AABBTree<RigidBody> aabb_tree = AABBTree<RigidBody>(aabbtree_margin_size);
 		mthz::Vec3 octree_center = mthz::Vec3(0, 0, 0);
 		double octree_size = 2000;
 		double octree_minsize = 1;
+		
 
 		int angle_velocity_update_tick_count = 4;
 

@@ -36,5 +36,29 @@ namespace phyz{
 
 			return out;
 		}
+
+		static double volume(const AABB& a) {
+			return	  (a.max.x - a.min.x)
+					* (a.max.y - a.min.y)
+					* (a.max.z - a.min.z);
+		}
+
+		static AABB getScaled(const AABB& a, double scale_factor) {
+			mthz::Vec3 center = (a.max + a.min) / 2.0;
+
+			return AABB{
+				scale_factor * a.min - (scale_factor - 1) * center,
+				scale_factor * a.max - (scale_factor - 1) * center
+			};
+		}
+
+		static bool isAABBContained(const AABB& contained_aabb, const AABB& containing_aabb) {
+			return	   contained_aabb.min.x >= containing_aabb.min.x
+					&& contained_aabb.min.y >= containing_aabb.min.y
+					&& contained_aabb.min.z >= containing_aabb.min.z
+					&& contained_aabb.max.y <= containing_aabb.max.x
+					&& contained_aabb.max.y <= containing_aabb.max.y
+					&& contained_aabb.max.y <= containing_aabb.max.z;
+		}
 	};
 }

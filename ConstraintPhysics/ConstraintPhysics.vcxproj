@@ -29,6 +29,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AABB.h" />
+    <ClInclude Include="src\AABB_Tree.h" />
     <ClInclude Include="src\CollisionDetect.h" />
     <ClInclude Include="src\ConstraintSolver.h" />
     <ClInclude Include="src\ConvexPrimitive.h" />
