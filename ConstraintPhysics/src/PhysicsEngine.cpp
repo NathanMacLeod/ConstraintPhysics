@@ -58,7 +58,6 @@ namespace phyz {
 
 		auto t1 = std::chrono::system_clock::now();
 
-		Octree<RigidBody> octree(octree_center, octree_size, octree_minsize);
 		//determine which bodies are active, apply gravity and pass them to broad-phase collision detection
 		for (RigidBody* b : bodies) {
 			if (b->recievedWakingAction) {
@@ -77,13 +76,37 @@ namespace phyz {
 
 				b->vel += gravity * step_time;
 			}
-
-			octree.insert(*b, b->aabb);
 		}
 
 		maintainConstraintGraphApplyPoweredConstraints();
 
-		std::vector<Octree<RigidBody>::Pair> possible_intersections = octree.getAllIntersections();
+		std::vector<Pair> possible_intersections;
+		switch (broadphase) {
+		case OCTREE:
+		{
+			Octree octree(octree_center, octree_size, octree_minsize);
+			for (RigidBody* b : bodies) {
+				octree.insert(b, b->aabb);
+			}
+			possible_intersections = octree.getAllIntersections();
+		}
+			break;
+		case AABB_TREE:
+			for (RigidBody* b : bodies) {
+				aabb_tree.update(b, b->aabb);
+			}
+			possible_intersections = aabb_tree.getAllCollisionCandidates();
+			break;
+		case BroadPhaseStructure::NONE:
+			for (int i = 0; i < bodies.size(); i++) {
+				for (int j = i + 1; j < bodies.size(); j++) {
+					if (AABB::intersects(bodies[i]->aabb, bodies[j]->aabb)) {
+						possible_intersections.push_back(Pair(bodies[i], bodies[j]));
+					}
+				}
+			}
+		}
+		
 		auto t2 = std::chrono::system_clock::now();
 
 		std::mutex action_mutex;
@@ -94,7 +117,7 @@ namespace phyz {
 			std::vector<ColAction> triggered_actions;
 		};
 		std::vector<TriggeredActionPair> triggered_actions;
-		auto collision_detect = [&](const Octree<RigidBody>::Pair& p) {
+		auto collision_detect = [&](const Pair& p) {
 			RigidBody* b1 = p.t1;
 			RigidBody* b2 = p.t2;
 
@@ -174,10 +197,10 @@ namespace phyz {
 		};
 
 		if (use_multithread) {
-			thread_manager.do_all<Octree<RigidBody>::Pair>(n_threads, possible_intersections, collision_detect);
+			thread_manager.do_all<Pair>(n_threads, possible_intersections, collision_detect);
 		}
 		else {
-			for (const Octree<RigidBody>::Pair& p : possible_intersections) {
+			for (const Pair& p : possible_intersections) {
 				collision_detect(p);
 			}
 		}
@@ -255,7 +278,7 @@ namespace phyz {
 		constraint_graph_nodes[r] = new ConstraintGraphNode(r);
 
 		if (broadphase == AABB_TREE) {
-			aabb_tree.add(*r, r->aabb);
+			aabb_tree.add(r, r->aabb);
 		}
 		return r;
 	}
@@ -267,7 +290,7 @@ namespace phyz {
 
 	void PhysicsEngine::deleteRigidBody(RigidBody* r) {
 		if (broadphase == AABB_TREE) {
-			aabb_tree.remove(*r);
+			aabb_tree.remove(r);
 		}
 
 		assert(std::find(bodies.begin(), bodies.end(), r) != bodies.end());
@@ -637,13 +660,12 @@ namespace phyz {
 	void PhysicsEngine::setAABBTreeMarginSize(double d) {
 		assert(d >= 0);
 		aabbtree_margin_size = d;
-		aabb_tree = AABBTree<RigidBody>(aabbtree_margin_size); //resets tree
+		aabb_tree = AABBTree(aabbtree_margin_size); //resets tree
 
 		//reinsert all elements
 		for (RigidBody* r : bodies) {
-			aabb_tree.add(*r, r->aabb);
+			aabb_tree.add(r, r->aabb);
 		}
-		
 	}
 
 	void PhysicsEngine::setOctreeParams(double size, double minsize, mthz::Vec3 center) {

@@ -46,7 +46,6 @@ namespace phyz {
 
 	class PhysicsEngine {
 	public:
-		PhysicsEngine();
 		~PhysicsEngine();
 
 		static void enableMultithreading(int n_threads);
@@ -125,7 +124,7 @@ namespace phyz {
 
 		BroadPhaseStructure broadphase = AABB_TREE;
 		double aabbtree_margin_size = 0.25;
-		AABBTree<RigidBody> aabb_tree = AABBTree<RigidBody>(aabbtree_margin_size);
+		AABBTree aabb_tree = AABBTree(aabbtree_margin_size);
 		mthz::Vec3 octree_center = mthz::Vec3(0, 0, 0);
 		double octree_size = 2000;
 		double octree_minsize = 1;

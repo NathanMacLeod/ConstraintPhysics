@@ -27,6 +27,12 @@
     <ClCompile Include="src\Geometry.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\AABB_Tree.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Octree.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\PhysicsEngine.h">
@@ -60,6 +66,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\AABB_Tree.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\BroadphaseOutput.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

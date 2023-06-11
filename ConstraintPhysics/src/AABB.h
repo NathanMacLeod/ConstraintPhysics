@@ -13,6 +13,18 @@ namespace phyz{
 				   || a.max.z < b.min.z || a.min.z > b.max.z);
 		}
 
+		static AABB combine(const AABB& a, const AABB& b) {
+			AABB out;
+			out.min.x = std::min<double>(a.min.x, b.min.x);
+			out.min.y = std::min<double>(a.min.y, b.min.y);
+			out.min.z = std::min<double>(a.min.z, b.min.z);
+
+			out.max.x = std::max<double>(a.max.x, b.max.x);
+			out.max.y = std::max<double>(a.max.y, b.max.y);
+			out.max.z = std::max<double>(a.max.z, b.max.z);
+			return out;
+		}
+
 		static AABB combine(const std::vector<AABB>& v) {
 			if (v.size() == 1) {
 				return v[0];

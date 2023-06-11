@@ -14,12 +14,18 @@
 class ImageDemo : public DemoScene {
 private:
 	void render_progress_bar(float percent, int width, bool done) {
-		static auto t_start = std::chrono::system_clock::now();
+		static auto t_prev = std::chrono::system_clock::now();
+		static double prev_percent = 0;
 		if (!done) {
 			auto t_now = std::chrono::system_clock::now();
-			double t_elapsed = std::chrono::duration<float>(t_now - t_start).count();
-			double remaining_time = percent == 0? 0 : t_elapsed / percent * (1.0 - percent);
+			double t_elapsed = std::chrono::duration<float>(t_now - t_prev).count();
+			double remaining_time = percent == 0? 0 : t_elapsed / (percent - prev_percent) * (1.0 - percent);
 			
+			if (int(prev_percent * 100) != int(percent)) {
+				prev_percent = percent;
+				t_prev = t_now;
+			}
+
 			int remaining_minutes = remaining_time / 60;
 			int remaining_seconds = remaining_time - remaining_minutes * 60;
 
