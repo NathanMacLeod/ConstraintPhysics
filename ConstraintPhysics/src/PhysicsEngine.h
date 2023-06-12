@@ -42,7 +42,7 @@ namespace phyz {
 		int uniqueID;
 	};
 
-	enum BroadPhaseStructure { NONE, OCTREE, AABB_TREE};
+	enum BroadPhaseStructure { NONE, OCTREE, AABB_TREE, TEST_COMPARE};
 
 	class PhysicsEngine {
 	public:
@@ -123,7 +123,7 @@ namespace phyz {
 
 
 		BroadPhaseStructure broadphase = AABB_TREE;
-		double aabbtree_margin_size = 0.25;
+		double aabbtree_margin_size = 0.1;
 		AABBTree aabb_tree = AABBTree(aabbtree_margin_size);
 		mthz::Vec3 octree_center = mthz::Vec3(0, 0, 0);
 		double octree_size = 2000;

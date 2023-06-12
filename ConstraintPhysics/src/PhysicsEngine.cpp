@@ -41,7 +41,12 @@ namespace phyz {
 		}
 	}
 
-	static float octree_maintain_time = 0;
+	static float octree_time = 0;
+	static float aabb_time = 0;
+	static float none_time = 0;
+
+	static float maintain_time = 0;
+	static float broadphase_time = 0;
 	static float sat_time = 0;
 	static float dfs_time = 0;
 	static float pgs_time = 0;
@@ -80,6 +85,8 @@ namespace phyz {
 
 		maintainConstraintGraphApplyPoweredConstraints();
 
+		auto t2 = std::chrono::system_clock::now();
+
 		std::vector<Pair> possible_intersections;
 		switch (broadphase) {
 		case OCTREE:
@@ -105,9 +112,48 @@ namespace phyz {
 					}
 				}
 			}
+			break;
+		case TEST_COMPARE:
+		{
+			auto bt1 = std::chrono::system_clock::now();
+
+			for (int i = 0; i < bodies.size(); i++) {
+				for (int j = i + 1; j < bodies.size(); j++) {
+					if (AABB::intersects(bodies[i]->aabb, bodies[j]->aabb)) {
+						possible_intersections.push_back(Pair(bodies[i], bodies[j]));
+					}
+				}
+			}
+
+			auto bt2 = std::chrono::system_clock::now();
+
+			std::vector<Pair> octree_pairs;
+			Octree octree(octree_center, octree_size, octree_minsize);
+			for (RigidBody* b : bodies) {
+				octree.insert(b, b->aabb);
+			}
+			octree_pairs = octree.getAllIntersections();
+
+			auto bt3 = std::chrono::system_clock::now();
+
+			std::vector<Pair> aabb_pairs;
+			for (RigidBody* b : bodies) {
+				aabb_tree.update(b, b->aabb);
+			}
+			aabb_pairs = aabb_tree.getAllCollisionCandidates();
+
+			auto bt4 = std::chrono::system_clock::now();
+
+			none_time += std::chrono::duration<float>(bt2 - bt1).count();
+			octree_time += std::chrono::duration<float>(bt3 - bt2).count();
+			aabb_time += std::chrono::duration<float>(bt4 - bt3).count();
+
+			assert(octree_pairs.size() == aabb_pairs.size() && aabb_pairs.size() == possible_intersections.size());
 		}
-		
-		auto t2 = std::chrono::system_clock::now();
+		break;
+		}
+
+		auto t3 = std::chrono::system_clock::now();
 
 		std::mutex action_mutex;
 		struct TriggeredActionPair {
@@ -205,7 +251,7 @@ namespace phyz {
 			}
 		}
 
-		auto t3 = std::chrono::system_clock::now();
+		auto t4 = std::chrono::system_clock::now();
 
 		for (const TriggeredActionPair& pair : triggered_actions) {
 			for (const ColAction& c : pair.triggered_actions) {
@@ -215,7 +261,7 @@ namespace phyz {
 
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
 
-		auto t4 = std::chrono::system_clock::now();
+		auto t5 = std::chrono::system_clock::now();
 
 		if (use_multithread) {
 			thread_manager.do_all<std::vector<Constraint*>>(n_threads, island_systems,
@@ -230,7 +276,7 @@ namespace phyz {
 			}
 		}
 
-		auto t5 = std::chrono::system_clock::now();
+		auto t6 = std::chrono::system_clock::now();
 
 		for (RigidBody* b : bodies) {
 			if (!b->fixed && !b->asleep) {
@@ -254,18 +300,24 @@ namespace phyz {
 
 		if (print_performance_data) {
 
-			octree_maintain_time += std::chrono::duration<float>(t2 - t1).count();
-			sat_time += std::chrono::duration<float>(t3 - t2).count();
-			dfs_time += std::chrono::duration<float>(t4 - t3).count();
-			pgs_time += std::chrono::duration<float>(t5 - t4).count();
+			maintain_time += std::chrono::duration<float>(t2 - t1).count();
+			broadphase_time += std::chrono::duration<float>(t3 - t2).count();
+			sat_time += std::chrono::duration<float>(t4 - t3).count();
+			dfs_time += std::chrono::duration<float>(t5 - t4).count();
+			pgs_time += std::chrono::duration<float>(t6 - t5).count();
 
 			if (i++ % 1000 == 0) {
-				float total = octree_maintain_time + sat_time + dfs_time + pgs_time;
-				printf("total time: %f, octree/maintain: %f, sat: %f, dfs: %f, pgs: %f\n", total, octree_maintain_time / total, sat_time / total, dfs_time / total, pgs_time / total);
-				octree_maintain_time = 0;
+				float total = maintain_time + broadphase_time + sat_time + dfs_time + pgs_time;
+				printf("total time: %f, maintain: %f, broadphase: %f, sat: %f, dfs: %f, pgs: %f\n", total, maintain_time / total, broadphase_time / total, sat_time / total, dfs_time / total, pgs_time / total);
+				maintain_time = 0;
+				broadphase_time = 0;
 				sat_time = 0;
 				dfs_time = 0;
 				pgs_time = 0;
+
+				if (broadphase == TEST_COMPARE) {
+					printf("AABB_Tree: %f, Octree %f, Bruteforce: %f\n", aabb_time, octree_time, none_time);
+				}
 			}
 
 		}
@@ -277,7 +329,7 @@ namespace phyz {
 		bodies.push_back(r);
 		constraint_graph_nodes[r] = new ConstraintGraphNode(r);
 
-		if (broadphase == AABB_TREE) {
+		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
 			aabb_tree.add(r, r->aabb);
 		}
 		return r;
@@ -289,7 +341,7 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::deleteRigidBody(RigidBody* r) {
-		if (broadphase == AABB_TREE) {
+		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
 			aabb_tree.remove(r);
 		}
 
@@ -649,7 +701,7 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::setBroadphase(BroadPhaseStructure b) {
-		if (broadphase != AABB_TREE && b == AABB_TREE) {
+		if ((broadphase != AABB_TREE && broadphase != TEST_COMPARE) && (b == AABB_TREE || b == TEST_COMPARE)) {
 			//resets aabb tree, ensures all rigid bodies will be inserted in it (doing this to catch any new rigid bodies removed/deleted while AABBtree wasn't set as broadphase type)
 			setAABBTreeMarginSize(aabbtree_margin_size);
 		}

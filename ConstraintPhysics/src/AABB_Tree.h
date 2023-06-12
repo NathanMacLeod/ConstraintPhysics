@@ -92,6 +92,9 @@ namespace phyz {
 			AABB node_aabb;
 			double volume;
 
+			//for use in checking all collisions
+			bool internal_collision_checked_flag = false;
+
 			bool is_leaf;
 			const RigidBody* leaf_object;
 			AABB leaf_object_true_aabb;

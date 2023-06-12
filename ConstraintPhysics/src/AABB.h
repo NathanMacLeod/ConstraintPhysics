@@ -68,9 +68,9 @@ namespace phyz{
 			return	   contained_aabb.min.x >= containing_aabb.min.x
 					&& contained_aabb.min.y >= containing_aabb.min.y
 					&& contained_aabb.min.z >= containing_aabb.min.z
-					&& contained_aabb.max.y <= containing_aabb.max.x
+					&& contained_aabb.max.x <= containing_aabb.max.x
 					&& contained_aabb.max.y <= containing_aabb.max.y
-					&& contained_aabb.max.y <= containing_aabb.max.z;
+					&& contained_aabb.max.z <= containing_aabb.max.z;
 		}
 	};
 }

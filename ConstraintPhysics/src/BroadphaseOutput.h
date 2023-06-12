@@ -32,6 +32,10 @@ namespace phyz {
 				return (int)t2 < (int)p.t2;
 			}
 		}
+
+		bool operator==(const Pair& p) const {
+			return (t1 == p.t1 && t2 == p.t2) || (t1 == p.t2 && t2 == p.t1);
+		}
 	};
 
 }

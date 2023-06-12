@@ -120,6 +120,9 @@ namespace phyz {
 			remove(object);
 			add(object, updated_object_bounds);
 		}
+		else {
+			object_leaf->leaf_object_true_aabb = updated_object_bounds;
+		}
 	}
 
 	std::vector<Pair> AABBTree::getAllCollisionCandidates() const {
@@ -133,6 +136,15 @@ namespace phyz {
 		while (!search_candidates.empty()) {
 			TreePair tp = search_candidates.back();
 			search_candidates.pop_back();
+
+			if (!tp.n1->is_leaf && !tp.n1->internal_collision_checked_flag) {
+				search_candidates.push_back({ tp.n1->left, tp.n1->right });
+				tp.n1->internal_collision_checked_flag = true;
+			}
+			if (!tp.n2->is_leaf && !tp.n2->internal_collision_checked_flag) {
+				search_candidates.push_back({ tp.n2->left, tp.n2->right });
+				tp.n2->internal_collision_checked_flag = true;
+			}
 
 			if (!tp.n1->is_leaf && !tp.n2->is_leaf) {
 				//non-leaf x non-leaf
@@ -162,6 +174,23 @@ namespace phyz {
 				if (AABB::intersects(tp.n1->leaf_object_true_aabb, tp.n2->leaf_object_true_aabb)) {
 					col_pairs.push_back(Pair((RigidBody*)tp.n1->leaf_object, (RigidBody*)tp.n2->leaf_object));
 				}
+			}
+		}
+
+		//reset internal_collision_checked_flags
+		if (root != nullptr && !root->is_leaf) {
+
+			std::vector<Node*> queue{ root };
+
+			while (!queue.empty()) {
+				Node* n = queue.back();
+				queue.pop_back();
+
+				assert(!n->is_leaf);
+				n->internal_collision_checked_flag = false;
+
+				if (!n->left->is_leaf) queue.push_back(n->left);
+				if (!n->right->is_leaf) queue.push_back(n->right);
 			}
 		}
 
