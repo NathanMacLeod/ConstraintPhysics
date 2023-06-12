@@ -211,29 +211,50 @@ namespace phyz {
 						mthz::Vec3 u, w;
 						man.normal.getPerpendicularBasis(&u, &w);
 
-						constraint_graph_lock.lock();
+
+						//need a determenistic order for locking the constraint graph mutexes, otherwise deadlock can occur
+						ConstraintGraphNode* lock_first, *lock_second;
+						if ((int)b1 < (int)b2) {
+							lock_first = constraint_graph_nodes[b1];
+							lock_second = constraint_graph_nodes[b2];
+						}
+						else {
+							lock_first = constraint_graph_nodes[b2];
+							lock_second = constraint_graph_nodes[b1];
+						}
+
+						lock_first->mutex.lock();
+						lock_second->mutex.lock();
 						for (int i = 0; i < man.points.size(); i++) {
 							const ContactP& p = man.points[i];
-							addContact(b1, b2, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
+							addContact(lock_first, lock_second, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
 						}
-						constraint_graph_lock.unlock();
+						lock_first->mutex.unlock();
+						lock_second->mutex.unlock();
 
 						std::vector<ColAction> thispair_actions;
-						action_mutex.lock();
-						for (ColActionID c : get_action_map[b1][b2]) thispair_actions.push_back(col_actions[c]);
-						for (ColActionID c : get_action_map[b1][b2]) thispair_actions.push_back(col_actions[c]);
-						for (ColActionID c : get_action_map[all()][b2]) thispair_actions.push_back(col_actions[c]);
-						for (ColActionID c : get_action_map[all()][all()]) thispair_actions.push_back(col_actions[c]);
-						action_mutex.unlock();
+						if (get_action_map.find(b1) != get_action_map.end() && get_action_map[b1].find(b2) != get_action_map[b1].end()) {
+							for (ColActionID c : get_action_map[b1][b2]) thispair_actions.push_back(col_actions[c]);
+						}
+						if (get_action_map.find(b1) != get_action_map.end() && get_action_map[b1].find(all()) != get_action_map[b1].end()) {
+							for (ColActionID c : get_action_map[b1][all()]) thispair_actions.push_back(col_actions[c]);
+						}
+						if (get_action_map.find(all()) != get_action_map.end() && get_action_map[all()].find(b2) != get_action_map[all()].end()) {
+							for (ColActionID c : get_action_map[all()][b2]) thispair_actions.push_back(col_actions[c]);
+						}
+						if (get_action_map.find(all()) != get_action_map.end() && get_action_map[all()].find(all()) != get_action_map[all()].end()) {
+							for (ColActionID c : get_action_map[all()][all()]) thispair_actions.push_back(col_actions[c]);
+						}
 
 						if (thispair_actions.size() > 0) {
-							action_mutex.lock();
+							
 							TriggeredActionPair pair_action_info = { b1, b2, std::vector<Manifold>(), thispair_actions };
 							for (int i = 0; i < manifolds.size(); i++) {
 								if (!merged[i]) {
 									pair_action_info.manifolds.push_back(manifolds[i]);
 								}
 							}
+							action_mutex.lock();
 							triggered_actions.push_back(pair_action_info);
 							action_mutex.unlock();
 						}
@@ -639,9 +660,10 @@ namespace phyz {
 
 	}
 
-	void PhysicsEngine::addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness) {
-		ConstraintGraphNode* n1 = constraint_graph_nodes[b1]; ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+	void PhysicsEngine::addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness) {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+		RigidBody* b1 = n1->b;
+		RigidBody* b2 = n2->b;
 
 		for (Contact* c : e->contactConstraints) {
 			if (c->magic == magic) {
@@ -683,7 +705,7 @@ namespace phyz {
 			if (b->asleep) { //in case of race condition, shouldn't really matter too much though
 				wakeupIsland(constraint_graph_nodes[b]);
 			}
-			constraint_graph_lock.unlock();
+			 constraint_graph_lock.unlock();
 		}
 		else if (b->asleep) {
 			b->vel = mthz::Vec3(0, 0, 0);
@@ -1137,8 +1159,12 @@ namespace phyz {
 	ColActionID PhysicsEngine::registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action) {
 		RigidBody* t1 = (b1.with_all) ? all() : b1.specific_target;
 		RigidBody* t2 = (b2.with_all) ? all() : b2.specific_target;
+
 		get_action_map[t1][t2].push_back(nextActionID);
-		get_action_map[t2][t1].push_back(nextActionID);
+		//avoiding duplicates
+		if (!b1.with_all && !b2.with_all) {
+			get_action_map[t2][t1].push_back(nextActionID);
+		}
 		col_actions[nextActionID] = action;
 
 		return nextActionID++;

@@ -89,7 +89,6 @@ public:
 		double timestep = 1 / 200.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
-		p.setPrintPerformanceData(true);
 
 		bool lock_cam = true;
 
