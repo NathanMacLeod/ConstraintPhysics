@@ -40,6 +40,9 @@ namespace phyz {
 		case POLYHEDRON:
 			*(Polyhedron*)copy.geometry = ((Polyhedron*)geometry)->getRotated(q, pivot_point);
 			break;
+		case SPHERE:
+			*(Sphere*)copy.geometry = ((Sphere*)geometry)->getRotated(q, pivot_point);
+			break;
 		}
 		
 		return copy;
@@ -51,10 +54,27 @@ namespace phyz {
 		case POLYHEDRON:
 			*(Polyhedron*)copy.geometry = ((Polyhedron*)geometry)->getTranslated(t);
 			break;
+		case SPHERE:
+			*(Sphere*)copy.geometry = ((Sphere*)geometry)->getTranslated(t);
+			break;
 		}
 
 		return copy;
 	};
+
+	ConvexPrimitive ConvexPrimitive::getScaled(double d, mthz::Vec3 center_of_dialtion) const {
+		ConvexPrimitive copy(*this);
+		switch (type) {
+		case POLYHEDRON:
+			*(Polyhedron*)copy.geometry = ((Polyhedron*)geometry)->getScaled(d, center_of_dialtion);
+			break;
+		case SPHERE:
+			*(Sphere*)copy.geometry = ((Sphere*)geometry)->getScaled(d, center_of_dialtion);
+			break;
+		}
+
+		return copy;
+	}
 
 	Sphere::Sphere(const Sphere& c) 
 		: center(c.center), radius(c.radius)
@@ -72,6 +92,10 @@ namespace phyz {
 		return Sphere(center + t, radius);
 	}
 
+	Sphere Sphere::getScaled(double d, mthz::Vec3 center_of_dialation) const {
+		return Sphere((center - center_of_dialation) * d + center_of_dialation, radius * d);
+	}
+
 	void Sphere::recomputeFromReference(const ConvexGeometry& reference_geometry, const mthz::Mat3& rot, mthz::Vec3 trans) {
 		assert(getType() == reference_geometry.getType());
 		const Sphere& reference = (const Sphere&)reference_geometry;
@@ -82,6 +106,39 @@ namespace phyz {
 		mthz::Vec3 min = center - mthz::Vec3(radius, radius, radius);
 		mthz::Vec3 max = center + mthz::Vec3(radius, radius, radius);
 		return AABB{ min, max };
+	}
+
+	ConvexPrimitive::RayHitInfo Sphere::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+		assert(abs(1 - ray_dir.mag()) < 0.0001); //should be unit length
+
+		mthz::Vec3 rel_org = ray_origin - center;
+		//solve quadratic
+		double a = ray_dir.magSqrd();
+		double b = 2 * rel_org.dot(ray_dir);
+		double c = rel_org.magSqrd() - radius * radius;
+
+		double t;
+
+		double radical = b * b - 4 * a * c;
+		if (radical < 0) {
+			return { false }; //ray doesnt intersect circle
+		}
+		else if (radical == 0) {
+			t = -0.5 * b / a;
+
+			if (t < 0) return { false }; //intersection occurs behind origin
+		}
+		else {
+			double t1 = (-b + sqrt(radical)) / (2 * a);
+			double t2 = (-b - sqrt(radical)) / (2 * a);
+
+			if (t1 < 0 && t2 < 0) return { false }; //intersection occurs behind origin
+			else if (t1 < 0) t = t2;
+			else if (t2 < 0) t = t1;
+			else t = std::min<double>(t1, t2);
+		}
+		
+		return ConvexPrimitive::RayHitInfo{ true, ray_origin + t * ray_dir, t };
 	}
 
 	Polyhedron::Polyhedron(const Polyhedron& c)
@@ -202,6 +259,17 @@ namespace phyz {
 		return copy;
 	}
 
+	Polyhedron Polyhedron::getScaled(double d, mthz::Vec3 center_of_dialation) const {
+		Polyhedron copy(*this);
+
+		for (int i = 0; i < points.size(); i++) {
+			copy.points[i] = (copy.points[i] - center_of_dialation) * d + center_of_dialation;
+		}
+		copy.interior_point = (copy.interior_point - center_of_dialation) * d + center_of_dialation;;
+
+		return copy;
+	}
+
 	void Polyhedron::recomputeFromReference(const ConvexGeometry& reference_geometry, const mthz::Mat3& rot, mthz::Vec3 trans) {
 		assert(getType() == reference_geometry.getType());
 		const Polyhedron& reference = (const Polyhedron&) reference_geometry;
@@ -216,6 +284,29 @@ namespace phyz {
 			gauss_map.face_verts[i].v = rot * reference.gauss_map.face_verts[i].v;
 		}
 
+	}
+
+	ConvexPrimitive::RayHitInfo Polyhedron::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+		for (const Surface& s : surfaces) {
+			mthz::Vec3 sp = s.getPointI(0);
+			mthz::Vec3 n = s.normal();
+
+			if (ray_dir.dot(n) > 0 || (ray_origin - sp).dot(n) < 0) continue; //disqualifies ray for being on wrong side or facing wrong direction
+
+			double t = n.dot(sp - ray_origin) / n.dot(ray_dir);
+			mthz::Vec3 intersection_point = ray_origin + t * ray_dir;
+			for (int i = 0; i < s.n_points(); i++) {
+				mthz::Vec3 edge_p1 = s.getPointI(i);
+				mthz::Vec3 edge_p2 = s.getPointI(i + 1 == s.n_points() ? 0 : i + 1);
+
+				mthz::Vec3 out_dir = (edge_p2 - edge_p1).cross(n);
+				if (out_dir.dot(intersection_point - edge_p1) > 0) continue; //the intersection of the ray with the surfaces plane does not lie within the surface
+			}
+
+			return ConvexPrimitive::RayHitInfo{ true, intersection_point, t };
+		}
+
+		return { false };
 	}
 
 	Edge::Edge(int p1_indx, int p2_indx, Polyhedron* poly) {

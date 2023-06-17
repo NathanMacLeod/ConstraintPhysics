@@ -50,9 +50,17 @@ namespace phyz {
 
 		ConvexPrimitive getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point=mthz::Vec3(0,0,0)) const;
 		ConvexPrimitive getTranslated(mthz::Vec3 t) const;
+		ConvexPrimitive getScaled(double d, mthz::Vec3 center_of_dialtion) const;
 		inline AABB gen_AABB() const { return geometry->gen_AABB(); }
 		inline void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) { geometry->recomputeFromReference(reference, rot, trans); }
 		inline int getID() const { return id; }
+
+		struct RayHitInfo {
+			bool did_hit;
+			mthz::Vec3 intersection_point;
+			double intersection_dist;
+		};
+		RayHitInfo testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
 
 		Material material;
 
@@ -71,12 +79,15 @@ namespace phyz {
 
 		Sphere getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point = mthz::Vec3(0, 0, 0)) const;
 		Sphere getTranslated(mthz::Vec3 t) const;
+		Sphere getScaled(double d, mthz::Vec3 center_of_dialtion) const;
 		void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) override;
 		AABB gen_AABB() const override;
 		ConvexGeometryType getType() const override { return SPHERE; };
 
 		inline double getRadius() const { return radius; }
 		inline mthz::Vec3 getCenter() const { return center; }
+
+		ConvexPrimitive::RayHitInfo testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
 
 		friend class Surface;
 		friend class Edge;
@@ -113,6 +124,7 @@ namespace phyz {
 
 		Polyhedron getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point = mthz::Vec3(0, 0, 0)) const;
 		Polyhedron getTranslated(mthz::Vec3 t) const;
+		Polyhedron getScaled(double d, mthz::Vec3 center_of_dialtion) const;
 		void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) override;
 		AABB gen_AABB() const override;
 		ConvexGeometryType getType() const override { return POLYHEDRON; };
@@ -123,6 +135,8 @@ namespace phyz {
 		inline const std::vector<int>& getFaceIndicesAdjacentToPointI(int i) const { return adjacent_faces_to_vertex[i]; }
 		inline const std::vector<int>& getEdgeIndicesAdjacentToPointI(int i) const { return adjacent_edges_to_vertex[i]; }
 		inline const GaussMap& getGaussMap() const { return gauss_map; }
+
+		ConvexPrimitive::RayHitInfo testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
 
 		friend class Surface;
 		friend class Edge;

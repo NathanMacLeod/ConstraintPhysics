@@ -77,6 +77,85 @@ namespace phyz {
 		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
+	//https://en.wikipedia.org/wiki/Regular_dodecahedron#Cartesian_coordinates
+	Geometry Geometry::regDodecahedron(mthz::Vec3 pos, double size, Material material) {
+		std::vector<mthz::Vec3> points(20);
+		std::vector<std::vector<int>> surface_indices(12);
+
+		double r = size / 2.0;
+		double phi = (1 + sqrt(5)) / 2.0;
+		double s = r / phi; // r / golden-ratio
+		double q = r / (phi * phi);
+
+		points[0] = mthz::Vec3(-s, -s, -s);
+		points[1] = mthz::Vec3(s, -s, -s);
+		points[2] = mthz::Vec3(s, s, -s);
+		points[3] = mthz::Vec3(-s, s, -s);
+		points[4] = mthz::Vec3(-s, -s, s);
+		points[5] = mthz::Vec3(s, -s, s);
+		points[6] = mthz::Vec3(s, s, s);
+		points[7] = mthz::Vec3(-s, s, s);
+
+		points[8] = mthz::Vec3(0, -r, -q);
+		points[9] = mthz::Vec3(0, r, -q);
+		points[10] = mthz::Vec3(0, r, q);
+		points[11] = mthz::Vec3(0, -r, q);
+
+		points[12] = mthz::Vec3(-r, -q, 0);
+		points[13] = mthz::Vec3(r, -q, 0);
+		points[14] = mthz::Vec3(r, q, 0);
+		points[15] = mthz::Vec3(-r, q, 0);
+
+		points[16] = mthz::Vec3(-q, 0, -r);
+		points[17] = mthz::Vec3(q, 0, -r);
+		points[18] = mthz::Vec3(q, 0, r);
+		points[19] = mthz::Vec3(-q, 0, r);
+
+		surface_indices[0] = { 0, 8, 1, 17, 16 };
+		surface_indices[1] = { 1, 13, 14, 2, 17 };
+		surface_indices[2] = { 8, 1, 13, 5, 11 };
+		surface_indices[3] = { 8, 11, 4, 12, 0 };
+		surface_indices[4] = { 11, 5, 18, 19, 4 };
+		surface_indices[5] = { 5, 13, 14, 6, 18 };
+		surface_indices[6] = { 3, 16, 17, 2, 9 };
+		surface_indices[7] = { 12, 0, 16, 3, 15 };
+		surface_indices[8] = { 4, 12, 15, 7, 19 };
+		surface_indices[9] = { 7, 15, 3, 9, 10 };
+		surface_indices[10] = { 7, 10, 6, 18, 19 };
+		surface_indices[11] = { 10, 9, 2, 14, 6 };
+
+		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material)).getTranslated(pos);
+	}
+
+	Geometry Geometry::stellatedDodecahedron(mthz::Vec3 pos, double size, double spike_length_ratio, Material material) {
+		Geometry dodecahedron = regDodecahedron(pos, size, material);
+
+		std::vector<Geometry> spikes;
+		for (const Surface& s : ((Polyhedron*)dodecahedron.getPolyhedra()[0].getGeometry())->getSurfaces()) {
+			mthz::Vec3 center = (s.getPointI(0) + s.getPointI(1) + s.getPointI(2) + s.getPointI(3) + s.getPointI(4)) / 5;
+			mthz::Vec3 spike_tip = center + s.normal() * spike_length_ratio * size;
+
+			std::vector<mthz::Vec3> points(6);
+			std::vector<std::vector<int>> surface_indices(6);
+
+			for (int i = 0; i < 5; i++) points[i] = s.getPointI(i);
+			points[5] = spike_tip;
+
+			surface_indices[0] = { 0, 1, 2, 3, 4 };
+			surface_indices[1] = { 0, 1, 5 };
+			surface_indices[2] = { 1, 2, 5 };
+			surface_indices[3] = { 2, 3, 5 };
+			surface_indices[4] = { 3, 4, 5 };
+			surface_indices[5] = { 4, 0, 5 };
+
+			spikes.push_back(Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material)));
+		}
+
+		for (const Geometry& g : spikes) dodecahedron = Geometry::merge(dodecahedron, g);
+
+		return dodecahedron;
+	}
+
 	Geometry Geometry::cylinder(mthz::Vec3 pos, double radius, double height, int detail, Material material) {
 		int n_faces = 3 + detail;
 		std::vector<mthz::Vec3> points(n_faces * 2);
@@ -238,6 +317,15 @@ namespace phyz {
 		out.polyhedra.reserve(polyhedra.size());
 		for (const ConvexPrimitive& c : polyhedra) {
 			out.polyhedra.push_back(c.getRotated(q, rot_point));
+		}
+		return out;
+	}
+
+	Geometry Geometry::getScaled(double d, mthz::Vec3 center_of_dialation) const {
+		Geometry out;
+		out.polyhedra.reserve(polyhedra.size());
+		for (const ConvexPrimitive& c : polyhedra) {
+			out.polyhedra.push_back(c.getScaled(d, center_of_dialation));
 		}
 		return out;
 	}

@@ -202,7 +202,10 @@ public:
 			for (Agent a : agents) {
 				mthz::Vec3 cam_pos = pos;
 				mthz::Quaternion cam_orient = orient;
-				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0, 120.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(a.r->getPos(), a.r->getOrientation()));
+
+				double aspect_ratio = (double)properties.window_height / properties.window_width;
+
+				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(a.r->getPos(), a.r->getOrientation()));
 				shader.setUniform1i("u_Color", a.color);
 				rndr::draw(*a.mesh.va, *a.mesh.ib, shader);
 

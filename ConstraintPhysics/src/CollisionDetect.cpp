@@ -1,6 +1,8 @@
 #include "CollisionDetect.h"
 #include "ConvexPrimitive.h"
 
+#include <cassert>
+
 namespace phyz {
 
 	bool operator==(const MagicID& m1, const MagicID& m2) {
@@ -17,8 +19,17 @@ namespace phyz {
 			switch (b.getType()) {
 			case POLYHEDRON:
 				return SAT_PolyPoly((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Polyhedron&)*b.getGeometry(), b.getID(), b.material);
+
 			case SPHERE:
-				return SAT_PolySphere((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
+			{
+				Manifold out = SAT_PolySphere((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
+
+				for (ContactP p : out.points) {
+					assert((p.pos - ((Sphere*)b.getGeometry())->getCenter()).dot(out.normal) < 0);
+				}
+
+				return out;
+			}
 			}
 			break;
 		case SPHERE:
@@ -27,6 +38,11 @@ namespace phyz {
 			{
 				Manifold out = SAT_PolySphere((const Polyhedron&)*b.getGeometry(), b.getID(), b.material, (const Sphere&)*a.getGeometry(), a.getID(), a.material);
 				out.normal = -out.normal; //physics engine expects the manifold to be facing away from a. SAT_PolySphere generates normal facing away from the polyhedron
+				
+				for (ContactP p : out.points) {
+					assert((p.pos - ((Sphere*)a.getGeometry())->getCenter()).dot(out.normal) > 0);
+				}
+
 				return out;
 			}
 			case SPHERE:

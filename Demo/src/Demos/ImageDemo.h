@@ -16,7 +16,12 @@ private:
 	void render_progress_bar(float percent, int width, bool done) {
 		static auto t_prev = std::chrono::system_clock::now();
 		static double prev_percent = 0;
+
+		std::vector<std::string> animation_c = { "|@-----<", ">-@----<", ">--@---<", ">---@--<", ">----@-<", ">-----@|", ">----@-<", ">---@--<", ">--@---<", ">-@----<" };
+		static int animation_itr = 0;
 		if (!done) {
+			animation_itr = (animation_itr + 1) % animation_c.size();
+
 			auto t_now = std::chrono::system_clock::now();
 			double t_elapsed = std::chrono::duration<float>(t_now - t_prev).count();
 			double remaining_time = percent == 0? 0 : t_elapsed / (percent - prev_percent) * (1.0 - percent);
@@ -29,7 +34,7 @@ private:
 			int remaining_minutes = remaining_time / 60;
 			int remaining_seconds = remaining_time - remaining_minutes * 60;
 
-			printf("[");
+			printf("  %-8s [", animation_c[animation_itr].c_str());
 			int prog = percent * width;
 			for (int i = 0; i < width; i++) {
 				if (i <= prog) {
@@ -39,9 +44,10 @@ private:
 					printf("-");
 				}
 			}
-			printf("] %d%%         Time Remaining: %02d:%02d\r\r", (int)(100 * percent), remaining_minutes, remaining_seconds);
+			printf("] %d%%         Time Remaining: %02d:%02d\r", (int)(100 * percent), remaining_minutes, remaining_seconds);
 		}
 		else {
+			printf("%100s\r", "");
 			printf("[");
 			for (int i = 0; i < width; i++) {
 				printf("#");
@@ -67,6 +73,29 @@ private:
 	bool fileExists(const std::string& s) {
 		std::ifstream f(s);
 		return f.good();
+	}
+
+	enum GeometryType { BALLS, CUBES, TETRAS, DODECS,  STEL_DODS};
+	char GeomTypeChar(GeometryType t) {
+		switch (t) {
+		case BALLS: return 'B';
+		case CUBES: return 'C';
+		case TETRAS: return 'T';
+		case DODECS: return 'D';
+		case STEL_DODS: return 'S';
+		default: assert(false);
+		}
+	}
+
+	int GeomTypeStackHeight(GeometryType t) {
+		switch (t) {
+		case BALLS: return 56;
+		case CUBES: return 32;
+		case TETRAS: return 90;
+		case DODECS: return 70;
+		case STEL_DODS: return 90; //raise to 110
+		default: assert(false);
+		}
 	}
 
 	color averagePixels(olc::Sprite& s, double start_x, double start_y, double end_x, double end_y, double dim_x, double dim_y) {
@@ -193,6 +222,25 @@ public:
 			}
 		} while (1);
 
+		GeometryType geometry_type;
+		std::string geometry_input;
+		printf("Select the shapes to use in the simulation. Options are B (Balls), C (Cubes), T (Tetrahedrons!), D (Dodecahedrons!), S (Stellated Dodecahedrons!!) (! = expensive): ");
+		do {
+			std::getline(std::cin, geometry_input);
+			char c;
+			if (geometry_input.length() != 1 ||  ((c = toupper(geometry_input.at(0))) != GeomTypeChar(BALLS) && c != GeomTypeChar(CUBES) && c != GeomTypeChar(TETRAS) && c != GeomTypeChar(DODECS) && c != GeomTypeChar(STEL_DODS))) {
+				printf("Invalid input, enter again. Valid inputs are B, C, T: ");
+			}
+			else {
+				if(c == GeomTypeChar(BALLS)) geometry_type = BALLS;
+				else if (c == GeomTypeChar(CUBES)) geometry_type = CUBES;
+				else if (c == GeomTypeChar(TETRAS)) geometry_type = TETRAS;
+				else if (c == GeomTypeChar(DODECS)) geometry_type = DODECS;
+				else if (c == GeomTypeChar(STEL_DODS)) geometry_type = STEL_DODS;
+				break;
+			}
+		} while (1);
+
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
 		}
@@ -243,22 +291,61 @@ public:
 		
 		mthz::Vec3 spinner1_pos = mthz::Vec3(base_dim.y + effective_width/4.0, spinner_y, 0);
 		mthz::Vec3 spinner2_pos = mthz::Vec3(base_dim.y + effective_width * 3 / 4.0, spinner_y, 0);
-		phyz::Geometry spinner1 = phyz::Geometry::gear(spinner1_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4)
+		double spinner_density = 10000;
+		phyz::Geometry spinner1 = phyz::Geometry::gear(spinner1_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4, false, phyz::Material::modified_density(spinner_density))
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner1_pos);
-		phyz::Geometry spinner2 = phyz::Geometry::gear(spinner2_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4)
+		phyz::Geometry spinner2 = phyz::Geometry::gear(spinner2_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4, false, phyz::Material::modified_density(spinner_density))
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner2_pos);
 
 		double block_start_height = box_height;
 		double cube_size = effective_width / (16 * level_of_detail);
+
+		phyz::Geometry stellated_dodecahedron_shape;
+		if (geometry_type == STEL_DODS) {
+			stellated_dodecahedron_shape = phyz::Geometry::stellatedDodecahedron(mthz::Vec3(), 1, 0.7);
+			std::vector<phyz::AABB> aabbs;
+			for (const phyz::ConvexPrimitive& p : stellated_dodecahedron_shape.getPolyhedra()) {
+				aabbs.push_back(p.gen_AABB());
+			}
+			phyz::AABB big_aabb = phyz::AABB::combine(aabbs);
+			double real_size = std::max<double>(big_aabb.max.x - big_aabb.min.x, std::max<double>(big_aabb.max.y - big_aabb.min.y, big_aabb.max.z - big_aabb.min.z));
+
+			stellated_dodecahedron_shape = stellated_dodecahedron_shape.getScaled(cube_size / real_size);
+		}
+
 		for (int i = 0; i < 8 * level_of_detail; i++) {
-			for (int j = 0; j < 56 * level_of_detail; j++) {
+			for (int j = 0; j < GeomTypeStackHeight(geometry_type) * level_of_detail; j++) {
 				for (int k = 0; k < level_of_detail; k++) {
 					mthz::Vec3 pos(base_dim.y + effective_width/2.0 + (i - 4 * level_of_detail) * cube_size, block_start_height + 1.5 * j * cube_size, base_dim.y + k * cube_size);
-					phyz::Geometry ball = phyz::Geometry::sphere(pos, cube_size/2.0);
-					phyz::RigidBody* r = p.createRigidBody(ball);
+					phyz::Geometry g;
+					switch (geometry_type) {
+					case BALLS:
+						g = phyz::Geometry::sphere(pos, cube_size / 2.0);
+						break;
+					case CUBES:
+						g = phyz::Geometry::box(pos - 0.5 * mthz::Vec3(cube_size, cube_size, cube_size), cube_size, cube_size, cube_size);
+						break;
+					case TETRAS:
+					{
+						mthz::Vec3 p1 = pos - 0.5 * mthz::Vec3(cube_size, cube_size, cube_size);
+						mthz::Vec3 p2 = p1 + mthz::Vec3(cube_size, 0, cube_size);
+						mthz::Vec3 p3 = p1 + mthz::Vec3(0, cube_size, cube_size);
+						mthz::Vec3 p4 = p1 + mthz::Vec3(cube_size, cube_size, 0);
+						g = phyz::Geometry::tetra(p1, p2, p3, p4);
+					}
+					break;
+					case DODECS:
+						g = phyz::Geometry::regDodecahedron(pos, cube_size);
+						break;
+					case STEL_DODS:
+						g = stellated_dodecahedron_shape.getTranslated(pos);
+						break;
+					}
+
+					phyz::RigidBody* r = p.createRigidBody(g);
 
 					recolor_body_indexes.push_back(pre_bodies.size());
-					pre_bodies.push_back(BodyHistory(r, ball));
+					pre_bodies.push_back(BodyHistory(r, g));
 				}
 			}
 		}
@@ -272,9 +359,9 @@ public:
 		phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
 
 		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
-		p.setMotorTargetVelocity(spinner1_motor, 10000000, 0.5);
+		p.setMotorTargetVelocity(spinner1_motor, 100000000000, 0.5);
 		phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, mthz::Vec3(0, 0, 1));
-		p.setMotorTargetVelocity(spinner2_motor, 10000000, -0.5);
+		p.setMotorTargetVelocity(spinner2_motor, 100000000000, -0.5);
 
 		pre_bodies.push_back(BodyHistory(base_r, base));
 
@@ -300,9 +387,9 @@ public:
 		
 		printf("Checking for existing precomputation...\n");
 		char precompute_file[256];
-		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d.txt", level_of_detail);
+		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d_%c.txt", level_of_detail, GeomTypeChar(geometry_type));
 		if (fileExists(precompute_file)) {
-			printf("File found\n");
+			printf("File found. Loading...\n");
 			readComputation(precompute_file, &pre_bodies, n_frames);
 			for (const BodyHistory& b : pre_bodies) {
 				b.r->setOrientation(b.history.back().orient);
@@ -320,14 +407,8 @@ public:
 
 			float physics_time = 0;
 			float update_time = 0;
+			float time_since_last_progress_render = 0;
 			for (int i = 0; i < n_frames; i++) {
-				double t = i * frame_time;
-				int new_percent = 100 * t / simulation_time;
-				if (new_percent > curr_percent) {
-					curr_percent = new_percent;
-					render_progress_bar(t / simulation_time, progress_bar_width, false);
-				}
-
 				auto t1 = std::chrono::system_clock::now();
 				for (int i = 0; i < steps_per_frame; i++) {
 					p.timeStep();
@@ -337,8 +418,18 @@ public:
 					b.history.push_back({ b.r->getPos(), b.r->getOrientation() });
 				}
 				auto t3 = std::chrono::system_clock::now();
+
 				update_time += std::chrono::duration<float>(t3 - t2).count();
 				physics_time += std::chrono::duration<float>(t2 - t1).count();
+				time_since_last_progress_render += std::chrono::duration<float>(t3 - t1).count();
+
+				double t = i * frame_time;
+				int new_percent = 100 * t / simulation_time;
+				if (new_percent > curr_percent || time_since_last_progress_render > 0.33) {
+					time_since_last_progress_render = 0.0f;
+					curr_percent = new_percent;
+					render_progress_bar(t / simulation_time, progress_bar_width, false);
+				}
 			}
 			render_progress_bar(curr_percent, progress_bar_width, true);
 			printf("Saving computation to file...\n");
