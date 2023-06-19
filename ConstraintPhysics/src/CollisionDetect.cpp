@@ -220,7 +220,7 @@ namespace phyz {
 
 	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat) {
 		Manifold out;
-		double pen_depth;
+		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		const GaussMap& ag = a.getGaussMap();
 		const GaussMap& bg = b.getGaussMap();
@@ -423,7 +423,7 @@ namespace phyz {
 
 	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat) {
 		Manifold out;
-		double pen_depth;
+		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		const GaussMap& gauss_map = a.getGaussMap();
 

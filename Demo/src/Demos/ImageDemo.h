@@ -274,10 +274,15 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
+		phyz::PhysicsEngine p2;
 		p.setSleepingEnabled(true);
 		p.setPGSIterations(45, 35);
 		p.setAABBTreeMarginSize(0.05);
 		p.setBroadphase(phyz::AABB_TREE);
+		p2.setSleepingEnabled(true);
+		p2.setPGSIterations(45, 35);
+		p2.setAABBTreeMarginSize(0.05);
+		p2.setBroadphase(phyz::AABB_TREE);
 
 		bool paused = false;
 		bool slow = false;
@@ -295,6 +300,7 @@ public:
 		phyz::Geometry front_wall = phyz::Geometry::box(mthz::Vec3(0, 0, base_dim.z), base_dim.x, base_dim.y + box_height, base_dim.y);
 
 		p.setOctreeParams(60, 0.25, mthz::Vec3(base_dim.x/2.0, box_height/2.0, base_dim.z/2.0));
+		p2.setOctreeParams(60, 0.25, mthz::Vec3(base_dim.x / 2.0, box_height / 2.0, base_dim.z / 2.0));
 
 		double effective_width = base_dim.x - 2 * base_dim.y;
 		int n_rows = 4;
@@ -310,6 +316,7 @@ public:
 				phyz::Geometry pin = phyz::Geometry::cylinder(pin_pos,cylinder_radius, base_dim.z)
 					.getRotated(mthz::Quaternion(PI/2.0, mthz::Vec3(1, 0, 0)), pin_pos);
 
+				p2.createRigidBody(pin, true);
 				pre_bodies.push_back(BodyHistory(p.createRigidBody(pin, true), pin, color{130, 0, 0}));
 			}
 		}
@@ -344,7 +351,7 @@ public:
 		/*for (int i = 0; i < 8 * level_of_detail; i++) {
 			for (int j = 0; j < GeomTypeStackHeight(geometry_type) * level_of_detail; j++) {
 				for (int k = 0; k < level_of_detail; k++) {*/
-		for (int i = 0; i < 8; i++) {
+		for (int i = 0; i < 1; i++) {
 			for (int j = 0; j < 1; j++) {
 				for (int k = 0; k < 1; k++) {
 					mthz::Vec3 pos(base_dim.y + effective_width/2.0 + (i - 4 * level_of_detail) * cube_size, block_start_height + 1.5 * j * cube_size, base_dim.y + k * cube_size);
@@ -374,6 +381,7 @@ public:
 					}
 
 					phyz::RigidBody* r = p.createRigidBody(g);
+					p2.createRigidBody(g);
 
 					recolor_body_indexes.push_back(pre_bodies.size());
 					pre_bodies.push_back(BodyHistory(r, g));
@@ -386,6 +394,12 @@ public:
 		phyz::RigidBody* posx_wall_r = p.createRigidBody(posx_wall, true);
 		phyz::RigidBody* back_wall_r = p.createRigidBody(back_wall, true);
 		phyz::RigidBody* front_wall_r = p.createRigidBody(front_wall, true);
+
+		p2.createRigidBody(base, true);
+		p2.createRigidBody(negx_wall, true);
+		p2.createRigidBody(posx_wall, true);
+		p2.createRigidBody(back_wall, true);
+		p2.createRigidBody(front_wall, true);
 		//phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
 		//phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
 
@@ -414,6 +428,7 @@ public:
 		double rot_speed = 1;
 
 		p.setGravity(mthz::Vec3(0, -4.9, 0));
+		p2.setGravity(mthz::Vec3(0, -4.9, 0));
 
 		int curr_percent = -1;
 		double frame_time = 1 / 120.0;
@@ -421,9 +436,6 @@ public:
 		double simulation_time = 75;
 		int n_frames = simulation_time / frame_time + 1;
 		int progress_bar_width = 50;
-		
-		//DEBUG STUFF:
-
 
 		printf("Checking for existing precomputation...\n");
 		char precompute_file[256];
@@ -440,6 +452,7 @@ public:
 			printf("File not found. Computing...\n");
 			
 			p.setStep_time(frame_time / steps_per_frame);
+			p2.setStep_time(frame_time / steps_per_frame);
 			for (BodyHistory& b : pre_bodies) {
 				b.history.reserve(simulation_time / frame_time);
 				b.history.push_back({ b.r->getPos(), b.r->getOrientation() });
@@ -448,10 +461,31 @@ public:
 			float physics_time = 0;
 			float update_time = 0;
 			float time_since_last_progress_render = 0;
+
+			int tick_count = 0;
 			for (int i = 0; i < n_frames; i++) {
 				auto t1 = std::chrono::system_clock::now();
 				for (int i = 0; i < steps_per_frame; i++) {
+					tick_count++;
+
+					if (tick_count == 891) {
+						int a = 1 + 2;
+					}
+					if (tick_count == 1271) {
+						int a = 1 + 2;
+					}
+
 					p.timeStep();
+					p2.timeStep();
+
+					for (int i = 0; i < p.getNumBodies(); i++) {
+						phyz::RigidBody* r1 = p.getBodies()[i];
+						phyz::RigidBody* r2 = p2.getBodies()[i];
+
+						assert(r1->getVel() == r2->getVel());
+						assert(r1->getCOM() == r2->getCOM());
+						assert(r1->getAngVel() == r2->getAngVel());
+					}
 				}
 				auto t2 = std::chrono::system_clock::now();
 				for (BodyHistory& b : pre_bodies) {
@@ -627,7 +661,7 @@ public:
 
 			int new_frame = t / frame_time;
 			if (new_frame != curr_frame && new_frame < n_frames) {
-				curr_frame = new_frame;
+				curr_frame = 445;// new_frame;
 				for (const BodyHistory& b : pre_bodies) {
 					b.r->setOrientation(b.history[curr_frame].orient);
 					b.r->setToPosition(b.history[curr_frame].pos);

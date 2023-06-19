@@ -29,7 +29,8 @@ public:
 
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(false);
-		p.setPGSIterations(45, 35);
+		p.setPGSIterations(45, 35); 
+		p.setAngleVelUpdateTickCount(8);
 
 		bool lock_cam = true;
 
@@ -57,6 +58,8 @@ public:
 		double timestep = 1 / 90.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, 0, 0));
+
+		
 
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();

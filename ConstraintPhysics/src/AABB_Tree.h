@@ -111,7 +111,7 @@ namespace phyz {
 		};
 
 		double aabb_margin_size;
-		std::unordered_map<const RigidBody*, Node*> object_node_map;
+		std::unordered_map<unsigned int, Node*> object_node_map;
 		Node* root;
 
 		void haveAncestorsRecalculateAABB(Node* altered_node) {

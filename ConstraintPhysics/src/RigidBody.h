@@ -13,13 +13,14 @@ namespace phyz {
 
 	class RigidBody {
 	private:
-		RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation);
+		RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id);
 	public:
 		typedef int PKey;
 
 		PKey trackPoint(mthz::Vec3 p); //track the movement of p which is on the body b. P given in local coordinates
 		mthz::Vec3 getTrackedP(PKey pk);
 		mthz::Vec3 getVelOfPoint(mthz::Vec3 p) const;
+		inline unsigned int getID() const { return id; }
 
 		double getMass();
 		double getInvMass();
@@ -51,6 +52,7 @@ namespace phyz {
 		bool fixed;
 		mthz::Vec3 local_coord_origin;
 		PKey origin_pkey;
+		unsigned int id;
 
 		mthz::Quaternion orientation;
 		mthz::Vec3 com;
@@ -64,7 +66,7 @@ namespace phyz {
 		void wake();
 		void alertWakingAction();
 
-		void rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr = 1);
+		void rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr = 1, bool gyro_accel_disabled=false);
 		void updateGeometry();
 
 		struct MovementState {

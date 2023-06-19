@@ -13,7 +13,7 @@ namespace phyz {
 
 	void AABBTree::add(const RigidBody* object, const AABB& object_bounds) {
 		Node* new_leaf = new Node(object, object_bounds, aabb_margin_size);
-		object_node_map[object] = new_leaf;
+		object_node_map[object->getID()] = new_leaf;
 
 		if (root == nullptr) {
 			root = new_leaf;
@@ -80,9 +80,9 @@ namespace phyz {
 	}
 
 	void AABBTree::remove(const RigidBody* object) {
-		assert(object_node_map.find(object) != object_node_map.end());
-		Node* to_remove_leaf = object_node_map[object];
-		object_node_map.erase(object);
+		assert(object_node_map.find(object->getID()) != object_node_map.end());
+		Node* to_remove_leaf = object_node_map[object->getID()];
+		object_node_map.erase(object->getID());
 
 
 		if (to_remove_leaf == root) {
@@ -113,8 +113,8 @@ namespace phyz {
 	}
 
 	void AABBTree::update(const RigidBody* object, const AABB& updated_object_bounds) {
-		assert(object_node_map.find(object) != object_node_map.end());
-		Node* object_leaf = object_node_map[object];
+		assert(object_node_map.find(object->getID()) != object_node_map.end());
+		Node* object_leaf = object_node_map[object->getID()];
 
 		if (!AABB::isAABBContained(updated_object_bounds, object_leaf->node_aabb)) {
 			remove(object);

@@ -21,10 +21,10 @@ namespace phyz {
 
 		friend class PhysicsEngine;
 	private:
-		CollisionTarget(bool with_all, RigidBody* specific_target) : with_all(with_all), specific_target(specific_target) {}
+		CollisionTarget(bool with_all, unsigned int specific_target) : with_all(with_all), specific_target(specific_target) {}
 
 		bool with_all;
-		RigidBody* specific_target;
+		unsigned int specific_target;
 	};
 
 	typedef int ColActionID;
@@ -73,6 +73,7 @@ namespace phyz {
 		inline int getNumBodies() { return bodies.size(); }
 		inline mthz::Vec3 getGravity() { return gravity; }
 		inline double getStep_time() { return step_time; }
+		std::vector<RigidBody*> getBodies();
 
 		void setPGSIterations(int n_vel, int n_pos) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; }
 		void setSleepingEnabled(bool sleeping);
@@ -82,6 +83,7 @@ namespace phyz {
 		void setAABBTreeMarginSize(double d);
 		void setOctreeParams(double size, double minsize, mthz::Vec3 center = mthz::Vec3(0, 0, 0));
 		void setAngleVelUpdateTickCount(int n);
+		void setInternalGyroscopicForcesDisabled(bool b);
 
 		//should probably be placed with a different scheme eventually. This is for when position/orientation is changed for a rigid body, but AABB needs to be updated before next physics tick for use by querying raycasts.
 		void forceAABBTreeUpdate();
@@ -130,6 +132,8 @@ namespace phyz {
 		static bool use_multithread;
 		static bool print_performance_data;
 
+		unsigned int next_id = 1;
+
 		int pgsVelIterations = 20;
 		int pgsPosIterations = 15;
 
@@ -143,6 +147,7 @@ namespace phyz {
 		
 
 		int angle_velocity_update_tick_count = 4;
+		bool is_internal_gyro_forces_disabled = false;
 
 		struct ConstraintGraphNode; 
 		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
@@ -170,7 +175,7 @@ namespace phyz {
 		double accel_sleep_coeff = 0.022;
 
 		//Constraint Graph
-		std::unordered_map<RigidBody*, ConstraintGraphNode*> constraint_graph_nodes;
+		std::unordered_map<unsigned int, ConstraintGraphNode*> constraint_graph_nodes;
 		std::mutex constraint_graph_lock;
 
 		struct Contact {
@@ -332,6 +337,8 @@ namespace phyz {
 			std::mutex mutex;
 
 			SharedConstraintsEdge* getOrCreateEdgeTo(ConstraintGraphNode* n2);
+		private:
+			void insertNewEdge(SharedConstraintsEdge* e);
 		};
 
 		Motor* fetchMotor(ConstraintID id);
@@ -340,8 +347,8 @@ namespace phyz {
 		std::unordered_map<int, SharedConstraintsEdge*> constraint_map;
 
 		ColActionID nextActionID = 0;
-		inline static RigidBody* all() { return nullptr; }
-		std::unordered_map<RigidBody*, std::unordered_map<RigidBody*, std::vector<ColActionID>>> get_action_map;
+		inline static unsigned int all() { return 0; }
+		std::unordered_map<unsigned int, std::unordered_map<unsigned int, std::vector<ColActionID>>> get_action_map;
 		std::unordered_map<ColActionID, ColAction> col_actions;
 	};
 

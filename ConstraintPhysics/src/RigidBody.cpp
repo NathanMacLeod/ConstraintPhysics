@@ -8,9 +8,9 @@ namespace phyz {
 
 	static void calculateMassProperties(const Geometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
 
-	RigidBody::RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation)
+	RigidBody::RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id)
 		: geometry(source_geometry.getPolyhedra()), reference_geometry(source_geometry.getPolyhedra()), vel(0, 0, 0), ang_vel(0, 0, 0),
-		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0)
+		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0), id(id)
 	{
 		fixed = false;
 		calculateMassProperties(source_geometry, &this->com, &this->reference_tensor, &this->mass);
@@ -125,11 +125,17 @@ namespace phyz {
 	}
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical
-	void RigidBody::rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr) {
+	void RigidBody::rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr, bool gyro_accel_disabled) {
 		const int CUTOFF_MAG = 0.00000000001;
 		const int NEWTON_STEPS = 2;
 
 		if (ang_vel.magSqrd() == 0) {
+			return;
+		}
+
+		if (gyro_accel_disabled) {
+			mthz::Quaternion rot(ang_vel.mag() * fElapsedTime, ang_vel.normalize());
+			orientation = rot * orientation;
 			return;
 		}
 

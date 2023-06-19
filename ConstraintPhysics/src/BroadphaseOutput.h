@@ -7,7 +7,7 @@ namespace phyz {
 	public:
 		Pair(RigidBody* t1, RigidBody* t2) {
 			//keep ordering consistent to avoid {x, y}; {y, x} duplicates
-			if ((int)t1 < (int)t2) {
+			if (t1->getID() < t2->getID()) {
 				this->t1 = t1;
 				this->t2 = t2;
 			}
@@ -22,19 +22,19 @@ namespace phyz {
 
 		//for use in std::set
 		bool operator<(const Pair& p) const {
-			if ((int)t1 < (int)p.t1) {
+			if (t1->getID() < p.t1->getID()) {
 				return true;
 			}
-			else if ((int)t1 > (int)p.t1) {
+			else if (t1->getID() > p.t1->getID()) {
 				return false;
 			}
 			else {
-				return (int)t2 < (int)p.t2;
+				return t2->getID() < p.t2->getID();
 			}
 		}
 
 		bool operator==(const Pair& p) const {
-			return (t1 == p.t1 && t2 == p.t2) || (t1 == p.t2 && t2 == p.t1);
+			return t1 == p.t1 && t2 == p.t2;
 		}
 	};
 

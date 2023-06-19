@@ -49,10 +49,9 @@ namespace phyz {
 		ExtremaInfo(int min_pID, int max_pID, double min_val, double max_val)
 			: min_pID(min_pID), max_pID(max_pID), min_val(min_val), max_val(max_val)
 		{}
-		ExtremaInfo() {
-			min_val = std::numeric_limits<double>::infinity();
-			max_val = -std::numeric_limits<double>::infinity();
-		}
+		ExtremaInfo() 
+			:min_val(std::numeric_limits<double>::infinity()), max_val(-std::numeric_limits<double>::infinity()), min_pID(-1), max_pID(-1)
+		{}
 
 		int min_pID;
 		int max_pID;

@@ -36,7 +36,7 @@ namespace phyz {
 
 	PhysicsEngine::~PhysicsEngine() {
 		for (RigidBody* b : bodies) {
-			delete constraint_graph_nodes[b];
+			delete constraint_graph_nodes[b->getID()];
 			delete b;
 		}
 	}
@@ -66,7 +66,7 @@ namespace phyz {
 		//determine which bodies are active, apply gravity and pass them to broad-phase collision detection
 		for (RigidBody* b : bodies) {
 			if (b->recievedWakingAction) {
-				wakeupIsland(constraint_graph_nodes[b]);
+				wakeupIsland(constraint_graph_nodes[b->getID()]);
 			}
 			b->recievedWakingAction = false;
 
@@ -167,7 +167,7 @@ namespace phyz {
 			RigidBody* b1 = p.t1;
 			RigidBody* b2 = p.t2;
 
-			if ((!b1->fixed || !b1->asleep || !b2->fixed || !b2->asleep) && collisionAllowed(b1, b2)) {
+			if ((!b1->fixed || !b2->fixed) && (!b1->asleep || !b2->asleep) && collisionAllowed(b1, b2)) {
 
 				std::vector<Manifold> manifolds;
 				for (int i = 0; i < b1->geometry.size(); i++) {
@@ -211,16 +211,15 @@ namespace phyz {
 						mthz::Vec3 u, w;
 						man.normal.getPerpendicularBasis(&u, &w);
 
-
 						//need a determenistic order for locking the constraint graph mutexes, otherwise deadlock can occur
 						ConstraintGraphNode* lock_first, *lock_second;
-						if ((int)b1 < (int)b2) {
-							lock_first = constraint_graph_nodes[b1];
-							lock_second = constraint_graph_nodes[b2];
+						if (b1->getID() < b2->getID()) {
+							lock_first = constraint_graph_nodes[b1->getID()];
+							lock_second = constraint_graph_nodes[b2->getID()];
 						}
 						else {
-							lock_first = constraint_graph_nodes[b2];
-							lock_second = constraint_graph_nodes[b1];
+							lock_first = constraint_graph_nodes[b2->getID()];
+							lock_second = constraint_graph_nodes[b1->getID()];
 						}
 
 						lock_first->mutex.lock();
@@ -233,14 +232,14 @@ namespace phyz {
 						lock_second->mutex.unlock();
 
 						std::vector<ColAction> thispair_actions;
-						if (get_action_map.find(b1) != get_action_map.end() && get_action_map[b1].find(b2) != get_action_map[b1].end()) {
-							for (ColActionID c : get_action_map[b1][b2]) thispair_actions.push_back(col_actions[c]);
+						if (get_action_map.find(b1->getID()) != get_action_map.end() && get_action_map[b1->getID()].find(b2->getID()) != get_action_map[b1->getID()].end()) {
+							for (ColActionID c : get_action_map[b1->getID()][b2->getID()]) thispair_actions.push_back(col_actions[c]);
 						}
-						if (get_action_map.find(b1) != get_action_map.end() && get_action_map[b1].find(all()) != get_action_map[b1].end()) {
-							for (ColActionID c : get_action_map[b1][all()]) thispair_actions.push_back(col_actions[c]);
+						if (get_action_map.find(b1->getID()) != get_action_map.end() && get_action_map[b1->getID()].find(all()) != get_action_map[b1->getID()].end()) {
+							for (ColActionID c : get_action_map[b1->getID()][all()]) thispair_actions.push_back(col_actions[c]);
 						}
-						if (get_action_map.find(all()) != get_action_map.end() && get_action_map[all()].find(b2) != get_action_map[all()].end()) {
-							for (ColActionID c : get_action_map[all()][b2]) thispair_actions.push_back(col_actions[c]);
+						if (get_action_map.find(all()) != get_action_map.end() && get_action_map[all()].find(b2->getID()) != get_action_map[all()].end()) {
+							for (ColActionID c : get_action_map[all()][b2->getID()]) thispair_actions.push_back(col_actions[c]);
 						}
 						if (get_action_map.find(all()) != get_action_map.end() && get_action_map[all()].find(all()) != get_action_map[all()].end()) {
 							for (ColActionID c : get_action_map[all()][all()]) thispair_actions.push_back(col_actions[c]);
@@ -273,6 +272,21 @@ namespace phyz {
 		}
 
 		auto t4 = std::chrono::system_clock::now();
+
+		//order of elements in triggered_actions depends on order of thread execution, sorting to restore determenism
+		std::sort(triggered_actions.begin(), triggered_actions.end(), 
+			[](const TriggeredActionPair& p1, const TriggeredActionPair& p2) {
+				if (p1.b1->getID() < p2.b1->getID()) {
+					return true;
+				}
+				else if (p1.b1->getID() > p2.b1->getID()) {
+					return false;
+				}
+				else {
+					return p1.b2->getID() < p2.b2->getID();
+				}
+			}
+		);
 
 		for (const TriggeredActionPair& pair : triggered_actions) {
 			for (const ColAction& c : pair.triggered_actions) {
@@ -321,16 +335,12 @@ namespace phyz {
 			if (!b->fixed && !b->asleep) {
 				b->com += (b->vel + b->psuedo_vel) * step_time;
 				if (b->ang_vel.magSqrd() != 0) {
-					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count);
+					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count, is_internal_gyro_forces_disabled);
 					mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
 					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
 				}
 
 				b->updateGeometry();
-
-				if (isnan(b->ang_vel.x)) {
-					int a = 1 + 2;
-				}
 
 				b->psuedo_vel = mthz::Vec3(0, 0, 0);
 				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
@@ -363,10 +373,10 @@ namespace phyz {
 	}
 
 	RigidBody* PhysicsEngine::createRigidBody(const Geometry& geometry, bool fixed, mthz::Vec3 position, mthz::Quaternion orientation) {
-		RigidBody* r = new RigidBody(geometry, position, orientation);
+		RigidBody* r = new RigidBody(geometry, position, orientation, next_id++);
 		r->fixed = fixed;
 		bodies.push_back(r);
-		constraint_graph_nodes[r] = new ConstraintGraphNode(r);
+		constraint_graph_nodes[r->getID()] = new ConstraintGraphNode(r);
 
 		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
 			aabb_tree.add(r, r->aabb);
@@ -386,8 +396,8 @@ namespace phyz {
 
 		assert(std::find(bodies.begin(), bodies.end(), r) != bodies.end());
 		bodies.erase(std::remove(bodies.begin(), bodies.end(), r));
-		ConstraintGraphNode* n = constraint_graph_nodes[r];
-		constraint_graph_nodes.erase(r);
+		ConstraintGraphNode* n = constraint_graph_nodes[r->getID()];
+		constraint_graph_nodes.erase(r->getID());
 		delete n;
 		delete r;
 	}
@@ -453,6 +463,14 @@ namespace phyz {
 		return RayHitInfo{ closest_hit_info.did_hit, closest_hit_body, closest_hit_info.intersection_point, closest_hit_info.intersection_dist };
 	}
 
+	std::vector<RigidBody*> PhysicsEngine::getBodies() {
+		std::vector<RigidBody*> out;
+		for (RigidBody* b : bodies) {
+			if (std::find(bodies_to_delete.begin(), bodies_to_delete.end(), b) == bodies_to_delete.end()) out.push_back(b);
+		}
+		return out;
+	}
+
 	ConstraintID PhysicsEngine::addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength) {
 		return addBallSocketConstraint(b1, b2, attach_pos_local, attach_pos_local, pos_correct_strength);
 	}
@@ -469,8 +487,8 @@ namespace phyz {
 			uniqueID
 		};
 
-		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
-		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		e->ballSocketConstraints.push_back(bs);
@@ -501,8 +519,8 @@ namespace phyz {
 			uniqueID
 		};
 
-		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
-		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		e->hingeConstraints.push_back(h);
@@ -538,8 +556,8 @@ namespace phyz {
 			uniqueID
 		};
 
-		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
-		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		e->sliderConstraints.push_back(s);
@@ -575,8 +593,8 @@ namespace phyz {
 			uniqueID
 		};
 
-		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
-		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		e->slidingHingeConstraints.push_back(s);
@@ -602,8 +620,8 @@ namespace phyz {
 			uniqueID
 		};
 
-		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
-		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		e->weldConstraints.push_back(w);
@@ -627,8 +645,8 @@ namespace phyz {
 			uniqueID
 		};
 
-		ConstraintGraphNode* n1 = constraint_graph_nodes[b1];
-		ConstraintGraphNode* n2 = constraint_graph_nodes[b2];
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		e->springs.push_back(s);
@@ -757,7 +775,7 @@ namespace phyz {
 		if (b->asleep && (b->vel.mag() > wake_vel || b->ang_vel.mag() > wake_vel)) {
 			constraint_graph_lock.lock();
 			if (b->asleep) { //in case of race condition, shouldn't really matter too much though
-				wakeupIsland(constraint_graph_nodes[b]);
+				wakeupIsland(constraint_graph_nodes[b->getID()]);
 			}
 			 constraint_graph_lock.unlock();
 		}
@@ -805,6 +823,10 @@ namespace phyz {
 	void PhysicsEngine::setAngleVelUpdateTickCount(int n) {
 		assert(n >= 0);
 		angle_velocity_update_tick_count = n;
+	}
+
+	void PhysicsEngine::setInternalGyroscopicForcesDisabled(bool b) {
+		is_internal_gyro_forces_disabled = b;
 	}
 
 	void PhysicsEngine::forceAABBTreeUpdate() {
@@ -1210,17 +1232,13 @@ namespace phyz {
 		return island_systems;
 	}
 
-	CollisionTarget CollisionTarget::all() {
-		return CollisionTarget(true, nullptr);
-	}
-
 	CollisionTarget CollisionTarget::with(RigidBody* r) {
-		return CollisionTarget(false, r);
+		return CollisionTarget(false, r->getID());
 	}
 
 	ColActionID PhysicsEngine::registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action) {
-		RigidBody* t1 = (b1.with_all) ? all() : b1.specific_target;
-		RigidBody* t2 = (b2.with_all) ? all() : b2.specific_target;
+		unsigned int t1 = (b1.with_all) ? all() : b1.specific_target;
+		unsigned int t2 = (b2.with_all) ? all() : b2.specific_target;
 
 		get_action_map[t1][t2].push_back(nextActionID);
 		//avoiding duplicates
@@ -1408,12 +1426,27 @@ namespace phyz {
 				return c;
 			}
 		}
+
+		//doesnt exist, create new edge
 		SharedConstraintsEdge* c = new SharedConstraintsEdge(this, n2);
-		constraints.push_back(c);
-		n2->constraints.push_back(c);
+		insertNewEdge(c);
+		n2->insertNewEdge(c);
 		return c;
 	}
 	
+
+	void PhysicsEngine::ConstraintGraphNode::insertNewEdge(SharedConstraintsEdge* e) {
+		unsigned int other_constraint_id = e->other(this)->b->getID();
+
+		//edges can be created in multi-threaded context. for determenism, they need to maintain sorted order.
+		for (int i = 0; i < constraints.size(); i++) {
+			if (other_constraint_id < constraints[i]->other(this)->b->getID()) {
+				constraints.insert(constraints.begin() + i, e);
+				return;
+			}
+		}
+		constraints.push_back(e);
+	}
 }
 
 	
