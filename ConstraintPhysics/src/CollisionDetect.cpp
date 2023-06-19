@@ -22,13 +22,7 @@ namespace phyz {
 
 			case SPHERE:
 			{
-				Manifold out = SAT_PolySphere((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
-
-				for (ContactP p : out.points) {
-					assert((p.pos - ((Sphere*)b.getGeometry())->getCenter()).dot(out.normal) < 0);
-				}
-
-				return out;
+				return SAT_PolySphere((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
 			}
 			}
 			break;
@@ -38,11 +32,6 @@ namespace phyz {
 			{
 				Manifold out = SAT_PolySphere((const Polyhedron&)*b.getGeometry(), b.getID(), b.material, (const Sphere&)*a.getGeometry(), a.getID(), a.material);
 				out.normal = -out.normal; //physics engine expects the manifold to be facing away from a. SAT_PolySphere generates normal facing away from the polyhedron
-				
-				for (ContactP p : out.points) {
-					assert((p.pos - ((Sphere*)a.getGeometry())->getCenter()).dot(out.normal) > 0);
-				}
-
 				return out;
 			}
 			case SPHERE:

@@ -198,6 +198,29 @@ namespace phyz {
 		return col_pairs;
 	}
 
+	std::vector<RigidBody*> AABBTree::raycastHitCandidates(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
+		if (root == nullptr) return std::vector<RigidBody*>();
+
+		std::vector<RigidBody*> out;
+		std::vector<Node*> node_candidates = { root };
+		while (!node_candidates.empty()) {
+			Node* n = node_candidates.back();
+			node_candidates.pop_back();
+
+			if (n->is_leaf) {
+				if (AABB::rayIntersectsAABB(n->leaf_object_true_aabb, ray_origin, ray_dir)) out.push_back((RigidBody*)n->leaf_object);
+			}
+			else {
+				if (AABB::rayIntersectsAABB(n->node_aabb, ray_origin, ray_dir)) {
+					node_candidates.push_back(n->left);
+					node_candidates.push_back(n->right);
+				}
+			}
+		}
+
+		return out;
+	}
+
 	void AABBTree::rebalanceAncestors(AABBTree::Node* altered_leaf) {
 		assert(altered_leaf->is_leaf);
 

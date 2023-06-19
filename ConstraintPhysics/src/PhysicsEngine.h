@@ -42,6 +42,13 @@ namespace phyz {
 		int uniqueID;
 	};
 
+	struct RayHitInfo {
+		bool did_hit;
+		RigidBody* hit_object;
+		mthz::Vec3 hit_position;
+		double hit_distance;
+	};
+
 	enum BroadPhaseStructure { NONE, OCTREE, AABB_TREE, TEST_COMPARE};
 
 	class PhysicsEngine {
@@ -61,6 +68,8 @@ namespace phyz {
 		bool collisionAllowed(RigidBody* b1, RigidBody* b2);
 		void reallowCollision(RigidBody* b1, RigidBody* b2);
 		
+		RayHitInfo raycastFirstIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir, std::vector<RigidBody*> ignore_list = std::vector<RigidBody*>());
+
 		inline int getNumBodies() { return bodies.size(); }
 		inline mthz::Vec3 getGravity() { return gravity; }
 		inline double getStep_time() { return step_time; }
@@ -73,6 +82,9 @@ namespace phyz {
 		void setAABBTreeMarginSize(double d);
 		void setOctreeParams(double size, double minsize, mthz::Vec3 center = mthz::Vec3(0, 0, 0));
 		void setAngleVelUpdateTickCount(int n);
+
+		//should probably be placed with a different scheme eventually. This is for when position/orientation is changed for a rigid body, but AABB needs to be updated before next physics tick for use by querying raycasts.
+		void forceAABBTreeUpdate();
 		
 		ColActionID registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action);
 		void removeCollisionAction(ColActionID action_key);

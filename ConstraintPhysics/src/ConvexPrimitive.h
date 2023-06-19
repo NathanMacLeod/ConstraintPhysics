@@ -60,7 +60,7 @@ namespace phyz {
 			mthz::Vec3 intersection_point;
 			double intersection_dist;
 		};
-		RayHitInfo testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
+		RayHitInfo testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 
 		Material material;
 

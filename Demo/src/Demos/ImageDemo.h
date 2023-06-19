@@ -15,7 +15,17 @@ class ImageDemo : public DemoScene {
 private:
 	void render_progress_bar(float percent, int width, bool done) {
 		static auto t_prev = std::chrono::system_clock::now();
+		static auto t_prev_prev = std::chrono::system_clock::now();
 		static double prev_percent = 0;
+		static double prev_prev_percent = 0;
+
+		//reset
+		if (!done && percent == 0) {
+			t_prev = std::chrono::system_clock::now();
+			t_prev_prev = std::chrono::system_clock::now();
+			prev_percent = 0;
+			prev_prev_percent = 0;
+		}
 
 		std::vector<std::string> animation_c = { "|@-----<", ">-@----<", ">--@---<", ">---@--<", ">----@-<", ">-----@|", ">----@-<", ">---@--<", ">--@---<", ">-@----<" };
 		static int animation_itr = 0;
@@ -23,11 +33,13 @@ private:
 			animation_itr = (animation_itr + 1) % animation_c.size();
 
 			auto t_now = std::chrono::system_clock::now();
-			double t_elapsed = std::chrono::duration<float>(t_now - t_prev).count();
-			double remaining_time = percent == 0? 0 : t_elapsed / (percent - prev_percent) * (1.0 - percent);
+			double t_elapsed = std::chrono::duration<float>(t_now - t_prev_prev).count();
+			double remaining_time = percent == 0? 0 : t_elapsed / (percent - prev_prev_percent) * (1.0 - percent);
 			
-			if (int(prev_percent * 100) != int(percent)) {
+			if (int(prev_percent * 100) != int(percent * 100)) {
+				prev_prev_percent = prev_percent;
 				prev_percent = percent;
+				t_prev_prev = t_prev;
 				t_prev = t_now;
 			}
 
@@ -62,12 +74,13 @@ private:
 	};
 
 	struct BodyHistory {
-		BodyHistory(phyz::RigidBody* r, const phyz::Geometry& g, color c={0.4, 0.4, 0.4}) : r(r), g(g), color(c) {}
+		BodyHistory(phyz::RigidBody* r, const phyz::Geometry& g, color c={0.4, 0.4, 0.4}) : r(r), g(g), color(c), ray_hit_count(0) {}
 
 		phyz::RigidBody* r;
 		phyz::Geometry g;
 		std::vector<PosState> history;
 		color color;
+		int ray_hit_count;
 	};
 
 	bool fileExists(const std::string& s) {
@@ -191,22 +204,37 @@ public:
 
 	void run() override {
 
-		bool default_coloring = false;
-		printf("Give a filepath for an image to desplay. Enter empty for default coloring: ");
-		std::string image_file = "";
+		enum ColorScheme { RAINBOW, IMG_SQR_AVG, IMG_RAYCAST};
+		ColorScheme color_scheme;
+		std::string color_input;
+		printf("Select coloring pattern. D (Default rainbow), A (Image file, averging color of a square around object), R (Image file, painting objects using raycast): ");
 		do {
-			std::getline(std::cin, image_file);
-			if (image_file == "") {
-				default_coloring = true;
-				break;
-			}
-			else if (!fileExists(image_file)) {
-				printf("File not found, enter again: ");
+			std::getline(std::cin, color_input);
+			char c;
+			if (color_input.length() != 1 || ((c = toupper(color_input.at(0))) != 'D' && c != 'A' && c != 'R')) {
+				printf("Invalid input, enter again. Valid inputs are D, A, R: ");
 			}
 			else {
+				if (c == 'D') color_scheme = RAINBOW;
+				else if (c == 'A') color_scheme = IMG_SQR_AVG;
+				else if (c == 'R') color_scheme = IMG_RAYCAST;
 				break;
 			}
 		} while (1);
+
+		std::string image_file = "";
+		if (color_scheme == IMG_SQR_AVG || color_scheme == IMG_RAYCAST) {
+			printf("Give filepath of the image to draw: ");
+			do {
+				std::getline(std::cin, image_file);
+				if (!fileExists(image_file)) {
+					printf("File not found, enter again: ");
+				}
+				else {
+					break;
+				}
+			} while (1);
+		}
 
 		printf("Select level of detail. Note computation time scales massively. Options are 1, 2, 3: ");
 		std::string detail_input;
@@ -229,7 +257,7 @@ public:
 			std::getline(std::cin, geometry_input);
 			char c;
 			if (geometry_input.length() != 1 ||  ((c = toupper(geometry_input.at(0))) != GeomTypeChar(BALLS) && c != GeomTypeChar(CUBES) && c != GeomTypeChar(TETRAS) && c != GeomTypeChar(DODECS) && c != GeomTypeChar(STEL_DODS))) {
-				printf("Invalid input, enter again. Valid inputs are B, C, T: ");
+				printf("Invalid input, enter again. Valid inputs are B, C, T, D, S: ");
 			}
 			else {
 				if(c == GeomTypeChar(BALLS)) geometry_type = BALLS;
@@ -313,9 +341,12 @@ public:
 			stellated_dodecahedron_shape = stellated_dodecahedron_shape.getScaled(cube_size / real_size);
 		}
 
-		for (int i = 0; i < 8 * level_of_detail; i++) {
+		/*for (int i = 0; i < 8 * level_of_detail; i++) {
 			for (int j = 0; j < GeomTypeStackHeight(geometry_type) * level_of_detail; j++) {
-				for (int k = 0; k < level_of_detail; k++) {
+				for (int k = 0; k < level_of_detail; k++) {*/
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 1; j++) {
+				for (int k = 0; k < 1; k++) {
 					mthz::Vec3 pos(base_dim.y + effective_width/2.0 + (i - 4 * level_of_detail) * cube_size, block_start_height + 1.5 * j * cube_size, base_dim.y + k * cube_size);
 					phyz::Geometry g;
 					switch (geometry_type) {
@@ -355,21 +386,26 @@ public:
 		phyz::RigidBody* posx_wall_r = p.createRigidBody(posx_wall, true);
 		phyz::RigidBody* back_wall_r = p.createRigidBody(back_wall, true);
 		phyz::RigidBody* front_wall_r = p.createRigidBody(front_wall, true);
-		phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
-		phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
+		//phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
+		//phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
 
-		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
-		p.setMotorTargetVelocity(spinner1_motor, 100000000000, 0.5);
-		phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, mthz::Vec3(0, 0, 1));
-		p.setMotorTargetVelocity(spinner2_motor, 100000000000, -0.5);
+		//DEBUGGING
+		//p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[148].r), phyz::CollisionTarget::with(spinner1_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
+		//	int a = 1 + 2;
+		//});
+
+		//phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
+		//p.setMotorTargetVelocity(spinner1_motor, 100000000000, 0.5);
+		//phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, mthz::Vec3(0, 0, 1));
+		//p.setMotorTargetVelocity(spinner2_motor, 100000000000, -0.5);
 
 		pre_bodies.push_back(BodyHistory(base_r, base));
 
 		pre_bodies.push_back(BodyHistory(negx_wall_r, negx_wall));
 		pre_bodies.push_back(BodyHistory(posx_wall_r, posx_wall));
 		pre_bodies.push_back(BodyHistory(back_wall_r, back_wall));
-		pre_bodies.push_back(BodyHistory(spinner1_r, spinner1, color{ 130, 0, 0 }));
-		pre_bodies.push_back(BodyHistory(spinner2_r, spinner2, color{ 130, 0, 0 }));
+		//pre_bodies.push_back(BodyHistory(spinner1_r, spinner1, color{ 130, 0, 0 }));
+		//pre_bodies.push_back(BodyHistory(spinner2_r, spinner2, color{ 130, 0, 0 }));
 
 		mthz::Vec3 cam_pos = mthz::Vec3(4, 8, 16);
 		mthz::Quaternion cam_orient;
@@ -384,7 +420,11 @@ public:
 		int steps_per_frame = 2;
 		double simulation_time = 75;
 		int n_frames = simulation_time / frame_time + 1;
+		int progress_bar_width = 50;
 		
+		//DEBUG STUFF:
+
+
 		printf("Checking for existing precomputation...\n");
 		char precompute_file[256];
 		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d_%c.txt", level_of_detail, GeomTypeChar(geometry_type));
@@ -398,7 +438,7 @@ public:
 		}
 		else {
 			printf("File not found. Computing...\n");
-			int progress_bar_width = 50;
+			
 			p.setStep_time(frame_time / steps_per_frame);
 			for (BodyHistory& b : pre_bodies) {
 				b.history.reserve(simulation_time / frame_time);
@@ -436,7 +476,9 @@ public:
 			writeComputation(precompute_file, pre_bodies, n_frames);
 		}
 
-		if (default_coloring) {
+		switch(color_scheme) {
+		case RAINBOW:
+		{
 			for (int indx : recolor_body_indexes) {
 				int col_pick = (pre_bodies[indx].r->getCOM().x - base_dim.y) * 6 / effective_width;
 
@@ -460,9 +502,16 @@ public:
 					pre_bodies[indx].color = color{ 0.29, 0.0, 0.5 };
 					break;
 				}
+
+				//DEBUGGING
+				if (indx == 148) {
+					pre_bodies[indx].color = color{ 1.0, 1.0, 1.0 };
+				}
 			}
 		}
-		else {
+		break;
+		case IMG_SQR_AVG:
+		{
 			olc::Sprite image(image_file);
 			for (int indx : recolor_body_indexes) {
 				phyz::RigidBody* r = pre_bodies[indx].r;
@@ -470,6 +519,88 @@ public:
 				mthz::Vec3 com_rel = r->getCOM() - mthz::Vec3(base_dim.y, base_dim.y, 0);
 				pre_bodies[indx].color = averagePixels(image, com_rel.x - cube_size / 2.0, effective_width - com_rel.y - cube_size / 2.0, com_rel.x + cube_size / 2.0, effective_width - com_rel.y + cube_size / 2.0, effective_width, effective_width);
 			}
+		}
+		break;
+		case IMG_RAYCAST:
+		{
+			p.forceAABBTreeUpdate();
+			std::unordered_map<phyz::RigidBody*, BodyHistory*> body_map;
+			for (int indx : recolor_body_indexes) {
+				body_map[pre_bodies[indx].r] = &pre_bodies[indx];
+			}
+
+			olc::Sprite image(image_file);
+
+			printf("Computing Raycasts...\n");
+			curr_percent = -1;
+
+			double canvas_min_x = base_dim.y;
+			double canvas_min_y = base_dim.y;
+			double canvas_width = effective_width;
+			double canvas_height = effective_width;
+			
+			double pixel_width = canvas_width / image.width;
+			double pixel_height = canvas_height / image.height;
+
+			int total_pixel_count = image.width * image.height;
+
+			for (int px = 0; px < image.width; px++) {
+				for (int py = 0; py < image.height; py++) {
+
+
+					int new_percent = 100 * (px * image.height + py) / total_pixel_count;
+					if (new_percent > curr_percent) {
+						render_progress_bar((px * image.height + py) / (float) total_pixel_count, progress_bar_width, false);
+						curr_percent = new_percent;
+					}
+
+					olc::Pixel color = image.GetPixel(px, py);
+
+					int pixel_substep_count = 4;
+					for (int sx = 0; sx < pixel_substep_count; sx++) {
+						for (int sy = 0; sy < pixel_substep_count; sy++) {
+
+							double ray_origin_x = canvas_min_x + (px + (sx + 1) / (pixel_substep_count + 1)) * pixel_width;
+							double ray_origin_y = canvas_min_y + canvas_height - (py + (sy + 1) / (pixel_substep_count + 1)) * pixel_height;
+
+							double ray_origin_z = 5.0;
+							mthz::Vec3 ray_dir(0, 0, -1);
+							mthz::Vec3 ray_origin(ray_origin_x, ray_origin_y, ray_origin_z);
+
+							phyz::RayHitInfo hit = p.raycastFirstIntersection(ray_origin, ray_dir, { front_wall_r });
+							if (hit.did_hit) {
+								if (body_map.find(hit.hit_object) != body_map.end()) {
+									BodyHistory* hit_body = body_map[hit.hit_object];
+
+									hit_body->color.r += color.r / 255.0;
+									hit_body->color.g += color.g / 255.0;
+									hit_body->color.b += color.b / 255.0;
+
+									hit_body->ray_hit_count++;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			render_progress_bar(1.0, progress_bar_width, true);
+
+			for (int indx : recolor_body_indexes) {
+				if (pre_bodies[indx].ray_hit_count == 0) {
+					phyz::RigidBody* r = pre_bodies[indx].r;
+
+					mthz::Vec3 com_rel = r->getCOM() - mthz::Vec3(base_dim.y, base_dim.y, 0);
+					pre_bodies[indx].color = averagePixels(image, com_rel.x - cube_size / 2.0, effective_width - com_rel.y - cube_size / 2.0, com_rel.x + cube_size / 2.0, effective_width - com_rel.y + cube_size / 2.0, effective_width, effective_width);
+				}
+				else {
+					pre_bodies[indx].color.r /= pre_bodies[indx].ray_hit_count;
+					pre_bodies[indx].color.g /= pre_bodies[indx].ray_hit_count;
+					pre_bodies[indx].color.b /= pre_bodies[indx].ray_hit_count;
+				}
+			}
+		}
+		break;
 		}
 
 		printf("Press enter to start:\n");
@@ -514,6 +645,21 @@ public:
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_D)) {
 				cam_pos += cam_orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
+			}
+
+			if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				p.forceAABBTreeUpdate();
+
+				mthz::Vec3 camera_dir = cam_orient.applyRotation(mthz::Vec3(0, 0, -1));
+				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(cam_pos, camera_dir, { front_wall_r });
+
+				if (hit_info.did_hit) {
+					for (int indx : recolor_body_indexes) {
+						if (pre_bodies[indx].r == hit_info.hit_object) {
+							printf("Hit index: %d\n", indx);
+						}
+					}
+				}
 			}
 
 			if (rndr::getKeyDown(GLFW_KEY_UP)) {

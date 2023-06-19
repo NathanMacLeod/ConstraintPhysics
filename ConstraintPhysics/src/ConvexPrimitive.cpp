@@ -76,6 +76,13 @@ namespace phyz {
 		return copy;
 	}
 
+	ConvexPrimitive::RayHitInfo ConvexPrimitive::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
+		switch (type) {
+		case POLYHEDRON:	return ((Polyhedron*)geometry)->testRayIntersection(ray_origin, ray_dir);
+		case SPHERE:		return ((Sphere*)geometry)->testRayIntersection(ray_origin, ray_dir);
+		}
+	}
+
 	Sphere::Sphere(const Sphere& c) 
 		: center(c.center), radius(c.radius)
 	{}

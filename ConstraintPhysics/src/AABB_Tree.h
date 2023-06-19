@@ -33,12 +33,11 @@ namespace phyz {
 		}
 
 		void add(const RigidBody* object, const AABB& object_bounds);
-
 		void remove(const RigidBody* object);
-
 		void update(const RigidBody* object, const AABB& updated_object_bounds);
 
 		std::vector<Pair> getAllCollisionCandidates() const;
+		std::vector<RigidBody*> raycastHitCandidates(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 
 	private:
 

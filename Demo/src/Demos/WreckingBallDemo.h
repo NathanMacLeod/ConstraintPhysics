@@ -234,6 +234,15 @@ public:
 
 			t += fElapsedTime;
 
+			/*if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(pos, camera_dir);
+
+				if (hit_info.did_hit) {
+					hit_info.hit_object->applyImpulse(camera_dir * 5, hit_info.hit_position);
+				}
+			}*/
+
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
 				p.setMotorTargetVelocity(lift_motor, lift_torque, -1);
 			}

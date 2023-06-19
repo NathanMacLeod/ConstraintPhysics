@@ -1,5 +1,6 @@
 #pragma once
 #include <cmath>
+#include <cassert>
 
 namespace mthz {
 
@@ -46,6 +47,20 @@ namespace mthz {
 			const mthz::Vec3 axis1 = mthz::Vec3(1, 0, 0), axis2 = mthz::Vec3(0, 1, 0); //two guesses for non parallel vectors, at least 1 not parallel
 			*u = (abs(this->dot(axis1)) < abs(this->dot(axis2))) ? this->cross(axis1).normalize() : this->cross(axis2).normalize();
 			*w = this->cross(*u).normalize();
+		}
+
+		double& operator[](int index) {
+			if (index == 0) return x;
+			if (index == 1) return y;
+			if (index == 2) return z;
+			assert(false);
+		}
+
+		double operator[](int index) const {
+			if (index == 0) return x;
+			if (index == 1) return y;
+			if (index == 2) return z;
+			assert(false);
 		}
 
 		bool operator==(const Vec3 v) const {

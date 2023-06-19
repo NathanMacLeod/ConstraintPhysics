@@ -278,6 +278,24 @@ namespace phyz {
 			for (const ColAction& c : pair.triggered_actions) {
 				c(pair.b1, pair.b2, pair.manifolds);
 			}
+
+			/*std::vector<Manifold> manifolds;
+			for (int i = 0; i < pair.b1->geometry.size(); i++) {
+				for (int j = 0; j < pair.b2->geometry.size(); j++) {
+					const ConvexPrimitive& c1 = pair.b1->geometry[i];
+					const ConvexPrimitive& c2 = pair.b2->geometry[j];
+					bool checking_AABB_redundant = pair.b1->geometry.size() == 1 && pair.b2->geometry.size() == 1;
+					if (!checking_AABB_redundant && !AABB::intersects(pair.b1->geometry_AABB[i], pair.b2->geometry_AABB[j])) {
+						continue;
+					}
+
+					Manifold man = detectCollision(c1, c2);
+
+					if (man.max_pen_depth > 0) {
+						manifolds.push_back(man);
+					}
+				}
+			}*/
 		}
 
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
@@ -397,6 +415,42 @@ namespace phyz {
 			b1->no_collision_set.erase(i);
 			b2->no_collision_set.erase(b2->no_collision_set.find(b1));
 		}
+	}
+
+	RayHitInfo PhysicsEngine::raycastFirstIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir, std::vector<RigidBody*> ignore_list) {
+		std::vector<RigidBody*> candidates;
+		if (broadphase == TEST_COMPARE || broadphase == AABB_TREE) {
+			candidates = aabb_tree.raycastHitCandidates(ray_origin, ray_dir);
+		}
+		else {
+			for (RigidBody* b : bodies) {
+				if (AABB::rayIntersectsAABB(b->aabb, ray_origin, ray_dir)) candidates.push_back(b);
+			}
+		}
+
+		ConvexPrimitive::RayHitInfo closest_hit_info = { false };
+		RigidBody* closest_hit_body = nullptr;
+		for (RigidBody* b : candidates) {
+			if (std::find(ignore_list.begin(), ignore_list.end(), b) != ignore_list.end()) continue;
+
+			for (int i = 0; i < b->geometry.size(); i++) {
+				//check ray actually hits the convex primitive AABB. if geometry.size == 1 then the convex primitive AABB == the rigid body AABB, which is redundant to check
+				if (b->geometry.size() != 1 && !AABB::rayIntersectsAABB(b->geometry_AABB[i], ray_origin, ray_dir)) continue;
+
+				ConvexPrimitive::RayHitInfo hit_info = b->geometry[i].testRayIntersection(ray_origin, ray_dir);
+				if (hit_info.did_hit && (!closest_hit_info.did_hit || hit_info.intersection_dist < closest_hit_info.intersection_dist)) {
+					closest_hit_info = hit_info;
+					closest_hit_body = b;
+				}
+			}
+		}
+
+		//struct RayHitInfo {
+		//bool did_hit;
+		//RigidBody* hit_object;
+		//mthz::Vec3 hit_position;
+		//double hit_distance;
+		return RayHitInfo{ closest_hit_info.did_hit, closest_hit_body, closest_hit_info.intersection_point, closest_hit_info.intersection_dist };
 	}
 
 	ConstraintID PhysicsEngine::addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength) {
@@ -751,6 +805,14 @@ namespace phyz {
 	void PhysicsEngine::setAngleVelUpdateTickCount(int n) {
 		assert(n >= 0);
 		angle_velocity_update_tick_count = n;
+	}
+
+	void PhysicsEngine::forceAABBTreeUpdate() {
+		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
+			for (RigidBody* b : bodies) {
+				aabb_tree.update(b, b->aabb);
+			}
+		}
 	}
 
 	void PhysicsEngine::setStep_time(double s) {
