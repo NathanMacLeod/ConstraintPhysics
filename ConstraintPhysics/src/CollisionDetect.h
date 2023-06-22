@@ -26,6 +26,7 @@ namespace phyz {
 	};
 
 	bool operator==(const MagicID& m1, const MagicID& m2);
+	MagicID swapOrder(const MagicID m);
 
 	struct ContactP {
 		mthz::Vec3 pos;

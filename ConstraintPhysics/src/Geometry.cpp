@@ -40,6 +40,56 @@ namespace phyz {
 		return Geometry(ConvexPrimitive((const ConvexGeometry&)Sphere(center, radius), material));
 	}
 
+	Geometry Geometry::psuedoSphere(mthz::Vec3 center, double radius, int n_rows, int n_cols, Material material) {
+		std::vector<mthz::Vec3> points;
+		std::vector<std::vector<int>> surface_indices;
+
+		mthz::Vec3 bottom_pole = center - mthz::Vec3(0, radius, 0);
+		mthz::Vec3 top_pole = center + mthz::Vec3(0, radius, 0);
+		points.push_back(bottom_pole);
+		points.push_back(top_pole);
+
+		//create other vertices
+		for (int row = 1; row < n_rows; row++) {
+			for (int col = 0; col < n_cols; col++) {
+				//polar coordinates
+				double theta = -2 * PI * col / n_cols;
+				double phi = PI - PI * row / n_rows;
+
+				points.push_back(center + radius * mthz::Vec3(cos(theta) * sin(phi), cos(phi), sin(theta) * sin(phi)));
+			}
+		}
+
+		int bottom_pole_index = 0;
+		int top_pole_index = 1;
+		int nonpole_offset = 2;
+		//create surfaces
+		for (int col = 0; col < n_cols; col++) {
+			int i1 = col;
+			int i2 = (col + 1) % n_cols;
+
+			surface_indices.push_back({ bottom_pole_index, i2 + nonpole_offset, i1 + nonpole_offset });
+		}
+		for (int row = 1; row < n_rows - 1; row++) {
+			for (int col = 0; col < n_cols; col++) {
+				int i1 = col;
+				int i2 = (col + 1) % n_cols;
+				int row_offset = (row - 1) * n_cols;
+
+				surface_indices.push_back({ i1 + row_offset + nonpole_offset, i2 + row_offset + nonpole_offset, i2 + n_cols + row_offset + nonpole_offset, i1 + n_cols + row_offset + nonpole_offset });
+			}
+		}
+		for (int col = 0; col < n_cols; col++) {
+			int i1 = col;
+			int i2 = (col + 1) % n_cols;
+			int row_offset = (n_rows - 2) * n_cols;
+
+			surface_indices.push_back({ i1 + row_offset + nonpole_offset, i2 + row_offset + nonpole_offset, top_pole_index });
+		}
+
+		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+	}
+
 	Geometry Geometry::tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4, Material material) {
 		ConvexPrimitive out;
 

@@ -3,10 +3,37 @@
 
 #include <cassert>
 
+uint32_t getEdgeID(uint16_t p1_id, uint16_t p2_id) {
+	int min, max;
+	if (p1_id < p2_id) {
+		min = p1_id;
+		max = p2_id;
+	}
+	else {
+		min = p2_id;
+		max = p1_id;
+	}
+
+	return (0x0000FFFF | p1_id) + (0xFFFF0000 | ((uint32_t)p2_id << 16));
+}
+
 namespace phyz {
 
 	bool operator==(const MagicID& m1, const MagicID& m2) {
 		return m1.bID == m2.bID && m1.cID == m2.cID;
+	}
+
+	MagicID swapOrder(const MagicID m) {
+		uint64_t c1_cID = (0x00000000FFFFFFFF & m.cID);
+		uint64_t c2_cID = (0xFFFFFFFF00000000 & m.cID) >> 32;
+		uint64_t c1_bID = (0x00000000FFFFFFFF & m.bID);
+		uint64_t c2_bID = (0xFFFFFFFF00000000 & m.bID) >> 32;
+
+		MagicID out;
+		out.cID = (0x00000000FFFFFFFF | c2_cID) + (0xFFFFFFFF00000000 & (c1_cID << 32));
+		out.bID = (0x00000000FFFFFFFF | c2_bID) + (0xFFFFFFFF00000000 & (c1_bID << 32));
+
+		return out;
 	}
 
 	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat);
@@ -21,9 +48,7 @@ namespace phyz {
 				return SAT_PolyPoly((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Polyhedron&)*b.getGeometry(), b.getID(), b.material);
 
 			case SPHERE:
-			{
 				return SAT_PolySphere((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
-			}
 			}
 			break;
 		case SPHERE:
@@ -32,6 +57,9 @@ namespace phyz {
 			{
 				Manifold out = SAT_PolySphere((const Polyhedron&)*b.getGeometry(), b.getID(), b.material, (const Sphere&)*a.getGeometry(), a.getID(), a.material);
 				out.normal = -out.normal; //physics engine expects the manifold to be facing away from a. SAT_PolySphere generates normal facing away from the polyhedron
+				for (ContactP& p : out.points) {
+					p.magicID = swapOrder(p.magicID);
+				}
 				return out;
 			}
 			case SPHERE:
@@ -346,10 +374,8 @@ namespace phyz {
 					if (findIntersection(a1, a2, b1, b2, &out)) {
 						man_pool.push_back(out);
 						uint64_t m = 0;
-						m |= 0x000000000000FFFF & a1_ID;
-						m |= 0x00000000FFFF0000 & (a2_ID << 16);
-						m |= 0x0000FFFF00000000 & (uint64_t(b1_ID) << 32);
-						m |= 0xFFFF000000000000 & (uint64_t(b2_ID) << 48);
+						m |= 0x00000000FFFFFFFF & getEdgeID(a1_ID, a2_ID);
+						m |= 0xFFFFFFFF00000000 & (uint64_t(getEdgeID(b1_ID, b2_ID)) << 32);
 						man_pool_magics.push_back(m);
 					}
 				}
@@ -426,7 +452,10 @@ namespace phyz {
 		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		const GaussMap& gauss_map = a.getGaussMap();
+		uint32_t a_feature_id;
 
+		//very hacky using the fact that gauss verts have the same order as the corresponding surfaces they are made from. SurfaceID's start at points.size().
+		int corresponding_surface_id = a.getPoints().size();
 		for (const GaussVert& g : gauss_map.face_verts) {
 			if (!g.SAT_redundant) {
 				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(a.getPoints()[g.SAT_reference_point_index]));
@@ -436,11 +465,15 @@ namespace phyz {
 					return out;
 				}
 				else if (x.pen_depth < min_pen.pen_depth) {
+					a_feature_id = corresponding_surface_id;
 					min_pen = x;
 				}
 			}
+
+			corresponding_surface_id++;
 		}
-		for (mthz::Vec3 p : a.getPoints()) {
+		for (int pID = 0; pID < a.getPoints().size(); pID++) {
+			mthz::Vec3 p = a.getPoints()[pID];
 			mthz::Vec3 n = (p - b.getCenter()).normalize();
 			CheckNormResults x = sat_checknorm(findExtrema(a, n), getSphereExtrema(b, n), n);
 			if (x.seprAxisExists()) {
@@ -449,6 +482,7 @@ namespace phyz {
 			}
 			else if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
+				a_feature_id = pID;
 			}
 		}
 		for (const Edge& e : a.getEdges()) {
@@ -462,6 +496,7 @@ namespace phyz {
 			}
 			else if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
+				a_feature_id = getEdgeID(e.p1_indx, e.p2_indx);
 			}
 		}
 
@@ -477,7 +512,8 @@ namespace phyz {
 		uint64_t cID = 0;
 		cID |= 0x00000000FFFFFFFF & a_id;
 		cID |= 0xFFFFFFFF00000000 & (uint64_t(b_id) << 32);
-		cp.magicID = MagicID{ cID, 0x0 }; //not bothering with featureid
+
+		cp.magicID = MagicID{ cID, a_feature_id }; //not bothering with featureid
  
 		out.points.push_back(cp);
 		

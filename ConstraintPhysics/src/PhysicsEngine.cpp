@@ -208,25 +208,25 @@ namespace phyz {
 						int cull_target_point_count = 4;
 						Manifold man = cull_manifold(manifolds[i], cull_target_point_count);
 
-						mthz::Vec3 u, w;
-						man.normal.getPerpendicularBasis(&u, &w);
-
-						//need a determenistic order for locking the constraint graph mutexes, otherwise deadlock can occur
+						//need a determenistic order for locking the constraint graph mutexes, otherwise deadlock can occur.
+						//This is already ensured by constructor of Pair type
 						ConstraintGraphNode* lock_first, *lock_second;
-						if (b1->getID() < b2->getID()) {
-							lock_first = constraint_graph_nodes[b1->getID()];
-							lock_second = constraint_graph_nodes[b2->getID()];
-						}
-						else {
-							lock_first = constraint_graph_nodes[b2->getID()];
-							lock_second = constraint_graph_nodes[b1->getID()];
-						}
+						lock_first = constraint_graph_nodes[b1->getID()];
+						lock_second = constraint_graph_nodes[b2->getID()];
+						//if (b1->getID() < b2->getID()) {
+						//	lock_first = constraint_graph_nodes[b1->getID()];
+						//	lock_second = constraint_graph_nodes[b2->getID()];
+						//}
+						//else {
+						//	lock_first = constraint_graph_nodes[b2->getID()];
+						//	lock_second = constraint_graph_nodes[b1->getID()];
+						//}
 
 						lock_first->mutex.lock();
 						lock_second->mutex.lock();
 						for (int i = 0; i < man.points.size(); i++) {
 							const ContactP& p = man.points[i];
-							addContact(lock_first, lock_second, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
+							addContact(b1, b2, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
 						}
 						lock_first->mutex.unlock();
 						lock_second->mutex.unlock();
@@ -293,7 +293,7 @@ namespace phyz {
 				c(pair.b1, pair.b2, pair.manifolds);
 			}
 
-			/*std::vector<Manifold> manifolds;
+			std::vector<Manifold> manifolds;
 			for (int i = 0; i < pair.b1->geometry.size(); i++) {
 				for (int j = 0; j < pair.b2->geometry.size(); j++) {
 					const ConvexPrimitive& c1 = pair.b1->geometry[i];
@@ -303,13 +303,20 @@ namespace phyz {
 						continue;
 					}
 
-					Manifold man = detectCollision(c1, c2);
+					Manifold man = detectCollision(c2, c1);
 
-					if (man.max_pen_depth > 0) {
-						manifolds.push_back(man);
+					man = cull_manifold(man, 4);
+
+					if (false) {
+
+						for (int i = 0; i < man.points.size(); i++) {
+							const ContactP& p = man.points[i];
+							addContact(pair.b1, pair.b2, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
+						}
+
 					}
 				}
-			}*/
+			}
 		}
 
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
@@ -732,29 +739,33 @@ namespace phyz {
 
 	}
 
-	void PhysicsEngine::addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness) {
+	void PhysicsEngine::addContact(RigidBody* b1, RigidBody* b2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness) {
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
-		RigidBody* b1 = n1->b;
-		RigidBody* b2 = n2->b;
+		
+		double guessed_friction_impulse_limit = std::min<double>(b1->getMass(), b2->getMass()) * gravity.mag() * kinetic_friction / n_points;
 
 		for (Contact* c : e->contactConstraints) {
-			if (c->magic == magic) {
-				double friction = (c->friction.getStaticReady()) ? static_friction : kinetic_friction;
+			if (c->magic == magic /*&& ((b1->geometry[0].getGeometry()->getType() != SPHERE) == (b2->geometry[0].getGeometry()->getType() != SPHERE))*/) {
+				double friction = (c->friction.getStaticReady()/* && ((b1->geometry[0].getGeometry()->getType() != SPHERE) == (b2->geometry[0].getGeometry()->getType() != SPHERE))*/) ? static_friction : kinetic_friction;
 
 				c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, c->contact.impulse, cutoff_vel);
-				c->friction = FrictionConstraint(b1, b2, norm, p, friction, n_points, &c->contact, c->friction.impulse, c->friction.u, c->friction.w);
+				c->friction = FrictionConstraint(b1, b2, norm, p, guessed_friction_impulse_limit, c->friction.impulse, c->friction.u, c->friction.w);
 				c->memory_life = contact_life;
 				c->is_live_contact = true;
 				return;
 			}
 		}
 
+		
+
 		//if no warm start existed
 		Contact* c = new Contact();
 		c->b1 = b1;
 		c->b2 = b2;
 		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, NVec<1>{0.0}, cutoff_vel);
-		c->friction = FrictionConstraint(b1, b2, norm, p, kinetic_friction, n_points, &c->contact);
+		c->friction = FrictionConstraint(b1, b2, norm, p, guessed_friction_impulse_limit);
 		c->magic = magic;
 		c->memory_life = contact_life;
 		c->is_live_contact = true;
@@ -763,6 +774,8 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel, const mthz::Vec3& delta_psuedo_ang_vel) {
+		if (b->fixed) return;
+
 		b->vel += delta_vel;
 		b->ang_vel += delta_ang_vel;
 		b->psuedo_vel += delta_psuedo_vel;
@@ -842,6 +855,7 @@ namespace phyz {
 		cutoff_vel = getCutoffVel(step_time, gravity);
 	}
 
+	//TODO: Save net torques and forces, consider these
 	//average can be saved an adjusted per frame if necessary for performance
 	bool PhysicsEngine::bodySleepy(const std::vector<RigidBody::MovementState>& body_history) {
 		int n = body_history.size();

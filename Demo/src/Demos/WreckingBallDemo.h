@@ -30,7 +30,7 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setSleepingEnabled(true);
+		p.setSleepingEnabled(false);
 		p.setPGSIterations(45, 35);
 
 		bool lock_cam = true;
@@ -107,7 +107,7 @@ public:
 
 		mthz::Vec3 final_chain_pos = chain_start_pos + mthz::Vec3(0, -n_chain * chain_height, 0);
 		double ball_size = 0.65;
-		phyz::Geometry ball = phyz::Geometry::sphere(final_chain_pos + mthz::Vec3(0, -ball_size, 0), ball_size, phyz::Material::modified_density(1));
+		phyz::Geometry ball = phyz::Geometry::psuedoSphere(final_chain_pos + mthz::Vec3(0, -ball_size, 0), ball_size, 15, 20, phyz::Material::modified_density(1));//phyz::Geometry::sphere(final_chain_pos + mthz::Vec3(0, -ball_size, 0), ball_size, phyz::Material::modified_density(1));
 		phyz::RigidBody* ball_r = p.createRigidBody(ball);
 		p.addBallSocketConstraint(ball_r, previous_chain, final_chain_pos);
 		bodies.push_back({ fromGeometry(ball), ball_r });
@@ -118,6 +118,73 @@ public:
 		double lift_torque = 60 * 90;
 		phyz::ConstraintID lift_motor = p.addHingeConstraint(cabin_r, crane_r, crane_pos, mthz::Vec3(0, 0, 1), 350, 350, -PI / 2.0, PI / 4.0);
 
+		double ball_width;
+		
+			mthz::Vec3 base_dim(8.5, 0.25, 0.75);
+		{
+			phyz::Geometry base = phyz::Geometry::box(mthz::Vec3(), base_dim.x, base_dim.y, base_dim.z);
+			double box_height = 48;
+			phyz::Geometry negx_wall = phyz::Geometry::box(mthz::Vec3(0, base_dim.y, 0), base_dim.y, box_height, base_dim.z);
+			phyz::Geometry posx_wall = phyz::Geometry::box(mthz::Vec3(base_dim.x - base_dim.y, base_dim.y, 0), base_dim.y, box_height, base_dim.z);
+			phyz::Geometry back_wall = phyz::Geometry::box(mthz::Vec3(0, 0, 0), base_dim.x, box_height + base_dim.y, -base_dim.y);
+			phyz::Geometry front_wall = phyz::Geometry::box(mthz::Vec3(0, 0, base_dim.z), base_dim.x, base_dim.y + box_height, base_dim.y);
+
+			p.setOctreeParams(60, 0.25, mthz::Vec3(base_dim.x / 2.0, box_height / 2.0, base_dim.z / 2.0));
+
+			double effective_width = base_dim.x - 2 * base_dim.y;
+			int n_rows = 4;
+			int n_pins = 3;
+			double pin_gap = effective_width / (n_pins + 1);
+			double row_verticle_spacing = 2;
+			double cylinder_radius = 0.15;
+			double pin_start_y = 10;
+			for (int i = 0; i < n_rows; i++) {
+				double start_x = base_dim.y + pin_gap * ((i % 2 == 0) ? 1 : 1.5);
+				for (int j = 0; j < ((i % 2 == 0) ? n_pins : n_pins - 1); j++) {
+					mthz::Vec3 pin_pos = mthz::Vec3(start_x + pin_gap * j, pin_start_y + row_verticle_spacing * i, 0);
+					phyz::Geometry pin = phyz::Geometry::cylinder(pin_pos, cylinder_radius, base_dim.z)
+						.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), pin_pos);
+
+					bodies.push_back({fromGeometry(pin), p.createRigidBody(pin, true)});
+				}
+			}
+
+			double spinner_y = 23;
+			double spinner_radius = effective_width / 4.75;
+
+			mthz::Vec3 spinner1_pos = mthz::Vec3(base_dim.y + effective_width / 4.0, spinner_y, 0);
+			mthz::Vec3 spinner2_pos = mthz::Vec3(base_dim.y + effective_width * 3 / 4.0, spinner_y, 0);
+			double spinner_density = 10000;
+			phyz::Geometry spinner1 = phyz::Geometry::gear(spinner1_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4, false, phyz::Material::modified_density(spinner_density))
+				.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner1_pos);
+			phyz::Geometry spinner2 = phyz::Geometry::gear(spinner2_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4, false, phyz::Material::modified_density(spinner_density))
+				.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner2_pos);
+
+			phyz::RigidBody* base_r = p.createRigidBody(base, true);
+			phyz::RigidBody* negx_wall_r = p.createRigidBody(negx_wall, true);
+			phyz::RigidBody* posx_wall_r = p.createRigidBody(posx_wall, true);
+			phyz::RigidBody* back_wall_r = p.createRigidBody(back_wall, true);
+			phyz::RigidBody* front_wall_r = p.createRigidBody(front_wall, true);
+
+			phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
+			phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
+
+			phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
+			p.setMotorTargetVelocity(spinner1_motor, 10000, 0.5);
+			phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, mthz::Vec3(0, 0, 1));
+			p.setMotorTargetVelocity(spinner2_motor, 10000, -0.5);
+
+			bodies.push_back({ fromGeometry(base), base_r });
+			bodies.push_back({ fromGeometry(negx_wall), negx_wall_r });
+			bodies.push_back({ fromGeometry(posx_wall), posx_wall_r });
+			bodies.push_back({ fromGeometry(back_wall), back_wall_r });
+			//bodies.push_back({ fromGeometry(front_wall), front_wall_r });
+			bodies.push_back({ fromGeometry(spinner1), spinner1_r });
+			bodies.push_back({ fromGeometry(spinner2), spinner2_r });
+
+			ball_width = effective_width / 16;
+		}
+
 		//*************
 		//****TOWER****
 		//*************
@@ -126,7 +193,7 @@ public:
 		double tower_story_height = 1.25;
 		double floor_height = 0.25;
 		double pillar_width = 0.3;
-		int n_stories = 6;
+		int n_stories = 0;// 6;
 		phyz::Geometry pillar = phyz::Geometry::box(mthz::Vec3(), pillar_width, tower_story_height, pillar_width);
 		phyz::Geometry floor_plate = phyz::Geometry::box(mthz::Vec3(), tower_width / 2.0, floor_height, tower_width / 2.0);
 
@@ -242,6 +309,27 @@ public:
 					hit_info.hit_object->applyImpulse(camera_dir * 5, hit_info.hit_position);
 				}
 			}*/
+
+			if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+				
+				phyz::Geometry ball = phyz::Geometry::sphere(mthz::Vec3(base_dim.x/3.0, 50, base_dim.z/2.0), ball_width / 2.0);
+				phyz::RigidBody* ball_r = p.createRigidBody(ball);
+				//ball_r->setVel(camera_dir * 5);
+				//ball_r->setAngVel(mthz::Vec3(0, 30, 0));
+
+				bodies.push_back({ fromGeometry(ball), ball_r });
+			}
+			if (rndr::getKeyPressed(GLFW_KEY_Y)) {
+				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+
+				phyz::Geometry cube = phyz::Geometry::box(mthz::Vec3(base_dim.x / 3.0 - ball_width / 2.0, 50 - ball_width / 2.0, base_dim.z / 2.0 - ball_width / 2.0), ball_width, ball_width, ball_width);
+				phyz::RigidBody* cube_r = p.createRigidBody(cube);
+				//ball_r->setVel(camera_dir * 5);
+				//ball_r->setAngVel(mthz::Vec3(0, 30, 0));
+
+				bodies.push_back({ fromGeometry(cube), cube_r });
+			}
 
 			if (rndr::getKeyDown(GLFW_KEY_I)) {
 				p.setMotorTargetVelocity(lift_motor, lift_torque, -1);

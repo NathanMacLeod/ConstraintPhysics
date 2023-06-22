@@ -748,6 +748,15 @@ public:
 				return;
 			}
 
+			/*if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+
+				phyz::Geometry ball = phyz::Geometry::sphere(pos, 0.5);
+				phyz::RigidBody* ball_r = p.createRigidBody(ball);
+				ball_r->setVel(camera_dir * 5);
+
+				bodies.push_back({ fromGeometry(ball), ball_r });
+			}*/
 
 			phyz_time += fElapsedTime;
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);

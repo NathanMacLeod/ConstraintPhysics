@@ -102,11 +102,11 @@ private:
 
 	int GeomTypeStackHeight(GeometryType t) {
 		switch (t) {
-		case BALLS: return 56;
+		case BALLS: return 15;//56;
 		case CUBES: return 32;
 		case TETRAS: return 90;
 		case DODECS: return 70;
-		case STEL_DODS: return 90; //raise to 110
+		case STEL_DODS: return 100;
 		default: assert(false);
 		}
 	}
@@ -274,15 +274,10 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		phyz::PhysicsEngine p2;
-		p.setSleepingEnabled(true);
+		p.setSleepingEnabled(false);
 		p.setPGSIterations(45, 35);
 		p.setAABBTreeMarginSize(0.05);
 		p.setBroadphase(phyz::AABB_TREE);
-		p2.setSleepingEnabled(true);
-		p2.setPGSIterations(45, 35);
-		p2.setAABBTreeMarginSize(0.05);
-		p2.setBroadphase(phyz::AABB_TREE);
 
 		bool paused = false;
 		bool slow = false;
@@ -300,7 +295,6 @@ public:
 		phyz::Geometry front_wall = phyz::Geometry::box(mthz::Vec3(0, 0, base_dim.z), base_dim.x, base_dim.y + box_height, base_dim.y);
 
 		p.setOctreeParams(60, 0.25, mthz::Vec3(base_dim.x/2.0, box_height/2.0, base_dim.z/2.0));
-		p2.setOctreeParams(60, 0.25, mthz::Vec3(base_dim.x / 2.0, box_height / 2.0, base_dim.z / 2.0));
 
 		double effective_width = base_dim.x - 2 * base_dim.y;
 		int n_rows = 4;
@@ -316,7 +310,6 @@ public:
 				phyz::Geometry pin = phyz::Geometry::cylinder(pin_pos,cylinder_radius, base_dim.z)
 					.getRotated(mthz::Quaternion(PI/2.0, mthz::Vec3(1, 0, 0)), pin_pos);
 
-				p2.createRigidBody(pin, true);
 				pre_bodies.push_back(BodyHistory(p.createRigidBody(pin, true), pin, color{130, 0, 0}));
 			}
 		}
@@ -348,12 +341,9 @@ public:
 			stellated_dodecahedron_shape = stellated_dodecahedron_shape.getScaled(cube_size / real_size);
 		}
 
-		/*for (int i = 0; i < 8 * level_of_detail; i++) {
+		for (int i = 0; i < 8 * level_of_detail; i++) {
 			for (int j = 0; j < GeomTypeStackHeight(geometry_type) * level_of_detail; j++) {
-				for (int k = 0; k < level_of_detail; k++) {*/
-		for (int i = 0; i < 1; i++) {
-			for (int j = 0; j < 1; j++) {
-				for (int k = 0; k < 1; k++) {
+				for (int k = 0; k < level_of_detail; k++) {
 					mthz::Vec3 pos(base_dim.y + effective_width/2.0 + (i - 4 * level_of_detail) * cube_size, block_start_height + 1.5 * j * cube_size, base_dim.y + k * cube_size);
 					phyz::Geometry g;
 					switch (geometry_type) {
@@ -381,7 +371,6 @@ public:
 					}
 
 					phyz::RigidBody* r = p.createRigidBody(g);
-					p2.createRigidBody(g);
 
 					recolor_body_indexes.push_back(pre_bodies.size());
 					pre_bodies.push_back(BodyHistory(r, g));
@@ -395,31 +384,32 @@ public:
 		phyz::RigidBody* back_wall_r = p.createRigidBody(back_wall, true);
 		phyz::RigidBody* front_wall_r = p.createRigidBody(front_wall, true);
 
-		p2.createRigidBody(base, true);
-		p2.createRigidBody(negx_wall, true);
-		p2.createRigidBody(posx_wall, true);
-		p2.createRigidBody(back_wall, true);
-		p2.createRigidBody(front_wall, true);
-		//phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
-		//phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
+		phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
+		phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
 
 		//DEBUGGING
-		//p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[148].r), phyz::CollisionTarget::with(spinner1_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
-		//	int a = 1 + 2;
-		//});
+		int count = 0;
+		bool tripped = false;
+		p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[915].r), phyz::CollisionTarget::with(spinner2_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
+			count++;
+			if (count > 1700) {
+				int a = 1 + 2;
+			}
+			tripped = count == 1700;
+		});
 
-		//phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
-		//p.setMotorTargetVelocity(spinner1_motor, 100000000000, 0.5);
-		//phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, mthz::Vec3(0, 0, 1));
-		//p.setMotorTargetVelocity(spinner2_motor, 100000000000, -0.5);
+		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
+		p.setMotorTargetVelocity(spinner1_motor, 100000000000, 0.5);
+		phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, mthz::Vec3(0, 0, 1));
+		p.setMotorTargetVelocity(spinner2_motor, 100000000000, -0.5);
 
 		pre_bodies.push_back(BodyHistory(base_r, base));
 
 		pre_bodies.push_back(BodyHistory(negx_wall_r, negx_wall));
 		pre_bodies.push_back(BodyHistory(posx_wall_r, posx_wall));
 		pre_bodies.push_back(BodyHistory(back_wall_r, back_wall));
-		//pre_bodies.push_back(BodyHistory(spinner1_r, spinner1, color{ 130, 0, 0 }));
-		//pre_bodies.push_back(BodyHistory(spinner2_r, spinner2, color{ 130, 0, 0 }));
+		pre_bodies.push_back(BodyHistory(spinner1_r, spinner1, color{ 130, 0, 0 }));
+		pre_bodies.push_back(BodyHistory(spinner2_r, spinner2, color{ 130, 0, 0 }));
 
 		mthz::Vec3 cam_pos = mthz::Vec3(4, 8, 16);
 		mthz::Quaternion cam_orient;
@@ -428,7 +418,6 @@ public:
 		double rot_speed = 1;
 
 		p.setGravity(mthz::Vec3(0, -4.9, 0));
-		p2.setGravity(mthz::Vec3(0, -4.9, 0));
 
 		int curr_percent = -1;
 		double frame_time = 1 / 120.0;
@@ -452,7 +441,6 @@ public:
 			printf("File not found. Computing...\n");
 			
 			p.setStep_time(frame_time / steps_per_frame);
-			p2.setStep_time(frame_time / steps_per_frame);
 			for (BodyHistory& b : pre_bodies) {
 				b.history.reserve(simulation_time / frame_time);
 				b.history.push_back({ b.r->getPos(), b.r->getOrientation() });
@@ -462,29 +450,13 @@ public:
 			float update_time = 0;
 			float time_since_last_progress_render = 0;
 
-			int tick_count = 0;
 			for (int i = 0; i < n_frames; i++) {
 				auto t1 = std::chrono::system_clock::now();
 				for (int i = 0; i < steps_per_frame; i++) {
-					tick_count++;
-
-					if (tick_count == 891) {
-						int a = 1 + 2;
-					}
-					if (tick_count == 1271) {
-						int a = 1 + 2;
-					}
-
 					p.timeStep();
-					p2.timeStep();
 
-					for (int i = 0; i < p.getNumBodies(); i++) {
-						phyz::RigidBody* r1 = p.getBodies()[i];
-						phyz::RigidBody* r2 = p2.getBodies()[i];
-
-						assert(r1->getVel() == r2->getVel());
-						assert(r1->getCOM() == r2->getCOM());
-						assert(r1->getAngVel() == r2->getAngVel());
+					if (tripped) {
+						//pre_bodies[915].r->setAngVel(mthz::Vec3(0, 0, 0));
 					}
 				}
 				auto t2 = std::chrono::system_clock::now();
@@ -509,6 +481,8 @@ public:
 			printf("Saving computation to file...\n");
 			writeComputation(precompute_file, pre_bodies, n_frames);
 		}
+
+		printf("count: %d\n", count);
 
 		switch(color_scheme) {
 		case RAINBOW:
@@ -537,8 +511,10 @@ public:
 					break;
 				}
 
+				pre_bodies[indx].color = auto_generate;
+
 				//DEBUGGING
-				if (indx == 148) {
+				if (indx == 966) {
 					pre_bodies[indx].color = color{ 1.0, 1.0, 1.0 };
 				}
 			}
@@ -637,6 +613,8 @@ public:
 		break;
 		}
 
+		printf("count: %d\n", count);
+
 		printf("Press enter to start:\n");
 		std::string unused;
 		std::getline(std::cin, unused);
@@ -657,11 +635,11 @@ public:
 
 		while(rndr::render_loop(&fElapsedTime)) {
 
-			t += fElapsedTime;
+			t += fElapsedTime * 0.25;
 
 			int new_frame = t / frame_time;
 			if (new_frame != curr_frame && new_frame < n_frames) {
-				curr_frame = 445;// new_frame;
+				curr_frame = new_frame;
 				for (const BodyHistory& b : pre_bodies) {
 					b.r->setOrientation(b.history[curr_frame].orient);
 					b.r->setToPosition(b.history[curr_frame].pos);
