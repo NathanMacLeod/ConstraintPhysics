@@ -389,14 +389,12 @@ public:
 
 		//DEBUGGING
 		int count = 0;
-		bool tripped = false;
-		p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[915].r), phyz::CollisionTarget::with(spinner2_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
+		/*p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[966].r), phyz::CollisionTarget::with(spinner2_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
 			count++;
-			if (count > 1700) {
+			if (count > 1200) {
 				int a = 1 + 2;
 			}
-			tripped = count == 1700;
-		});
+		});*/
 
 		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
 		p.setMotorTargetVelocity(spinner1_motor, 100000000000, 0.5);
@@ -454,10 +452,6 @@ public:
 				auto t1 = std::chrono::system_clock::now();
 				for (int i = 0; i < steps_per_frame; i++) {
 					p.timeStep();
-
-					if (tripped) {
-						//pre_bodies[915].r->setAngVel(mthz::Vec3(0, 0, 0));
-					}
 				}
 				auto t2 = std::chrono::system_clock::now();
 				for (BodyHistory& b : pre_bodies) {

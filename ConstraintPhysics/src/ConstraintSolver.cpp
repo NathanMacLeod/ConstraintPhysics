@@ -173,9 +173,9 @@ namespace phyz {
 	//******************************
 	//*****FRICTION CONSTRAINT******
 	//******************************
-	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double impulse_limit, NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: Constraint(a, b), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()), impulse(warm_start_impulse),
-		 static_ready(false), impulse_limit(impulse_limit)
+		coeff_friction(coeff_friction), normal_impulse(&normal->impulse), static_ready(false)
 	{
 		norm.getPerpendicularBasis(&u, &w);
 
@@ -219,22 +219,18 @@ namespace phyz {
 			jacobian.copyInto(-w_dot, 1, 6);
 			jacobian.copyInto(w_dot * rB_skew, 1, 9);
 		}
-		
+
 		inverse_inertia.v[0][0] = a->getInvMass() + b->getInvMass() - rA.cross(Ia_inv * rAxU).dot(u) - rB.cross(Ib_inv * rBxU).dot(u);
 		inverse_inertia.v[0][1] = -rA.cross(Ia_inv * rAxW).dot(u) - rB.cross(Ib_inv * rBxW).dot(u);
 		inverse_inertia.v[1][0] = -rA.cross(Ia_inv * rAxU).dot(w) - rB.cross(Ib_inv * rBxU).dot(w);
 		inverse_inertia.v[1][1] = a->getInvMass() + b->getInvMass() - rA.cross(Ia_inv * rAxW).dot(w) - rB.cross(Ib_inv * rBxW).dot(w);
-		
+
 		inverse_inertia = inverse_inertia.inverse();
 
-		target_val = -getConstraintValue({ a->getVel(), a->getAngVel()}, {b->getVel(), b->getAngVel()});
+		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
 	}
 
 	inline void FrictionConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
-		if (a->getID() == 916 || b->getID() == 916) {
-			//impulse.v[0] = 0;
-			//impulse.v[1] = 0;
-		}
 		addVelocityChange(impulse, va, vb);
 	}
 
@@ -242,11 +238,12 @@ namespace phyz {
 
 		PGS_constraint_step<2>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
 			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
-			[&](const NVec<2>& impulse) { 
-				double current_impulse_mag2 = impulse.v[0] * impulse.v[0] + impulse.v[1] * impulse.v[1];
-				if (current_impulse_mag2 > impulse_limit * impulse_limit) {
+			[&](const NVec<2>& impulse) {
+				double max_impulse_mag = coeff_friction * normal_impulse->v[0];
+				double current_impulse_mag = sqrt(impulse.v[0] * impulse.v[0] + impulse.v[1] * impulse.v[1]);
+				if (current_impulse_mag > max_impulse_mag) {
 					static_ready = false;
-					double r = impulse_limit / sqrt(current_impulse_mag2);
+					double r = max_impulse_mag / current_impulse_mag;
 					return NVec<2>{ impulse.v[0] * r, impulse.v[1] * r };
 				}
 				else {

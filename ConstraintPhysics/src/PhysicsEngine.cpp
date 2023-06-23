@@ -744,28 +744,24 @@ namespace phyz {
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 		
-		double guessed_friction_impulse_limit = std::min<double>(b1->getMass(), b2->getMass()) * gravity.mag() * kinetic_friction / n_points;
-
 		for (Contact* c : e->contactConstraints) {
 			if (c->magic == magic /*&& ((b1->geometry[0].getGeometry()->getType() != SPHERE) == (b2->geometry[0].getGeometry()->getType() != SPHERE))*/) {
 				double friction = (c->friction.getStaticReady()/* && ((b1->geometry[0].getGeometry()->getType() != SPHERE) == (b2->geometry[0].getGeometry()->getType() != SPHERE))*/) ? static_friction : kinetic_friction;
 
 				c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, c->contact.impulse, cutoff_vel);
-				c->friction = FrictionConstraint(b1, b2, norm, p, guessed_friction_impulse_limit, c->friction.impulse, c->friction.u, c->friction.w);
+				c->friction = FrictionConstraint(b1, b2, norm, p, friction, &c->contact, c->friction.impulse, c->friction.u, c->friction.w);
 				c->memory_life = contact_life;
 				c->is_live_contact = true;
 				return;
 			}
 		}
 
-		
-
 		//if no warm start existed
 		Contact* c = new Contact();
 		c->b1 = b1;
 		c->b2 = b2;
 		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, NVec<1>{0.0}, cutoff_vel);
-		c->friction = FrictionConstraint(b1, b2, norm, p, guessed_friction_impulse_limit);
+		c->friction = FrictionConstraint(b1, b2, norm, p, kinetic_friction, &c->contact);
 		c->magic = magic;
 		c->memory_life = contact_life;
 		c->is_live_contact = true;

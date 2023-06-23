@@ -77,7 +77,7 @@ public:
 		mthz::Vec3 block_dim(1, 1, 2);
 		addBrickRing(&p, &bodies, block_dim, radius, mthz::Vec3(0, -4, 0), 2, 2);
 		
-		phyz::Geometry ball = phyz::Geometry::sphere(mthz::Vec3(0, 5, 0), 1, phyz::Material::modified_density(0.01));
+		phyz::Geometry ball = phyz::Geometry::psuedoSphere(mthz::Vec3(0, 5, 0), 1, 15, 20, phyz::Material::modified_density(0.01));
 		Mesh ball_m = fromGeometry(ball);
 		phyz::RigidBody* ball_r = p.createRigidBody(ball);
 		bodies.push_back({ ball_m, ball_r });
