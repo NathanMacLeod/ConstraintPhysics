@@ -150,7 +150,7 @@ namespace phyz {
 		bool is_internal_gyro_forces_disabled = false;
 
 		struct ConstraintGraphNode; 
-		void addContact(RigidBody* n1, RigidBody* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
+		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
 		void maintainConstraintGraphApplyPoweredConstraints();
 		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		std::vector<std::vector<Constraint*>> sleepOrSolveIslands();

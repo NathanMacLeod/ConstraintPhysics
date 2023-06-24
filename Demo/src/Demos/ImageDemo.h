@@ -389,12 +389,12 @@ public:
 
 		//DEBUGGING
 		int count = 0;
-		/*p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[966].r), phyz::CollisionTarget::with(spinner2_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
+		p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[966].r), phyz::CollisionTarget::with(spinner2_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
 			count++;
-			if (count > 1200) {
+			if (count > 1100) {
 				int a = 1 + 2;
 			}
-		});*/
+		});
 
 		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
 		p.setMotorTargetVelocity(spinner1_motor, 100000000000, 0.5);
@@ -510,6 +510,9 @@ public:
 				//DEBUGGING
 				if (indx == 966) {
 					pre_bodies[indx].color = color{ 1.0, 1.0, 1.0 };
+				}
+				if (indx == 57) {
+					pre_bodies[indx].color = color{ 0.0, 1.0, 0.0 };
 				}
 			}
 		}
