@@ -480,7 +480,7 @@ namespace phyz {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			else if (x.pen_depth < min_pen.pen_depth) {
+			else if (x.pen_depth < min_pen.pen_depth && false) {
 				min_pen = x;
 				a_feature_id = pID;
 			}

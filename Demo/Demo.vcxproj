@@ -153,6 +153,7 @@
     <ClInclude Include="src\Demos\AngularMomentumDemo.h" />
     <ClInclude Include="src\Demos\CarDemo.h" />
     <ClInclude Include="src\Demos\ColActionDemo.h" />
+    <ClInclude Include="src\Demos\DebugDemo.h" />
     <ClInclude Include="src\Demos\DemoScene.h" />
     <ClInclude Include="src\Demos\DzhanibekovDemo.h" />
     <ClInclude Include="src\Demos\ForkliftDemo.h" />

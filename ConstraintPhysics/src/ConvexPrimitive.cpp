@@ -357,7 +357,7 @@ namespace phyz {
 		normal_calc_index = 2;
 		mthz::Vec3 v1 = (p1 - p0).normalize();
 		mthz::Vec3 v2 = (poly->points[point_indexes[normal_calc_index]] - p0).normalize();
-		while (abs(v1.dot(v2)) > 0.99) {
+		while (abs(v1.dot(v2)) > 0.99 && normal_calc_index + 1 < point_indexes.size()) {
 			v2 = (poly->points[point_indexes[++normal_calc_index]] - p0).normalize();
 			assert(normal_calc_index < point_indexes.size());
 		}

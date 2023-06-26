@@ -78,17 +78,17 @@ namespace phyz {
 		for (int i = 0; i < n_itr_vel; i++) {
 			for (Constraint* c : constraints) {
 
-				phyz::Constraint::VelVec* va = c->a_velocity_changes;
+				phyz::Constraint::VelVec* vb = c->b_velocity_changes;
 
-				if ((c->a->getID() == 967)) {
+				//if ((c->a->getID() == 967)) {
 					int a = 1 + 2;
-				}
+				//}
 
 				c->performPGSConstraintStep();
 
-				if ((c->a->getID() == 967)) {
-					int a = 1 + 2;
-				}
+				//if ((c->a->getID() == 967)) {
+					a = 1 + 2;
+				//}
 			}
 		}
 
@@ -178,16 +178,10 @@ namespace phyz {
 	//******************************
 	//*****FRICTION CONSTRAINT******
 	//******************************
-	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double impulse_limit, NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: Constraint(a, b), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()), impulse(warm_start_impulse),
-		static_ready(false), impulse_limit(impulse_limit)
+		coeff_friction(coeff_friction), normal_impulse(&normal->impulse), static_ready(false)
 	{
-
-		if (a->getID() == 967) {
-			int a = 1 + 2;
-			//a->setAngVel(mthz::Vec3());
-		}
-
 		norm.getPerpendicularBasis(&u, &w);
 
 		impulse.v[0] = u.dot(source_u) * warm_start_impulse.v[0] + u.dot(source_w) * warm_start_impulse.v[1];
@@ -242,10 +236,6 @@ namespace phyz {
 	}
 
 	inline void FrictionConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
-		if (a->getID() == 967) {
-			//impulse.v[0] = 0;
-			//impulse.v[1] = 0;
-		}
 		addVelocityChange(impulse, va, vb);
 	}
 
@@ -254,10 +244,11 @@ namespace phyz {
 		PGS_constraint_step<2>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
 			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
 			[&](const NVec<2>& impulse) {
-				double current_impulse_mag2 = impulse.v[0] * impulse.v[0] + impulse.v[1] * impulse.v[1];
-				if (current_impulse_mag2 > impulse_limit * impulse_limit) {
+				double max_impulse_mag = coeff_friction * normal_impulse->v[0];
+				double current_impulse_mag = sqrt(impulse.v[0] * impulse.v[0] + impulse.v[1] * impulse.v[1]);
+				if (current_impulse_mag > max_impulse_mag) {
 					static_ready = false;
-					double r = impulse_limit / sqrt(current_impulse_mag2);
+					double r = max_impulse_mag / current_impulse_mag;
 					return NVec<2>{ impulse.v[0] * r, impulse.v[1] * r };
 				}
 				else {
@@ -280,6 +271,7 @@ namespace phyz {
 	inline NVec<2> FrictionConstraint::getConstraintValue(const VelVec& va, const VelVec& vb) {
 		return jacobian * VelVectoNVec(va, vb);
 	}
+
 
 	//******************************
 	//****BALL SOCKET CONSTRAINT****

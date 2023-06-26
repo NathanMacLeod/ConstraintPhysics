@@ -294,30 +294,32 @@ namespace phyz {
 			}
 
 			//DEBUG CODE
-			std::vector<Manifold> manifolds;
-			for (int i = 0; i < pair.b1->geometry.size(); i++) {
-				for (int j = 0; j < pair.b2->geometry.size(); j++) {
-					const ConvexPrimitive& c1 = pair.b1->geometry[i];
-					const ConvexPrimitive& c2 = pair.b2->geometry[j];
-					bool checking_AABB_redundant = pair.b1->geometry.size() == 1 && pair.b2->geometry.size() == 1;
-					if (!checking_AABB_redundant && !AABB::intersects(pair.b1->geometry_AABB[i], pair.b2->geometry_AABB[j])) {
-						continue;
-					}
+			//std::vector<Manifold> manifolds;
+			//for (int i = 0; i < pair.b1->geometry.size(); i++) {
+			//	for (int j = 0; j < pair.b2->geometry.size(); j++) {
+			//		const ConvexPrimitive& c1 = pair.b1->geometry[i];
+			//		const ConvexPrimitive& c2 = pair.b2->geometry[j];
+			//		bool checking_AABB_redundant = pair.b1->geometry.size() == 1 && pair.b2->geometry.size() == 1;
+			//		if (!checking_AABB_redundant && !AABB::intersects(pair.b1->geometry_AABB[i], pair.b2->geometry_AABB[j])) {
+			//			continue;
+			//		}
 
-					Manifold man = detectCollision(c2, c1);
+			//		Manifold man = detectCollision(c2, c1);
 
-					man = cull_manifold(man, 4);
+			//		man = cull_manifold(man, 4);
 
-					if (false) {
+			//		if (false) {
 
-						for (int i = 0; i < man.points.size(); i++) {
-							const ContactP& p = man.points[i];
-							//addContact(pair.b1, pair.b2, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
-						}
+			//			for (int i = 0; i < man.points.size(); i++) {
+			//				const ContactP& p = man.points[i];
+			//				//addContact(pair.b1, pair.b2, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
+			//			}
 
-					}
-				}
-			}
+			//		}
+			//	}
+			//}
+
+			//SharedConstraintsEdge* e = constraint_graph_nodes[pair.b1->getID()]->getOrCreateEdgeTo(constraint_graph_nodes[pair.b2->getID()]);
 		}
 
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
@@ -745,28 +747,26 @@ namespace phyz {
 		RigidBody* b1 = n1->b;
 		RigidBody* b2 = n2->b;
 
-		double guessed_friction_impulse_limit = std::min<double>(b1->getMass(), b2->getMass()) * gravity.mag() * kinetic_friction / n_points;
-
 		for (Contact* c : e->contactConstraints) {
-			if (c->magic == magic /*&& ((b1->geometry[0].getGeometry()->getType() != SPHERE) == (b2->geometry[0].getGeometry()->getType() != SPHERE))*/) {
-				double friction = (c->friction.getStaticReady()/* && ((b1->geometry[0].getGeometry()->getType() != SPHERE) == (b2->geometry[0].getGeometry()->getType() != SPHERE))*/) ? static_friction : kinetic_friction;
+			if (c->magic == magic) {
+				double friction = (c->friction.getStaticReady()) ? static_friction : kinetic_friction;
+				NVec<1> contact_impulse = warm_start_disabled ? NVec<1>{ 0.0 } : c->contact.impulse;
+				NVec<2> friction_impulse = warm_start_disabled ? NVec<2> { 0.0 } : c->friction.impulse;
 
-				c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, c->contact.impulse, cutoff_vel);
-				c->friction = FrictionConstraint(b1, b2, norm, p, guessed_friction_impulse_limit, c->friction.impulse, c->friction.u, c->friction.w);
+				c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, contact_impulse, cutoff_vel);
+				c->friction = FrictionConstraint(b1, b2, norm, p, friction, &c->contact, friction_impulse, c->friction.u, c->friction.w);
 				c->memory_life = contact_life;
 				c->is_live_contact = true;
 				return;
 			}
 		}
 
-
-
 		//if no warm start existed
 		Contact* c = new Contact();
 		c->b1 = b1;
 		c->b2 = b2;
 		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, NVec<1>{0.0}, cutoff_vel);
-		c->friction = FrictionConstraint(b1, b2, norm, p, guessed_friction_impulse_limit);
+		c->friction = FrictionConstraint(b1, b2, norm, p, static_friction, &c->contact); //CHANGE BACK TO KINETIC FRICTION
 		c->magic = magic;
 		c->memory_life = contact_life;
 		c->is_live_contact = true;
@@ -841,6 +841,41 @@ namespace phyz {
 
 	void PhysicsEngine::setInternalGyroscopicForcesDisabled(bool b) {
 		is_internal_gyro_forces_disabled = b;
+	}
+
+	void PhysicsEngine::setWarmStartDisabled(bool b) {
+		warm_start_disabled = b;
+	}
+
+	void PhysicsEngine::deleteWarmstartData(RigidBody* r) {
+		ConstraintGraphNode* n = constraint_graph_nodes[r->getID()];
+
+		std::vector<SharedConstraintsEdge*> edges = n->constraints;
+		for (SharedConstraintsEdge* e : n->constraints) {
+			for (Contact* c : e->contactConstraints) {
+				c->contact.impulse = NVec<1>{ 0.0 };
+				c->friction.impulse = NVec<2>{ 0.0 };
+			}
+			for (BallSocket* bs : e->ballSocketConstraints) {
+				bs->constraint.impulse = NVec<3>{ 0.0 };
+			}
+			for (Hinge* h : e->hingeConstraints) {
+				h->constraint.impulse = NVec<5>{ 0.0 };
+				h->motor.motor_constraint.impulse = NVec<1>{ 0.0 };
+			}
+			for (Slider* s : e->sliderConstraints) {
+				s->constraint.impulse = NVec<5>{ 0.0 };
+				s->piston_force.impulse = NVec<1>{ 0.0 };
+			}
+			for (SlidingHinge* s : e->slidingHingeConstraints) {
+				s->constraint.impulse = NVec<4>{ 0.0 };
+				s->piston_force.impulse = NVec<1>{ 0.0 };
+				s->motor.motor_constraint.impulse = NVec<1>{ 0.0 };
+			}
+			for (Weld* w : e->weldConstraints) {
+				w->constraint.impulse = NVec<6>{ 0.0 };
+			}
+		}
 	}
 
 	void PhysicsEngine::forceAABBTreeUpdate() {
@@ -1077,7 +1112,8 @@ namespace phyz {
 					//update constraint for new positions
 					mthz::Vec3 b1_pos = bs->b1->getTrackedP(bs->b1_point_key);
 					mthz::Vec3 b2_pos = bs->b2->getTrackedP(bs->b2_point_key);
-					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, posCorrectCoeff(bs->pos_correct_hardness, step_time), bs->constraint.impulse);
+					NVec<3> starting_impulse = warm_start_disabled ? NVec<3>{ 0.0} : bs->constraint.impulse;
+					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, posCorrectCoeff(bs->pos_correct_hardness, step_time), starting_impulse);
 				}
 				for (Hinge* h : e->hingeConstraints) {
 					mthz::Vec3 b1_pos = h->b1->getTrackedP(h->b1_point_key);
@@ -1086,15 +1122,15 @@ namespace phyz {
 					mthz::Vec3 b2_hinge_axis = h->b2->orientation.applyRotation(h->b2_rot_axis_body_space);
 
 					h->motor.motor_angular_position = h->motor.calculatePosition(b1_hinge_axis, h->b1->getAngVel(), h->b2->getAngVel(), step_time);
-					
+					NVec<1> motor_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : h->motor.motor_constraint.impulse;
 					if (h->motor.constraintIsActive()) {
-						h->motor.motor_constraint = MotorConstraint(h->b1, h->b2, b1_hinge_axis, h->motor.getConstraintTargetVelocityValue(b1_hinge_axis, h->b1->getAngVel(), h->b2->getAngVel(), step_time), abs(h->motor.max_torque * step_time), h->motor.motor_angular_position, h->motor.min_motor_position, h->motor.max_motor_position, posCorrectCoeff(h->rot_correct_hardness, step_time), h->motor.motor_constraint.impulse);
+						h->motor.motor_constraint = MotorConstraint(h->b1, h->b2, b1_hinge_axis, h->motor.getConstraintTargetVelocityValue(b1_hinge_axis, h->b1->getAngVel(), h->b2->getAngVel(), step_time), abs(h->motor.max_torque * step_time), h->motor.motor_angular_position, h->motor.min_motor_position, h->motor.max_motor_position, posCorrectCoeff(h->rot_correct_hardness, step_time), motor_starting_impulse);
 					}
-
 					h->motor.writePrevVel(b1_hinge_axis, h->b1->getAngVel(), h->b2->getAngVel());
 
+					NVec<5> starting_impulse = warm_start_disabled ? NVec<5>{ 0.0} : h->constraint.impulse;
 					h->constraint = HingeConstraint(h->b1, h->b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, posCorrectCoeff(h->pos_correct_hardness, step_time),
-						posCorrectCoeff(h->rot_correct_hardness, step_time), h->constraint.impulse, h->constraint.u, h->constraint.w);
+						posCorrectCoeff(h->rot_correct_hardness, step_time), starting_impulse, h->constraint.u, h->constraint.w);
 				}
 				for (Slider* s : e->sliderConstraints) {
 					mthz::Vec3 b1_pos = s->b1->getTrackedP(s->b1_point_key);
@@ -1106,15 +1142,18 @@ namespace phyz {
 					s->slide_limit_exceeded = slider_value < s->negative_slide_limit || slider_value > s->positive_slide_limit;
 
 					if (s->slide_limit_exceeded) {
-						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->slide_limit.impulse);
+						NVec<1> limit_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->slide_limit.impulse;
+						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), limit_starting_impulse);
 					}
 
 					if (s->max_piston_force != 0) {
-						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, s->piston_force.impulse);
+						NVec<1> piston_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->piston_force.impulse;
+						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, piston_starting_impulse);
 					}
 
+					NVec<5> starting_impulse = warm_start_disabled ? NVec<5>{ 0.0} : s->constraint.impulse;
 					s->constraint = SliderConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
-						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse, s->constraint.u, s->constraint.w);
+						posCorrectCoeff(s->rot_correct_hardness, step_time), starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (SlidingHinge* s : e->slidingHingeConstraints) {
 					mthz::Vec3 b1_pos = s->b1->getTrackedP(s->b1_point_key);
@@ -1126,27 +1165,30 @@ namespace phyz {
 					s->slide_limit_exceeded = slider_value < s->negative_slide_limit || slider_value > s->positive_slide_limit;
 
 					if (s->slide_limit_exceeded) {
-						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->slide_limit.impulse);
+						NVec<1> limit_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->slide_limit.impulse;
+						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), limit_starting_impulse);
 					}
 
 					if (s->max_piston_force != 0) {
-						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, s->piston_force.impulse);
+						NVec<1> piston_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->piston_force.impulse;
+						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, piston_starting_impulse);
 					}
 
 					s->motor.motor_angular_position = s->motor.calculatePosition(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel(), step_time);
-
 					if (s->motor.constraintIsActive()) {
-						s->motor.motor_constraint = MotorConstraint(s->b1, s->b2, b1_slide_axis, s->motor.getConstraintTargetVelocityValue(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel(), step_time), abs(s->motor.max_torque * step_time), s->motor.motor_angular_position, s->motor.min_motor_position, s->motor.max_motor_position, posCorrectCoeff(s->rot_correct_hardness, step_time), s->motor.motor_constraint.impulse);
+						NVec<1> motor_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->motor.motor_constraint.impulse;
+						s->motor.motor_constraint = MotorConstraint(s->b1, s->b2, b1_slide_axis, s->motor.getConstraintTargetVelocityValue(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel(), step_time), abs(s->motor.max_torque * step_time), s->motor.motor_angular_position, s->motor.min_motor_position, s->motor.max_motor_position, posCorrectCoeff(s->rot_correct_hardness, step_time), motor_starting_impulse);
 					}
-
 					s->motor.writePrevVel(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel());
 
+					NVec<4> starting_impulse = warm_start_disabled ? NVec<4>{ 0.0} : s->constraint.impulse;
 					s->constraint = SlidingHingeConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, posCorrectCoeff(s->pos_correct_hardness, step_time),
-						posCorrectCoeff(s->rot_correct_hardness, step_time), s->constraint.impulse, s->constraint.u, s->constraint.w);
+						posCorrectCoeff(s->rot_correct_hardness, step_time), starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (Weld* w : e->weldConstraints) {
 					mthz::Vec3 b1_pos = w->b1->getTrackedP(w->b1_point_key);
 					mthz::Vec3 b2_pos = w->b2->getTrackedP(w->b2_point_key);
+
 
 					w->constraint = WeldConstraint(w->b1, w->b2, b1_pos, b2_pos, posCorrectCoeff(w->pos_correct_hardness, step_time), posCorrectCoeff(w->rot_correct_hardness, step_time), w->constraint.impulse);
 				}

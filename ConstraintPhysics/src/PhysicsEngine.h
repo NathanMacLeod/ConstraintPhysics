@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <mutex>
 
+class DebugDemo;
+
 namespace phyz {
 
 	class PhysicsEngine;
@@ -84,6 +86,10 @@ namespace phyz {
 		void setOctreeParams(double size, double minsize, mthz::Vec3 center = mthz::Vec3(0, 0, 0));
 		void setAngleVelUpdateTickCount(int n);
 		void setInternalGyroscopicForcesDisabled(bool b);
+		void setWarmStartDisabled(bool b);
+
+		//really only exists for debugging
+		void deleteWarmstartData(RigidBody* r);
 
 		//should probably be placed with a different scheme eventually. This is for when position/orientation is changed for a rigid body, but AABB needs to be updated before next physics tick for use by querying raycasts.
 		void forceAABBTreeUpdate();
@@ -125,6 +131,8 @@ namespace phyz {
 		void setPiston(ConstraintID id, double max_force, double target_velocity);
 		double getMotorAngularPosition(ConstraintID id);
 
+		//just makes debugging easier
+		friend class DebugDemo;
 	private:
 
 		static int n_threads;
@@ -144,7 +152,7 @@ namespace phyz {
 		mthz::Vec3 octree_center = mthz::Vec3(0, 0, 0);
 		double octree_size = 2000;
 		double octree_minsize = 1;
-		
+	
 
 		int angle_velocity_update_tick_count = 4;
 		bool is_internal_gyro_forces_disabled = false;
@@ -173,6 +181,8 @@ namespace phyz {
 
 		double vel_sleep_coeff = 0.1;
 		double accel_sleep_coeff = 0.022;
+
+		bool warm_start_disabled = false;
 
 		//Constraint Graph
 		std::unordered_map<unsigned int, ConstraintGraphNode*> constraint_graph_nodes;

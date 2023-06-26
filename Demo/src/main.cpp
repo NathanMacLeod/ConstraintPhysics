@@ -11,6 +11,7 @@
 #include "Demos/TrebuchetDemo.h"
 #include "Demos/AngularMomentumDemo.h"
 #include "Demos/GyroscopeDemo.h"
+#include "Demos/DebugDemo.h"
 
 int main() {
 
@@ -24,6 +25,7 @@ int main() {
 	manager.registerScene("Trebuchet", "Launch projectiles with a simulated floating-arm trebuchet.", [](DemoManager* m, DemoProperties p) { return new TrebuchetDemo(m, p); });
 	manager.registerScene("Angular Momentum Demo", "A common demonstration of the conservation of angular momentom, recreated in the engine", [](DemoManager* m, DemoProperties p) { return new AngularMomentumDemo(m, p); });
 	manager.registerScene("Gyroscope", "A simulated gyroscope", [](DemoManager* m, DemoProperties p) { return new GyroscopeDemo(m, p); });
+	manager.registerScene("Debug demo", "for setting up debug scenes", [](DemoManager* m, DemoProperties p) { return new DebugDemo(m, p); });
 
 	manager.selectProperties();
 	while (1) {

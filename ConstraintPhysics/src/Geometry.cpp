@@ -127,6 +127,30 @@ namespace phyz {
 		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
+	Geometry Geometry::octahedron(mthz::Vec3 pos, double radius, Material material) {
+		std::vector<mthz::Vec3> points(6);
+		std::vector<std::vector<int>> surface_indices(8);
+
+		points[0] = mthz::Vec3(0, radius, 0);
+		points[1] = mthz::Vec3(-radius, 0, 0);
+		points[2] = mthz::Vec3(0, 0, -radius);
+		points[3] = mthz::Vec3(radius, 0, 0);
+		points[4] = mthz::Vec3(0, 0, radius);
+		points[5] = mthz::Vec3(0, -radius, 0);
+
+		surface_indices[0] = { 1, 2, 0 };
+		surface_indices[1] = { 2, 3, 0 };
+		surface_indices[2] = { 3, 4, 0 };
+		surface_indices[3] = { 4, 1, 0 };
+
+		surface_indices[4] = { 1, 2, 5 };
+		surface_indices[5] = { 2, 3, 5 };
+		surface_indices[6] = { 3, 4, 5 };
+		surface_indices[7] = { 4, 1, 5 };
+
+		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+	}
+
 	//https://en.wikipedia.org/wiki/Regular_dodecahedron#Cartesian_coordinates
 	Geometry Geometry::regDodecahedron(mthz::Vec3 pos, double size, Material material) {
 		std::vector<mthz::Vec3> points(20);

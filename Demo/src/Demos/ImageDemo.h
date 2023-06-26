@@ -278,6 +278,7 @@ public:
 		p.setPGSIterations(45, 35);
 		p.setAABBTreeMarginSize(0.05);
 		p.setBroadphase(phyz::AABB_TREE);
+		p.setPrintPerformanceData(true);
 
 		bool paused = false;
 		bool slow = false;
@@ -291,8 +292,8 @@ public:
 		double box_height = 48;
 		phyz::Geometry negx_wall = phyz::Geometry::box(mthz::Vec3(0, base_dim.y, 0), base_dim.y, box_height, base_dim.z);
 		phyz::Geometry posx_wall = phyz::Geometry::box(mthz::Vec3(base_dim.x - base_dim.y, base_dim.y, 0), base_dim.y, box_height, base_dim.z);
-		phyz::Geometry back_wall = phyz::Geometry::box(mthz::Vec3(0, 0, 0), base_dim.x, box_height + base_dim.y, -base_dim.y);
-		phyz::Geometry front_wall = phyz::Geometry::box(mthz::Vec3(0, 0, base_dim.z), base_dim.x, base_dim.y + box_height, base_dim.y);
+		phyz::Geometry back_wall = phyz::Geometry::box(mthz::Vec3(0, 0, 0), base_dim.x, box_height + base_dim.y, -base_dim.y, phyz::Material::ice());
+		phyz::Geometry front_wall = phyz::Geometry::box(mthz::Vec3(0, 0, base_dim.z), base_dim.x, base_dim.y + box_height, base_dim.y, phyz::Material::ice());
 
 		p.setOctreeParams(60, 0.25, mthz::Vec3(base_dim.x/2.0, box_height/2.0, base_dim.z/2.0));
 
@@ -389,17 +390,20 @@ public:
 
 		//DEBUGGING
 		int count = 0;
-		p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[966].r), phyz::CollisionTarget::with(spinner2_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
+		/*p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[851].r), phyz::CollisionTarget::with(spinner2_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
 			count++;
-			if (count > 1100) {
-				int a = 1 + 2;
+			if (count == 1400) {
+				p.deleteWarmstartData(b1);
 			}
-		});
+		});*/
 
 		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
 		p.setMotorTargetVelocity(spinner1_motor, 100000000000, 0.5);
 		phyz::ConstraintID spinner2_motor = p.addHingeConstraint(front_wall_r, spinner2_r, spinner2_pos, mthz::Vec3(0, 0, 1));
 		p.setMotorTargetVelocity(spinner2_motor, 100000000000, -0.5);
+
+		p.disallowCollision(spinner1_r, negx_wall_r);
+		p.disallowCollision(spinner2_r, posx_wall_r);
 
 		pre_bodies.push_back(BodyHistory(base_r, base));
 
@@ -511,7 +515,7 @@ public:
 				if (indx == 966) {
 					pre_bodies[indx].color = color{ 1.0, 1.0, 1.0 };
 				}
-				if (indx == 57) {
+				if (indx == 851) {
 					pre_bodies[indx].color = color{ 0.0, 1.0, 0.0 };
 				}
 			}
