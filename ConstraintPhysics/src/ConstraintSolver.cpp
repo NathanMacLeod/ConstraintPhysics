@@ -66,29 +66,13 @@ namespace phyz {
 		//apply warm starting
 		for (Constraint* c : constraints) {
 			if (c->constraintWarmStarted()) {
-
-				if ((c->a->getID() == 967)) {
-					int a = 1 + 2;
-				}
-
 				c->warmStartVelocityChange(c->a_velocity_changes, c->b_velocity_changes);
 			}
 		}
 
 		for (int i = 0; i < n_itr_vel; i++) {
 			for (Constraint* c : constraints) {
-
-				phyz::Constraint::VelVec* vb = c->b_velocity_changes;
-
-				//if ((c->a->getID() == 967)) {
-					int a = 1 + 2;
-				//}
-
 				c->performPGSConstraintStep();
-
-				//if ((c->a->getID() == 967)) {
-					a = 1 + 2;
-				//}
 			}
 		}
 
@@ -112,11 +96,6 @@ namespace phyz {
 	ContactConstraint::ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, NVec<1> warm_start_impulse, double cutoff_vel)
 		: Constraint(a, b), norm(norm), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<1>{0.0})
 	{
-
-		if (a->getID() == 967) {
-			//a->setAngVel(mthz::Vec3());
-		}
-
 		rotDirA = a->getInvTensor() * norm.cross(rA);
 		rotDirB = b->getInvTensor() * norm.cross(rB);
 		{
@@ -133,16 +112,9 @@ namespace phyz {
 		double current_val = getConstraintValue({ a->getVel(), a->getAngVel()}, {b->getVel(), b->getAngVel()}).v[0];
 		target_val = NVec<1>{ (current_val < -cutoff_vel) ? -(1 + bounce) * current_val : -current_val };
 		psuedo_target_val = NVec<1>{ pen_depth * pos_correct_hardness };
-
-		if (a->getID() == 64) {
-			//int a = 1 + 2;
-		}
 	}
 
 	void ContactConstraint::warmStartVelocityChange(VelVec* va, VelVec* vb) {
-		if (a->getID() == 967) {
-			//impulse.v[0] = 0;
-		}
 		addVelocityChange(impulse, va, vb);
 	}
 
@@ -178,9 +150,9 @@ namespace phyz {
 	//******************************
 	//*****FRICTION CONSTRAINT******
 	//******************************
-	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w, double normal_impulse_limit)
 		: Constraint(a, b), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()), impulse(warm_start_impulse),
-		coeff_friction(coeff_friction), normal_impulse(&normal->impulse), static_ready(false)
+		coeff_friction(coeff_friction), normal_impulse(&normal->impulse), static_ready(false), normal_impulse_limit(normal_impulse_limit)
 	{
 		norm.getPerpendicularBasis(&u, &w);
 
@@ -244,7 +216,8 @@ namespace phyz {
 		PGS_constraint_step<2>(a_velocity_changes, b_velocity_changes, target_val, &impulse,
 			getConstraintValue(*a_velocity_changes, *b_velocity_changes), inverse_inertia,
 			[&](const NVec<2>& impulse) {
-				double max_impulse_mag = coeff_friction * normal_impulse->v[0];
+				//purpose of the normal impulse limit is described in PhysicsEngine.cpp addContact function
+				double max_impulse_mag = coeff_friction * std::min<double>(normal_impulse_limit, normal_impulse->v[0]);
 				double current_impulse_mag = sqrt(impulse.v[0] * impulse.v[0] + impulse.v[1] * impulse.v[1]);
 				if (current_impulse_mag > max_impulse_mag) {
 					static_ready = false;

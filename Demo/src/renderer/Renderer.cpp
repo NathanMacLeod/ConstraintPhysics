@@ -58,7 +58,7 @@ namespace rndr {
         glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
-        //glEnable(GL_CULL_FACE);
+        glEnable(GL_CULL_FACE);
 
         std::printf("%s\n", glGetString(GL_VERSION));
 

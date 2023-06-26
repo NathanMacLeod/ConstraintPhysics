@@ -51,7 +51,7 @@ public:
 
 		phyz::PhysicsEngine p;
 		p.setPGSIterations(45, 35);
-		p.setOctreeParams(100, 0.5);
+		//p.setOctreeParams(100, 0.5);
 
 		bool lock_cam = true;
 		bool nuked = false;
@@ -595,7 +595,7 @@ public:
 			piston_arm6_r, piston6_r,
 			piston_arm7_r, piston7_r,
 			piston_arm8_r, piston8_r,
-			});
+		});
 
 		bodies.push_back({ drive_shaft_m, drive_shaft_r });
 		bodies.push_back({ drive_shaft_gear3_m, drive_shaft_gear3_r });
@@ -660,6 +660,9 @@ public:
 		double timestep = 1 / 90.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -4.9, 0));
+
+		//DEBUG DELTE
+		phyz::RigidBody* marked_object = nullptr;
 
 		while (rndr::render_loop(&fElapsedTime)) {
 
@@ -736,6 +739,18 @@ public:
 							lock_cam = false;
 						}
 					}
+
+					p.reallowCollisionSet({ crankshaft_r,
+						piston_arm1_r, piston1_r,
+						piston_arm2_r, piston2_r,
+						piston_arm3_r, piston3_r,
+						piston_arm4_r, piston4_r,
+						piston_arm5_r, piston5_r,
+						piston_arm6_r, piston6_r,
+						piston_arm7_r, piston7_r,
+						piston_arm8_r, piston8_r,
+					});
+
 					nuked = true;
 				}
 			}
@@ -748,15 +763,24 @@ public:
 				return;
 			}
 
-			/*if (rndr::getKeyPressed(GLFW_KEY_T)) {
+			if (rndr::getKeyPressed(GLFW_KEY_T)) {
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(pos, camera_dir);
 
-				phyz::Geometry ball = phyz::Geometry::sphere(pos, 0.5);
-				phyz::RigidBody* ball_r = p.createRigidBody(ball);
-				ball_r->setVel(camera_dir * 5);
+				if (hit_info.did_hit) {
+					marked_object = hit_info.hit_object;
+				}
+				else {
+					marked_object = nullptr;
+				}
+			}
 
-				bodies.push_back({ fromGeometry(ball), ball_r });
-			}*/
+			if (marked_object != nullptr) {
+				printf("\n-------------------\nobject: %d\nobject fixed? %s\nvel: %lf %lf %lf\nang_vel: %lf %lf %lf\n-------------------\n", 
+					marked_object->getID(), marked_object->getIsFixed() ? "yes" : "no",
+					marked_object->getVel().x, marked_object->getVel().y, marked_object->getVel().z,
+					marked_object->getAngVel().x, marked_object->getAngVel().y, marked_object->getAngVel().z);
+			}
 
 			phyz_time += fElapsedTime;
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);

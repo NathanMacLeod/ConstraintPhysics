@@ -123,7 +123,7 @@ namespace phyz {
 	class FrictionConstraint : public Constraint {
 	public:
 		FrictionConstraint() : normal_impulse(nullptr), impulse(NVec<2>{0.0}) {}
-		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, NVec<2> warm_start_impulse = NVec<2>{ 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
+		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, NVec<2> warm_start_impulse = NVec<2>{ 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3(), double normal_impulse_limit = std::numeric_limits<double>::infinity());
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -147,6 +147,7 @@ namespace phyz {
 		NVec<2> target_val;
 		double coeff_friction;
 		NVec<1>* normal_impulse;
+		double normal_impulse_limit;
 		bool static_ready;
 	};
 

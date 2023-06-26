@@ -10,7 +10,7 @@ namespace phyz {
 
 	RigidBody::RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id)
 		: geometry(source_geometry.getPolyhedra()), reference_geometry(source_geometry.getPolyhedra()), vel(0, 0, 0), ang_vel(0, 0, 0),
-		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0), id(id)
+		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), id(id)
 	{
 		fixed = false;
 		calculateMassProperties(source_geometry, &this->com, &this->reference_tensor, &this->mass);
@@ -200,6 +200,7 @@ namespace phyz {
 		if (asleep) {
 			asleep = false;
 			sleep_ready_counter = 0;
+			non_sleepy_tick_count = 0;
 			history.clear();
 		}
 	}
@@ -207,6 +208,7 @@ namespace phyz {
 	void RigidBody::alertWakingAction() {
 		recievedWakingAction = true;
 		sleep_ready_counter = 0;
+		non_sleepy_tick_count = 0;
 		history.clear();
 	}
 

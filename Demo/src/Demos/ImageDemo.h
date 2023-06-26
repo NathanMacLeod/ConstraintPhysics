@@ -102,7 +102,7 @@ private:
 
 	int GeomTypeStackHeight(GeometryType t) {
 		switch (t) {
-		case BALLS: return 15;//56;
+		case BALLS: return 56;
 		case CUBES: return 32;
 		case TETRAS: return 90;
 		case DODECS: return 70;
@@ -278,7 +278,6 @@ public:
 		p.setPGSIterations(45, 35);
 		p.setAABBTreeMarginSize(0.05);
 		p.setBroadphase(phyz::AABB_TREE);
-		p.setPrintPerformanceData(true);
 
 		bool paused = false;
 		bool slow = false;
@@ -349,7 +348,8 @@ public:
 					phyz::Geometry g;
 					switch (geometry_type) {
 					case BALLS:
-						g = phyz::Geometry::sphere(pos, cube_size / 2.0);
+						//low friction to ease issues
+						g = phyz::Geometry::sphere(pos, cube_size / 2.0, phyz::Material{1.0, 0.3, 0.5, 0.8});
 						break;
 					case CUBES:
 						g = phyz::Geometry::box(pos - 0.5 * mthz::Vec3(cube_size, cube_size, cube_size), cube_size, cube_size, cube_size);
@@ -387,15 +387,6 @@ public:
 
 		phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
 		phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);
-
-		//DEBUGGING
-		int count = 0;
-		/*p.registerCollisionAction(phyz::CollisionTarget::with(pre_bodies[851].r), phyz::CollisionTarget::with(spinner2_r), [&](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
-			count++;
-			if (count == 1400) {
-				p.deleteWarmstartData(b1);
-			}
-		});*/
 
 		phyz::ConstraintID spinner1_motor = p.addHingeConstraint(front_wall_r, spinner1_r, spinner1_pos, mthz::Vec3(0, 0, 1));
 		p.setMotorTargetVelocity(spinner1_motor, 100000000000, 0.5);
@@ -480,8 +471,6 @@ public:
 			writeComputation(precompute_file, pre_bodies, n_frames);
 		}
 
-		printf("count: %d\n", count);
-
 		switch(color_scheme) {
 		case RAINBOW:
 		{
@@ -507,16 +496,6 @@ public:
 				case 5:
 					pre_bodies[indx].color = color{ 0.29, 0.0, 0.5 };
 					break;
-				}
-
-				pre_bodies[indx].color = auto_generate;
-
-				//DEBUGGING
-				if (indx == 966) {
-					pre_bodies[indx].color = color{ 1.0, 1.0, 1.0 };
-				}
-				if (indx == 851) {
-					pre_bodies[indx].color = color{ 0.0, 1.0, 0.0 };
 				}
 			}
 		}
@@ -614,8 +593,6 @@ public:
 		break;
 		}
 
-		printf("count: %d\n", count);
-
 		printf("Press enter to start:\n");
 		std::string unused;
 		std::getline(std::cin, unused);
@@ -636,7 +613,7 @@ public:
 
 		while(rndr::render_loop(&fElapsedTime)) {
 
-			t += fElapsedTime * 0.25;
+			t += fElapsedTime;
 
 			int new_frame = t / frame_time;
 			if (new_frame != curr_frame && new_frame < n_frames) {

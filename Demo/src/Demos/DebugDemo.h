@@ -67,11 +67,12 @@ public:
 			}
 
 			double cube_size = effective_width / (16 * 2);
-			phyz::Geometry g = /*phyz::Geometry::octahedron(mthz::Vec3(), cube_size / 2.0);*/phyz::Geometry::sphere(mthz::Vec3(), cube_size / 2.0);
+			phyz::Geometry g = phyz::Geometry::octahedron(mthz::Vec3(), cube_size / 2.0);//phyz::Geometry::sphere(mthz::Vec3(), cube_size / 2.0);
 
 			phyz::RigidBody* ball_r = p.createRigidBody(g);
 			ball_r->setCOMtoPosition(mthz::Vec3(5.8906498990466201, 22.836214149571784, 0.62500526804359435));
 			//ball_r->setOrientation(mthz::Quaternion(-0.82399634441035130, -0.16414793437481767, 0.51331333588541173, -0.17491397668868225));
+			ball_r->setOrientation(mthz::Quaternion(-0.11870263824785451, 2.0982500000746412e-12, 1.1376674435583084e-15, 0.99292984831406850));
 			ball_r->setVel(mthz::Vec3(0.087282235307977865, -0.16404399264491565, -8.5426457574477865e-15));
 			ball_r->setAngVel(mthz::Vec3(-1.1490186078256817, -0.69825788246386356, 0.49999995774193268));
 			bodies.push_back({ fromGeometry(g), ball_r });

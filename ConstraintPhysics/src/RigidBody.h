@@ -87,6 +87,7 @@ namespace phyz {
 		bool asleep;
 		bool no_collision;
 		double sleep_ready_counter;
+		int non_sleepy_tick_count;
 		
 		std::vector<ConvexPrimitive> geometry;
 		std::vector<AABB> geometry_AABB;

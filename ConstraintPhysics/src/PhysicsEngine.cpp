@@ -72,11 +72,16 @@ namespace phyz {
 
 			if (!b->asleep && !b->fixed) {
 				b->recordMovementState(sleep_delay / step_time);
+
 				if (bodySleepy(b->history)) {
 					b->sleep_ready_counter += step_time;
 				}
 				else {
-					b->sleep_ready_counter = 0;
+					b->non_sleepy_tick_count++;
+					if (b->non_sleepy_tick_count >= non_sleepy_tick_thresehold) {
+						b->sleep_ready_counter = 0.0;
+						b->non_sleepy_tick_count = 0;
+					}
 				}
 
 				b->vel += gravity * step_time;
@@ -213,20 +218,12 @@ namespace phyz {
 						ConstraintGraphNode* lock_first, *lock_second;
 						lock_first = constraint_graph_nodes[b1->getID()];
 						lock_second = constraint_graph_nodes[b2->getID()];
-						//if (b1->getID() < b2->getID()) {
-						//	lock_first = constraint_graph_nodes[b1->getID()];
-						//	lock_second = constraint_graph_nodes[b2->getID()];
-						//}
-						//else {
-						//	lock_first = constraint_graph_nodes[b2->getID()];
-						//	lock_second = constraint_graph_nodes[b1->getID()];
-						//}
 
 						lock_first->mutex.lock();
 						lock_second->mutex.lock();
 						for (int i = 0; i < man.points.size(); i++) {
 							const ContactP& p = man.points[i];
-							addContact(lock_first, lock_second, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
+							addContact(lock_first, lock_second, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(contact_pos_correct_hardness, step_time));
 						}
 						lock_first->mutex.unlock();
 						lock_second->mutex.unlock();
@@ -292,34 +289,6 @@ namespace phyz {
 			for (const ColAction& c : pair.triggered_actions) {
 				c(pair.b1, pair.b2, pair.manifolds);
 			}
-
-			//DEBUG CODE
-			//std::vector<Manifold> manifolds;
-			//for (int i = 0; i < pair.b1->geometry.size(); i++) {
-			//	for (int j = 0; j < pair.b2->geometry.size(); j++) {
-			//		const ConvexPrimitive& c1 = pair.b1->geometry[i];
-			//		const ConvexPrimitive& c2 = pair.b2->geometry[j];
-			//		bool checking_AABB_redundant = pair.b1->geometry.size() == 1 && pair.b2->geometry.size() == 1;
-			//		if (!checking_AABB_redundant && !AABB::intersects(pair.b1->geometry_AABB[i], pair.b2->geometry_AABB[j])) {
-			//			continue;
-			//		}
-
-			//		Manifold man = detectCollision(c2, c1);
-
-			//		man = cull_manifold(man, 4);
-
-			//		if (false) {
-
-			//			for (int i = 0; i < man.points.size(); i++) {
-			//				const ContactP& p = man.points[i];
-			//				//addContact(pair.b1, pair.b2, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(350, step_time));
-			//			}
-
-			//		}
-			//	}
-			//}
-
-			//SharedConstraintsEdge* e = constraint_graph_nodes[pair.b1->getID()]->getOrCreateEdgeTo(constraint_graph_nodes[pair.b2->getID()]);
 		}
 
 		std::vector<std::vector<Constraint*>> island_systems = sleepOrSolveIslands();
@@ -421,6 +390,14 @@ namespace phyz {
 		for (auto b1 = bodies.begin(); b1 != bodies.end(); b1++) {
 			for (auto b2 = b1 + 1; b2 != bodies.end(); b2++) {
 				disallowCollision(*b1, *b2);
+			}
+		}
+	}
+
+	void PhysicsEngine::reallowCollisionSet(const std::initializer_list<RigidBody*>& bodies) {
+		for (auto b1 = bodies.begin(); b1 != bodies.end(); b1++) {
+			for (auto b2 = b1 + 1; b2 != bodies.end(); b2++) {
+				reallowCollision(*b1, *b2);
 			}
 		}
 	}
@@ -752,9 +729,12 @@ namespace phyz {
 				double friction = (c->friction.getStaticReady()) ? static_friction : kinetic_friction;
 				NVec<1> contact_impulse = warm_start_disabled ? NVec<1>{ 0.0 } : c->contact.impulse;
 				NVec<2> friction_impulse = warm_start_disabled ? NVec<2> { 0.0 } : c->friction.impulse;
+				//In niche circumstances two pairs of friction and contact constraints can oppose each other, and if friction is greater than one this can cause a loop of increasing impulses.
+				//Limiting the friction the the normal impulse from the last update helps mitigate this. Still not great if friction is high though.
+				double normal_impulse_limit = (warm_start_disabled || !friction_impulse_limit_enabled) ? std::numeric_limits<double>::infinity() : c->contact.impulse.v[0];
 
 				c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, contact_impulse, cutoff_vel);
-				c->friction = FrictionConstraint(b1, b2, norm, p, friction, &c->contact, friction_impulse, c->friction.u, c->friction.w);
+				c->friction = FrictionConstraint(b1, b2, norm, p, friction, &c->contact, friction_impulse, c->friction.u, c->friction.w, normal_impulse_limit);
 				c->memory_life = contact_life;
 				c->is_live_contact = true;
 				return;
@@ -766,7 +746,7 @@ namespace phyz {
 		c->b1 = b1;
 		c->b2 = b2;
 		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, NVec<1>{0.0}, cutoff_vel);
-		c->friction = FrictionConstraint(b1, b2, norm, p, static_friction, &c->contact); //CHANGE BACK TO KINETIC FRICTION
+		c->friction = FrictionConstraint(b1, b2, norm, p, kinetic_friction, &c->contact);
 		c->magic = magic;
 		c->memory_life = contact_life;
 		c->is_live_contact = true;
@@ -891,7 +871,7 @@ namespace phyz {
 		cutoff_vel = getCutoffVel(step_time, gravity);
 	}
 
-	//TODO: Save net torques and forces, consider these
+	//TODO make ang vel more sensitive
 	//average can be saved an adjusted per frame if necessary for performance
 	bool PhysicsEngine::bodySleepy(const std::vector<RigidBody::MovementState>& body_history) {
 		int n = body_history.size();
@@ -901,12 +881,10 @@ namespace phyz {
 
 		mthz::Vec3 average_vel;
 		mthz::Vec3 average_ang_vel;
-
 		for (const RigidBody::MovementState& s : body_history) {
 			average_vel += s.vel;
 			average_ang_vel += s.ang_vel;
 		}
-
 
 		average_vel /= n;
 		average_ang_vel /= n;
@@ -915,7 +893,15 @@ namespace phyz {
 
 		double vel_eps = vel_sleep_coeff * gravity.mag();
 		double accel_eps = accel_sleep_coeff * gravity.mag();
-		return average_vel.mag() <= vel_eps && average_ang_vel.mag() <= vel_eps && average_accel.mag() <= 2 * accel_eps && average_ang_accel.mag() <= accel_eps;
+		double ang_accel_eps = accel_sleep_coeff * 2.5;
+
+
+		bool a = average_vel.mag() <= vel_eps;
+		bool b = average_ang_vel.mag() <= ang_vel_eps;
+		bool c = average_accel.mag() <= accel_eps;
+		bool d = average_ang_accel.mag() <= ang_accel_eps;
+
+		return average_vel.mag() <= vel_eps && average_ang_vel.mag() <= ang_vel_eps && average_accel.mag() <= accel_eps && average_ang_accel.mag() <= ang_accel_eps;
 	}
 
 	bool PhysicsEngine::readyToSleep(RigidBody* b) {

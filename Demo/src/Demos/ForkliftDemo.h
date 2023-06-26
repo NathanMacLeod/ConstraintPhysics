@@ -77,6 +77,7 @@ public:
 						phyz::Material box_material = phyz::Material::modified_density(0.1);
 						phyz::Geometry box = phyz::Geometry::box(position + mthz::Vec3((pallet_width - n_box_width * box_width) / 2.0 + i * box_width, pallet_height + k * box_height, (pallet_width - n_box_width * box_width) / 2.0 + j * box_width), box_width, box_height, box_width, box_material);
 						phyz::RigidBody* box_r = p->createRigidBody(box);
+						boxes.push_back(box_r);
 						bodies->push_back({ fromGeometry(box), box_r });
 
 						welds.push_back(p->addWeldConstraint(pallet_r, box_r, box_r->getCOM()));
@@ -86,16 +87,29 @@ public:
 								for (phyz::ConstraintID c : welds) {
 									p->removeConstraint(c);
 								}
+
+								for (int i = 0; i < boxes.size(); i++) {
+									for (int j = i + 1; j < boxes.size(); j++) {
+										p->reallowCollision(boxes[i], boxes[j]);
+									}
+								}
 							}
 						});
 					}
 				}
 			}
+
+			for (int i = 0; i < boxes.size(); i++) {
+				for (int j = i + 1; j < boxes.size(); j++) {
+					p->disallowCollision(boxes[i], boxes[j]);
+				}
+			}
 		}
 
 	private:
-		bool weld_broken; //using a pointer as otherwise if the object is relocated the lambda function loses the memory address
+		bool weld_broken;
 		std::vector<phyz::ConstraintID> welds;
+		std::vector<phyz::RigidBody*> boxes;
 		phyz::PhysicsEngine* p;
 	};
 
@@ -362,10 +376,6 @@ public:
 		bodies.push_back({ fromGeometry(front_wheel2), front_wheel2_r });
 		bodies.push_back({ fromGeometry(rear_wheel1), rear_wheel1_r });
 		bodies.push_back({ fromGeometry(rear_wheel2), rear_wheel2_r });
-		/*bodies.push_back({ fromGeometry(steering_block1), steering_block1_r });
-		bodies.push_back({ fromGeometry(steering_block2), steering_block2_r });
-		bodies.push_back({ fromGeometry(suspension_block1), suspension_block1_r });
-		bodies.push_back({ fromGeometry(suspension_block2), suspension_block2_r });*/
 		bodies.push_back({ fromGeometry(mast), mast_r });
 		bodies.push_back({ fromGeometry(backrest), backrest_r });
 
@@ -502,13 +512,9 @@ public:
 			p.setMotorTargetPosition(steer_motor2, steer_torque, steer_angle);
 			if (rndr::getKeyDown(GLFW_KEY_J)) {
 				steer_angle = -steer_max_angle;
-				//steer_angle -= steer_speed * fElapsedTime;
-				//if (steer_angle < -steer_max_angle) steer_angle = -steer_max_angle;
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_L)) {
 				steer_angle = steer_max_angle;
-				//steer_angle += steer_speed * fElapsedTime;
-				//if (steer_angle > steer_max_angle) steer_angle = steer_max_angle;
 			}
 			else {
 				steer_angle = 0;
@@ -518,8 +524,6 @@ public:
 				lock_cam = !lock_cam;
 				
 			}
-
-			//printf("%f, %f, %f\n", chasis_r->getCOM().x, chasis_r->getCOM().y, chasis_r->getCOM().z);
 
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
 				for (PhysBod b : bodies) {

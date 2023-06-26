@@ -86,7 +86,7 @@ public:
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(true);
 		p.setPGSIterations(55, 55);
-		double timestep = 1 / 200.0;
+		double timestep = 1 / 220.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
 
@@ -377,7 +377,7 @@ public:
 		phyz::ConstraintID hook_weld = p.addWeldConstraint(chain1_loop_r, trebuchet_arm_r, hook_position);
 		phyz::ConstraintID projectile_weld = p.addWeldConstraint(bucket_r, projectile_r, projectile_position);
 
-		mthz::Vec3 initial_bucket_force(0, 0, 0.55);
+		mthz::Vec3 initial_bucket_force(0, 0.01, 0.55);
 		bucket_r->applyForce(initial_bucket_force);
 
 		trebuchet_bodies = { trebuchet_frame_r, release_pins_r, weight_r, trebuchet_arm_r, roller_r, chain1_loop_r, chain2_loop_r, bucket_r, projectile_r };
@@ -518,6 +518,7 @@ public:
 					r->setToPosition(mthz::Vec3());
 					r->setAngVel(mthz::Vec3());
 					r->setVel(mthz::Vec3());
+					p.deleteWarmstartData(r);
 				}
 
 				p.setPiston(release, 10, -1);

@@ -66,6 +66,7 @@ namespace phyz {
 		void removeRigidBody(RigidBody* r);
 		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel=mthz::Vec3(), const mthz::Vec3&delta_psuedo_ang_vel=mthz::Vec3());
 		void disallowCollisionSet(const std::initializer_list<RigidBody*>& bodies);
+		void reallowCollisionSet(const std::initializer_list<RigidBody*>& bodies);
 		void disallowCollision(RigidBody* b1, RigidBody* b2);
 		bool collisionAllowed(RigidBody* b1, RigidBody* b2);
 		void reallowCollision(RigidBody* b1, RigidBody* b2);
@@ -156,6 +157,7 @@ namespace phyz {
 
 		int angle_velocity_update_tick_count = 4;
 		bool is_internal_gyro_forces_disabled = false;
+		bool friction_impulse_limit_enabled = false;
 
 		struct ConstraintGraphNode; 
 		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
@@ -176,11 +178,14 @@ namespace phyz {
 		double step_time = 1.0 / 90;
 		double cutoff_vel = 0;
 		int contact_life = 6;
+		double contact_pos_correct_hardness = 350;
 		bool sleeping_enabled = true;
 		double sleep_delay = 0.5;
+		int non_sleepy_tick_thresehold = 3;
 
 		double vel_sleep_coeff = 0.1;
-		double accel_sleep_coeff = 0.022;
+		double ang_vel_eps = 0.1;
+		double accel_sleep_coeff = 0.044;
 
 		bool warm_start_disabled = false;
 
