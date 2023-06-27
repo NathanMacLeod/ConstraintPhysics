@@ -15,7 +15,7 @@ public:
 		return {
 			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
 			ControlDescription{"UP, DOWN, LEFT, RIGHT", "Rotate the camera"},
-			ControlDescription{"B", "Shoot a block"},
+			ControlDescription{"B", "Shoot a block in the direction of the camera"},
 			ControlDescription{"I", "Kill the rotation"},
 			ControlDescription{"ESC", "Return to main menu"},
 		};

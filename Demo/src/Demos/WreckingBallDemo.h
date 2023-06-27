@@ -125,7 +125,7 @@ public:
 		double tower_story_height = 1.25;
 		double floor_height = 0.25;
 		double pillar_width = 0.3;
-		int n_stories = 6;
+		int n_stories = 9;
 		phyz::Geometry pillar = phyz::Geometry::box(mthz::Vec3(), pillar_width, tower_story_height, pillar_width);
 		phyz::Geometry floor_plate = phyz::Geometry::box(mthz::Vec3(), tower_width / 2.0, floor_height, tower_width / 2.0);
 

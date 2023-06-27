@@ -14,7 +14,7 @@ uint32_t getEdgeID(uint16_t p1_id, uint16_t p2_id) {
 		max = p1_id;
 	}
 
-	return (0x0000FFFF | p1_id) + (0xFFFF0000 | ((uint32_t)p2_id << 16));
+	return (0x0000FFFF & min) + (0xFFFF0000 & ((uint32_t)max << 16));
 }
 
 namespace phyz {

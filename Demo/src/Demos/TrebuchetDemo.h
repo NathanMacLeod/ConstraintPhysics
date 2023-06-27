@@ -390,13 +390,13 @@ public:
 		std::vector<phyz::RigidBody*> tower_bodies;
 
 		if (true) {
-			mthz::Vec3 tower_pos(0, 0, 70);
+			mthz::Vec3 tower_pos(0, 0, 50);
 			double tower_width = 4;
 			double tower_story_height = 1.25;
 			double floor_height = 0.25;
 			double pillar_width = 0.3;
-			int n_stories = 2;
-			phyz::Material tower_material = phyz::Material::modified_density(0.2);
+			int n_stories = 4;
+			phyz::Material tower_material = phyz::Material::modified_density(0.05);
 			phyz::Geometry pillar = phyz::Geometry::box(mthz::Vec3(), pillar_width, tower_story_height, pillar_width, tower_material);
 			phyz::Geometry floor_plate = phyz::Geometry::box(mthz::Vec3(), tower_width / 2.0, floor_height, tower_width / 2.0, tower_material);
 

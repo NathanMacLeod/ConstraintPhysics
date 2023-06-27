@@ -662,7 +662,7 @@ public:
 		p.setGravity(mthz::Vec3(0, -4.9, 0));
 
 		//DEBUG DELTE
-		phyz::RigidBody* marked_object = nullptr;
+		//phyz::RigidBody* marked_object = nullptr;
 
 		while (rndr::render_loop(&fElapsedTime)) {
 
@@ -763,7 +763,7 @@ public:
 				return;
 			}
 
-			if (rndr::getKeyPressed(GLFW_KEY_T)) {
+			/*if (rndr::getKeyPressed(GLFW_KEY_T)) {
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
 				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(pos, camera_dir);
 
@@ -780,7 +780,7 @@ public:
 					marked_object->getID(), marked_object->getIsFixed() ? "yes" : "no",
 					marked_object->getVel().x, marked_object->getVel().y, marked_object->getVel().z,
 					marked_object->getAngVel().x, marked_object->getAngVel().y, marked_object->getAngVel().z);
-			}
+			}*/
 
 			phyz_time += fElapsedTime;
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);

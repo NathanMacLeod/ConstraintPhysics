@@ -50,6 +50,7 @@ namespace phyz {
 	static float sat_time = 0;
 	static float dfs_time = 0;
 	static float pgs_time = 0;
+	static float update_time = 0;
 	static int i = 0;
 	void PhysicsEngine::timeStep() {
 
@@ -310,7 +311,7 @@ namespace phyz {
 
 		auto t6 = std::chrono::system_clock::now();
 
-		for (RigidBody* b : bodies) {
+		auto update_body = [&](RigidBody* b) {
 			if (!b->fixed && !b->asleep) {
 				b->com += (b->vel + b->psuedo_vel) * step_time;
 				if (b->ang_vel.magSqrd() != 0) {
@@ -324,7 +325,34 @@ namespace phyz {
 				b->psuedo_vel = mthz::Vec3(0, 0, 0);
 				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
 			}
+		};
+
+		if (use_multithread) {
+			thread_manager.do_all<RigidBody*>(n_threads, bodies, update_body);
 		}
+		else {
+			for (RigidBody* b : bodies) {
+				update_body(b);
+			}
+		}
+
+		/*for (RigidBody* b : bodies) {
+			if (!b->fixed && !b->asleep) {
+				b->com += (b->vel + b->psuedo_vel) * step_time;
+				if (b->ang_vel.magSqrd() != 0) {
+					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count, is_internal_gyro_forces_disabled);
+					mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
+					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
+				}
+
+				b->updateGeometry();
+
+				b->psuedo_vel = mthz::Vec3(0, 0, 0);
+				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
+			}
+		}*/
+
+		auto t7 = std::chrono::system_clock::now();
 
 		if (print_performance_data) {
 
@@ -333,15 +361,17 @@ namespace phyz {
 			sat_time += std::chrono::duration<float>(t4 - t3).count();
 			dfs_time += std::chrono::duration<float>(t5 - t4).count();
 			pgs_time += std::chrono::duration<float>(t6 - t5).count();
+			update_time += std::chrono::duration<float>(t7 - t6).count();
 
 			if (i++ % 1000 == 0) {
-				float total = maintain_time + broadphase_time + sat_time + dfs_time + pgs_time;
-				printf("total time: %f, maintain: %f, broadphase: %f, sat: %f, dfs: %f, pgs: %f\n", total, maintain_time / total, broadphase_time / total, sat_time / total, dfs_time / total, pgs_time / total);
+				float total = maintain_time + broadphase_time + sat_time + dfs_time + pgs_time + update_time;
+				printf("total time: %f, maintain: %f, broadphase: %f, sat: %f, dfs: %f, pgs: %f, update: %f\n", total, maintain_time / total, broadphase_time / total, sat_time / total, dfs_time / total, pgs_time / total, update_time / total);
 				maintain_time = 0;
 				broadphase_time = 0;
 				sat_time = 0;
 				dfs_time = 0;
 				pgs_time = 0;
+				update_time = 0;
 
 				if (broadphase == TEST_COMPARE) {
 					printf("AABB_Tree: %f, Octree %f, Bruteforce: %f\n", aabb_time, octree_time, none_time);
