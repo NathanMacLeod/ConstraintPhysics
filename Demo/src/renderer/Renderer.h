@@ -25,6 +25,7 @@ namespace rndr {
 	bool getKeyPressed(int key);
 	void clear(color c);
 	void draw(const VertexArray& va, const IndexBuffer& ib, const Shader& s);
+	void draw(const BatchArray& ba, const Shader& s);
 	bool render_loop(float* fElapsedTime_out);
 	void terminate();
 

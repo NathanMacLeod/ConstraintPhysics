@@ -26,6 +26,22 @@ public:
 		return direction.applyRotation(mthz::Vec3(0, mag, 0));
 	}
 
+	struct Agent {
+		enum Color { Red, Green, Blue };
+
+		rndr::VertexArray* va;
+		rndr::IndexBuffer* ib;
+		phyz::RigidBody* r;
+		Color color;
+	};
+
+	Agent genAgent(phyz::Geometry g, phyz::PhysicsEngine& p, Agent::Color color) {
+		Mesh m = fromGeometry(g);
+		phyz::RigidBody* r = p.createRigidBody(g);
+
+		return Agent{ new rndr::VertexArray(m.vertices.data(), m.vertices.size(), Vertex::generateLayout()), new rndr::IndexBuffer(m.indices.data(), m.indices.size()), r, color };
+	}
+
 	void run() override {
 
 		rndr::init(properties.window_width, properties.window_height, "Collision Action Demo");
@@ -35,14 +51,6 @@ public:
 
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(false);
-
-		struct Agent {
-			enum Color { Red, Green, Blue };
-
-			Mesh mesh;
-			phyz::RigidBody* r;
-			Color color;
-		};
 
 		std::vector<Agent> agents;
 
@@ -83,9 +91,9 @@ public:
 					phyz::Geometry green_agent = agent.getTranslated(green_corner_pos + mthz::Vec3(i * 2 * agent_size, j * 2 * agent_size, k * 2 * agent_size));
 					phyz::Geometry blue_agent = agent.getTranslated(blue_corner_pos + mthz::Vec3(i * 2 * agent_size, j * 2 * agent_size, k * 2 * agent_size));
 
-					agents.push_back({ fromGeometry(red_agent), p.createRigidBody(red_agent), Agent::Red });
-					agents.push_back({ fromGeometry(green_agent), p.createRigidBody(green_agent), Agent::Green });
-					agents.push_back({ fromGeometry(blue_agent), p.createRigidBody(blue_agent), Agent::Blue });
+					agents.push_back(genAgent(red_agent, p, Agent::Red));
+					agents.push_back(genAgent(red_agent, p, Agent::Green));
+					agents.push_back(genAgent(red_agent, p, Agent::Blue));
 				}
 			}
 		}
@@ -132,7 +140,7 @@ public:
 			}
 		}
 
-
+		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/AgentColor.shader");
 		shader.bind();
 
@@ -180,11 +188,11 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
-				for (Agent b : agents) {
-					delete b.mesh.ib;
-					delete b.mesh.va;
-				}
 				manager->deselectCurrentScene();
+				for (Agent a : agents) {
+					delete a.va;
+					delete a.ib;
+				}
 				return;
 			}
 
@@ -207,8 +215,8 @@ public:
 
 				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(a.r->getPos(), a.r->getOrientation()));
 				shader.setUniform1i("u_Color", a.color);
-				rndr::draw(*a.mesh.va, *a.mesh.ib, shader);
 
+				rndr::draw(*a.va, *a.ib, shader);
 			}
 		}
 	}

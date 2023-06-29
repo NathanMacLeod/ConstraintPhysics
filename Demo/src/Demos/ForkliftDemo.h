@@ -425,6 +425,7 @@ public:
 			}
 		}
 
+		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
 
@@ -526,10 +527,6 @@ public:
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
-				for (PhysBod b : bodies) {
-					delete b.mesh.ib;
-					delete b.mesh.va;
-				}
 				for (Pallet* p : pallets) {
 					delete p;
 				}
@@ -546,27 +543,35 @@ public:
 				p.timeStep();
 			}
 
-
 			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));
+			batch_array.flush();
+
+			mthz::Vec3 cam_pos = (lock_cam) ? chasis_r->getTrackedP(lock_cam_pos) : pos;
+			mthz::Quaternion cam_orient = (lock_cam) ? chasis_r->getOrientation() * orient : orient;
+
+			mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
+			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
+
+			double aspect_ratio = (double)properties.window_height / properties.window_width;
+			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 550.0, 2.0, 2.0 * aspect_ratio, 120.0));
+			shader.setUniform3f("u_ambient_light", 0.4, 0.4, 0.4);
+			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
+			shader.setUniform3f("u_pointlight_col", 0.6, 0.6, 0.6);
+			shader.setUniform1i("u_Asleep", false);
 
 			for (const PhysBod& b : bodies) {
-				mthz::Vec3 cam_pos = (lock_cam) ? chasis_r->getTrackedP(lock_cam_pos) : pos;
-				mthz::Quaternion cam_orient = (lock_cam) ? chasis_r->getOrientation() * orient : orient;
 
-				mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
-				mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
+				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, b.r->getAsleep(), color{ 1.0f, 0.0f, 0.0f });
 
-				double aspect_ratio = (double)properties.window_height / properties.window_width;
-
-				shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-				shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 150.0, 2.0, 2.0 * aspect_ratio, 120.0));
-				shader.setUniform3f("u_ambient_light", 0.4, 0.4, 0.4);
-				shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-				shader.setUniform3f("u_pointlight_col", 0.6, 0.6, 0.6);
-				shader.setUniform1i("u_Asleep", b.r->getAsleep());
-				rndr::draw(*b.mesh.va, *b.mesh.ib, shader);
-
+				if (batch_array.remainingCapacity() <= transformed_mesh.vertices.size()) {
+					rndr::draw(batch_array, shader);
+					batch_array.flush();
+				}
+				batch_array.push(transformed_mesh.vertices.data(), transformed_mesh.vertices.size(), transformed_mesh.indices);
 			}
+
+			rndr::draw(batch_array, shader);
 		}
 	}
 };

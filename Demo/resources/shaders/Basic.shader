@@ -8,14 +8,12 @@ layout(location = 3) in float in_diffuse_k;
 layout(location = 4) in float in_specular_k;
 layout(location = 5) in float in_specular_p;
 
-uniform mat4 u_MV;
-
 out vec3 v_Color;
 out vec4 v_mat_props;
 
 void main() {
 	v_mat_props = vec4(in_ambient_k, in_diffuse_k, in_specular_k, in_specular_p);
-	gl_Position = u_MV * position;
+	gl_Position = position;
 	v_Color = in_color;
 }
 

@@ -6,6 +6,17 @@ float frand() {
 	return (float)std::rand() / RAND_MAX;
 }
 
+rndr::VertexArrayLayout Vertex::generateLayout() {
+	rndr::VertexArrayLayout layout;
+	layout.Push<float>(3);
+	layout.Push<float>(3);
+	layout.Push<float>(1);//ambient_constant
+	layout.Push<float>(1);//diffuse_constant
+	layout.Push<float>(1);//specular_constant
+	layout.Push<float>(1);//specular_pow
+	return layout;
+}
+
 Mesh fromPhyzMesh(const phyz::Mesh& m) {
 	std::vector<Vertex> vertices;
 	vertices.reserve(m.vertices.size());
@@ -23,14 +34,7 @@ Mesh fromPhyzMesh(const phyz::Mesh& m) {
 		}
 	}
 
-	rndr::VertexArrayLayout layout;
-	layout.Push<float>(3);
-	layout.Push<float>(3);
-	layout.Push<float>(1);//ambient_constant
-	layout.Push<float>(1);//diffuse_constant
-	layout.Push<float>(1);//specular_constant
-	layout.Push<float>(1);//specular_pow
-	return { new rndr::VertexArray(vertices.data(), vertices.size() * sizeof(Vertex), layout), new rndr::IndexBuffer(indices.data(), indices.size()) };
+	return Mesh{ vertices, indices };
 }
 
 Mesh fromGeometry(const phyz::Geometry g, color model_color) {
@@ -129,12 +133,28 @@ Mesh fromGeometry(const phyz::Geometry g, color model_color) {
 		}
 	}
 
-	rndr::VertexArrayLayout layout;
-	layout.Push<float>(3);
-	layout.Push<float>(3);
-	layout.Push<float>(1);//ambient_constant
-	layout.Push<float>(1);//diffuse_constant
-	layout.Push<float>(1);//specular_constant
-	layout.Push<float>(1);//specular_pow
-	return { new rndr::VertexArray(vertices.data(), vertices.size() * sizeof(Vertex), layout), new rndr::IndexBuffer(indices.data(), indices.size()) };
+	return Mesh{ vertices, indices };
+}
+
+Mesh getTransformed(const Mesh& m, mthz::Vec3 model_position, mthz::Quaternion model_orientation, mthz::Vec3 camera_position, mthz::Quaternion camera_orientation, bool recolor, color new_color) {
+	Mesh out = m;
+	writeTransformedTo(m, &out, model_position, model_orientation, camera_position, camera_orientation, recolor, new_color);
+	return out;
+}
+
+void writeTransformedTo(const Mesh& m, Mesh* out, mthz::Vec3 model_position, mthz::Quaternion model_orientation, mthz::Vec3 camera_position, mthz::Quaternion camera_orientation, bool recolor, color new_color) {
+	assert(m.vertices.size() == out->vertices.size());
+
+	mthz::Mat3 camera_rot = camera_orientation.conjugate().getRotMatrix();
+	mthz::Mat3 model_rot = model_orientation.getRotMatrix();
+
+	for (int i = 0; i < m.vertices.size(); i++) {
+		mthz::Vec3 pos = mthz::Vec3(m.vertices[i].x, m.vertices[i].y, m.vertices[i].z);
+		mthz::Vec3 transformed_pos = camera_rot * (model_rot * pos + model_position - camera_position);
+		out->vertices[i].x = transformed_pos.x; out->vertices[i].y = transformed_pos.y; out->vertices[i].z = transformed_pos.z;
+
+		if (recolor) {
+			out->vertices[i].r = new_color.r; out->vertices[i].g = new_color.g; out->vertices[i].b = new_color.b;
+		}
+	}
 }

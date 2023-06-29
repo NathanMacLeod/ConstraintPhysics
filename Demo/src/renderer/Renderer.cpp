@@ -107,6 +107,14 @@ namespace rndr {
         glDrawElements(GL_TRIANGLES, ib.getCount(), GL_UNSIGNED_INT, nullptr);
     }
 
+    void draw(const BatchArray& ba, const Shader& s) {
+        ba.bindVertexArray();
+        IndexBuffer ib = ba.generateIndexBuffer();
+        ib.bind();
+        s.bind();
+        glDrawElements(GL_TRIANGLES, ib.getCount(), GL_UNSIGNED_INT, nullptr);
+    }
+
     bool render_loop(float* fElapsedTimeOut) {
         glfwSwapBuffers(window);
         glfwPollEvents();

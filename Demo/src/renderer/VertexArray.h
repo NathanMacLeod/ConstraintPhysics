@@ -1,5 +1,7 @@
 #pragma once
 
+#include "IndexBuffer.h"
+
 #include <vector>
 #include <GL/glew.h>
 
@@ -64,4 +66,29 @@ namespace rndr {
 		unsigned int vertexBufferID;
 	};
 
+
+	class BatchArray {
+	public:
+		BatchArray(const VertexArrayLayout& layout, unsigned int vertex_capacity);
+		~BatchArray();
+
+		void push(void* vertex_data, int vertex_count, std::vector<unsigned int> index_data);
+		void flush();
+
+		unsigned int remainingCapacity() const;
+		void bindVertexArray() const;
+		void unbindVertexArray() const;
+		IndexBuffer generateIndexBuffer() const;
+
+	private:
+		unsigned int vertex_capacity;
+		unsigned int n_vertices_allocated;
+		unsigned int vertex_size;
+
+		unsigned int vertexArrayID;
+		unsigned int vertexBufferID;
+		std::vector<unsigned int> index_buffer_data;
+
+
+	};
 }

@@ -210,13 +210,20 @@ private:
 		buffer_indx = 0;
 		buffer_capacity = 0;
 		_sopen_s(&fd, filename.c_str(), _O_BINARY | _O_RDONLY, _SH_DENYRW, _S_IREAD);
+
+		int progress_bar_width = 50;
+		ProgressBarState progress_bar_state{ INITIALIZING };
+
 		for (int i = 0; i < n_frames; i++) {
+			progress_bar_state = render_progress_bar(i / (float)n_frames, progress_bar_width, false, progress_bar_state, 0.33);
 			for (BodyHistory& b : *bodies) {
 				double x = read64(fd); double y = read64(fd); double z = read64(fd);
 				double r = read64(fd); double i = read64(fd); double j = read64(fd); double k = read64(fd);
 				b.history.push_back({ mthz::Vec3(x, y, z), mthz::Quaternion(r, i, j, k) });
 			}
 		}
+
+		render_progress_bar(1.0, progress_bar_width, true, progress_bar_state);
 		_close(fd);
 	}
 
@@ -454,8 +461,8 @@ public:
 		pre_bodies.push_back(BodyHistory(spinner1_r, spinner1, color{ 130, 0, 0 }));
 		pre_bodies.push_back(BodyHistory(spinner2_r, spinner2, color{ 130, 0, 0 }));
 
-		mthz::Vec3 cam_pos = mthz::Vec3(4, 8, 16);
-		mthz::Quaternion cam_orient;
+		mthz::Vec3 cam_pos = mthz::Vec3(4, 13, 24);//mthz::Vec3(9.441140, 20.246, 5.9803);
+		mthz::Quaternion cam_orient;// = mthz::Quaternion(0.9217, 0.214225, 0.31549, -0.071306).normalize();
 
 		double mv_speed = 2;
 		double rot_speed = 1;
@@ -638,6 +645,7 @@ public:
 
 		rndr::init(properties.window_width, properties.window_height, "Image Demo");
 
+		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
 
@@ -650,17 +658,23 @@ public:
 		float fElapsedTime;
 		int curr_frame = -1;
 
+		phyz::ThreadManager helper_threads;
+		if (properties.n_threads != 0) {
+			helper_threads.init(properties.n_threads);
+		}
+
+		std::vector<Mesh> transformed_meshs(bodies.size());
+		for (int i = 0; i < bodies.size(); i++) {
+			transformed_meshs[i] = bodies[i].mesh;
+		}
+
 		while(rndr::render_loop(&fElapsedTime)) {
 
-			t += fElapsedTime;
+			t += fElapsedTime / 3;
 
 			int new_frame = t / frame_time;
 			if (new_frame != curr_frame && new_frame < n_frames) {
 				curr_frame = new_frame;
-				for (const BodyHistory& b : pre_bodies) {
-					b.r->setOrientation(b.history[curr_frame].orient);
-					b.r->setToPosition(b.history[curr_frame].pos);
-				}
 			}
 
 			if (rndr::getKeyDown(GLFW_KEY_W)) {
@@ -707,31 +721,52 @@ public:
 				t = 0;
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
-				for (PhysBod b : bodies) {
-					delete b.mesh.ib;
-					delete b.mesh.va;
-				}
 				manager->deselectCurrentScene();
 				return;
 			}
 
 			rndr::clear(rndr::color(0.7f, 0.7f, 0.7f));
+			batch_array.flush();
 
-			for (const PhysBod& b : bodies) {
-				mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
-				mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
 
-				double aspect_ratio = (double) properties.window_height / properties.window_width;
+			mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
+			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
 
-				shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-				shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0));
-				shader.setUniform3f("u_ambient_light", 1.0f, 1.0f, 1.0f);
-				shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-				shader.setUniform3f("u_pointlight_col", 0.0, 0.0, 0.0);
-				shader.setUniform1i("u_Asleep", false);
-				rndr::draw(*b.mesh.va, *b.mesh.ib, shader);
+			double aspect_ratio = (double)properties.window_height / properties.window_width;
+			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0));
+			shader.setUniform3f("u_ambient_light", 1.0, 1.0, 1.0);
+			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
+			shader.setUniform3f("u_pointlight_col", 0.0, 0.0, 0.0);
+			shader.setUniform1i("u_Asleep", false);
 
+			auto setTransformedMatrix = [&](int indx) {
+				const BodyHistory& b = pre_bodies[indx];
+				writeTransformedTo(bodies[indx].mesh, &transformed_meshs[indx], b.history[curr_frame].pos, b.history[curr_frame].orient, cam_pos, cam_orient, false, color{1.0, 0.0, 0.0});
+			};
+
+			if (properties.n_threads == 0) {
+				for (int i = 0; i < bodies.size(); i++) {
+					setTransformedMatrix(i);
+				}
 			}
+			else {
+				std::vector<int> indexes(bodies.size());
+				for (int i = 0; i < bodies.size(); i++) {
+					indexes[i] = i;
+				}
+				helper_threads.do_all<int>(properties.n_threads, indexes, setTransformedMatrix);
+			}
+
+			for (Mesh& m : transformed_meshs) {
+				if (batch_array.remainingCapacity() <= m.vertices.size()) {
+					rndr::draw(batch_array, shader);
+					batch_array.flush();
+				}
+				batch_array.push(m.vertices.data(), m.vertices.size(), m.indices);
+			}
+
+			rndr::draw(batch_array, shader);
 		}
 	}
 };

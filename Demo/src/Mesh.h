@@ -14,11 +14,13 @@ struct Vertex {
 	float diffuse_k;
 	float specular_k;
 	float specular_p;
+
+	static rndr::VertexArrayLayout generateLayout();
 };
 
-static struct Mesh {
-	rndr::VertexArray* va;
-	rndr::IndexBuffer* ib;
+struct Mesh {
+	std::vector<Vertex> vertices;
+	std::vector<unsigned int> indices;
 };
 
 struct PhysBod {
@@ -42,3 +44,5 @@ float frand();
 
 Mesh fromPhyzMesh(const phyz::Mesh& m);
 Mesh fromGeometry(const phyz::Geometry g, color c=auto_generate);
+Mesh getTransformed(const Mesh& m, mthz::Vec3 model_position, mthz::Quaternion model_orientation, mthz::Vec3 camera_position, mthz::Quaternion camera_orientation, bool recolor = false, color new_color=auto_generate);
+void writeTransformedTo(const Mesh& m, Mesh* out, mthz::Vec3 model_position, mthz::Quaternion model_orientation, mthz::Vec3 camera_position, mthz::Quaternion camera_orientation, bool recolor = false, color new_color = auto_generate);
