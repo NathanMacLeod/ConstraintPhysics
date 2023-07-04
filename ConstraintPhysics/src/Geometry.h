@@ -23,6 +23,8 @@ namespace phyz {
 		static Geometry gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity = false, Material material = Material::default_material(), double tooth_width = -1);
 		static Geometry bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity = false, Material material = Material::default_material(), double hole_radius = 0.0, int circle_detail = 7);
 		static Geometry pinion(mthz::Vec3 pos, double height, double width, double tooth_height, double tooth_width, double gap_width, int n_teeth, Material material = Material::default_material());
+		static Geometry uShape(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int n_segments = 8, Material material = Material::default_material());
+		static Geometry funnel(mthz::Vec3 pos, double tube_radius, double tube_height, double bowl_radius, double bowl_angle, double thickness, int n_segments = 15, Material material = Material::default_material());
 
 		static Geometry merge(const Geometry& g1, const Geometry& g2);
 		Geometry getTranslated(const mthz::Vec3 v) const;

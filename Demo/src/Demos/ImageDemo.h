@@ -461,7 +461,7 @@ public:
 		pre_bodies.push_back(BodyHistory(spinner1_r, spinner1, color{ 130, 0, 0 }));
 		pre_bodies.push_back(BodyHistory(spinner2_r, spinner2, color{ 130, 0, 0 }));
 
-		mthz::Vec3 cam_pos = mthz::Vec3(4, 13, 24);//mthz::Vec3(9.441140, 20.246, 5.9803);
+		mthz::Vec3 cam_pos = mthz::Vec3(4.25, 12, 22);//mthz::Vec3(4, 13, 24);//mthz::Vec3(9.441140, 20.246, 5.9803);
 		mthz::Quaternion cam_orient;// = mthz::Quaternion(0.9217, 0.214225, 0.31549, -0.071306).normalize();
 
 		double mv_speed = 2;
@@ -670,7 +670,7 @@ public:
 
 		while(rndr::render_loop(&fElapsedTime)) {
 
-			t += fElapsedTime / 3;
+			t += fElapsedTime;
 
 			int new_frame = t / frame_time;
 			if (new_frame != curr_frame && new_frame < n_frames) {

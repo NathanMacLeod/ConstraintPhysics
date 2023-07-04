@@ -360,9 +360,106 @@ namespace phyz {
 		Geometry toothG = tooth(mthz::Vec3(0, 0, 0), tooth_width, tooth_height, -width, material).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)));
 		for (int i = 0; i < n_teeth; i++) {
 			mthz::Vec3 tooth_pos = pos + mthz::Vec3(0, height, (1 + i) * gap_width + i * tooth_width);
-			pinion = pinion.merge(pinion, toothG.getTranslated(tooth_pos));
+			pinion = Geometry::merge(pinion, toothG.getTranslated(tooth_pos));
 		}
 		return pinion;
+	}
+
+	Geometry Geometry::uShape(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int n_segments, Material material) {
+		assert(n_segments >= 1);
+
+		Geometry out;
+		double dTheta = PI / n_segments;
+		for (int i = 0; i < n_segments; i++) {
+			std::vector<mthz::Vec3> points(8);
+			std::vector<std::vector<int>> surface_indices(6);
+
+
+			double t1 = i * dTheta;
+			double t2 = (i + 1) * dTheta;
+
+			points[0] = pos + inner_radius * mthz::Vec3(cos(t1), 0, sin(t1));
+			points[1] = pos + outer_radius * mthz::Vec3(cos(t1), 0, sin(t1));
+			points[2] = pos + outer_radius * mthz::Vec3(cos(t2), 0, sin(t2));
+			points[3] = pos + inner_radius * mthz::Vec3(cos(t2), 0, sin(t2));
+
+			points[4] = points[0] + mthz::Vec3(0, height, 0);
+			points[5] = points[1] + mthz::Vec3(0, height, 0);
+			points[6] = points[2] + mthz::Vec3(0, height, 0);
+			points[7] = points[3] + mthz::Vec3(0, height, 0);
+
+			surface_indices[0] = { 0, 1, 2, 3 };
+			surface_indices[1] = { 4, 5, 6, 7 };
+			surface_indices[2] = { 0, 1, 5, 4 };
+			surface_indices[3] = { 0, 4, 7, 3 };
+			surface_indices[4] = { 1, 2, 6, 5 };
+			surface_indices[5] = { 3, 2, 6, 7 };
+
+			Geometry segment = Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+			out = Geometry::merge(out, segment);
+		}
+
+		return out;
+	}
+
+	Geometry Geometry::funnel(mthz::Vec3 pos, double tube_radius, double tube_height, double bowl_radius, double bowl_angle, double thickness, int n_segments, Material material) {
+		Geometry out;
+
+		double dTheta = 2 * PI / n_segments;
+		for (int i = 0; i < n_segments; i++) {
+			std::vector<mthz::Vec3> tube_points(8);
+			std::vector<std::vector<int>> tube_surface_indices(6);
+
+			double t1 = i * dTheta;
+			double t2 = (i + 1) * dTheta;
+
+			double bevel_length_diff = thickness * tan(bowl_angle / 2.0);
+
+			tube_points[0] = pos + tube_radius * mthz::Vec3(cos(t1), 0, sin(t1));
+			tube_points[1] = pos + (tube_radius + thickness) * mthz::Vec3(cos(t1), 0, sin(t1));
+			tube_points[2] = pos + (tube_radius + thickness) * mthz::Vec3(cos(t2), 0, sin(t2));
+			tube_points[3] = pos + tube_radius * mthz::Vec3(cos(t2), 0, sin(t2));
+
+			tube_points[4] = tube_points[0] + mthz::Vec3(0, tube_height + bevel_length_diff, 0);
+			tube_points[5] = tube_points[1] + mthz::Vec3(0, tube_height, 0);
+			tube_points[6] = tube_points[2] + mthz::Vec3(0, tube_height, 0);
+			tube_points[7] = tube_points[3] + mthz::Vec3(0, tube_height + bevel_length_diff, 0);
+
+			tube_surface_indices[0] = { 0, 1, 2, 3 };
+			tube_surface_indices[1] = { 4, 5, 6, 7 };
+			tube_surface_indices[2] = { 0, 1, 5, 4 };
+			tube_surface_indices[3] = { 0, 4, 7, 3 };
+			tube_surface_indices[4] = { 1, 2, 6, 5 };
+			tube_surface_indices[5] = { 3, 2, 6, 7 };
+
+			Geometry tube_segment = Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(tube_points, tube_surface_indices), material));
+			out = Geometry::merge(out, tube_segment);
+
+			std::vector<mthz::Vec3> bowl_points(8);
+			std::vector<std::vector<int>> bowl_surface_indices(6);
+
+			bowl_points[0] = tube_points[4];
+			bowl_points[1] = tube_points[5];
+			bowl_points[2] = tube_points[6];
+			bowl_points[3] = tube_points[7];
+
+			bowl_points[4] = bowl_points[0] + (bowl_radius + bevel_length_diff) * mthz::Vec3(sin(bowl_angle) * cos(t1), cos(bowl_angle), sin(bowl_angle) * sin(t1));
+			bowl_points[5] = bowl_points[1] + bowl_radius * mthz::Vec3(sin(bowl_angle) * cos(t1), cos(bowl_angle), sin(bowl_angle) * sin(t1));
+			bowl_points[6] = bowl_points[2] + bowl_radius * mthz::Vec3(sin(bowl_angle) * cos(t2), cos(bowl_angle), sin(bowl_angle) * sin(t2));
+			bowl_points[7] = bowl_points[3] + (bowl_radius + bevel_length_diff) * mthz::Vec3(sin(bowl_angle) * cos(t2), cos(bowl_angle), sin(bowl_angle) * sin(t2));
+
+			bowl_surface_indices[0] = { 0, 1, 2, 3 };
+			bowl_surface_indices[1] = { 4, 5, 6, 7 };
+			bowl_surface_indices[2] = { 0, 1, 5, 4 };
+			bowl_surface_indices[3] = { 0, 4, 7, 3 };
+			bowl_surface_indices[4] = { 1, 2, 6, 5 };
+			bowl_surface_indices[5] = { 3, 2, 6, 7 };
+
+			Geometry bowl_segment = Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(bowl_points, bowl_surface_indices), material));
+			out = Geometry::merge(out, bowl_segment);
+		}
+
+		return out;
 	}
 
 	Geometry Geometry::merge(const Geometry& g1, const Geometry& g2) {

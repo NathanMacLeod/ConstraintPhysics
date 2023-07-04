@@ -98,6 +98,9 @@
     <ClInclude Include="src\Demos\DebugDemo.h">
       <Filter>src\Demos</Filter>
     </ClInclude>
+    <ClInclude Include="src\Demos\VideoDemo.h">
+      <Filter>src\Demos</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\shaders\Basic.shader">

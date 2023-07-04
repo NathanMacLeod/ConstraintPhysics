@@ -69,8 +69,8 @@ Mesh fromGeometry(const phyz::Geometry g, color model_color) {
 		case phyz::SPHERE:
 		{
 			const phyz::Sphere& s = (const phyz::Sphere&)*prim.getGeometry();
-			int n_rows = 15;
-			int n_cols = 20;
+			int n_rows = 6;
+			int n_cols = 8;
 
 			mthz::Vec3 bottom_pole = s.getCenter() - mthz::Vec3(0, s.getRadius(), 0);
 			mthz::Vec3 top_pole = s.getCenter() + mthz::Vec3(0, s.getRadius(), 0);

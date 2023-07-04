@@ -45,6 +45,7 @@ namespace phyz {
 		void setAngVel(mthz::Vec3 ang_vel);
 		void setFixed(bool fixed);
 		void setNoCollision(bool no_collision);
+		void setSleepDisabled(bool b) { sleep_disabled = b; }
 
 		friend class PhysicsEngine;
 	private:
@@ -61,6 +62,7 @@ namespace phyz {
 		mthz::Vec3 psuedo_vel;
 		mthz::Vec3 psuedo_ang_vel;
 		bool recievedWakingAction;
+		bool sleep_disabled;
 
 		void sleep();
 		void wake();

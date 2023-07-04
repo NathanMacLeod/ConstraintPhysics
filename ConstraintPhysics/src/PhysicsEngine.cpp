@@ -57,9 +57,9 @@ namespace phyz {
 		//remove deleted bodies from relevant structures
 		while (!bodies_to_delete.empty()) {
 			RigidBody* to_delete = bodies_to_delete.back();
-			assert(std::find(bodies.begin(), bodies.end(), to_delete) != bodies.end());
-			bodies.erase(std::remove(bodies.begin(), bodies.end(), to_delete));
 			bodies_to_delete.pop_back();
+
+			deleteRigidBody(to_delete);
 		}
 
 		auto t1 = std::chrono::system_clock::now();
@@ -335,22 +335,6 @@ namespace phyz {
 				update_body(b);
 			}
 		}
-
-		/*for (RigidBody* b : bodies) {
-			if (!b->fixed && !b->asleep) {
-				b->com += (b->vel + b->psuedo_vel) * step_time;
-				if (b->ang_vel.magSqrd() != 0) {
-					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count, is_internal_gyro_forces_disabled);
-					mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
-					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
-				}
-
-				b->updateGeometry();
-
-				b->psuedo_vel = mthz::Vec3(0, 0, 0);
-				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
-			}
-		}*/
 
 		auto t7 = std::chrono::system_clock::now();
 
@@ -967,7 +951,7 @@ namespace phyz {
 		std::set<ConstraintGraphNode*> visited;
 		bfsVisitAll(foothold, &visited, nullptr, [this](ConstraintGraphNode* curr, void* in) {
 			curr->b->wake();
-			});
+		});
 	}
 
 	PhysicsEngine::Motor::Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle)
@@ -1294,7 +1278,7 @@ namespace phyz {
 			});
 			if (sleeping_enabled && all_ready_to_sleep) {
 				for (RigidBody* b : island_bodies) {
-					b->sleep();
+					if (!b->sleep_disabled) b->sleep();
 				}
 			}
 			else if (island_constraints.size() > 0) {
