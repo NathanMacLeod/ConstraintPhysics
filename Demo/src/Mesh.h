@@ -28,6 +28,14 @@ struct PhysBod {
 	phyz::RigidBody* r;
 };
 
+struct TransformablePhysBod {
+	TransformablePhysBod(const Mesh& m, phyz::RigidBody* r) : mesh(m), transformed_mesh(m), r(r) {}
+
+	Mesh mesh;
+	phyz::RigidBody* r;
+	Mesh transformed_mesh;
+};
+
 
 static struct color {
 	float r;

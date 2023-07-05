@@ -3,5 +3,6 @@ Math/x64
 Demo/x64
 ConstraintPhysics/x64
 Demo/resources/precomputations/*
+Demo/resources/bad_apple
 Debug
 .vs

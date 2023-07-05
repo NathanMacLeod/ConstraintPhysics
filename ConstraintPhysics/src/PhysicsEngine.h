@@ -77,6 +77,7 @@ namespace phyz {
 		inline mthz::Vec3 getGravity() { return gravity; }
 		inline double getStep_time() { return step_time; }
 		std::vector<RigidBody*> getBodies();
+		unsigned int getNextBodyID();
 
 		void setPGSIterations(int n_vel, int n_pos) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; }
 		void setSleepingEnabled(bool sleeping);
@@ -88,6 +89,7 @@ namespace phyz {
 		void setAngleVelUpdateTickCount(int n);
 		void setInternalGyroscopicForcesDisabled(bool b);
 		void setWarmStartDisabled(bool b);
+		void setSleepParameters(double vel_sensitivity, double ang_vel_sensitivity, double aceleration_sensitivity, double sleep_assesment_time, int non_sleepy_tick_threshold);
 
 		//really only exists for debugging
 		void deleteWarmstartData(RigidBody* r);
@@ -165,7 +167,7 @@ namespace phyz {
 		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		std::vector<std::vector<Constraint*>> sleepOrSolveIslands();
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
-		bool bodySleepy(const std::vector<RigidBody::MovementState>& body_history);
+		bool bodySleepy(RigidBody* r);
 		void deleteRigidBody(RigidBody* r);
 		bool readyToSleep(RigidBody* b);
 		void wakeupIsland(ConstraintGraphNode* foothold);
@@ -181,7 +183,7 @@ namespace phyz {
 		double contact_pos_correct_hardness = 350;
 		bool sleeping_enabled = true;
 		double sleep_delay = 0.5;
-		int non_sleepy_tick_thresehold = 3;
+		int non_sleepy_tick_threshold = 3;
 
 		double vel_sleep_coeff = 0.1;
 		double ang_vel_eps = 0.1;

@@ -1,6 +1,8 @@
 #pragma once
 #include "DemoScene.h"
+#include "../ProgressBar.h"
 #include "../Mesh.h"
+#include "olcPixelGameEngine.h"
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
 
 class VideoDemo : public DemoScene {
@@ -22,20 +24,104 @@ public:
 		};
 	}
 
+	static const int BUFFER_SIZE = 512 * 8;
+	int buffer_indx;
+	int buffer_capacity = 0;
+	char buffer[BUFFER_SIZE];
+
+	char read8(int fd) {
+		if (buffer_indx >= buffer_capacity) {
+			buffer_indx = 0;
+			buffer_capacity = _read(fd, buffer, sizeof(char) * BUFFER_SIZE) / sizeof(char);
+			assert(buffer_capacity != 0);
+		}
+		return buffer[buffer_indx++];
+	}
+
+	void write8(int fd, char v) {
+		if (buffer_indx >= BUFFER_SIZE) {
+			flush(fd);
+		}
+		buffer[buffer_indx++] = v;
+	}
+
+	void flush(int fd) {
+		_write(fd, buffer, sizeof(char) * buffer_indx);
+		buffer_indx = 0;
+	}
+
+	void readComputation(std::string filename, std::vector<color>* colors) {
+		int fd;
+		buffer_indx = 0;
+		buffer_capacity = 0;
+		_sopen_s(&fd, filename.c_str(), _O_BINARY | _O_RDONLY, _SH_DENYRW, _S_IREAD);
+
+		int progress_bar_width = 50;
+		ProgressBarState progress_bar_state{ INITIALIZING };
+
+		int n_spheres;
+		int i1 = read8(fd);
+		int i2 = read8(fd);
+		int i3 = read8(fd);
+		int i4 = read8(fd);
+		n_spheres = (0xFF000000 & (i4 << 24)) | (0x00FF0000 & (i4 << 16)) | (0x0000FF00 & (i2 << 8)) | (0x0000FF00 & i1);
+
+		for (int i = 0; i < n_spheres; i++) {
+			progress_bar_state = render_progress_bar(i / (float)n_spheres, progress_bar_width, false, progress_bar_state, 0.33);
+			colors->push_back(color{ read8(fd) / 255.0f, read8(fd) / 255.0f, read8(fd) / 255.0f });
+		}
+
+		render_progress_bar(1.0, progress_bar_width, true, progress_bar_state);
+		_close(fd);
+	}
+
+	void writeComputation(std::string filename, const std::vector<color>& colors) {
+		int fd;
+		buffer_indx = 0;
+		_sopen_s(&fd, filename.c_str(), _O_CREAT | _O_BINARY | _O_WRONLY, _SH_DENYRW, _S_IWRITE);
+
+		int n_spheres = colors.size();
+		write8(fd,  0x000000FF & n_spheres);
+		write8(fd, (0x0000FF00 & n_spheres) >> 8);
+		write8(fd, (0x00FF0000 & n_spheres) >> 16);
+		write8(fd, (0xFF000000 & n_spheres) >> 24);
+
+		for (color c : colors) {
+			write8(fd, c.r * 255);
+			write8(fd, c.g * 255);
+			write8(fd, c.b * 255);
+		}
+		flush(fd);
+		_close(fd);
+	}
+
+	olc::Sprite getFrame(int frame_count) {
+		char url[256];
+		sprintf_s(url, "resources/bad_apple/bad_aaple_frames/bad_apple_frame%d.png", frame_count);
+		return olc::Sprite(url);
+	}
+
 	void run() override {
 
-		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
 		}
 
+		phyz::ThreadManager helper_threads;
+		if (properties.n_threads != 0) {
+			helper_threads.init(properties.n_threads);
+		}
+
 		phyz::PhysicsEngine p;
-		p.setSleepingEnabled(true);
-		p.setPGSIterations(2, 1);
+		p.setSleepingEnabled(false); //never going to happen anyway
+		p.setPGSIterations(3, 1);
+		//p.setSleepParameters(5.0, 5.0, 1.0, 0.0, 20);
+
+		bool precompute_colors_mode = false;
 
 		bool lock_cam = true;
 
-		std::vector<PhysBod> bodies;
+		std::vector<TransformablePhysBod> bodies;
 		std::vector<phyz::ConstraintID> constraints;
 		
 		double ball_radius = 0.07;
@@ -69,14 +155,14 @@ public:
 		phyz::Geometry extruder = { dropper_extruder_tube, dropper_extruder_cube };
 
 		std::vector<mthz::Vec3> dropper_spawn_positions;
-		int n_droppers = 14;
+		int n_droppers = 10;
 		for (int i = 0; i < n_droppers; i++) {
 			mthz::Quaternion rot = mthz::Quaternion(2 * PI * i / n_droppers, mthz::Vec3(0, 1, 0));
 			phyz::Geometry dropper_ramp_rotated = dropper_ramp.getRotated(rot, funnel_pos);
 			phyz::Geometry extruder_rotated = extruder.getRotated(rot, funnel_pos);
 
-			bodies.push_back({ fromGeometry(dropper_ramp_rotated), p.createRigidBody(dropper_ramp_rotated, true) });
-			bodies.push_back({ fromGeometry(extruder_rotated), p.createRigidBody(extruder_rotated, true) });
+			bodies.push_back(TransformablePhysBod(fromGeometry(dropper_ramp_rotated), p.createRigidBody(dropper_ramp_rotated, true)));
+			bodies.push_back(TransformablePhysBod(fromGeometry(extruder_rotated), p.createRigidBody(extruder_rotated, true)));
 
 			mthz::Vec3 ball_spawn_pos = rot.applyRotation(dropper_extruder_pos + mthz::Vec3(0, dropper_extruder_height / 2.0, 0));
 			dropper_spawn_positions.push_back(ball_spawn_pos);
@@ -147,21 +233,21 @@ public:
 		phyz::Geometry display_bottom = phyz::Geometry::box(display_position + mthz::Vec3(-display_case_thickness, -display_case_thickness, -display_case_thickness), 2 * display_case_thickness + ramp_width, display_case_thickness, 2 * display_case_thickness + display_gap, phyz::Material::modified_density(bottom_density));
 
 		phyz::RigidBody* display_rear_wall_r = p.createRigidBody(display_rear_wall, true);
-		bodies.push_back({ fromGeometry(display_rear_wall), display_rear_wall_r });
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_rear_wall), display_rear_wall_r));
 
 		phyz::RigidBody* display_posx_wall_r = p.createRigidBody(display_posx_wall, true);
-		bodies.push_back({ fromGeometry(display_posx_wall), display_posx_wall_r});
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_posx_wall), display_posx_wall_r));
 
 		phyz::RigidBody* display_negx_wall_r = p.createRigidBody(display_negx_wall, true);
-		bodies.push_back({ fromGeometry(display_negx_wall), display_negx_wall_r });
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_negx_wall), display_negx_wall_r));
 
 		phyz::RigidBody* display_front_wall_r = p.createRigidBody(display_front_wall, true);
 
 		phyz::RigidBody* display_front_guard_r = p.createRigidBody(display_front_guard, true);
-		bodies.push_back({ fromGeometry(display_front_guard), display_front_guard_r });
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_front_guard), display_front_guard_r));
 
 		phyz::RigidBody* display_bottom_r = p.createRigidBody(display_bottom);
-		bodies.push_back({ fromGeometry(display_bottom), display_bottom_r });
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_bottom), display_bottom_r));
 
 		p.disallowCollision(display_bottom_r, display_posx_wall_r);
 		p.disallowCollision(display_bottom_r, display_negx_wall_r);
@@ -169,7 +255,7 @@ public:
 		p.setMotorTargetPosition(bottom_hinge, 10000, 0);
 
 		phyz::RigidBody* ramp_r = p.createRigidBody(ramp, true);
-		bodies.push_back({ fromGeometry(ramp), ramp_r });
+		bodies.push_back(TransformablePhysBod(fromGeometry(ramp), ramp_r));
 
 		phyz::RigidBody* bucket_r = p.createRigidBody(bucket);
 		phyz::RigidBody* bucket_support_r = p.createRigidBody(bucket_support_block, true);
@@ -177,8 +263,8 @@ public:
 		bucket_r->setSleepDisabled(true);
 		p.addHingeConstraint(bucket_r, bucket_support_r, bucket_pivot_pos, mthz::Vec3(1, 0, 0), 350, 350, PI * 0.03);
 
-		bodies.push_back({ fromGeometry(bucket), bucket_r });
-		bodies.push_back({ fromGeometry(bucket_support_block), bucket_support_r });
+		bodies.push_back(TransformablePhysBod(fromGeometry(bucket), bucket_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(bucket_support_block), bucket_support_r));
 
 		phyz::RigidBody* bucket_rest_rod_r = p.createRigidBody(bucket_rest_rod, true);
 		bodies.push_back({ fromGeometry(bucket_rest_rod), bucket_rest_rod_r });
@@ -189,16 +275,12 @@ public:
 		phyz::RigidBody* delete_box_r = p.createRigidBody(delete_box, true);
 
 		phyz::RigidBody* funnel_r = p.createRigidBody(funnel, true);
-		bodies.push_back({ fromGeometry(funnel), funnel_r });
-
-		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
-		rndr::Shader shader("resources/shaders/Basic.shader");
-		shader.bind();
+		bodies.push_back(TransformablePhysBod(fromGeometry(funnel), funnel_r));
 
 		float t = 0;
 		float fElapsedTime;
 
-		mthz::Vec3 pos(0, 0, 10);
+		mthz::Vec3 pos = display_position + mthz::Vec3(ramp_width / 2.0, display_height / 2.0, 6);
 		mthz::Quaternion orient;
 		double mv_speed = 2;
 		double rot_speed = 1;
@@ -209,6 +291,7 @@ public:
 		int ticks_per_balldrop = 0.25 / timestep;
 		int display_release_tick_counter = 0;
 		int ticks_for_release_time = 3 / timestep;
+		bool next_frame_trigger_reset = true;
 
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -7.0, 0));
@@ -217,68 +300,98 @@ public:
 			p.setMotorTargetPosition(bottom_hinge, 10000, -PI/2.0);
 
 			display_release_tick_counter = ticks_for_release_time;
+			display_bottom_r->setFixed(false);
 		});
 
 		int tick_count = 0;
+		int frame_count = 0;
+		int N_FRAMES = 6572;
+		int n_balls_spawned = 0;
+		double video_aspect_ratio = 360.0 / 480.0;
+		unsigned int starting_id = p.getNextBodyID(); //id of all spawned balls >= this number
+		std::vector<color> ball_colors;
 
-		while (rndr::render_loop(&fElapsedTime)) {
+		if (precompute_colors_mode) {
+			printf("Calculating the colors of the balls\n");
 
-			if (rndr::getKeyDown(GLFW_KEY_W)) {
-				pos += orient.applyRotation(mthz::Vec3(0, 0, -1) * fElapsedTime * mv_speed);
-			}
-			else if (rndr::getKeyDown(GLFW_KEY_S)) {
-				pos += orient.applyRotation(mthz::Vec3(0, 0, 1) * fElapsedTime * mv_speed);
-			}
-			if (rndr::getKeyDown(GLFW_KEY_A)) {
-				pos += orient.applyRotation(mthz::Vec3(-1, 0, 0) * fElapsedTime * mv_speed);
-			}
-			else if (rndr::getKeyDown(GLFW_KEY_D)) {
-				pos += orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
-			}
+			int progress_bar_width = 50;
+			ProgressBarState progress_bar_state{ INITIALIZING };
 
-			if (rndr::getKeyDown(GLFW_KEY_UP)) {
-				orient = orient * mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
-			}
-			else if (rndr::getKeyDown(GLFW_KEY_DOWN)) {
-				orient = orient * mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
-			}
-			if (rndr::getKeyDown(GLFW_KEY_LEFT)) {
-				orient = mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
-			}
-			else if (rndr::getKeyDown(GLFW_KEY_RIGHT)) {
-				orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
-			}
-
-			t += fElapsedTime;
-
-			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
-				manager->deselectCurrentScene();
-				return;
-			}
-
-
-			phyz_time += fElapsedTime;
-			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
-			while (phyz_time > timestep) {
+			while (frame_count <= N_FRAMES) {
 				phyz_time -= timestep;
 				p.timeStep();
 
 				tick_count++;
 
+				//trigger next frame
+				if (display_release_tick_counter == ticks_for_release_time && next_frame_trigger_reset) {
+					printf("hi\n");
+					progress_bar_state = render_progress_bar(frame_count / (float)N_FRAMES, progress_bar_width, false, progress_bar_state, 0.33);
+					next_frame_trigger_reset = false;
+					//first time this is triggered there are no balls in the display
+					if (frame_count != 0) {
+						olc::Sprite image = getFrame(frame_count);
+
+						double canvas_min_x = display_position.x;
+						double canvas_min_y = display_position.y;
+						double canvas_width = ramp_width;
+						double canvas_height = video_aspect_ratio * ramp_width;
+
+						double pixel_width = canvas_width / image.width;
+						double pixel_height = canvas_height / image.height;
+
+						int total_pixel_count = image.width * image.height;
+
+						for (int px = 0; px < image.width; px++) {
+							for (int py = 0; py < image.height; py++) {
+
+								olc::Pixel col = image.GetPixel(px, py);
+
+								int pixel_substep_count = 2;
+								for (int sx = 0; sx < pixel_substep_count; sx++) {
+									for (int sy = 0; sy < pixel_substep_count; sy++) {
+
+										double ray_origin_x = canvas_min_x + (px + (sx + 1) / (pixel_substep_count + 1)) * pixel_width;
+										double ray_origin_y = canvas_min_y + canvas_height - (py + (sy + 1) / (pixel_substep_count + 1)) * pixel_height;
+
+										double ray_origin_z = 5.0;
+										mthz::Vec3 ray_dir(0, 0, -1);
+										mthz::Vec3 ray_origin(ray_origin_x, ray_origin_y, ray_origin_z);
+
+										phyz::RayHitInfo hit = p.raycastFirstIntersection(ray_origin, ray_dir, { display_front_wall_r });
+										if (hit.did_hit && hit.hit_object->getID() >= starting_id) {
+											ball_colors[hit.hit_object->getID() - starting_id] = color{ col.r / 255.0f, col.g / 255.0f, col.b / 255.0f };
+										}
+									}
+								}
+							}
+						}
+					}
+					frame_count += 500;
+				}
+
 				display_release_tick_counter--;
 				if (display_release_tick_counter == 0) {
+					next_frame_trigger_reset = true;
 					p.setMotorTargetPosition(bottom_hinge, 10000, 0);
+				}
+
+				
+				if (display_release_tick_counter < 0 && abs(p.getMotorAngularPosition(bottom_hinge)) < 0.01) {
+					display_bottom_r->setFixed(true);
 				}
 
 				if (tick_count % ticks_per_balldrop == 0) {
 					for (mthz::Vec3 spawn_pos : dropper_spawn_positions) {
 						phyz::Geometry ball = phyz::Geometry::sphere(spawn_pos, ball_radius);
 						phyz::RigidBody* ball_r = p.createRigidBody(ball);
-						bodies.push_back({ fromGeometry(ball), ball_r });
+						bodies.push_back(TransformablePhysBod(fromGeometry(ball), ball_r));
+
+						ball_colors.push_back(color{ 0.0f, 0.0f, 0.0f });
 
 						p.registerCollisionAction(phyz::CollisionTarget::with(ball_r), phyz::CollisionTarget::with(delete_box_r), [&, ball_r](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
 							p.removeRigidBody(ball_r);
-							
+
 							for (int i = 0; i < bodies.size(); i++) {
 								if (bodies[i].r == ball_r) {
 									bodies.erase(bodies.begin() + i);
@@ -290,35 +403,134 @@ public:
 				}
 			}
 
-			rndr::clear(rndr::color(0.7f, 0.7f, 0.7f));
-			batch_array.flush();
+			progress_bar_state = render_progress_bar(1.0, progress_bar_width, true, progress_bar_state);
 
-			mthz::Vec3 cam_pos = pos;
-			mthz::Quaternion cam_orient = orient;
+			writeComputation("resources/precomputations/bad_apple_colors.txt", ball_colors);
+		}
+		else {
+			rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
 
-			mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
-			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
+			readComputation("resources/precomputations/bad_apple_colors.txt", &ball_colors);
+			rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
+			rndr::Shader shader("resources/shaders/Basic.shader");
+			shader.bind();
 
-			double aspect_ratio = (double)properties.window_height / properties.window_width;
-			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0));
-			shader.setUniform3f("u_ambient_light", 1.0, 1.0, 1.0);
-			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-			shader.setUniform3f("u_pointlight_col", 0.0, 0.0, 0.0);
-			shader.setUniform1i("u_Asleep", false);
+			while (rndr::render_loop(&fElapsedTime)) {
 
-			for (const PhysBod& b : bodies) {
-
-				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, b.r->getAsleep(), color{ 1.0f, 0.0f, 0.0f });
-
-				if (batch_array.remainingCapacity() <= transformed_mesh.vertices.size()) {
-					rndr::draw(batch_array, shader);
-					batch_array.flush();
+				if (rndr::getKeyDown(GLFW_KEY_W)) {
+					pos += orient.applyRotation(mthz::Vec3(0, 0, -1) * fElapsedTime * mv_speed);
 				}
-				batch_array.push(transformed_mesh.vertices.data(), transformed_mesh.vertices.size(), transformed_mesh.indices);
-			}
+				else if (rndr::getKeyDown(GLFW_KEY_S)) {
+					pos += orient.applyRotation(mthz::Vec3(0, 0, 1) * fElapsedTime * mv_speed);
+				}
+				if (rndr::getKeyDown(GLFW_KEY_A)) {
+					pos += orient.applyRotation(mthz::Vec3(-1, 0, 0) * fElapsedTime * mv_speed);
+				}
+				else if (rndr::getKeyDown(GLFW_KEY_D)) {
+					pos += orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
+				}
 
-			rndr::draw(batch_array, shader);
+				if (rndr::getKeyDown(GLFW_KEY_UP)) {
+					orient = orient * mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
+				}
+				else if (rndr::getKeyDown(GLFW_KEY_DOWN)) {
+					orient = orient * mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
+				}
+				if (rndr::getKeyDown(GLFW_KEY_LEFT)) {
+					orient = mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
+				}
+				else if (rndr::getKeyDown(GLFW_KEY_RIGHT)) {
+					orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
+				}
+
+				t += fElapsedTime;
+
+				if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
+					manager->deselectCurrentScene();
+					return;
+				}
+
+
+				phyz_time += fElapsedTime;
+				phyz_time = std::min<double>(phyz_time, 1.0 / 24.0);
+				while (phyz_time > timestep) {
+					phyz_time -= timestep;
+					p.timeStep();
+
+					tick_count++;
+
+					display_release_tick_counter--;
+					if (display_release_tick_counter == 0) {
+						p.setMotorTargetPosition(bottom_hinge, 10000, 0);
+					}
+					if (display_release_tick_counter < 0 && abs(p.getMotorAngularPosition(bottom_hinge)) < 0.01) {
+						display_bottom_r->setFixed(true);
+					}
+
+					if (tick_count % ticks_per_balldrop == 0 && p.getNextBodyID() - starting_id < ball_colors.size()) {
+						for (mthz::Vec3 spawn_pos : dropper_spawn_positions) {
+							n_balls_spawned++;
+							phyz::Geometry ball = phyz::Geometry::sphere(spawn_pos, ball_radius);
+							phyz::RigidBody* ball_r = p.createRigidBody(ball);
+							int ball_id = ball_r->getID();
+							bodies.push_back(TransformablePhysBod(fromGeometry(ball, ball_colors[ball_id - starting_id]), ball_r));
+
+							p.registerCollisionAction(phyz::CollisionTarget::with(ball_r), phyz::CollisionTarget::with(delete_box_r), [&, ball_r](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
+								p.removeRigidBody(ball_r);
+
+								for (int i = 0; i < bodies.size(); i++) {
+									if (bodies[i].r == ball_r) {
+										bodies.erase(bodies.begin() + i);
+										break;
+									}
+								}
+							});
+						}
+					}
+				}
+
+				//the const is a lie
+				auto setTransformedMatrix = [&](const TransformablePhysBod& b) {
+					writeTransformedTo(b.mesh, &((TransformablePhysBod&)b).transformed_mesh, b.r->getPos(), b.r->getOrientation(), pos, orient, b.r->getAsleep(), color{ 1.0, 0.0, 0.0 });
+				};
+
+				if (properties.n_threads == 0) {
+					for (TransformablePhysBod& b : bodies) {
+						setTransformedMatrix(b);
+					}
+				}
+				else {
+					helper_threads.do_all<TransformablePhysBod>(properties.n_threads, bodies, setTransformedMatrix);
+				}
+
+				rndr::clear(rndr::color(0.7f, 0.7f, 0.7f));
+				batch_array.flush();
+
+				mthz::Vec3 cam_pos = pos;
+				mthz::Quaternion cam_orient = orient;
+
+				mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
+				mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
+
+				double aspect_ratio = (double)properties.window_height / properties.window_width;
+				//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
+				shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0));
+				shader.setUniform3f("u_ambient_light", 1.0, 1.0, 1.0);
+				shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
+				shader.setUniform3f("u_pointlight_col", 0.0, 0.0, 0.0);
+				shader.setUniform1i("u_Asleep", false);
+
+				for (TransformablePhysBod& b : bodies) {
+
+					if (batch_array.remainingCapacity() <= b.transformed_mesh.vertices.size()) {
+						rndr::draw(batch_array, shader);
+						batch_array.flush();
+					}
+					batch_array.push(b.transformed_mesh.vertices.data(), b.transformed_mesh.vertices.size(), b.transformed_mesh.indices);
+				}
+
+				rndr::draw(batch_array, shader);
+			}
 		}
 	}
 };

@@ -136,6 +136,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\main_old.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
+    <ClCompile Include="src\ProgressBar.cpp" />
     <ClCompile Include="src\renderer\IndexBuffer.cpp" />
     <ClCompile Include="src\renderer\Renderer.cpp" />
     <ClCompile Include="src\renderer\Shader.cpp" />
@@ -164,6 +165,7 @@
     <ClInclude Include="src\Demos\VideoDemo.h" />
     <ClInclude Include="src\Demos\WreckingBallDemo.h" />
     <ClInclude Include="src\Mesh.h" />
+    <ClInclude Include="src\ProgressBar.h" />
     <ClInclude Include="src\renderer\IndexBuffer.h" />
     <ClInclude Include="src\renderer\Mat4.h" />
     <ClInclude Include="src\renderer\Renderer.h" />

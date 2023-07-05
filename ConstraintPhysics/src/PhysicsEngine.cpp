@@ -74,12 +74,12 @@ namespace phyz {
 			if (!b->asleep && !b->fixed) {
 				b->recordMovementState(sleep_delay / step_time);
 
-				if (bodySleepy(b->history)) {
+				if (bodySleepy(b)) {
 					b->sleep_ready_counter += step_time;
 				}
 				else {
 					b->non_sleepy_tick_count++;
-					if (b->non_sleepy_tick_count >= non_sleepy_tick_thresehold) {
+					if (b->non_sleepy_tick_count >= non_sleepy_tick_threshold) {
 						b->sleep_ready_counter = 0.0;
 						b->non_sleepy_tick_count = 0;
 					}
@@ -472,6 +472,10 @@ namespace phyz {
 		return out;
 	}
 
+	unsigned int PhysicsEngine::getNextBodyID() {
+		return next_id;
+	}
+
 	ConstraintID PhysicsEngine::addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength) {
 		return addBallSocketConstraint(b1, b2, attach_pos_local, attach_pos_local, pos_correct_strength);
 	}
@@ -841,6 +845,13 @@ namespace phyz {
 		warm_start_disabled = b;
 	}
 
+	void PhysicsEngine::setSleepParameters(double vel_sensitivity, double ang_vel_sensitivity, double aceleration_sensitivity, double sleep_assesment_time, int non_sleepy_tick_threshold) {
+		vel_sleep_coeff = vel_sensitivity;
+		ang_vel_eps = ang_vel_sensitivity;
+		accel_sleep_coeff = aceleration_sensitivity;
+		this->non_sleepy_tick_threshold = non_sleepy_tick_threshold;
+	}
+
 	void PhysicsEngine::deleteWarmstartData(RigidBody* r) {
 		ConstraintGraphNode* n = constraint_graph_nodes[r->getID()];
 
@@ -887,7 +898,11 @@ namespace phyz {
 
 	//TODO make ang vel more sensitive
 	//average can be saved an adjusted per frame if necessary for performance
-	bool PhysicsEngine::bodySleepy(const std::vector<RigidBody::MovementState>& body_history) {
+	bool PhysicsEngine::bodySleepy(RigidBody* r) {
+		//not ideal as it prevents all other bodies in the same island from sleeping as well, but to make work otherwise would require a lot of reworking, and its a pretty niche use case
+		if (r->sleep_disabled) return false;	
+
+		const std::vector<RigidBody::MovementState>& body_history = r->history;
 		int n = body_history.size();
 		if (n == 0 || 2 * n < (sleep_delay / step_time)) {
 			return false;
@@ -1278,7 +1293,7 @@ namespace phyz {
 			});
 			if (sleeping_enabled && all_ready_to_sleep) {
 				for (RigidBody* b : island_bodies) {
-					if (!b->sleep_disabled) b->sleep();
+					b->sleep();
 				}
 			}
 			else if (island_constraints.size() > 0) {
@@ -1317,6 +1332,7 @@ namespace phyz {
 		col_actions.erase(action_key);
 	}
 
+	//would be nice to do something like fetch motor eventually but the redundancy is acceptable for now
 	void PhysicsEngine::setPiston(ConstraintID id, double max_force, double target_velocity) {
 		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
 		if (id.type == ConstraintID::SLIDER) {

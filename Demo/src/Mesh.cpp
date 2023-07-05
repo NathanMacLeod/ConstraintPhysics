@@ -156,5 +156,8 @@ void writeTransformedTo(const Mesh& m, Mesh* out, mthz::Vec3 model_position, mth
 		if (recolor) {
 			out->vertices[i].r = new_color.r; out->vertices[i].g = new_color.g; out->vertices[i].b = new_color.b;
 		}
+		else {
+			out->vertices[i].r = m.vertices[i].r; out->vertices[i].g = m.vertices[i].g; out->vertices[i].b = m.vertices[i].b;
+		}
 	}
 }

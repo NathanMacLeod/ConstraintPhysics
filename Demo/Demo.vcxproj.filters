@@ -42,6 +42,9 @@
     <ClCompile Include="src\Demos\DemoScene.cpp">
       <Filter>src\Demos</Filter>
     </ClCompile>
+    <ClCompile Include="src\ProgressBar.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\renderer\Renderer.h">
@@ -100,6 +103,9 @@
     </ClInclude>
     <ClInclude Include="src\Demos\VideoDemo.h">
       <Filter>src\Demos</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ProgressBar.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
