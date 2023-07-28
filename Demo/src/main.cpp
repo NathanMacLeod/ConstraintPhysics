@@ -26,7 +26,7 @@ int main() {
 	manager.registerScene("Trebuchet", "Launch projectiles with a simulated floating-arm trebuchet.", [](DemoManager* m, DemoProperties p) { return new TrebuchetDemo(m, p); });
 	manager.registerScene("Angular Momentum Demo", "A common demonstration of the conservation of angular momentom, recreated in the engine", [](DemoManager* m, DemoProperties p) { return new AngularMomentumDemo(m, p); });
 	manager.registerScene("Gyroscope", "A simulated gyroscope", [](DemoManager* m, DemoProperties p) { return new GyroscopeDemo(m, p); });
-	manager.registerScene("Video Demo", ":o", [](DemoManager* m, DemoProperties p) { return new VideoDemo(m, p); });
+	manager.registerScene("Bad Apple Demo", "Renders bad apple veeerrryyyyy slowly. NOTE: comes with an existing precomputation, which may or may not work on your system. Run for more info", [](DemoManager* m, DemoProperties p) { return new VideoDemo(m, p); });
 	manager.registerScene("Debug demo", "for setting up debug scenes", [](DemoManager* m, DemoProperties p) { return new DebugDemo(m, p); });
 
 	manager.selectProperties();

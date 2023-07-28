@@ -1,6 +1,6 @@
 #include "ProgressBar.h"
 
-ProgressBarState render_progress_bar(double percent, int width, bool done, ProgressBarState prev_state, float animation_wait_time) {
+ProgressBarState render_progress_bar(double percent, int width, bool done, ProgressBarState prev_state, float force_update_time, bool show_animation) {
 	static std::vector<std::string> animation_c = { "|@-----<", ">-@----<", ">--@---<", ">---@--<", ">----@-<", ">-----@|", ">----@-<", ">---@--<", ">--@---<", ">-@----<" };
 	ProgressBarState out = prev_state;
 	out.use_status = IN_USE;
@@ -10,13 +10,13 @@ ProgressBarState render_progress_bar(double percent, int width, bool done, Progr
 	out.current_percent_int = current_percent_int;
 	float time_since_last_render = prev_state.use_status != IN_USE ? -1 : std::chrono::duration<float>(now - prev_state.last_render_time).count();
 	//should rerender progress bar?
-	if (prev_state.use_status != IN_USE || time_since_last_render > animation_wait_time || (animation_wait_time == std::numeric_limits<float>::infinity() && current_percent_int != prev_state.current_percent_int) || done) {
+	if (prev_state.use_status != IN_USE || time_since_last_render > force_update_time || (force_update_time == std::numeric_limits<float>::infinity() && current_percent_int != prev_state.current_percent_int) || done) {
 		out.last_render_time = now;
 		//clear any previous characters
 		printf("%200s\r", "");
 
 		//render loading animation
-		if (prev_state.use_status != UNUSED && !done) {
+		if (prev_state.use_status != UNUSED && !done && show_animation) {
 			int animation_state = prev_state.use_status == INITIALIZING ? 0 : (prev_state.animation_state + 1) % animation_c.size();
 			out.animation_state = animation_state;
 			printf("  %s ", animation_c[animation_state].c_str());

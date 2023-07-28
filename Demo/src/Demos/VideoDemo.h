@@ -5,6 +5,8 @@
 #include "olcPixelGameEngine.h"
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
 
+#include <iostream>
+
 class VideoDemo : public DemoScene {
 public:
 	VideoDemo(DemoManager* manager, DemoProperties properties) : DemoScene(manager, properties) {}
@@ -69,10 +71,10 @@ public:
 		int i2 = read8(fd);
 		int i3 = read8(fd);
 		int i4 = read8(fd);
-		n_spheres = (0xFF000000 & (i4 << 24)) | (0x00FF0000 & (i4 << 16)) | (0x0000FF00 & (i2 << 8)) | (0x000000FF & i1);
+		n_spheres = (0xFF000000 & (i4 << 24)) | (0x00FF0000 & (i3 << 16)) | (0x0000FF00 & (i2 << 8)) | (0x000000FF & i1);
 
 		for (int i = 0; i < n_spheres; i++) {
-			progress_bar_state = render_progress_bar(i / (float)n_spheres, progress_bar_width, false, progress_bar_state, 0.33);
+			progress_bar_state = render_progress_bar(i / (float)n_spheres, progress_bar_width, false, progress_bar_state, 0.33, true);
 			colors->push_back(color{ read8(fd) / 255.0f, read8(fd) / 255.0f, read8(fd) / 255.0f });
 		}
 
@@ -107,7 +109,25 @@ public:
 		return olc::Sprite(url);
 	}
 
+	struct ColorHitInfo {
+		color color_sum;
+		int hit_count = 0;
+	};
+
+	std::string message = "This repository includes the precomputation colors (saved in Demo/resources/precomputation/bad_apple_colors.txt) generated such that the animation will work for my system, but there is no gurantee that they will work for yours.\n"
+		"If they do not work, and you want to run the animation, you will have to recompute them yourself. First, delete the old precomputation. Then, you will need the frames of Bad Apple to generate the precomputation.\n\n"
+		"For size reasons, the frames are not included in the repository.\n"
+		"a zip of the files can be downloaded from here:\n"
+		"https://drive.google.com/file/d/1shzoR-C-iM0UoIdzUDJGmQgXZ7tUFtMA/view?usp=sharing\n\n"
+		"Simply unzip the contents into the directory Demo/resources/precomputations/bad_apple\n"
+		"Such that the file path of each frame is Demo/resources/precomputations/bad_apple/bad_apple_frame_i.png\n";
+
 	void run() override {
+
+		printf("%s", message.c_str());
+
+		printf("\nPress any key to continue: \n");
+		std::getchar();
 
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
@@ -127,7 +147,9 @@ public:
 
 		bool lock_cam = true;
 		
-		color gray = { 0.2, 0.2, 0.2 };
+		color yellow = { 249 / 255.0f, 186 / 255.0f, 50 / 255.0f };
+		color blue = { 66 / 255.0f, 110 / 255.0f, 134 / 255.0f };
+		color orange = { 240 / 255.0f, 129 / 255.0f, 15 / 255.0f };
 
 		std::vector<TransformablePhysBod> bodies;
 		std::vector<phyz::ConstraintID> constraints;
@@ -169,15 +191,15 @@ public:
 			phyz::Geometry dropper_ramp_rotated = dropper_ramp.getRotated(rot, funnel_pos);
 			phyz::Geometry extruder_rotated = extruder.getRotated(rot, funnel_pos);
 
-			bodies.push_back(TransformablePhysBod(fromGeometry(dropper_ramp_rotated, gray), p.createRigidBody(dropper_ramp_rotated, true)));
-			bodies.push_back(TransformablePhysBod(fromGeometry(extruder_rotated, gray), p.createRigidBody(extruder_rotated, true)));
+			bodies.push_back(TransformablePhysBod(fromGeometry(dropper_ramp_rotated, blue), p.createRigidBody(dropper_ramp_rotated, true)));
+			bodies.push_back(TransformablePhysBod(fromGeometry(extruder_rotated, yellow), p.createRigidBody(extruder_rotated, true)));
 
 			mthz::Vec3 ball_spawn_pos = rot.applyRotation(dropper_extruder_pos + mthz::Vec3(0, dropper_extruder_height / 2.0, 0));
 			dropper_spawn_positions.push_back(ball_spawn_pos);
 		}
 
 		double bucket_funnel_gap = 1;
-		double bucket_radius = 7 * ball_radius;
+		double bucket_radius = 7.33 * ball_radius;
 		double bucket_height = 28 * ball_radius;
 		double bucket_thickness = 0.1;
 		double bucket_bottom_density = 6.5 * bucket_height;
@@ -230,7 +252,7 @@ public:
 		double display_gap = 4 * ball_radius;
 		double display_guard_height = 0.5;
 		double display_height = 50 * ball_radius;
-		double bottom_density = 10000;
+		double bottom_density = 11500;
 		mthz::Vec3 display_position = ramp_position + mthz::Vec3(0, -ramp_length * sin(ramp_angle) - display_height, ramp_length * cos(ramp_angle) + ramp_thickness * sin(ramp_angle));
 
 		phyz::Geometry display_rear_wall = phyz::Geometry::box(display_position + mthz::Vec3(0, 0, -display_case_thickness), ramp_width, display_height, ramp_thickness);
@@ -241,21 +263,21 @@ public:
 		phyz::Geometry display_bottom = phyz::Geometry::box(display_position + mthz::Vec3(-display_case_thickness, -display_case_thickness, -display_case_thickness), 2 * display_case_thickness + ramp_width, display_case_thickness, 2 * display_case_thickness + display_gap, phyz::Material::modified_density(bottom_density));
 
 		phyz::RigidBody* display_rear_wall_r = p.createRigidBody(display_rear_wall, true);
-		bodies.push_back(TransformablePhysBod(fromGeometry(display_rear_wall, gray), display_rear_wall_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_rear_wall, blue), display_rear_wall_r));
 
 		phyz::RigidBody* display_posx_wall_r = p.createRigidBody(display_posx_wall, true);
-		bodies.push_back(TransformablePhysBod(fromGeometry(display_posx_wall, gray), display_posx_wall_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_posx_wall, blue), display_posx_wall_r));
 
 		phyz::RigidBody* display_negx_wall_r = p.createRigidBody(display_negx_wall, true);
-		bodies.push_back(TransformablePhysBod(fromGeometry(display_negx_wall, gray), display_negx_wall_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_negx_wall, blue), display_negx_wall_r));
 
 		phyz::RigidBody* display_front_wall_r = p.createRigidBody(display_front_wall, true);
 
 		phyz::RigidBody* display_front_guard_r = p.createRigidBody(display_front_guard, true);
-		bodies.push_back(TransformablePhysBod(fromGeometry(display_front_guard, gray), display_front_guard_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_front_guard, blue), display_front_guard_r));
 
 		phyz::RigidBody* display_bottom_r = p.createRigidBody(display_bottom);
-		bodies.push_back(TransformablePhysBod(fromGeometry(display_bottom, gray), display_bottom_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(display_bottom, blue), display_bottom_r));
 
 		p.disallowCollision(display_bottom_r, display_posx_wall_r);
 		p.disallowCollision(display_bottom_r, display_negx_wall_r);
@@ -263,7 +285,7 @@ public:
 		p.setMotorTargetPosition(bottom_hinge, 10000, 0);
 
 		phyz::RigidBody* ramp_r = p.createRigidBody(ramp, true);
-		bodies.push_back(TransformablePhysBod(fromGeometry(ramp, gray), ramp_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(ramp, blue), ramp_r));
 
 		phyz::RigidBody* bucket_r = p.createRigidBody(bucket);
 		phyz::RigidBody* bucket_support_r = p.createRigidBody(bucket_support_block, true);
@@ -271,11 +293,11 @@ public:
 		bucket_r->setSleepDisabled(true);
 		p.addHingeConstraint(bucket_r, bucket_support_r, bucket_pivot_pos, mthz::Vec3(1, 0, 0), 350, 350, PI * 0.03);
 
-		bodies.push_back(TransformablePhysBod(fromGeometry(bucket, gray), bucket_r));
-		bodies.push_back(TransformablePhysBod(fromGeometry(bucket_support_block, gray), bucket_support_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(bucket, blue), bucket_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(bucket_support_block, yellow), bucket_support_r));
 
 		phyz::RigidBody* bucket_rest_rod_r = p.createRigidBody(bucket_rest_rod, true);
-		bodies.push_back({ fromGeometry(bucket_rest_rod, gray), bucket_rest_rod_r });
+		bodies.push_back({ fromGeometry(bucket_rest_rod, yellow), bucket_rest_rod_r });
 		
 		double delete_box_height = -50;
 		double delete_box_dim = 10000;
@@ -283,7 +305,7 @@ public:
 		phyz::RigidBody* delete_box_r = p.createRigidBody(delete_box, true);
 
 		phyz::RigidBody* funnel_r = p.createRigidBody(funnel, true);
-		bodies.push_back(TransformablePhysBod(fromGeometry(funnel, gray), funnel_r));
+		bodies.push_back(TransformablePhysBod(fromGeometry(funnel, orange), funnel_r));
 
 		float t = 0;
 		float fElapsedTime;
@@ -313,19 +335,20 @@ public:
 
 		int tick_count = 0;
 		int frame_count = 0;
-		int N_FRAMES = 1;// 6572;
+		int N_FRAMES = 6572;
 		int n_balls_spawned = 0;
 		double video_aspect_ratio = 360.0 / 480.0;
 		unsigned int starting_id = p.getNextBodyID(); //id of all spawned balls >= this number
-		std::vector<color> ball_colors;
 
 		if (precompute_colors_mode) {
-			printf("Calculating the colors of the balls\n");
+			printf("Precomputation not found. Calculating the colors of the balls and saving to Demo/resources/precomputations/bad_apple_colors.txt\n");
 
 			int progress_bar_width = 50;
 			ProgressBarState progress_bar_state{ INITIALIZING };
-			progress_bar_state = render_progress_bar(0.0f, progress_bar_width, false, progress_bar_state, 0.33);
+			progress_bar_state = render_progress_bar(0.0f, progress_bar_width, false, progress_bar_state, 0.1);
 
+
+			std::vector<ColorHitInfo> ball_colors;
 			while (frame_count <= N_FRAMES) {
 				phyz_time -= timestep;
 				p.timeStep();
@@ -368,7 +391,10 @@ public:
 
 										phyz::RayHitInfo hit = p.raycastFirstIntersection(ray_origin, ray_dir, { display_front_wall_r });
 										if (hit.did_hit && hit.hit_object->getID() >= starting_id) {
-											ball_colors[hit.hit_object->getID() - starting_id] = color{ col.r / 255.0f, col.g / 255.0f, col.b / 255.0f };
+											ball_colors[hit.hit_object->getID() - starting_id].color_sum.r += col.r / 255.0f;
+											ball_colors[hit.hit_object->getID() - starting_id].color_sum.g += col.g / 255.0f;
+											ball_colors[hit.hit_object->getID() - starting_id].color_sum.b += col.b / 255.0f;
+											ball_colors[hit.hit_object->getID() - starting_id].hit_count++;
 										}
 									}
 								}
@@ -377,7 +403,7 @@ public:
 					}
 					frame_count += 2;
 
-					progress_bar_state = render_progress_bar(frame_count / (float)N_FRAMES, progress_bar_width, false, progress_bar_state, 0.33);
+					progress_bar_state = render_progress_bar(frame_count / (float)N_FRAMES, progress_bar_width, false, progress_bar_state, 0.1);
 				}
 
 				display_release_tick_counter--;
@@ -397,7 +423,7 @@ public:
 						phyz::RigidBody* ball_r = p.createRigidBody(ball);
 						bodies.push_back(TransformablePhysBod(fromGeometry(ball), ball_r));
 
-						ball_colors.push_back(color{ 0.0f, 1.0f, 0.0f });
+						ball_colors.push_back(ColorHitInfo{ color{ 0.0f, 0.0f, 0.0f }, 0 });
 
 						p.registerCollisionAction(phyz::CollisionTarget::with(ball_r), phyz::CollisionTarget::with(delete_box_r), [&, ball_r](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
 							p.removeRigidBody(ball_r);
@@ -415,7 +441,12 @@ public:
 
 			progress_bar_state = render_progress_bar(1.0, progress_bar_width, true, progress_bar_state);
 
-			writeComputation("resources/precomputations/bad_apple_colors.txt", ball_colors);
+			std::vector<color> finalized_colors(ball_colors.size());
+			for (int i = 0; i < ball_colors.size(); i++) {
+				finalized_colors[i] = ball_colors[i].hit_count == 0 ? blue : color{ ball_colors[i].color_sum.r / ball_colors[i].hit_count, ball_colors[i].color_sum.g / ball_colors[i].hit_count, ball_colors[i].color_sum.b / ball_colors[i].hit_count };
+			}
+
+			writeComputation("resources/precomputations/bad_apple_colors.txt", finalized_colors);
 
 			printf("To run using the computed ball colors, re-run the demo\n");
 
@@ -423,8 +454,11 @@ public:
 			return;
 		}
 		else {
+			printf("Precomputation found. Loading...\n");
+
 			rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
 
+			std::vector<color> ball_colors;
 			readComputation("resources/precomputations/bad_apple_colors.txt", &ball_colors);
 			rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 			rndr::Shader shader("resources/shaders/Basic.shader");
@@ -518,7 +552,7 @@ public:
 					helper_threads.do_all<TransformablePhysBod>(properties.n_threads, bodies, setTransformedMatrix);
 				}
 
-				rndr::clear(rndr::color(0.7f, 0.7f, 0.7f));
+				rndr::clear(rndr::color(248 / 255.0f, 241 / 255.0f, 229 / 255.0f));
 				batch_array.flush();
 
 				mthz::Vec3 cam_pos = pos;
@@ -530,9 +564,9 @@ public:
 				double aspect_ratio = (double)properties.window_height / properties.window_width;
 				//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
 				shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0));
-				shader.setUniform3f("u_ambient_light", 0.9, 0.9, 0.9);
+				shader.setUniform3f("u_ambient_light", 0.95, 0.95, 0.95);
 				shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-				shader.setUniform3f("u_pointlight_col", 0.1, 0.1, 0.1);
+				shader.setUniform3f("u_pointlight_col", 0.05, 0.05, 0.05);
 				shader.setUniform1i("u_Asleep", false);
 
 				for (TransformablePhysBod& b : bodies) {

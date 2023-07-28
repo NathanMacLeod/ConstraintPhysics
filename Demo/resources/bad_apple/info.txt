@@ -1,0 +1,13 @@
+I've included the precomputation colors (saved in Demo/resources/precomputation/bad_apple_colors.txt) generated such that the animation will work for my system, but there is no gurantee that they will work for yours.
+If they do not work, and you want to run the animation, you will have to recompute them yourself. First, delete the old precomputation. Then, you will need the frames of Bad Apple.
+
+For size reasons, the frames are not included in the repository.
+For the bad apple demo to function, it needs a list of frames saved as png files,
+located in the filepath bad_apple/bad_apple_frames/bad_apple_frame_i.png
+
+It needs 6572 frames, named bad_apple_frame_1.png through bad_apple_frame_6572.png accordingly.
+
+a zip of the files can be downloaded from here:
+https://drive.google.com/file/d/1shzoR-C-iM0UoIdzUDJGmQgXZ7tUFtMA/view?usp=sharing
+
+Simply unzip into the same file as this text file.

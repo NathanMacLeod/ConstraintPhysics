@@ -113,7 +113,7 @@ private:
 		ProgressBarState progress_bar_state{ INITIALIZING };
 
 		for (int i = 0; i < n_frames; i++) {
-			progress_bar_state = render_progress_bar(i / (float)n_frames, progress_bar_width, false, progress_bar_state, 0.33);
+			progress_bar_state = render_progress_bar(i / (float)n_frames, progress_bar_width, false, progress_bar_state, 0.33, true);
 			for (BodyHistory& b : *bodies) {
 				double x = read64(fd); double y = read64(fd); double z = read64(fd);
 				double r = read64(fd); double i = read64(fd); double j = read64(fd); double k = read64(fd);
@@ -411,7 +411,7 @@ public:
 				update_time += std::chrono::duration<float>(t3 - t2).count();
 				physics_time += std::chrono::duration<float>(t2 - t1).count();
 
-				progress_bar_state = render_progress_bar(i * frame_time / simulation_time, progress_bar_width, false, progress_bar_state, 0.33);
+				progress_bar_state = render_progress_bar(i * frame_time / simulation_time, progress_bar_width, false, progress_bar_state, 0.33, true);
 				
 			}
 			render_progress_bar(1.0, progress_bar_width, true, progress_bar_state);
@@ -486,7 +486,7 @@ public:
 				for (int py = 0; py < image.height; py++) {
 
 
-					progress_bar_state = render_progress_bar((px * image.height + py) / (float) total_pixel_count, progress_bar_width, false, progress_bar_state, 0.33);
+					progress_bar_state = render_progress_bar((px * image.height + py) / (float) total_pixel_count, progress_bar_width, false, progress_bar_state, 0.33, true);
 
 					olc::Pixel color = image.GetPixel(px, py);
 

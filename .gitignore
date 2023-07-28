@@ -2,7 +2,7 @@ x64/
 Math/x64
 Demo/x64
 ConstraintPhysics/x64
-Demo/resources/precomputations/*
-Demo/resources/bad_apple
+Demo/resources/precomputations/precomputation*.txt
+Demo/resources/bad_apple/bad_apple_frames
 Debug
 .vs
