@@ -5,6 +5,7 @@
 #include "../../Math/src/Mat3.h"
 #include "AABB.h"
 #include "CollisionDetect.h"
+#include "AABB_Tree.h"
 #include <vector>
 
 namespace phyz {
@@ -30,7 +31,7 @@ namespace phyz {
 		double static_friction_coeff;
 	};
 
-	enum ConvexGeometryType { POLYHEDRON, SPHERE };
+	enum ConvexGeometryType { POLYHEDRON, SPHERE, STATIC_MESH };
 	class ConvexGeometry {
 	public:
 		virtual void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) = 0;
@@ -194,4 +195,40 @@ namespace phyz {
 		int normalDirection;
 	};
 
+	//note winding (counter-clockwise) is significant, determines the normal direction 
+	struct TriIndices {
+		unsigned int i1, i2, i3;
+	};
+
+	struct StaticMeshTri {
+		mthz::Vec3 p1, p2, p3;
+		mthz::Vec3 normal;
+		GaussMap gauss_map;
+	};
+
+	class StaticMesh : ConvexGeometry {
+	public:
+		StaticMesh() : aabb_tree(0) {}
+		StaticMesh(const StaticMesh& c);
+		StaticMesh(const std::vector<mthz::Vec3>& points, const std::vector<TriIndices>& triangle_indices);
+
+		StaticMesh getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point = mthz::Vec3(0, 0, 0)) const;
+		StaticMesh getTranslated(mthz::Vec3 t) const;
+		StaticMesh getScaled(double d, mthz::Vec3 center_of_dialtion) const;
+		void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) override;
+		AABB gen_AABB() const override;
+		ConvexGeometryType getType() const override { return STATIC_MESH; };
+
+		inline const std::vector<StaticMeshTri>& getTriangles() const { return triangles; }
+		inline const AABBTree<StaticMeshTri>& getAABBTree() const { return aabb_tree; }
+
+		ConvexPrimitive::RayHitInfo testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
+
+		friend class Surface;
+		friend class Edge;
+		friend class RigidBody;
+	private:
+		std::vector<StaticMeshTri> triangles;
+		AABBTree<StaticMeshTri> aabb_tree;
+	};
 }

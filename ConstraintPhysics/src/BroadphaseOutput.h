@@ -1,13 +1,14 @@
 #pragma once
-#include "RigidBody.h"
+#include <cinttypes>
 
 namespace phyz {
 
+	template <typename T>
 	class Pair {
 	public:
-		Pair(RigidBody* t1, RigidBody* t2) {
+		Pair(T* t1, T* t2) {
 			//keep ordering consistent to avoid {x, y}; {y, x} duplicates
-			if (t1->getID() < t2->getID()) {
+			if ((int)t1 < (int)t2) {
 				this->t1 = t1;
 				this->t2 = t2;
 			}
@@ -17,19 +18,20 @@ namespace phyz {
 			}
 		}
 
-		RigidBody* t1 = nullptr;
-		RigidBody* t2 = nullptr;
+		T* t1 = nullptr;
+		T* t2 = nullptr;
 
-		//for use in std::set
+		//for use in std::set, used by octree class
+		//use of pointer values probably makes octree non-determenistic, but octree is obsolete now that I have AABB tree and thus is only kept around for fun, so whatever
 		bool operator<(const Pair& p) const {
-			if (t1->getID() < p.t1->getID()) {
+			if ((int)t1 < (int)p.t1) {
 				return true;
 			}
-			else if (t1->getID() > p.t1->getID()) {
+			else if ((int)t1 > (int)p.t1) {
 				return false;
 			}
 			else {
-				return t2->getID() < p.t2->getID();
+				return (int)t2 < (int)p.t2;
 			}
 		}
 

@@ -93,7 +93,7 @@ namespace phyz {
 
 		auto t2 = std::chrono::system_clock::now();
 
-		std::vector<Pair> possible_intersections;
+		std::vector<Pair<RigidBody>> possible_intersections;
 		switch (broadphase) {
 		case OCTREE:
 		{
@@ -114,7 +114,7 @@ namespace phyz {
 			for (int i = 0; i < bodies.size(); i++) {
 				for (int j = i + 1; j < bodies.size(); j++) {
 					if (AABB::intersects(bodies[i]->aabb, bodies[j]->aabb)) {
-						possible_intersections.push_back(Pair(bodies[i], bodies[j]));
+						possible_intersections.push_back(Pair<RigidBody>(bodies[i], bodies[j]));
 					}
 				}
 			}
@@ -126,14 +126,14 @@ namespace phyz {
 			for (int i = 0; i < bodies.size(); i++) {
 				for (int j = i + 1; j < bodies.size(); j++) {
 					if (AABB::intersects(bodies[i]->aabb, bodies[j]->aabb)) {
-						possible_intersections.push_back(Pair(bodies[i], bodies[j]));
+						possible_intersections.push_back(Pair<RigidBody>(bodies[i], bodies[j]));
 					}
 				}
 			}
 
 			auto bt2 = std::chrono::system_clock::now();
 
-			std::vector<Pair> octree_pairs;
+			std::vector<Pair<RigidBody>> octree_pairs;
 			Octree octree(octree_center, octree_size, octree_minsize);
 			for (RigidBody* b : bodies) {
 				octree.insert(b, b->aabb);
@@ -142,7 +142,7 @@ namespace phyz {
 
 			auto bt3 = std::chrono::system_clock::now();
 
-			std::vector<Pair> aabb_pairs;
+			std::vector<Pair<RigidBody>> aabb_pairs;
 			for (RigidBody* b : bodies) {
 				aabb_tree.update(b, b->aabb);
 			}
@@ -169,7 +169,9 @@ namespace phyz {
 			std::vector<ColAction> triggered_actions;
 		};
 		std::vector<TriggeredActionPair> triggered_actions;
-		auto collision_detect = [&](const Pair& p) {
+		auto collision_detect = [&](const Pair<RigidBody>& broadphase_pair) {
+			OrderedBodyPair p(broadphase_pair.t1, broadphase_pair.t2); //OrderedBodyPair enforces which body is t1/t2 in a determenstic manner. Pair does not.
+
 			RigidBody* b1 = p.t1;
 			RigidBody* b2 = p.t2;
 
@@ -261,10 +263,10 @@ namespace phyz {
 		};
 
 		if (use_multithread) {
-			thread_manager.do_all<Pair>(n_threads, possible_intersections, collision_detect);
+			thread_manager.do_all<Pair<RigidBody>>(n_threads, possible_intersections, collision_detect);
 		}
 		else {
-			for (const Pair& p : possible_intersections) {
+			for (const Pair<RigidBody>& p : possible_intersections) {
 				collision_detect(p);
 			}
 		}
@@ -818,7 +820,7 @@ namespace phyz {
 	void PhysicsEngine::setAABBTreeMarginSize(double d) {
 		assert(d >= 0);
 		aabbtree_margin_size = d;
-		aabb_tree = AABBTree(aabbtree_margin_size); //resets tree
+		aabb_tree = AABBTree<RigidBody>(aabbtree_margin_size); //resets tree
 
 		//reinsert all elements
 		for (RigidBody* r : bodies) {

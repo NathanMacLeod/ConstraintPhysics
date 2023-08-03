@@ -1,6 +1,6 @@
 #include "AABB_Tree.h"
 
-namespace phyz {
+/*namespace phyz {
 
 	AABBTree::Node::Node(const RigidBody* object, const AABB& object_aabb, double aabb_margin_size)
 		: parent(nullptr), left(nullptr), right(nullptr), is_leaf(true), leaf_object(object), leaf_object_true_aabb(object_aabb)
@@ -125,11 +125,11 @@ namespace phyz {
 		}
 	}
 
-	std::vector<Pair> AABBTree::getAllCollisionCandidates() const {
+	std::vector<Pair<RigidBody>> AABBTree::getAllCollisionCandidates() const {
 		static int prev_colpair_size = 0;
-		if (root == nullptr || root->is_leaf) return std::vector<Pair>();
+		if (root == nullptr || root->is_leaf) return std::vector<Pair<RigidBody>>();
 
-		std::vector<Pair> col_pairs;
+		std::vector<Pair<RigidBody>> col_pairs;
 		col_pairs.reserve(prev_colpair_size);
 
 		std::vector<TreePair> search_candidates = { {root->left, root->right} };
@@ -172,7 +172,7 @@ namespace phyz {
 			else {
 				//leaf x leaf
 				if (AABB::intersects(tp.n1->leaf_object_true_aabb, tp.n2->leaf_object_true_aabb)) {
-					col_pairs.push_back(Pair((RigidBody*)tp.n1->leaf_object, (RigidBody*)tp.n2->leaf_object));
+					col_pairs.push_back(Pair<RigidBody>((RigidBody*)tp.n1->leaf_object, (RigidBody*)tp.n2->leaf_object));
 				}
 			}
 		}
@@ -259,7 +259,7 @@ namespace phyz {
 
 				double min = std::min<double>(cl_vol_change, std::min<double>(cr_vol_change, std::min<double>(sl_vol_change, sr_vol_change)));
 
-				if (min >= 0) { /*no swap is best*/ }
+				if (min >= 0) { /*no swap is best*//* }
 				else if (min == cl_vol_change) {
 					Node::swpNodes(current, sibling->left);
 					sibling->setAABB(cl_aabb, cl_vol);
@@ -281,4 +281,4 @@ namespace phyz {
 			current = current->parent;
 		}
 	}
-}
+}*/

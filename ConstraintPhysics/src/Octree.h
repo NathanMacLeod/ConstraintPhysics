@@ -1,6 +1,7 @@
 #pragma once
 #include "AABB.h"
 #include "BroadphaseOutput.h"
+#include "RigidBody.h"
 #include <vector>
 #include <set>
 
@@ -16,10 +17,10 @@ namespace phyz {
 			insert_r(&root, e);
 		}
 
-		std::vector<Pair> getAllIntersections() const {
-			std::set<Pair> pairs;
+		std::vector<Pair<RigidBody>> getAllIntersections() const {
+			std::set<Pair<RigidBody>> pairs;
 			getAllIntersections_r(&root, &pairs);
-			return std::vector<Pair>(pairs.begin(), pairs.end());
+			return std::vector<Pair<RigidBody>>(pairs.begin(), pairs.end());
 		}
 
 	private:
@@ -52,7 +53,7 @@ namespace phyz {
 
 		void insert_r(OctreeNode* curr, OctElem e);
 
-		void getAllIntersections_r(const OctreeNode* curr, std::set<Pair>* out) const;
+		void getAllIntersections_r(const OctreeNode* curr, std::set<Pair<RigidBody>>* out) const;
 	
 		//map between the 8 subsections and indexes 0-7. L means lesser, G greater, masking XYZ
 		enum Oct { LLL = 0, GLL, LGL, GGL, LLG, GLG, LGG, GGG };
