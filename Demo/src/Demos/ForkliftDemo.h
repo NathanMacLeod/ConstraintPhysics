@@ -37,14 +37,14 @@ public:
 			double spacer_height = pallet_height - 3 * board_thickness;
 			int num_top_boards = 5;
 
-			phyz::Geometry xlong_board = phyz::Geometry::box(mthz::Vec3(), pallet_width, board_thickness, board_width, phyz::Material::high_friction());
-			phyz::Geometry zlong_board = phyz::Geometry::box(mthz::Vec3(), board_width, board_thickness, pallet_width, phyz::Material::high_friction());
-			phyz::Geometry spacer = phyz::Geometry::box(mthz::Vec3(), board_width, spacer_height, board_width, phyz::Material::high_friction());
+			phyz::ConvexUnionGeometry xlong_board = phyz::ConvexUnionGeometry::box(mthz::Vec3(), pallet_width, board_thickness, board_width, phyz::Material::high_friction());
+			phyz::ConvexUnionGeometry zlong_board = phyz::ConvexUnionGeometry::box(mthz::Vec3(), board_width, board_thickness, pallet_width, phyz::Material::high_friction());
+			phyz::ConvexUnionGeometry spacer = phyz::ConvexUnionGeometry::box(mthz::Vec3(), board_width, spacer_height, board_width, phyz::Material::high_friction());
 
 			double mid_d = (pallet_width - board_width) / 2.0;
 			double far_d = pallet_width - board_width;
 
-			phyz::Geometry pallet_geom = {
+			phyz::ConvexUnionGeometry pallet_geom = {
 				xlong_board.getTranslated(mthz::Vec3(0, 0, 0)), xlong_board.getTranslated(mthz::Vec3(0, 0, mid_d)), xlong_board.getTranslated(mthz::Vec3(0, 0, far_d)),
 
 				spacer.getTranslated(mthz::Vec3(0, board_thickness, 0)), spacer.getTranslated(mthz::Vec3(mid_d, board_thickness, 0)), spacer.getTranslated(mthz::Vec3(far_d, board_thickness, 0)),
@@ -55,12 +55,12 @@ public:
 			};
 			for (int i = 0; i < num_top_boards; i++) {
 				double dz = (pallet_width - board_width) / (num_top_boards - 1);
-				phyz::Geometry board = xlong_board.getTranslated(mthz::Vec3(0, 2 * board_thickness + spacer_height, i * dz));
+				phyz::ConvexUnionGeometry board = xlong_board.getTranslated(mthz::Vec3(0, 2 * board_thickness + spacer_height, i * dz));
 
-				pallet_geom = phyz::Geometry::merge(pallet_geom, board);
+				pallet_geom = phyz::ConvexUnionGeometry::merge(pallet_geom, board);
 			}
 
-			phyz::Geometry pallet = pallet_geom.getTranslated(position);
+			phyz::ConvexUnionGeometry pallet = pallet_geom.getTranslated(position);
 			phyz::RigidBody* pallet_r = p->createRigidBody(pallet);
 
 			bodies->push_back({ fromGeometry(pallet), pallet_r });
@@ -75,7 +75,7 @@ public:
 				for (int j = 0; j < n_box_width; j++) {
 					for (int k = 0; k < n_box_height; k++) {
 						phyz::Material box_material = phyz::Material::modified_density(0.1);
-						phyz::Geometry box = phyz::Geometry::box(position + mthz::Vec3((pallet_width - n_box_width * box_width) / 2.0 + i * box_width, pallet_height + k * box_height, (pallet_width - n_box_width * box_width) / 2.0 + j * box_width), box_width, box_height, box_width, box_material);
+						phyz::ConvexUnionGeometry box = phyz::ConvexUnionGeometry::box(position + mthz::Vec3((pallet_width - n_box_width * box_width) / 2.0 + i * box_width, pallet_height + k * box_height, (pallet_width - n_box_width * box_width) / 2.0 + j * box_width), box_width, box_height, box_width, box_material);
 						phyz::RigidBody* box_r = p->createRigidBody(box);
 						boxes.push_back(box_r);
 						bodies->push_back({ fromGeometry(box), box_r });
@@ -134,7 +134,7 @@ public:
 		//*******BASE PLATE*******
 		//************************
 		double s = 500;
-		phyz::Geometry geom2 = phyz::Geometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
+		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
@@ -153,36 +153,36 @@ public:
 		double chasis_base_length = 5;
 		double chasis_base_height = 1;
 		mthz::Vec3 chasis_base_pos = forklift_position + mthz::Vec3(-chasis_base_length / 2.0, -chasis_base_width / 2.0, -chasis_base_height / 2.0);
-		phyz::Geometry chasis_base = phyz::Geometry::box(chasis_base_pos, chasis_base_width, chasis_base_height, chasis_base_length, chasis_material);
+		phyz::ConvexUnionGeometry chasis_base = phyz::ConvexUnionGeometry::box(chasis_base_pos, chasis_base_width, chasis_base_height, chasis_base_length, chasis_material);
 
 		double chasis_layer2_height = 0.6;
 		double layer2_front_length = 0.5;
 		double layer2_rear_length = 3.25;
 		mthz::Vec3 layer2_front_block_position = chasis_base_pos + mthz::Vec3(0, chasis_base_height, chasis_base_length - layer2_front_length);
-		phyz::Geometry layer2_front_block = phyz::Geometry::box(layer2_front_block_position, chasis_base_width, chasis_layer2_height, layer2_front_length);
+		phyz::ConvexUnionGeometry layer2_front_block = phyz::ConvexUnionGeometry::box(layer2_front_block_position, chasis_base_width, chasis_layer2_height, layer2_front_length);
 
 		mthz::Vec3 layer2_rear_block_position = chasis_base_pos + mthz::Vec3(0, chasis_base_height, 0);
-		phyz::Geometry layer2_rear_block = phyz::Geometry::box(layer2_rear_block_position, chasis_base_width, chasis_layer2_height, layer2_rear_length);
+		phyz::ConvexUnionGeometry layer2_rear_block = phyz::ConvexUnionGeometry::box(layer2_rear_block_position, chasis_base_width, chasis_layer2_height, layer2_rear_length);
 
 		double chasis_layer3_height = 0.4;
 		double chasis_layer3_length = 2.5;
 		mthz::Vec3 layer3_block_position = layer2_rear_block_position + mthz::Vec3(0, chasis_layer2_height, 0);
-		phyz::Geometry layer3_block = phyz::Geometry::box(layer3_block_position, chasis_base_width, chasis_layer3_height, chasis_layer3_length);
+		phyz::ConvexUnionGeometry layer3_block = phyz::ConvexUnionGeometry::box(layer3_block_position, chasis_base_width, chasis_layer3_height, chasis_layer3_length);
 
 		double roof_rear_support_length = 0.25;
 		double roof_rear_support_width = 0.25;
 		double roof_rear_support_height = 2.25;
 		mthz::Vec3 roof_rear_support1_position = layer3_block_position + mthz::Vec3(0, chasis_layer3_height, chasis_layer3_length - roof_rear_support_length);
-		phyz::Geometry roof_rear_support1 = phyz::Geometry::box(roof_rear_support1_position, roof_rear_support_width, roof_rear_support_height, roof_rear_support_length);
+		phyz::ConvexUnionGeometry roof_rear_support1 = phyz::ConvexUnionGeometry::box(roof_rear_support1_position, roof_rear_support_width, roof_rear_support_height, roof_rear_support_length);
 
 		mthz::Vec3 roof_rear_support2_position = layer3_block_position + mthz::Vec3(chasis_base_width - roof_rear_support_width, chasis_layer3_height, chasis_layer3_length - roof_rear_support_length);
-		phyz::Geometry roof_rear_support2 = phyz::Geometry::box(roof_rear_support2_position, roof_rear_support_width, roof_rear_support_height, roof_rear_support_length);
+		phyz::ConvexUnionGeometry roof_rear_support2 = phyz::ConvexUnionGeometry::box(roof_rear_support2_position, roof_rear_support_width, roof_rear_support_height, roof_rear_support_length);
 
 		double roof_thickness = 0.2;
 		double roof_length = 2.25;
 
 		mthz::Vec3 roof_position = roof_rear_support1_position + mthz::Vec3(0, roof_rear_support_height, 0);
-		phyz::Geometry roof = phyz::Geometry::box(roof_position, chasis_base_width, roof_thickness, roof_length);
+		phyz::ConvexUnionGeometry roof = phyz::ConvexUnionGeometry::box(roof_position, chasis_base_width, roof_thickness, roof_length);
 
 		double front_support_gap = 0.01;
 		double front_support_width = 0.25;
@@ -193,11 +193,11 @@ public:
 		double front_support_angle = PI / 2.0 - atan(front_support_verticle_dist / front_support_horz_dist);
 
 		mthz::Vec3 front_support1_position = layer2_front_block_position + mthz::Vec3(front_support_gap, chasis_layer2_height, layer2_front_length);
-		phyz::Geometry front_support1 = phyz::Geometry::box(front_support1_position + mthz::Vec3(0, 0, -front_support_width), front_support_width, front_support_length, front_support_width)
+		phyz::ConvexUnionGeometry front_support1 = phyz::ConvexUnionGeometry::box(front_support1_position + mthz::Vec3(0, 0, -front_support_width), front_support_width, front_support_length, front_support_width)
 			.getRotated(mthz::Quaternion(-front_support_angle, mthz::Vec3(1, 0, 0)), front_support1_position); 
 
 		mthz::Vec3 front_support2_position = layer2_front_block_position + mthz::Vec3(chasis_base_width - front_support_width - front_support_gap, chasis_layer2_height, layer2_front_length);
-		phyz::Geometry front_support2 = phyz::Geometry::box(front_support2_position + mthz::Vec3(0, 0, -front_support_width), front_support_width, front_support_length, front_support_width)
+		phyz::ConvexUnionGeometry front_support2 = phyz::ConvexUnionGeometry::box(front_support2_position + mthz::Vec3(0, 0, -front_support_width), front_support_width, front_support_length, front_support_width)
 			.getRotated(mthz::Quaternion(-front_support_angle, mthz::Vec3(1, 0, 0)), front_support2_position);
 
 
@@ -214,28 +214,28 @@ public:
 		double suspension_block_size = 1.0;
 
 		mthz::Vec3 front_wheel1_position = chasis_base_pos + mthz::Vec3(-wheel_attach_gap, front_wheel_attach_height, front_wheel_attach_dist);
-		phyz::Geometry front_wheel1 = phyz::Geometry::cylinder(front_wheel1_position, front_wheel_radius, wheel_width, wheel_detail, phyz::Material::super_friction())
+		phyz::ConvexUnionGeometry front_wheel1 = phyz::ConvexUnionGeometry::cylinder(front_wheel1_position, front_wheel_radius, wheel_width, wheel_detail, phyz::Material::super_friction())
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), front_wheel1_position);
 
-		phyz::Geometry suspension_block1 = phyz::Geometry::box(front_wheel1_position + mthz::Vec3(0, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
+		phyz::ConvexUnionGeometry suspension_block1 = phyz::ConvexUnionGeometry::box(front_wheel1_position + mthz::Vec3(0, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
 
 		mthz::Vec3 front_wheel2_position = chasis_base_pos + mthz::Vec3(chasis_base_width + wheel_attach_gap, front_wheel_attach_height, front_wheel_attach_dist);
-		phyz::Geometry front_wheel2 = phyz::Geometry::cylinder(front_wheel2_position, front_wheel_radius, wheel_width, wheel_detail, phyz::Material::super_friction())
+		phyz::ConvexUnionGeometry front_wheel2 = phyz::ConvexUnionGeometry::cylinder(front_wheel2_position, front_wheel_radius, wheel_width, wheel_detail, phyz::Material::super_friction())
 			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), front_wheel2_position);
 
-		phyz::Geometry suspension_block2 = phyz::Geometry::box(front_wheel2_position + mthz::Vec3(-suspension_block_size, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
+		phyz::ConvexUnionGeometry suspension_block2 = phyz::ConvexUnionGeometry::box(front_wheel2_position + mthz::Vec3(-suspension_block_size, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
 		
 		mthz::Vec3 rear_wheel1_position = chasis_base_pos + mthz::Vec3(-wheel_attach_gap, rear_wheel_attach_height, rear_wheel_attach_dist);
-		phyz::Geometry rear_wheel1 = phyz::Geometry::cylinder(rear_wheel1_position, rear_wheel_radius, wheel_width, wheel_detail, phyz::Material::high_friction())
+		phyz::ConvexUnionGeometry rear_wheel1 = phyz::ConvexUnionGeometry::cylinder(rear_wheel1_position, rear_wheel_radius, wheel_width, wheel_detail, phyz::Material::high_friction())
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), rear_wheel1_position);
 
-		phyz::Geometry steering_block1 = phyz::Geometry::box(rear_wheel1_position + mthz::Vec3(0, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
+		phyz::ConvexUnionGeometry steering_block1 = phyz::ConvexUnionGeometry::box(rear_wheel1_position + mthz::Vec3(0, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
 
 		mthz::Vec3 rear_wheel2_position = chasis_base_pos + mthz::Vec3(chasis_base_width + wheel_attach_gap, rear_wheel_attach_height, rear_wheel_attach_dist);
-		phyz::Geometry rear_wheel2 = phyz::Geometry::cylinder(rear_wheel2_position, rear_wheel_radius, wheel_width, wheel_detail, phyz::Material::high_friction())
+		phyz::ConvexUnionGeometry rear_wheel2 = phyz::ConvexUnionGeometry::cylinder(rear_wheel2_position, rear_wheel_radius, wheel_width, wheel_detail, phyz::Material::high_friction())
 			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), rear_wheel2_position);
 
-		phyz::Geometry steering_block2 = phyz::Geometry::box(rear_wheel2_position + mthz::Vec3(-suspension_block_size, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
+		phyz::ConvexUnionGeometry steering_block2 = phyz::ConvexUnionGeometry::box(rear_wheel2_position + mthz::Vec3(-suspension_block_size, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
 
 		double mast_width = 0.4;
 		double mast_height = 7;
@@ -246,10 +246,10 @@ public:
 		mthz::Vec3 mast_position = chasis_base_pos + mthz::Vec3(chasis_base_width / 2.0, 0, chasis_base_length + mast_gap);
 
 		mthz::Vec3 mast1_position = mast_position + mthz::Vec3(-mast_separation / 2.0 - mast_width, 0, 0);
-		phyz::Geometry mast1 = phyz::Geometry::box(mast1_position, mast_width, mast_height, mast_thickness);
+		phyz::ConvexUnionGeometry mast1 = phyz::ConvexUnionGeometry::box(mast1_position, mast_width, mast_height, mast_thickness);
 
 		mthz::Vec3 mast2_position = mast_position + mthz::Vec3(mast_separation / 2.0, 0, 0);
-		phyz::Geometry mast2 = phyz::Geometry::box(mast2_position, mast_width, mast_height, mast_thickness);
+		phyz::ConvexUnionGeometry mast2 = phyz::ConvexUnionGeometry::box(mast2_position, mast_width, mast_height, mast_thickness);
 
 		double backrest_height_diff = 0.2;
 		double backrest_thickness = 0.25;
@@ -262,19 +262,19 @@ public:
 
 		mthz::Vec3 backrest_position = mast_position + mthz::Vec3(-backrest_width / 2.0, -backrest_height_diff, mast_thickness);
 
-		phyz::Geometry backrest_vert_bar1 = phyz::Geometry::box(backrest_position, backrest_beam_thickness, backrest_section1_height + backrest_section2_height, backrest_thickness);
-		phyz::Geometry backrest_vert_bar2 = phyz::Geometry::box(backrest_position + mthz::Vec3(backrest_width - backrest_beam_thickness, 0, 0), backrest_beam_thickness, backrest_section1_height + backrest_section2_height, backrest_thickness);
-		phyz::Geometry backrest_bar = phyz::Geometry::box(backrest_position + mthz::Vec3(backrest_beam_thickness, 0, 0), backrest_width - 2 * backrest_beam_thickness, backrest_beam_thickness, backrest_thickness);
-		phyz::Geometry backrest_top_bar = backrest_bar.getTranslated(mthz::Vec3(0, backrest_section1_height + backrest_section2_height - backrest_beam_thickness, 0));
+		phyz::ConvexUnionGeometry backrest_vert_bar1 = phyz::ConvexUnionGeometry::box(backrest_position, backrest_beam_thickness, backrest_section1_height + backrest_section2_height, backrest_thickness);
+		phyz::ConvexUnionGeometry backrest_vert_bar2 = phyz::ConvexUnionGeometry::box(backrest_position + mthz::Vec3(backrest_width - backrest_beam_thickness, 0, 0), backrest_beam_thickness, backrest_section1_height + backrest_section2_height, backrest_thickness);
+		phyz::ConvexUnionGeometry backrest_bar = phyz::ConvexUnionGeometry::box(backrest_position + mthz::Vec3(backrest_beam_thickness, 0, 0), backrest_width - 2 * backrest_beam_thickness, backrest_beam_thickness, backrest_thickness);
+		phyz::ConvexUnionGeometry backrest_top_bar = backrest_bar.getTranslated(mthz::Vec3(0, backrest_section1_height + backrest_section2_height - backrest_beam_thickness, 0));
 
-		phyz::Geometry backrest_bars[n_section1_bars];
+		phyz::ConvexUnionGeometry backrest_bars[n_section1_bars];
 		double dy = (backrest_section1_height - backrest_beam_thickness) / (n_section1_bars - 1);
 		for (int i = 0; i < n_section1_bars; i++) {
 			backrest_bars[i] = backrest_bar.getTranslated(mthz::Vec3(0, i*dy, 0));
 		}
 
-		phyz::Geometry backrest_support = phyz::Geometry::box(backrest_position + mthz::Vec3(0, backrest_section1_height, 0), backrest_beam_thickness, backrest_section2_height - backrest_beam_thickness, backrest_thickness);
-		phyz::Geometry backrest_supports[n_section2_supports - 2];
+		phyz::ConvexUnionGeometry backrest_support = phyz::ConvexUnionGeometry::box(backrest_position + mthz::Vec3(0, backrest_section1_height, 0), backrest_beam_thickness, backrest_section2_height - backrest_beam_thickness, backrest_thickness);
+		phyz::ConvexUnionGeometry backrest_supports[n_section2_supports - 2];
 		double dx = (backrest_width - backrest_beam_thickness) / (n_section2_supports - 1);
 		for (int i = 1; i < n_section2_supports - 1; i++) {
 			backrest_supports[i - 1] = backrest_support.getTranslated(mthz::Vec3(dx * i, 0, 0));
@@ -288,15 +288,15 @@ public:
 		double fork_length = 4;
 
 		mthz::Vec3 fork1_pos = backrest_position + mthz::Vec3(backrest_width / 2.0 - fork_gap / 2.0 - fork_width, -fork_depression, backrest_thickness);
-		phyz::Geometry fork1_vert = phyz::Geometry::box(fork1_pos, fork_width, fork_height, fork_thickness);
-		phyz::Geometry fork1_horz = phyz::Geometry::box(fork1_pos + mthz::Vec3(0, 0, fork_thickness), fork_width, fork_thickness, fork_length - fork_thickness, phyz::Material::high_friction());
+		phyz::ConvexUnionGeometry fork1_vert = phyz::ConvexUnionGeometry::box(fork1_pos, fork_width, fork_height, fork_thickness);
+		phyz::ConvexUnionGeometry fork1_horz = phyz::ConvexUnionGeometry::box(fork1_pos + mthz::Vec3(0, 0, fork_thickness), fork_width, fork_thickness, fork_length - fork_thickness, phyz::Material::high_friction());
 
 		mthz::Vec3 fork2_pos = backrest_position + mthz::Vec3(backrest_width / 2.0 + fork_gap / 2.0, -fork_depression, backrest_thickness);
-		phyz::Geometry fork2_vert = phyz::Geometry::box(fork2_pos, fork_width, fork_height, fork_thickness);
-		phyz::Geometry fork2_horz = phyz::Geometry::box(fork2_pos + mthz::Vec3(0, 0, fork_thickness), fork_width, fork_thickness, fork_length - fork_thickness, phyz::Material::high_friction());
+		phyz::ConvexUnionGeometry fork2_vert = phyz::ConvexUnionGeometry::box(fork2_pos, fork_width, fork_height, fork_thickness);
+		phyz::ConvexUnionGeometry fork2_horz = phyz::ConvexUnionGeometry::box(fork2_pos + mthz::Vec3(0, 0, fork_thickness), fork_width, fork_thickness, fork_length - fork_thickness, phyz::Material::high_friction());
 
 
-		phyz::Geometry chasis = { chasis_base, layer2_front_block, layer2_rear_block, layer3_block, roof_rear_support1, roof_rear_support2, front_support1, front_support2, roof};
+		phyz::ConvexUnionGeometry chasis = { chasis_base, layer2_front_block, layer2_rear_block, layer3_block, roof_rear_support1, roof_rear_support2, front_support1, front_support2, roof};
 		phyz::RigidBody* chasis_r = p.createRigidBody(chasis);
 		phyz::RigidBody::PKey lock_cam_pos = chasis_r->trackPoint(chasis_base_pos + mthz::Vec3(chasis_base_width/2.0, 3, 3));
 
@@ -312,15 +312,15 @@ public:
 		phyz::RigidBody* rear_wheel1_r = p.createRigidBody(rear_wheel1);
 		phyz::RigidBody* rear_wheel2_r = p.createRigidBody(rear_wheel2);
 
-		phyz::Geometry mast = { mast1, mast2 };
+		phyz::ConvexUnionGeometry mast = { mast1, mast2 };
 		phyz::RigidBody* mast_r = p.createRigidBody(mast);
 
-		phyz::Geometry backrest = { backrest_vert_bar1, backrest_vert_bar2, backrest_top_bar, fork1_vert, fork1_horz, fork2_vert, fork2_horz };
-		for (const phyz::Geometry& b : backrest_bars) {
-			backrest = phyz::Geometry::merge(b, backrest);
+		phyz::ConvexUnionGeometry backrest = { backrest_vert_bar1, backrest_vert_bar2, backrest_top_bar, fork1_vert, fork1_horz, fork2_vert, fork2_horz };
+		for (const phyz::ConvexUnionGeometry& b : backrest_bars) {
+			backrest = phyz::ConvexUnionGeometry::merge(b, backrest);
 		}
-		for (const phyz::Geometry& b : backrest_supports) {
-			backrest = phyz::Geometry::merge(b, backrest);
+		for (const phyz::ConvexUnionGeometry& b : backrest_supports) {
+			backrest = phyz::ConvexUnionGeometry::merge(b, backrest);
 		}
 		phyz::RigidBody* backrest_r = p.createRigidBody(backrest);
 
@@ -392,13 +392,13 @@ public:
 		int pallet_prob = RAND_MAX / 2;
 
 		mthz::Vec3 shelf_position(-shelf_width * n_slots / 2.0, 0, 20);
-		phyz::Geometry shelf = phyz::Geometry::box(shelf_position + mthz::Vec3(0, shelf_height, 0), shelf_width * n_slots, shelf_thickness, shelf_width);
+		phyz::ConvexUnionGeometry shelf = phyz::ConvexUnionGeometry::box(shelf_position + mthz::Vec3(0, shelf_height, 0), shelf_width * n_slots, shelf_thickness, shelf_width);
 		phyz::RigidBody* shelf_r = p.createRigidBody(shelf, true);
 		bodies.push_back({ fromGeometry(shelf), shelf_r });
 
-		phyz::Geometry leg_shape = phyz::Geometry::box(mthz::Vec3(), leg_width, shelf_height, leg_width);
-		phyz::Geometry leg1 = leg_shape.getTranslated(shelf_position);
-		phyz::Geometry leg2 = leg_shape.getTranslated(shelf_position + mthz::Vec3(0, 0, shelf_width - leg_width));
+		phyz::ConvexUnionGeometry leg_shape = phyz::ConvexUnionGeometry::box(mthz::Vec3(), leg_width, shelf_height, leg_width);
+		phyz::ConvexUnionGeometry leg1 = leg_shape.getTranslated(shelf_position);
+		phyz::ConvexUnionGeometry leg2 = leg_shape.getTranslated(shelf_position + mthz::Vec3(0, 0, shelf_width - leg_width));
 
 		phyz::RigidBody* leg1_r = p.createRigidBody(leg1, true);
 		phyz::RigidBody* leg2_r = p.createRigidBody(leg2, true);
@@ -408,8 +408,8 @@ public:
 
 		for (int i = 0; i < n_slots; i++) {
 			double leg_x = (shelf_width) * (1 + i);
-			phyz::Geometry close_leg = leg_shape.getTranslated(shelf_position + mthz::Vec3(leg_x - leg_width, 0, 0));
-			phyz::Geometry far_leg = leg_shape.getTranslated(shelf_position + mthz::Vec3(leg_x - leg_width, 0, shelf_width - leg_width));
+			phyz::ConvexUnionGeometry close_leg = leg_shape.getTranslated(shelf_position + mthz::Vec3(leg_x - leg_width, 0, 0));
+			phyz::ConvexUnionGeometry far_leg = leg_shape.getTranslated(shelf_position + mthz::Vec3(leg_x - leg_width, 0, shelf_width - leg_width));
 
 			phyz::RigidBody* close_leg_r = p.createRigidBody(close_leg, true);
 			phyz::RigidBody* far_leg_r = p.createRigidBody(far_leg, true);

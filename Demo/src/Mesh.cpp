@@ -26,7 +26,6 @@ Mesh fromPhyzMesh(const phyz::Mesh& m) {
 
 	std::vector<unsigned int> indices;
 	for (const std::vector<unsigned int>& face_indices : m.face_indices) {
-		//naive- only works if all faces are convex
 		for (int i = 2; i < face_indices.size(); i++) {
 			indices.push_back(face_indices[0]);
 			indices.push_back(face_indices[i - 1]);
@@ -37,7 +36,7 @@ Mesh fromPhyzMesh(const phyz::Mesh& m) {
 	return Mesh{ vertices, indices };
 }
 
-Mesh fromGeometry(const phyz::Geometry g, color model_color) {
+Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
 	int vertex_offset = 0;
@@ -131,6 +130,24 @@ Mesh fromGeometry(const phyz::Geometry g, color model_color) {
 			break;
 		}
 		}
+	}
+
+	return Mesh{ vertices, indices };
+}
+
+Mesh fromStaticMeshInput(const phyz::MeshInput& g, color c) {
+	std::vector<Vertex> vertices;
+	std::vector<unsigned int> indices;
+
+	for (mthz::Vec3 v : g.points) {
+		color col = (c == auto_generate) ? color{ frand(), frand(), frand() } : c;
+		vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, 1.0f, 1.0f, 0.7f, 5.0f });
+	}
+
+	for (const phyz::TriIndices& t : g.triangle_indices) {
+		indices.push_back(t.i1);
+		indices.push_back(t.i2);
+		indices.push_back(t.i3);
 	}
 
 	return Mesh{ vertices, indices };

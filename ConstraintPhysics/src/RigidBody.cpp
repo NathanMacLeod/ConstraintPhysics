@@ -6,10 +6,10 @@
 
 namespace phyz {
 
-	static void calculateMassProperties(const Geometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
+	static void calculateMassProperties(const ConvexUnionGeometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
 
-	RigidBody::RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id)
-		: geometry(source_geometry.getPolyhedra()), reference_geometry(source_geometry.getPolyhedra()), vel(0, 0, 0), ang_vel(0, 0, 0),
+	RigidBody::RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id)
+		: geometry_type(CONVEX_UNION), geometry(source_geometry.getPolyhedra()), reference_geometry(source_geometry.getPolyhedra()), vel(0, 0, 0), ang_vel(0, 0, 0),
 		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), id(id)
 	{
 		fixed = false;
@@ -30,6 +30,24 @@ namespace phyz {
 		local_coord_origin = -com;
 		origin_pkey = trackPoint(mthz::Vec3(0,0,0));
 		setToPosition(pos);
+		recievedWakingAction = false;
+	}
+
+	RigidBody::RigidBody(const StaticMeshGeometry& source_geometry, unsigned int id) 
+		: geometry_type(STATIC_MESH), reference_mesh(source_geometry), mesh(source_geometry), vel(0, 0, 0), ang_vel(0, 0, 0), psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), 
+		asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), id(id)
+	{
+		fixed = true;
+		mass = std::numeric_limits<double>::quiet_NaN();
+		reference_tensor *= std::numeric_limits<double>::quiet_NaN();
+
+		reference_invTensor = reference_tensor.inverse();
+		tensor = reference_tensor;
+		invTensor = reference_invTensor;
+
+		aabb = mesh.genAABB();
+		local_coord_origin = -com;
+		origin_pkey = trackPoint(mthz::Vec3(0, 0, 0));
 		recievedWakingAction = false;
 	}
 
@@ -77,6 +95,8 @@ namespace phyz {
 	}
 
 	void RigidBody::setFixed(bool fixed) { 
+		assert(fixed || geometry_type == CONVEX_UNION);
+
 		this->fixed = fixed; 
 		if (!fixed) {
 			alertWakingAction();
@@ -181,12 +201,17 @@ namespace phyz {
 		mthz::Mat3 rot_conjugate = orientation.conjugate().getRotMatrix();
 		tensor = rot * reference_tensor * rot_conjugate;
 		invTensor = rot * reference_invTensor * rot_conjugate;
-
-		for (int i = 0; i < reference_geometry.size(); i++) {
-			geometry[i].recomputeFromReference(*reference_geometry[i].getGeometry(), rot, com);
-			geometry_AABB[i] = geometry[i].gen_AABB();
+		
+		if (geometry_type == CONVEX_UNION) {
+			for (int i = 0; i < reference_geometry.size(); i++) {
+				geometry[i].recomputeFromReference(*reference_geometry[i].getGeometry(), rot, com);
+				geometry_AABB[i] = geometry[i].gen_AABB();
+			}
+			aabb = AABB::combine(geometry_AABB);
 		}
-		aabb = AABB::combine(geometry_AABB);
+		else {
+			mesh.recomputeFromReference(reference_mesh, rot, com);
+		}
 		
 	}
 
@@ -290,7 +315,7 @@ namespace phyz {
 	}
 
 	//based off of 'Fast and Accurate Computation of Polyhedral Mass Properties' (Brian Miritch)
-	static void calculateMassProperties(const Geometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass) {
+	static void calculateMassProperties(const ConvexUnionGeometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass) {
 		*com = mthz::Vec3(0, 0, 0);
 		*mass = 0;
 		*tensor = mthz::Mat3(); //default zeroed

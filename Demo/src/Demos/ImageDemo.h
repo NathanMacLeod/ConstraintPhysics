@@ -21,10 +21,10 @@ private:
 	};
 
 	struct BodyHistory {
-		BodyHistory(phyz::RigidBody* r, const phyz::Geometry& g, color c={0.4, 0.4, 0.4}) : r(r), g(g), color(c), ray_hit_count(0) {}
+		BodyHistory(phyz::RigidBody* r, const phyz::ConvexUnionGeometry& g, color c={0.4, 0.4, 0.4}) : r(r), g(g), color(c), ray_hit_count(0) {}
 
 		phyz::RigidBody* r;
-		phyz::Geometry g;
+		phyz::ConvexUnionGeometry g;
 		std::vector<PosState> history;
 		color color;
 		int ray_hit_count;
@@ -242,12 +242,12 @@ public:
 		std::vector<int> recolor_body_indexes;
 
 		mthz::Vec3 base_dim(8.5, 0.25, 0.75);
-		phyz::Geometry base = phyz::Geometry::box(mthz::Vec3(), base_dim.x, base_dim.y, base_dim.z);
+		phyz::ConvexUnionGeometry base = phyz::ConvexUnionGeometry::box(mthz::Vec3(), base_dim.x, base_dim.y, base_dim.z);
 		double box_height = 48;
-		phyz::Geometry negx_wall = phyz::Geometry::box(mthz::Vec3(0, base_dim.y, 0), base_dim.y, box_height, base_dim.z);
-		phyz::Geometry posx_wall = phyz::Geometry::box(mthz::Vec3(base_dim.x - base_dim.y, base_dim.y, 0), base_dim.y, box_height, base_dim.z);
-		phyz::Geometry back_wall = phyz::Geometry::box(mthz::Vec3(0, 0, 0), base_dim.x, box_height + base_dim.y, -base_dim.y, phyz::Material::ice());
-		phyz::Geometry front_wall = phyz::Geometry::box(mthz::Vec3(0, 0, base_dim.z), base_dim.x, base_dim.y + box_height, base_dim.y, phyz::Material::ice());
+		phyz::ConvexUnionGeometry negx_wall = phyz::ConvexUnionGeometry::box(mthz::Vec3(0, base_dim.y, 0), base_dim.y, box_height, base_dim.z);
+		phyz::ConvexUnionGeometry posx_wall = phyz::ConvexUnionGeometry::box(mthz::Vec3(base_dim.x - base_dim.y, base_dim.y, 0), base_dim.y, box_height, base_dim.z);
+		phyz::ConvexUnionGeometry back_wall = phyz::ConvexUnionGeometry::box(mthz::Vec3(0, 0, 0), base_dim.x, box_height + base_dim.y, -base_dim.y, phyz::Material::ice());
+		phyz::ConvexUnionGeometry front_wall = phyz::ConvexUnionGeometry::box(mthz::Vec3(0, 0, base_dim.z), base_dim.x, base_dim.y + box_height, base_dim.y, phyz::Material::ice());
 
 		p.setOctreeParams(60, 0.25, mthz::Vec3(base_dim.x/2.0, box_height/2.0, base_dim.z/2.0));
 
@@ -262,7 +262,7 @@ public:
 			double start_x = base_dim.y + pin_gap * ((i % 2 == 0) ? 1 : 1.5);
 			for (int j = 0; j < ((i % 2 == 0) ? n_pins : n_pins - 1); j++) {
 				mthz::Vec3 pin_pos = mthz::Vec3(start_x + pin_gap * j, pin_start_y + row_verticle_spacing * i, 0);
-				phyz::Geometry pin = phyz::Geometry::cylinder(pin_pos,cylinder_radius, base_dim.z)
+				phyz::ConvexUnionGeometry pin = phyz::ConvexUnionGeometry::cylinder(pin_pos,cylinder_radius, base_dim.z)
 					.getRotated(mthz::Quaternion(PI/2.0, mthz::Vec3(1, 0, 0)), pin_pos);
 
 				pre_bodies.push_back(BodyHistory(p.createRigidBody(pin, true), pin, color{130, 0, 0}));
@@ -275,17 +275,17 @@ public:
 		mthz::Vec3 spinner1_pos = mthz::Vec3(base_dim.y + effective_width/4.0, spinner_y, 0);
 		mthz::Vec3 spinner2_pos = mthz::Vec3(base_dim.y + effective_width * 3 / 4.0, spinner_y, 0);
 		double spinner_density = 10000;
-		phyz::Geometry spinner1 = phyz::Geometry::gear(spinner1_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4, false, phyz::Material::modified_density(spinner_density))
+		phyz::ConvexUnionGeometry spinner1 = phyz::ConvexUnionGeometry::gear(spinner1_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4, false, phyz::Material::modified_density(spinner_density))
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner1_pos);
-		phyz::Geometry spinner2 = phyz::Geometry::gear(spinner2_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4, false, phyz::Material::modified_density(spinner_density))
+		phyz::ConvexUnionGeometry spinner2 = phyz::ConvexUnionGeometry::gear(spinner2_pos, cylinder_radius * 2, spinner_radius, base_dim.z, 4, false, phyz::Material::modified_density(spinner_density))
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner2_pos);
 
 		double block_start_height = box_height;
 		double cube_size = effective_width / (16 * level_of_detail);
 
-		phyz::Geometry stellated_dodecahedron_shape;
+		phyz::ConvexUnionGeometry stellated_dodecahedron_shape;
 		if (geometry_type == STEL_DODS) {
-			stellated_dodecahedron_shape = phyz::Geometry::stellatedDodecahedron(mthz::Vec3(), 1, 0.7);
+			stellated_dodecahedron_shape = phyz::ConvexUnionGeometry::stellatedDodecahedron(mthz::Vec3(), 1, 0.7);
 			std::vector<phyz::AABB> aabbs;
 			for (const phyz::ConvexPrimitive& p : stellated_dodecahedron_shape.getPolyhedra()) {
 				aabbs.push_back(p.gen_AABB());
@@ -300,14 +300,14 @@ public:
 			for (int j = 0; j < GeomTypeStackHeight(geometry_type) * level_of_detail; j++) {
 				for (int k = 0; k < level_of_detail; k++) {
 					mthz::Vec3 pos(base_dim.y + effective_width/2.0 + (i - 4 * level_of_detail) * cube_size, block_start_height + 1.5 * j * cube_size, base_dim.y + k * cube_size);
-					phyz::Geometry g;
+					phyz::ConvexUnionGeometry g;
 					switch (geometry_type) {
 					case BALLS:
 						//low friction to ease issues
-						g = phyz::Geometry::sphere(pos, cube_size / 2.0, phyz::Material{1.0, 0.3, 0.5, 0.8});
+						g = phyz::ConvexUnionGeometry::sphere(pos, cube_size / 2.0, phyz::Material{1.0, 0.3, 0.5, 0.8});
 						break;
 					case CUBES:
-						g = phyz::Geometry::box(pos - 0.5 * mthz::Vec3(cube_size, cube_size, cube_size), cube_size, cube_size, cube_size);
+						g = phyz::ConvexUnionGeometry::box(pos - 0.5 * mthz::Vec3(cube_size, cube_size, cube_size), cube_size, cube_size, cube_size);
 						break;
 					case TETRAS:
 					{
@@ -315,11 +315,11 @@ public:
 						mthz::Vec3 p2 = p1 + mthz::Vec3(cube_size, 0, cube_size);
 						mthz::Vec3 p3 = p1 + mthz::Vec3(0, cube_size, cube_size);
 						mthz::Vec3 p4 = p1 + mthz::Vec3(cube_size, cube_size, 0);
-						g = phyz::Geometry::tetra(p1, p2, p3, p4);
+						g = phyz::ConvexUnionGeometry::tetra(p1, p2, p3, p4);
 					}
 					break;
 					case DODECS:
-						g = phyz::Geometry::regDodecahedron(pos, cube_size);
+						g = phyz::ConvexUnionGeometry::regDodecahedron(pos, cube_size);
 						break;
 					case STEL_DODS:
 						g = stellated_dodecahedron_shape.getTranslated(pos);

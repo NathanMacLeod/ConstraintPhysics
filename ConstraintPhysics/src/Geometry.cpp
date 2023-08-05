@@ -2,8 +2,8 @@
 
 namespace phyz {
 
-	Geometry::Geometry(const std::initializer_list<Geometry>& in) {
-		for (const Geometry& g : in) {
+	ConvexUnionGeometry::ConvexUnionGeometry(const std::initializer_list<ConvexUnionGeometry>& in) {
+		for (const ConvexUnionGeometry& g : in) {
 			polyhedra.reserve(g.polyhedra.size());
 			for (const ConvexPrimitive& c : g.polyhedra) {
 				polyhedra.push_back(c);
@@ -11,7 +11,7 @@ namespace phyz {
 		}
 	}
 
-	Geometry Geometry::box(mthz::Vec3 pos, double dx, double dy, double dz, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::box(mthz::Vec3 pos, double dx, double dy, double dz, Material material) {
 
 		std::vector<mthz::Vec3> points(8);
 		std::vector<std::vector<int>> surface_indices(6);
@@ -33,14 +33,14 @@ namespace phyz {
 		surface_indices[4] = { 3, 0, 4, 7 };
 		surface_indices[5] = { 4, 5, 6, 7 };
 
-		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
-	Geometry Geometry::sphere(mthz::Vec3 center, double radius, Material material) {
-		return Geometry(ConvexPrimitive((const ConvexGeometry&)Sphere(center, radius), material));
+	ConvexUnionGeometry ConvexUnionGeometry::sphere(mthz::Vec3 center, double radius, Material material) {
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Sphere(center, radius), material));
 	}
 
-	Geometry Geometry::psuedoSphere(mthz::Vec3 center, double radius, int n_rows, int n_cols, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::psuedoSphere(mthz::Vec3 center, double radius, int n_rows, int n_cols, Material material) {
 		std::vector<mthz::Vec3> points;
 		std::vector<std::vector<int>> surface_indices;
 
@@ -87,10 +87,10 @@ namespace phyz {
 			surface_indices.push_back({ i1 + row_offset + nonpole_offset, i2 + row_offset + nonpole_offset, top_pole_index });
 		}
 
-		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
-	Geometry Geometry::tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4, Material material) {
 		ConvexPrimitive out;
 
 		const double rt3 = sqrt(3.0);
@@ -103,10 +103,10 @@ namespace phyz {
 		surface_indices[2] = { 2, 3, 0 };
 		surface_indices[3] = { 3, 0, 1 };
 
-		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
-	Geometry Geometry::triPrism(double x1, double z1, double x2, double z2, double x3, double z3, double y, double height, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::triPrism(double x1, double z1, double x2, double z2, double x3, double z3, double y, double height, Material material) {
 		std::vector<mthz::Vec3> points(6);
 		std::vector<std::vector<int>> surface_indices(5);
 
@@ -124,10 +124,10 @@ namespace phyz {
 		surface_indices[3] = { 2, 0, 3, 5 };
 		surface_indices[4] = { 3, 4, 5 };
 
-		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
-	Geometry Geometry::octahedron(mthz::Vec3 pos, double radius, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::octahedron(mthz::Vec3 pos, double radius, Material material) {
 		std::vector<mthz::Vec3> points(6);
 		std::vector<std::vector<int>> surface_indices(8);
 
@@ -148,11 +148,11 @@ namespace phyz {
 		surface_indices[6] = { 3, 4, 5 };
 		surface_indices[7] = { 4, 1, 5 };
 
-		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
 	//https://en.wikipedia.org/wiki/Regular_dodecahedron#Cartesian_coordinates
-	Geometry Geometry::regDodecahedron(mthz::Vec3 pos, double size, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::regDodecahedron(mthz::Vec3 pos, double size, Material material) {
 		std::vector<mthz::Vec3> points(20);
 		std::vector<std::vector<int>> surface_indices(12);
 
@@ -198,13 +198,13 @@ namespace phyz {
 		surface_indices[10] = { 7, 10, 6, 18, 19 };
 		surface_indices[11] = { 10, 9, 2, 14, 6 };
 
-		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material)).getTranslated(pos);
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material)).getTranslated(pos);
 	}
 
-	Geometry Geometry::stellatedDodecahedron(mthz::Vec3 pos, double size, double spike_length_ratio, Material material) {
-		Geometry dodecahedron = regDodecahedron(pos, size, material);
+	ConvexUnionGeometry ConvexUnionGeometry::stellatedDodecahedron(mthz::Vec3 pos, double size, double spike_length_ratio, Material material) {
+		ConvexUnionGeometry dodecahedron = regDodecahedron(pos, size, material);
 
-		std::vector<Geometry> spikes;
+		std::vector<ConvexUnionGeometry> spikes;
 		for (const Surface& s : ((Polyhedron*)dodecahedron.getPolyhedra()[0].getGeometry())->getSurfaces()) {
 			mthz::Vec3 center = (s.getPointI(0) + s.getPointI(1) + s.getPointI(2) + s.getPointI(3) + s.getPointI(4)) / 5;
 			mthz::Vec3 spike_tip = center + s.normal() * spike_length_ratio * size;
@@ -222,15 +222,15 @@ namespace phyz {
 			surface_indices[4] = { 3, 4, 5 };
 			surface_indices[5] = { 4, 0, 5 };
 
-			spikes.push_back(Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material)));
+			spikes.push_back(ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material)));
 		}
 
-		for (const Geometry& g : spikes) dodecahedron = Geometry::merge(dodecahedron, g);
+		for (const ConvexUnionGeometry& g : spikes) dodecahedron = ConvexUnionGeometry::merge(dodecahedron, g);
 
 		return dodecahedron;
 	}
 
-	Geometry Geometry::cylinder(mthz::Vec3 pos, double radius, double height, int detail, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::cylinder(mthz::Vec3 pos, double radius, double height, int detail, Material material) {
 		int n_faces = 3 + detail;
 		std::vector<mthz::Vec3> points(n_faces * 2);
 		std::vector<std::vector<int>> surface_indices(2 + n_faces);
@@ -254,12 +254,12 @@ namespace phyz {
 		return ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material);
 	}
 
-	Geometry Geometry::ring(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int detail, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::ring(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int detail, Material material) {
 		int n_faces = 3 + detail;
 		std::vector<mthz::Vec3> points(4 * n_faces);
 		//std::vector<std::vector<int>> surface_indices(4 * n_faces);
 
-		Geometry out;
+		ConvexUnionGeometry out;
 		for (int i = 0; i < n_faces; i++) {
 			double theta = 2 * PI * i / n_faces;
 			points[i + 0 * n_faces] = mthz::Vec3(pos.x + inner_radius * cos(theta), pos.y, pos.z + inner_radius * sin(theta)); //lower inner radius
@@ -284,13 +284,13 @@ namespace phyz {
 				{ { 4, 5, 7, 6 } }  //inside edge 1
 			};
 
-			out = out.merge(out, Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(segment_points, surface_indices), material)));
+			out = out.merge(out, ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(segment_points, surface_indices), material)));
 		}
 
 		return out;
 	}
 
-	static Geometry tooth(mthz::Vec3 pos, double width, double length, double height, Material material) {
+	static ConvexUnionGeometry tooth(mthz::Vec3 pos, double width, double length, double height, Material material) {
 		std::vector<mthz::Vec3> points(12);
 		std::vector<std::vector<int>> surface_indices(8);
 		double f = 0.4;
@@ -319,15 +319,15 @@ namespace phyz {
 		surface_indices[6] = { 4, 5, 11, 10 };
 		surface_indices[7] = { 5, 0, 6, 11 };
 	
-		return Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
-	Geometry Geometry::gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity, Material material, double tooth_width) {
+	ConvexUnionGeometry ConvexUnionGeometry::gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity, Material material, double tooth_width) {
 
-		Geometry wheel = cylinder(pos, radius, height, 2 * n_teeth - 3, material);
+		ConvexUnionGeometry wheel = cylinder(pos, radius, height, 2 * n_teeth - 3, material);
 		double default_tooth_width = radius * PI / n_teeth;
 		tooth_width = (tooth_width == -1)?  default_tooth_width : tooth_width;
-		Geometry toothG= tooth(pos + mthz::Vec3(radius, 0, -0.5 * (tooth_width - default_tooth_width)), tooth_width, tooth_length, height, material);
+		ConvexUnionGeometry toothG= tooth(pos + mthz::Vec3(radius, 0, -0.5 * (tooth_width - default_tooth_width)), tooth_width, tooth_length, height, material);
 
 		double d_theta = 2 * PI / (n_teeth);
 		toothG = toothG.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
@@ -339,10 +339,10 @@ namespace phyz {
 		return (parity)? wheel.getRotated(mthz::Quaternion(d_theta/2.0, mthz::Vec3(0, 1, 0)), pos) :  wheel;
 	}
 
-	Geometry Geometry::bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity, Material material, double hole_radius, int circle_detail) {
-		Geometry wheel = (hole_radius == 0) ? cylinder(pos, radius, height, circle_detail, material) : ring(pos, hole_radius, radius, height, circle_detail, material);
+	ConvexUnionGeometry ConvexUnionGeometry::bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity, Material material, double hole_radius, int circle_detail) {
+		ConvexUnionGeometry wheel = (hole_radius == 0) ? cylinder(pos, radius, height, circle_detail, material) : ring(pos, hole_radius, radius, height, circle_detail, material);
 		mthz::Vec3 tooth_pos = pos + mthz::Vec3(radius - tooth_radius, height, 0);
-		Geometry toothG = tooth(tooth_pos, tooth_width, tooth_height, -tooth_radius, material).getRotated(mthz::Quaternion(PI/2.0, mthz::Vec3(0, 0, 1)), tooth_pos);
+		ConvexUnionGeometry toothG = tooth(tooth_pos, tooth_width, tooth_height, -tooth_radius, material).getRotated(mthz::Quaternion(PI/2.0, mthz::Vec3(0, 0, 1)), tooth_pos);
 
 		double d_theta = 2 * PI / (n_teeth);
 		toothG = toothG.getRotated(mthz::Quaternion(-0.25 * d_theta, mthz::Vec3(0, 1, 0)), pos + mthz::Vec3(radius, 0, 0));
@@ -354,21 +354,21 @@ namespace phyz {
 		return (parity) ? wheel.getRotated(mthz::Quaternion(d_theta / 2.0, mthz::Vec3(0, 1, 0)), pos) : wheel;
 	}
 
-	Geometry Geometry::pinion(mthz::Vec3 pos, double height, double width, double tooth_height, double tooth_width, double gap_width, int n_teeth, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::pinion(mthz::Vec3 pos, double height, double width, double tooth_height, double tooth_width, double gap_width, int n_teeth, Material material) {
 		double length = (1 + n_teeth) * gap_width + n_teeth * tooth_width;
-		Geometry pinion = box(pos, width, height, length, material);
-		Geometry toothG = tooth(mthz::Vec3(0, 0, 0), tooth_width, tooth_height, -width, material).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)));
+		ConvexUnionGeometry pinion = box(pos, width, height, length, material);
+		ConvexUnionGeometry toothG = tooth(mthz::Vec3(0, 0, 0), tooth_width, tooth_height, -width, material).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)));
 		for (int i = 0; i < n_teeth; i++) {
 			mthz::Vec3 tooth_pos = pos + mthz::Vec3(0, height, (1 + i) * gap_width + i * tooth_width);
-			pinion = Geometry::merge(pinion, toothG.getTranslated(tooth_pos));
+			pinion = ConvexUnionGeometry::merge(pinion, toothG.getTranslated(tooth_pos));
 		}
 		return pinion;
 	}
 
-	Geometry Geometry::uShape(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int n_segments, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::uShape(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int n_segments, Material material) {
 		assert(n_segments >= 1);
 
-		Geometry out;
+		ConvexUnionGeometry out;
 		double dTheta = PI / n_segments;
 		for (int i = 0; i < n_segments; i++) {
 			std::vector<mthz::Vec3> points(8);
@@ -395,15 +395,15 @@ namespace phyz {
 			surface_indices[4] = { 1, 2, 6, 5 };
 			surface_indices[5] = { 3, 2, 6, 7 };
 
-			Geometry segment = Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
-			out = Geometry::merge(out, segment);
+			ConvexUnionGeometry segment = ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
+			out = ConvexUnionGeometry::merge(out, segment);
 		}
 
 		return out;
 	}
 
-	Geometry Geometry::funnel(mthz::Vec3 pos, double tube_radius, double tube_height, double bowl_radius, double bowl_angle, double thickness, int n_segments, Material material) {
-		Geometry out;
+	ConvexUnionGeometry ConvexUnionGeometry::funnel(mthz::Vec3 pos, double tube_radius, double tube_height, double bowl_radius, double bowl_angle, double thickness, int n_segments, Material material) {
+		ConvexUnionGeometry out;
 
 		double dTheta = 2 * PI / n_segments;
 		for (int i = 0; i < n_segments; i++) {
@@ -432,8 +432,8 @@ namespace phyz {
 			tube_surface_indices[4] = { 1, 2, 6, 5 };
 			tube_surface_indices[5] = { 3, 2, 6, 7 };
 
-			Geometry tube_segment = Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(tube_points, tube_surface_indices), material));
-			out = Geometry::merge(out, tube_segment);
+			ConvexUnionGeometry tube_segment = ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(tube_points, tube_surface_indices), material));
+			out = ConvexUnionGeometry::merge(out, tube_segment);
 
 			std::vector<mthz::Vec3> bowl_points(8);
 			std::vector<std::vector<int>> bowl_surface_indices(6);
@@ -455,15 +455,15 @@ namespace phyz {
 			bowl_surface_indices[4] = { 1, 2, 6, 5 };
 			bowl_surface_indices[5] = { 3, 2, 6, 7 };
 
-			Geometry bowl_segment = Geometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(bowl_points, bowl_surface_indices), material));
-			out = Geometry::merge(out, bowl_segment);
+			ConvexUnionGeometry bowl_segment = ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(bowl_points, bowl_surface_indices), material));
+			out = ConvexUnionGeometry::merge(out, bowl_segment);
 		}
 
 		return out;
 	}
 
-	Geometry Geometry::merge(const Geometry& g1, const Geometry& g2) {
-		Geometry out;
+	ConvexUnionGeometry ConvexUnionGeometry::merge(const ConvexUnionGeometry& g1, const ConvexUnionGeometry& g2) {
+		ConvexUnionGeometry out;
 		out.polyhedra.reserve(g1.polyhedra.size() + g2.polyhedra.size());
 		for (const ConvexPrimitive& c : g1.polyhedra) {
 			out.polyhedra.push_back(c);
@@ -474,8 +474,8 @@ namespace phyz {
 		return out;
 	}
 
-	Geometry Geometry::getTranslated(const mthz::Vec3 v) const {
-		Geometry out;
+	ConvexUnionGeometry ConvexUnionGeometry::getTranslated(const mthz::Vec3 v) const {
+		ConvexUnionGeometry out;
 		out.polyhedra.reserve(polyhedra.size());
 		for (const ConvexPrimitive& c : polyhedra) {
 			out.polyhedra.push_back(c.getTranslated(v));
@@ -483,8 +483,8 @@ namespace phyz {
 		return out;
 	}
 
-	Geometry Geometry::getRotated(const mthz::Quaternion q, const mthz::Vec3& rot_point) const {
-		Geometry out;
+	ConvexUnionGeometry ConvexUnionGeometry::getRotated(const mthz::Quaternion q, const mthz::Vec3& rot_point) const {
+		ConvexUnionGeometry out;
 		out.polyhedra.reserve(polyhedra.size());
 		for (const ConvexPrimitive& c : polyhedra) {
 			out.polyhedra.push_back(c.getRotated(q, rot_point));
@@ -492,12 +492,219 @@ namespace phyz {
 		return out;
 	}
 
-	Geometry Geometry::getScaled(double d, mthz::Vec3 center_of_dialation) const {
-		Geometry out;
+	ConvexUnionGeometry ConvexUnionGeometry::getScaled(double d, mthz::Vec3 center_of_dialation) const {
+		ConvexUnionGeometry out;
 		out.polyhedra.reserve(polyhedra.size());
 		for (const ConvexPrimitive& c : polyhedra) {
 			out.polyhedra.push_back(c.getScaled(d, center_of_dialation));
 		}
 		return out;
+	}
+
+	MeshInput generateGridMeshInput(mthz::Vec3 position, int grid_length, int grid_width, double grid_size) {
+		std::vector<mthz::Vec3> points((grid_length + 1) * (grid_width + 1));
+		std::vector<TriIndices> triangle_indices(grid_length * grid_width * 2);
+
+		for (int j = 0; j < grid_width + 1; j++) {
+			for (int i = 0; i < grid_length + 1; i++) {
+				points[i + (grid_width + 1) * j] = position + mthz::Vec3(grid_size * i, 0, grid_size * j);
+				if (i > 0 && j > 0) {
+					int tile_indx = i - 1 + grid_width * (j - 1);
+
+					unsigned int indx1 = i - 1 + (grid_width + 1) * (j - 1);
+					unsigned int indx2 = i + (grid_width + 1) * (j - 1);
+					unsigned int indx3 = i + (grid_width + 1) * j;
+					unsigned int indx4 = i - 1 + (grid_width + 1) * j;
+
+					triangle_indices[2 * tile_indx] = TriIndices{ indx3, indx2, indx1, Material::default_material() };
+					triangle_indices[2 * tile_indx + 1] = TriIndices{ indx4, indx3, indx1, Material::default_material() };
+				}
+			}
+		}
+
+		return MeshInput{ triangle_indices, points };
+	}
+
+	StaticMeshGeometry::StaticMeshGeometry(const StaticMeshGeometry& c)
+		: aabb_tree(0, AABBTree<unsigned int>::SURFACE_AREA), triangles(c.triangles)
+	{
+		for (int i = 0; i < triangles.size(); i++) {
+			aabb_tree.add(i, i, triangles[i].aabb);
+		}
+	}
+
+	StaticMeshGeometry::StaticMeshGeometry(const MeshInput& input)
+		: aabb_tree(0)
+	{
+		const int NO_ASSIGNED_ID = -1;
+		struct Edge {
+			unsigned int p1_indx, p2_indx;
+			unsigned int opposite_point_indx;
+			int assigned_id = NO_ASSIGNED_ID;
+
+			bool isCompliment(Edge e) {
+				return p1_indx == e.p2_indx && p2_indx == e.p1_indx;
+			}
+		};
+
+		struct TriangleGraphNode {
+			unsigned int p1_indx, p2_indx, p3_indx;
+			int tri_neighbor_indices[3]; //neighbor1 shares p1 p2 edge, neighbor2 shared p2 p3 edge, neighbor3 shares p3 p1 edge
+			Edge edges[3];
+			mthz::Vec3 normal;
+			Material material;
+		};
+
+		std::vector<TriangleGraphNode> neighbor_graph;
+		neighbor_graph.reserve(input.triangle_indices.size());
+		for (TriIndices t : input.triangle_indices) {
+			mthz::Vec3 v1 = input.points[t.i2] - input.points[t.i1];
+			mthz::Vec3 v2 = input.points[t.i3] - input.points[t.i1];
+			mthz::Vec3 normal = v1.cross(v2).normalize();
+			neighbor_graph.push_back(TriangleGraphNode{ t.i1, t.i2, t.i3, {-1, -1, -1}, {Edge{t.i1, t.i2, t.i3}, Edge{t.i2, t.i3, t.i1}, Edge{t.i3, t.i1, t.i2}}, normal, t.material });
+		}
+
+		//brute force determine all neighbors
+		for (int i = 0; i < neighbor_graph.size(); i++) {
+			for (int j = i + 1; j < neighbor_graph.size(); j++) {
+
+				for (int k = 0; k < 3; k++) {
+					for (int w = 0; w < 3; w++) {
+
+						if (neighbor_graph[i].edges[k].isCompliment(neighbor_graph[j].edges[w])) {
+							assert(neighbor_graph[i].tri_neighbor_indices[k] == -1 && neighbor_graph[j].tri_neighbor_indices[w] == -1);
+							neighbor_graph[i].tri_neighbor_indices[k] = j;
+							neighbor_graph[j].tri_neighbor_indices[w] = i;
+						}
+
+					}
+				}
+
+			}
+		}
+
+		int next_triangle_id = 0;
+		int vertex_id_offset = input.triangle_indices.size();
+		int next_edge_id = input.triangle_indices.size() + input.points.size();
+		//using the neighbor graph to compute all the finalized StaticMeshTri objects
+		//neighbor info is needed to determine the gauss arcs for valid edge collisions.
+		triangles.reserve(neighbor_graph.size());
+		for (TriangleGraphNode t : neighbor_graph) {
+			StaticMeshFace tri;
+			tri.normal = t.normal;
+
+			tri.vertices[0] = StaticMeshVertex{ input.points[t.p1_indx], std::vector<mthz::Vec3>(), (int) t.p1_indx + vertex_id_offset };
+			tri.vertices[1] = StaticMeshVertex{ input.points[t.p2_indx], std::vector<mthz::Vec3>(), (int) t.p2_indx + vertex_id_offset };
+			tri.vertices[2] = StaticMeshVertex{ input.points[t.p3_indx], std::vector<mthz::Vec3>(), (int) t.p3_indx + vertex_id_offset };
+
+			tri.material = t.material;
+			tri.id = next_triangle_id++;
+
+			for (int i = 0; i < 3; i++) {
+				tri.edges[i] = StaticMeshEdge{ tri.vertices[i].p, tri.vertices[(i + 1) % 3].p };
+				tri.edges[i].out_direction = (tri.edges[i].p2 - tri.edges[i].p1).cross(tri.normal).normalize();
+
+				if (t.edges[i].assigned_id == NO_ASSIGNED_ID) {
+					t.edges[i].assigned_id = next_edge_id++;
+				}
+				tri.edges[i].id = t.edges[i].assigned_id;
+
+				if (t.tri_neighbor_indices[i] == -1) { //no neighboring triangle on the edge
+					tri.edges[i].gauss_vert1 = tri.normal;
+					tri.edges[i].out_direction = tri.edges[i].out_direction;
+				}
+				else {
+					//neighbors version of the same edge
+					Edge complimentary_edge;
+					for (int j = 0; j < 3; j++) {
+						Edge neighbor_edge = neighbor_graph[t.tri_neighbor_indices[i]].edges[j];
+						if (t.edges[i].isCompliment(neighbor_edge)) {
+							complimentary_edge = neighbor_edge;
+						}
+					}
+
+					mthz::Vec3 this_opposite_tip = input.points[t.edges[i].opposite_point_indx];
+					mthz::Vec3 neighbor_opposite_tip = input.points[complimentary_edge.opposite_point_indx];
+
+					bool edge_concave = (neighbor_opposite_tip - this_opposite_tip).dot(t.normal) >= 0;
+					if (edge_concave) continue; //Geometry can never collide with this edge
+
+					tri.edges[i].gauss_vert1 = tri.normal;
+					tri.edges[i].gauss_vert2 = neighbor_graph[t.tri_neighbor_indices[i]].normal;
+				}
+			}
+
+			tri.aabb = tri.computeAABB();
+
+			triangles.push_back(tri);
+		}
+	}
+
+	void StaticMeshGeometry::recomputeFromReference(const StaticMeshGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) {
+		aabb_tree = AABBTree<unsigned int>(0, AABBTree<unsigned int>::SURFACE_AREA); //reset tree
+
+		assert(triangles.size() == reference.triangles.size());
+		for (int i = 0; i < triangles.size(); i++) {
+			triangles[i].normal = rot * reference.triangles[i].normal;
+			
+			for (int j = 0; j < 3; j++) {
+				triangles[i].vertices[j].p = trans + rot * (reference.triangles[i].vertices[j].p - center_of_rotation) + center_of_rotation;
+				for (int k = 0; k < triangles[i].vertices[j].gauss_region.size(); k++) {
+					triangles[i].vertices[j].gauss_region[k] = rot * reference.triangles[i].vertices[j].gauss_region[k];
+				}
+
+				triangles[i].edges[j].p1 = trans + rot * (reference.triangles[i].edges[j].p1 - center_of_rotation) + center_of_rotation;
+				triangles[i].edges[j].p2 = trans + rot * (reference.triangles[i].edges[j].p2 - center_of_rotation) + center_of_rotation;
+
+				triangles[i].edges[j].out_direction = rot * reference.triangles[i].edges[j].out_direction;
+				triangles[i].edges[j].gauss_vert1 = rot * reference.triangles[i].edges[j].gauss_vert1;
+				triangles[i].edges[j].gauss_vert2 = rot * reference.triangles[i].edges[j].gauss_vert2;
+			}
+
+			aabb_tree.add(i, i, triangles[i].aabb);
+		}
+	}
+
+	AABB StaticMeshGeometry::genAABB() const {
+		assert(triangles.size() > 0);
+
+		AABB out = triangles[0].aabb;
+		for (int i = 1; i < triangles.size(); i++) {
+			out = AABB::combine(out, triangles[i].aabb);
+		}
+
+		return out;
+	}
+
+	RayQueryReturn StaticMeshGeometry::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+		std::vector<unsigned int> hit_candidates = aabb_tree.raycastHitCandidates(ray_origin, ray_dir);
+		
+		RayQueryReturn closest_hit{ false }; //false signifies no confirmed hit so far
+
+		for (unsigned int i : hit_candidates) {
+			const StaticMeshFace& tri = triangles[i];
+			if (abs(tri.normal.dot(ray_dir)) < 0.0000000001) {
+				continue;
+			}
+
+			//calculate dist where ray intersects the plane the triangle sits on
+			double t = -(ray_origin - tri.vertices[1].p).dot(tri.normal) / ray_dir.dot(tri.normal);
+			if (t < 0 || (closest_hit.did_hit && closest_hit.intersection_dist < t)) {
+				continue;
+			}
+
+			mthz::Vec3 hit_pos = ray_origin + t * ray_dir;
+
+			//check the intersection point lies inside the triangle
+			if ((hit_pos - tri.edges[0].p1).dot(tri.edges[0].out_direction) > 0
+				|| (hit_pos - tri.edges[1].p1).dot(tri.edges[1].out_direction) > 0
+				|| (hit_pos - tri.edges[2].p1).dot(tri.edges[2].out_direction) > 0) {
+				continue;
+			}
+
+			closest_hit = RayQueryReturn{ true, hit_pos, t };
+		}
+
+		return closest_hit;
 	}
 }

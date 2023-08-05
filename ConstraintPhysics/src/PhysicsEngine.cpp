@@ -93,7 +93,7 @@ namespace phyz {
 
 		auto t2 = std::chrono::system_clock::now();
 
-		std::vector<Pair<RigidBody>> possible_intersections;
+		std::vector<Pair<RigidBody*>> possible_intersections;
 		switch (broadphase) {
 		case OCTREE:
 		{
@@ -106,7 +106,7 @@ namespace phyz {
 			break;
 		case AABB_TREE:
 			for (RigidBody* b : bodies) {
-				aabb_tree.update(b, b->aabb);
+				aabb_tree.update(b, b->getID(), b->aabb);
 			}
 			possible_intersections = aabb_tree.getAllCollisionCandidates();
 			break;
@@ -114,7 +114,7 @@ namespace phyz {
 			for (int i = 0; i < bodies.size(); i++) {
 				for (int j = i + 1; j < bodies.size(); j++) {
 					if (AABB::intersects(bodies[i]->aabb, bodies[j]->aabb)) {
-						possible_intersections.push_back(Pair<RigidBody>(bodies[i], bodies[j]));
+						possible_intersections.push_back(Pair<RigidBody*>(bodies[i], bodies[i]->getID(), bodies[j], bodies[j]->getID()));
 					}
 				}
 			}
@@ -126,14 +126,14 @@ namespace phyz {
 			for (int i = 0; i < bodies.size(); i++) {
 				for (int j = i + 1; j < bodies.size(); j++) {
 					if (AABB::intersects(bodies[i]->aabb, bodies[j]->aabb)) {
-						possible_intersections.push_back(Pair<RigidBody>(bodies[i], bodies[j]));
+						possible_intersections.push_back(Pair<RigidBody*>(bodies[i], bodies[i]->getID(), bodies[j], bodies[j]->getID()));
 					}
 				}
 			}
 
 			auto bt2 = std::chrono::system_clock::now();
 
-			std::vector<Pair<RigidBody>> octree_pairs;
+			std::vector<Pair<RigidBody*>> octree_pairs;
 			Octree octree(octree_center, octree_size, octree_minsize);
 			for (RigidBody* b : bodies) {
 				octree.insert(b, b->aabb);
@@ -142,9 +142,9 @@ namespace phyz {
 
 			auto bt3 = std::chrono::system_clock::now();
 
-			std::vector<Pair<RigidBody>> aabb_pairs;
+			std::vector<Pair<RigidBody*>> aabb_pairs;
 			for (RigidBody* b : bodies) {
-				aabb_tree.update(b, b->aabb);
+				aabb_tree.update(b, b->getID(), b->aabb);
 			}
 			aabb_pairs = aabb_tree.getAllCollisionCandidates();
 
@@ -169,7 +169,7 @@ namespace phyz {
 			std::vector<ColAction> triggered_actions;
 		};
 		std::vector<TriggeredActionPair> triggered_actions;
-		auto collision_detect = [&](const Pair<RigidBody>& broadphase_pair) {
+		auto collision_detect = [&](const Pair<RigidBody*>& broadphase_pair) {
 			OrderedBodyPair p(broadphase_pair.t1, broadphase_pair.t2); //OrderedBodyPair enforces which body is t1/t2 in a determenstic manner. Pair does not.
 
 			RigidBody* b1 = p.t1;
@@ -178,22 +178,45 @@ namespace phyz {
 			if ((!b1->fixed || !b2->fixed) && (!b1->asleep || !b2->asleep) && collisionAllowed(b1, b2)) {
 
 				std::vector<Manifold> manifolds;
-				for (int i = 0; i < b1->geometry.size(); i++) {
-					for (int j = 0; j < b2->geometry.size(); j++) {
-						const ConvexPrimitive& c1 = b1->geometry[i];
-						const ConvexPrimitive& c2 = b2->geometry[j];
-						bool checking_AABB_redundant = b1->geometry.size() == 1 && b2->geometry.size() == 1;
-						if (!checking_AABB_redundant && !AABB::intersects(b1->geometry_AABB[i], b2->geometry_AABB[j])) {
-							continue;
-						}
 
-						Manifold man = detectCollision(c1, c2);
+				if (b1->getGeometryType() == RigidBody::STATIC_MESH && b2->getGeometryType() == RigidBody::STATIC_MESH) return;
 
-						if (man.max_pen_depth > 0) {
-							manifolds.push_back(man);
+				if (b1->getGeometryType() == RigidBody::CONVEX_UNION && b2->getGeometryType() == RigidBody::CONVEX_UNION) {
+					for (int i = 0; i < b1->geometry.size(); i++) {
+						for (int j = 0; j < b2->geometry.size(); j++) {
+							const ConvexPrimitive& c1 = b1->geometry[i];
+							const ConvexPrimitive& c2 = b2->geometry[j];
+							bool checking_AABB_redundant = b1->geometry.size() == 1 && b2->geometry.size() == 1;
+							if (!checking_AABB_redundant && !AABB::intersects(b1->geometry_AABB[i], b2->geometry_AABB[j])) {
+								continue;
+							}
+
+							Manifold man = detectCollision(c1, c2);
+
+							//no collision signified by pen_depth <= 0
+							if (man.max_pen_depth > 0) {
+								manifolds.push_back(man);
+							}
 						}
 					}
 				}
+				else if (b1->getGeometryType() == RigidBody::CONVEX_UNION) {
+					for (int i = 0; i < b1->geometry.size(); i++) {
+						std::vector<Manifold> detected_manifolds = detectCollision(b1->geometry[i], b1->geometry_AABB[i], b2->mesh);
+						for (const Manifold& m : detected_manifolds) {
+							manifolds.push_back(m);
+						}
+					}
+				}
+				else {
+					for (int i = 0; i < b2->geometry.size(); i++) {
+						std::vector<Manifold> detected_manifolds = detectCollision(b1->mesh, b2->geometry[i], b2->geometry_AABB[i]);
+						for (const Manifold& m : detected_manifolds) {
+							manifolds.push_back(m);
+						}
+					}
+				}
+
 				if (manifolds.size() > 0) {
 
 					std::vector<bool> merged(manifolds.size(), false);
@@ -263,10 +286,10 @@ namespace phyz {
 		};
 
 		if (use_multithread) {
-			thread_manager.do_all<Pair<RigidBody>>(n_threads, possible_intersections, collision_detect);
+			thread_manager.do_all<Pair<RigidBody*>>(n_threads, possible_intersections, collision_detect);
 		}
 		else {
-			for (const Pair<RigidBody>& p : possible_intersections) {
+			for (const Pair<RigidBody*>& p : possible_intersections) {
 				collision_detect(p);
 			}
 		}
@@ -367,14 +390,25 @@ namespace phyz {
 		}
 	}
 
-	RigidBody* PhysicsEngine::createRigidBody(const Geometry& geometry, bool fixed, mthz::Vec3 position, mthz::Quaternion orientation) {
+	RigidBody* PhysicsEngine::createRigidBody(const ConvexUnionGeometry& geometry, bool fixed, mthz::Vec3 position, mthz::Quaternion orientation) {
 		RigidBody* r = new RigidBody(geometry, position, orientation, next_id++);
 		r->fixed = fixed;
 		bodies.push_back(r);
 		constraint_graph_nodes[r->getID()] = new ConstraintGraphNode(r);
 
 		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
-			aabb_tree.add(r, r->aabb);
+			aabb_tree.add(r, r->getID(), r->aabb);
+		}
+		return r;
+	}
+
+	RigidBody* PhysicsEngine::createRigidBody(const StaticMeshGeometry& geometry) {
+		RigidBody* r = new RigidBody(geometry, next_id++);
+		bodies.push_back(r);
+		constraint_graph_nodes[r->getID()] = new ConstraintGraphNode(r);
+
+		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
+			aabb_tree.add(r, r->getID(), r->aabb);
 		}
 		return r;
 	}
@@ -386,7 +420,7 @@ namespace phyz {
 
 	void PhysicsEngine::deleteRigidBody(RigidBody* r) {
 		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
-			aabb_tree.remove(r);
+			aabb_tree.remove(r->getID());
 		}
 
 		assert(std::find(bodies.begin(), bodies.end(), r) != bodies.end());
@@ -441,7 +475,7 @@ namespace phyz {
 			}
 		}
 
-		ConvexPrimitive::RayHitInfo closest_hit_info = { false };
+		RayQueryReturn closest_hit_info = { false };
 		RigidBody* closest_hit_body = nullptr;
 		for (RigidBody* b : candidates) {
 			if (std::find(ignore_list.begin(), ignore_list.end(), b) != ignore_list.end()) continue;
@@ -450,7 +484,7 @@ namespace phyz {
 				//check ray actually hits the convex primitive AABB. if geometry.size == 1 then the convex primitive AABB == the rigid body AABB, which is redundant to check
 				if (b->geometry.size() != 1 && !AABB::rayIntersectsAABB(b->geometry_AABB[i], ray_origin, ray_dir)) continue;
 
-				ConvexPrimitive::RayHitInfo hit_info = b->geometry[i].testRayIntersection(ray_origin, ray_dir);
+				RayQueryReturn hit_info = b->geometry[i].testRayIntersection(ray_origin, ray_dir);
 				if (hit_info.did_hit && (!closest_hit_info.did_hit || hit_info.intersection_dist < closest_hit_info.intersection_dist)) {
 					closest_hit_info = hit_info;
 					closest_hit_body = b;
@@ -820,11 +854,11 @@ namespace phyz {
 	void PhysicsEngine::setAABBTreeMarginSize(double d) {
 		assert(d >= 0);
 		aabbtree_margin_size = d;
-		aabb_tree = AABBTree<RigidBody>(aabbtree_margin_size); //resets tree
+		aabb_tree = AABBTree<RigidBody*>(aabbtree_margin_size); //resets tree
 
 		//reinsert all elements
 		for (RigidBody* r : bodies) {
-			aabb_tree.add(r, r->aabb);
+			aabb_tree.add(r, r->getID(), r->aabb);
 		}
 	}
 
@@ -888,7 +922,7 @@ namespace phyz {
 	void PhysicsEngine::forceAABBTreeUpdate() {
 		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
 			for (RigidBody* b : bodies) {
-				aabb_tree.update(b, b->aabb);
+				aabb_tree.update(b, b->getID(), b->aabb);
 			}
 		}
 	}

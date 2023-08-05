@@ -7,11 +7,13 @@
 #include <vector>
 
 namespace phyz {
+	class StaticMeshGeometry;
 	class ConvexPrimitive;
 	class Polyhedron;
 	class Sphere;
 	struct Material;
 	struct GaussMap;
+	struct AABB;
 
 	static const double M_PI = 3.14159265358979323846;
 	static const double TOL_ANG = 1 * M_PI / 180;
@@ -63,6 +65,8 @@ namespace phyz {
 	inline ExtremaInfo recenter(const ExtremaInfo& info, double old_ref_value, double new_ref_value);
 	inline ExtremaInfo findExtrema(const Polyhedron& c, mthz::Vec3 axis);
 	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b);
+	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b);
+	std::vector<Manifold> detectCollision(const StaticMeshGeometry& a, const ConvexPrimitive& b, AABB b_aabb);
 
 }
 

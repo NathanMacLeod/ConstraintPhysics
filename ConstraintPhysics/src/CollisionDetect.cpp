@@ -1,5 +1,6 @@
 #include "CollisionDetect.h"
 #include "ConvexPrimitive.h"
+#include "Geometry.h"
 
 #include <cassert>
 
@@ -39,6 +40,8 @@ namespace phyz {
 	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat);
 	static Manifold detectSphereSphere(const Sphere& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
 	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
+	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b);
+	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b);
 
 	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b) {
 		switch (a.getType()) {
@@ -68,6 +71,35 @@ namespace phyz {
 			break;
 		}
 		
+	}
+
+	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b) {
+		switch (a.getType()) {
+		case POLYHEDRON:
+			return SAT_PolyMesh((const Polyhedron&)*a.getGeometry(), a_aabb, a.getID(), a.material, b);
+		case SPHERE:
+			return SAT_SphereMesh((const Sphere&)*a.getGeometry(), a_aabb, a.getID(), a.material, b);
+		}
+	}
+
+	std::vector<Manifold> detectCollision(const StaticMeshGeometry& a, const ConvexPrimitive& b, AABB b_aabb) {
+		std::vector<Manifold> out;
+		switch (b.getType()) {
+		case POLYHEDRON:
+			out = SAT_PolyMesh((const Polyhedron&)*b.getGeometry(), b_aabb, b.getID(), b.material, a);
+			break;
+		case SPHERE:
+			out = SAT_SphereMesh((const Sphere&)*b.getGeometry(), b_aabb, b.getID(), b.material, a);
+			break;
+		}
+
+		for (Manifold& m : out) {
+			m.normal = -m.normal; //physics engine expects the manifold to be facing away from a. SAT_PolySphere generates normal facing away from the polyhedron
+			for (ContactP& p : m.points) {
+				p.magicID = swapOrder(p.magicID);
+			}
+		}
+		return out;
 	}
 
 	static struct CheckNormResults {
@@ -127,10 +159,8 @@ namespace phyz {
 
 		for (int edge_index : c.getEdgeIndicesAdjacentToPointI(p_ID)) {
 			const Edge& e = c.getEdges()[edge_index];
-			mthz::Vec3 p1 = e.p1();
-			mthz::Vec3 p2 = e.p2();
 			double sin_ang = abs((e.p2() - e.p1()).normalize().dot(n));
-			if ((e.p1() == p || e.p2() == p) && sin_ang <= SIN_TOL) {
+			if  (sin_ang <= SIN_TOL) {
 				return projectEdge(e, n, p, u, w);
 			}
 		}
@@ -520,6 +550,253 @@ namespace phyz {
 		out.max_pen_depth = min_pen.pen_depth;
 
 		return out;
+	}
+
+	static ExtremaInfo findTriangleExtrema(const StaticMeshFace& tri, mthz::Vec3 dir) {
+		ExtremaInfo extrema;
+		if (dir.dot(tri.normal) > 0) {
+			extrema.min_val = -std::numeric_limits<double>::infinity();
+		}
+		else {
+			extrema.max_val = std::numeric_limits<double>::infinity();
+		}
+
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p = tri.vertices[i].p;
+			double val = p.dot(dir);
+			if (val < extrema.min_val) {
+				extrema.min_pID = i;
+				extrema.min_val = val;
+			}
+			if (val > extrema.max_val) {
+				extrema.max_pID = i;
+				extrema.max_val = val;
+			}
+		}
+
+		return extrema;
+	}
+
+	static inline ContactArea projectTriangleFace(const StaticMeshFace& s, mthz::Vec3 u, mthz::Vec3 w) {
+		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1 };
+
+		out.ps = std::vector<ProjP>(3);
+		out.p_IDs = std::vector<int>(3);
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 v = s.vertices[i].p;
+			out.ps[i] = ProjP{ v.dot(u), v.dot(w) };
+			out.p_IDs[i] = i;
+		}
+		out.surfaceID = s.id;
+
+		return out;
+	}
+
+	static inline ContactArea projectTriangleEdge(const StaticMeshEdge& e, mthz::Vec3 n, mthz::Vec3 p, mthz::Vec3 u, mthz::Vec3 w) {
+		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1 };
+
+		out.ps = { ProjP{ e.p1.dot(u), e.p1.dot(w) }, ProjP{ e.p2.dot(u), e.p2.dot(w) } };
+		out.p_IDs = { e.id, e.id };
+
+		return out;
+	}
+
+	static ContactArea findTriangleContactArea(const StaticMeshFace& t, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
+
+		double cos_ang = t.normal.dot(n);
+		if (1 - cos_ang <= COS_TOL) {
+			return projectTriangleFace(t, u, w);
+		}		
+
+		for (StaticMeshEdge e : t.edges) {
+			double sin_ang = abs((e.p2 - e.p1).normalize().dot(n));
+			if (sin_ang <= SIN_TOL) {
+				return projectTriangleEdge(e, n, p, u, w);
+			}
+		}
+
+		return ContactArea{
+			{ ProjP{ p.dot(u), p.dot(w) } },
+			{ p_ID },
+			-1
+		};
+
+	}
+
+	Manifold SAT_PolyTriangle(const Polyhedron& a, int a_id, const Material& a_mat, const StaticMeshFace& b) {
+		Manifold out;
+		out.max_pen_depth = -1;
+		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		const GaussMap& ag = a.getGaussMap();
+
+		for (const GaussVert& g : ag.face_verts) {
+			if (!g.SAT_redundant) {
+				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(a.getPoints()[g.SAT_reference_point_index]));
+				CheckNormResults x = sat_checknorm(recentered_g_extrema, findTriangleExtrema(b, g.v), g.v);
+				if (x.seprAxisExists()) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+				else if (x.pen_depth < min_pen.pen_depth) {
+					min_pen = x;
+				}
+			}
+		}
+		CheckNormResults b_norm_x = sat_checknorm(findExtrema(a, b.normal), findTriangleExtrema(b, b.normal), b.normal);
+		if (b_norm_x.seprAxisExists()) {
+			out.max_pen_depth = -1;
+			return out;
+		}
+		else if (b_norm_x.pen_depth < min_pen.pen_depth) {
+			min_pen = b_norm_x;
+		}
+
+		for (const GaussArc& arc1 : ag.arcs) {
+			for (StaticMeshEdge edge : b.edges) {
+
+				mthz::Vec3 a1 = ag.face_verts[arc1.v1_indx].v;
+				mthz::Vec3 a2 = ag.face_verts[arc1.v2_indx].v;
+				mthz::Vec3 b1 = -edge.gauss_vert1;
+				mthz::Vec3 b2 = -edge.gauss_vert2;
+
+				//check arcs arent on opposite hemispheres
+				mthz::Vec3 a_avg = a1 + a2;
+				if (a_avg.dot(b1) + a_avg.dot(b2) <= 0) {
+					continue;
+				}
+
+				mthz::Vec3 a_perp = a1.cross(a2);
+				mthz::Vec3 b_perp = b1.cross(b2);
+				//check arc b1b2 crosses plane defined by a1a2 and vice verca
+				if (a_perp.dot(b1) * a_perp.dot(b2) > 0 || b_perp.dot(a1) * b_perp.dot(a2) > 0) {
+					continue;
+				}
+
+				mthz::Vec3 n = a_perp.cross(b_perp);
+				if (n.magSqrd() == 0) {
+					continue;
+				}
+
+				n = n.normalize();
+				if (a_avg.dot(n) < 0) {
+					n *= -1;
+				}
+
+				CheckNormResults x = sat_checknorm(findExtrema(a, n), findTriangleExtrema(b, n), n);
+				if (x.seprAxisExists()) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+				else if (x.pen_depth < min_pen.pen_depth) {
+					min_pen = x;
+				}
+			}
+		}
+
+		out.normal = min_pen.norm;
+		mthz::Vec3 norm = min_pen.norm;
+		mthz::Vec3 a_maxP = a.getPoints()[min_pen.a_maxPID];
+		mthz::Vec3 b_maxP = b.vertices[min_pen.b_maxPID].p;
+
+		mthz::Vec3 u, w;
+		norm.getPerpendicularBasis(&u, &w);
+		ContactArea a_contact = findContactArea(a, norm, a_maxP, min_pen.a_maxPID, u, w);
+		ContactArea b_contact = findTriangleContactArea(b, (-1) * norm, b_maxP, min_pen.b_maxPID, u, w);
+
+		std::vector<ProjP> man_pool;
+		std::vector<uint64_t> man_pool_magics;
+		for (int i = 0; i < a_contact.ps.size(); i++) {
+			ProjP p = a_contact.ps[i];
+			if (pInside(b_contact.ps, p)) {
+				man_pool.push_back(p);
+				uint64_t m = 0;
+				m |= 0x00000000FFFFFFFF & a_contact.p_IDs[i];
+				m |= 0xFFFFFFFF00000000 & (uint64_t(b_contact.surfaceID) << 32);
+				man_pool_magics.push_back(m);
+			}
+		}
+		for (int i = 0; i < b_contact.ps.size(); i++) {
+			ProjP p = b_contact.ps[i];
+			if (pInside(a_contact.ps, p)) {
+				man_pool.push_back(p);
+				uint64_t m = 0;
+				m |= 0x00000000FFFFFFFF & a_contact.surfaceID;
+				m |= 0xFFFFFFFF00000000 & (uint64_t(b_contact.p_IDs[i]) << 32);
+				man_pool_magics.push_back(m);
+			}
+		}
+		if (a_contact.ps.size() >= 2 && b_contact.ps.size() >= 2) {
+			int itr_max_a = (a_contact.ps.size() == 2) ? 1 : a_contact.ps.size();
+			int itr_max_b = (b_contact.ps.size() == 2) ? 1 : b_contact.ps.size();
+			for (int i = 0; i < itr_max_a; i++) {
+				int a2_indx = (i + 1) % a_contact.ps.size();
+				ProjP a1 = a_contact.ps[i];
+				ProjP a2 = a_contact.ps[a2_indx];
+				int a1_ID = a_contact.p_IDs[i];
+				int a2_ID = a_contact.p_IDs[a2_indx];
+
+				for (int j = 0; j < itr_max_b; j++) {
+					int b2_indx = (j + 1) % b_contact.ps.size();
+					ProjP b1 = b_contact.ps[j];
+					ProjP b2 = b_contact.ps[b2_indx];
+					int b1_ID = b_contact.p_IDs[j];
+					int b2_ID = b_contact.p_IDs[b2_indx];
+
+					ProjP out;
+					if (findIntersection(a1, a2, b1, b2, &out)) {
+						man_pool.push_back(out);
+						uint64_t m = 0;
+						m |= 0x00000000FFFFFFFF & getEdgeID(a1_ID, a2_ID);
+						m |= 0xFFFFFFFF00000000 & (uint64_t(getEdgeID(b1_ID, b2_ID)) << 32);
+						man_pool_magics.push_back(m);
+					}
+				}
+			}
+		}
+
+		double a_pen = min_pen.pen_depth;
+		double a_dot_val = a_maxP.dot(norm);
+		mthz::Vec3 n_offset = norm * a_dot_val;
+
+		uint64_t cID = 0;
+		cID |= 0x00000000FFFFFFFF & a_id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.id) << 32);
+
+		out.points.reserve(man_pool.size());
+		for (int i = 0; i < man_pool.size(); i++) {
+			ProjP p = man_pool[i];
+			ContactP cp;
+			cp.pos = u * p.u + w * p.w + n_offset;
+			cp.pen_depth = cp.pos.dot(norm) - a_dot_val + a_pen;
+			cp.restitution = std::max<double>(a_mat.restitution, b.material.restitution);
+			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b.material.kinetic_friction_coeff) / 2.0;
+			cp.static_friction_coeff = (a_mat.static_friction_coeff + b.material.static_friction_coeff) / 2.0;
+			cp.magicID = MagicID{ cID, man_pool_magics[i] };
+			out.points.push_back(cp);
+		}
+		out.max_pen_depth = min_pen.pen_depth;
+
+		return out;
+	}
+
+	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b) {
+		std::vector<unsigned int> tri_candidates = b.getAABBTree().getCollisionCandidatesWith(a_aabb);
+		std::vector<Manifold> manifolds_out;
+
+		for (unsigned int i : tri_candidates) {
+			const StaticMeshFace& tri = b.getTriangles()[i];
+
+			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri);
+			if (m.max_pen_depth > 0) {
+				manifolds_out.push_back(m);
+			}
+		}
+
+		return manifolds_out;
+	}
+
+	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b) {
+		return std::vector<Manifold>();
 	}
 
 	Manifold merge_manifold(const Manifold& m1, const Manifold& m2) {

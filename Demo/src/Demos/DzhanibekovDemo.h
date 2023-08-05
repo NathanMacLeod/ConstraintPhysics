@@ -40,9 +40,9 @@ public:
 		double radius1 = 0.1;
 		double height2 = 0.4;
 		double radius2 = 0.067;
-		phyz::Geometry cyl1 = phyz::Geometry::cylinder(mthz::Vec3(0, -height1 / 2.0, 0), radius1, height1);
-		phyz::Geometry cyl2 = phyz::Geometry::cylinder(mthz::Vec3(0, radius1, 0), radius2, height2).getRotated(mthz::Quaternion(-PI / 2, mthz::Vec3(0, 0, 1)));
-		phyz::Geometry spinner = { cyl1, cyl2 };
+		phyz::ConvexUnionGeometry cyl1 = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(0, -height1 / 2.0, 0), radius1, height1);
+		phyz::ConvexUnionGeometry cyl2 = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(0, radius1, 0), radius2, height2).getRotated(mthz::Quaternion(-PI / 2, mthz::Vec3(0, 0, 1)));
+		phyz::ConvexUnionGeometry spinner = { cyl1, cyl2 };
 		phyz::RigidBody* spinner_r = p.createRigidBody(spinner);
 		mthz::Vec3 start_ang_vel(10, 0, 0.1);
 		spinner_r->setAngVel(start_ang_vel);

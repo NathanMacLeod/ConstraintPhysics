@@ -65,12 +65,12 @@ namespace phyz {
 		}
 	}
 
-	void Octree::getAllIntersections_r(const OctreeNode* curr, std::set<Pair<RigidBody>>* out) const {
+	void Octree::getAllIntersections_r(const OctreeNode* curr, std::set<Pair<RigidBody*>>* out) const {
 		if (curr->is_leaf) {
 			for (int i = 0; i < curr->elem.size(); i++) {
 				for (int j = i + 1; j < curr->elem.size(); j++) {
 					if (AABB::intersects(*curr->elem[i].aabb, *curr->elem[j].aabb)) {
-						Pair<RigidBody> p((RigidBody*)curr->elem[i].t, (RigidBody*)curr->elem[j].t);
+						Pair<RigidBody*> p((RigidBody*)curr->elem[i].t, curr->elem[i].t->getID(), (RigidBody*)curr->elem[j].t, curr->elem[j].t->getID());
 						out->insert(p);
 					}
 				}

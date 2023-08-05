@@ -27,9 +27,6 @@
     <ClCompile Include="src\Geometry.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\AABB_Tree.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="src\Octree.cpp">
       <Filter>src</Filter>
     </ClCompile>

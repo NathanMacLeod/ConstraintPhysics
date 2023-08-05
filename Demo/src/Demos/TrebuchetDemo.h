@@ -23,11 +23,11 @@ public:
 	}
 
 	void generateChain(phyz::PhysicsEngine* p, mthz::Vec3 start_pos, int n_links, double link_length, double link_width, std::vector<PhysBod>* bodies, phyz::RigidBody** first_link_out, phyz::RigidBody** final_link_out, mthz::Vec3* final_link_attach_p_out, std::vector<phyz::RigidBody*>* all_links_r ) {
-		phyz::Geometry link_piece = phyz::Geometry::box(mthz::Vec3(-link_width / 6.0, -link_length + link_width / 6.0, -link_width / 6.0), link_width / 3.0, link_length, link_width / 3.0);
-		phyz::Geometry split_piece = { link_piece.getTranslated(mthz::Vec3(link_width / 3.0, 0, 0)), link_piece.getTranslated(mthz::Vec3(-link_width / 3.0, 0, 0)) };
+		phyz::ConvexUnionGeometry link_piece = phyz::ConvexUnionGeometry::box(mthz::Vec3(-link_width / 6.0, -link_length + link_width / 6.0, -link_width / 6.0), link_width / 3.0, link_length, link_width / 3.0);
+		phyz::ConvexUnionGeometry split_piece = { link_piece.getTranslated(mthz::Vec3(link_width / 3.0, 0, 0)), link_piece.getTranslated(mthz::Vec3(-link_width / 3.0, 0, 0)) };
 		double link_dist = link_length - link_width / 3.0;
 
-		phyz::Geometry first_link = split_piece.getTranslated(start_pos);
+		phyz::ConvexUnionGeometry first_link = split_piece.getTranslated(start_pos);
 		phyz::RigidBody* first_link_r = p->createRigidBody(first_link);
 		bodies->push_back({ fromGeometry(first_link), first_link_r });
 		all_links_r->push_back(first_link_r);
@@ -36,7 +36,7 @@ public:
 		mthz::Vec3 prev_link_attach_point = start_pos + mthz::Vec3(0, -link_dist, 0);
 		for (int i = 1; i < n_links; i++) {
 
-			phyz::Geometry connecting_link = link_piece.getTranslated(prev_link_attach_point);
+			phyz::ConvexUnionGeometry connecting_link = link_piece.getTranslated(prev_link_attach_point);
 			phyz::RigidBody* connecting_link_r = p->createRigidBody(connecting_link);
 			bodies->push_back({ fromGeometry(connecting_link), connecting_link_r });
 			all_links_r->push_back(connecting_link_r);
@@ -45,7 +45,7 @@ public:
 
 			mthz::Vec3 intermediate_joint_pos = prev_link_attach_point + mthz::Vec3(0, -link_dist, 0);
 
-			phyz::Geometry open_link = split_piece.getTranslated(intermediate_joint_pos);
+			phyz::ConvexUnionGeometry open_link = split_piece.getTranslated(intermediate_joint_pos);
 			phyz::RigidBody* open_link_r = p->createRigidBody(open_link);
 			bodies->push_back({ fromGeometry(open_link),open_link_r });
 			all_links_r->push_back(open_link_r);
@@ -61,19 +61,19 @@ public:
 		*final_link_attach_p_out = prev_link_attach_point;
 	}
 
-	phyz::Geometry generateChainLoop(mthz::Vec3 pos, double chain_width, double loop_width, double loop_height, double base_length) {
+	phyz::ConvexUnionGeometry generateChainLoop(mthz::Vec3 pos, double chain_width, double loop_width, double loop_height, double base_length) {
 		double fundamental_width = chain_width / 3.0;
 
 		mthz::Vec3 base_pos = pos + mthz::Vec3(-fundamental_width / 2.0, 0, -fundamental_width / 2.0);
-		phyz::Geometry base_piece = phyz::Geometry::box(base_pos + mthz::Vec3(0, -fundamental_width/2.0, 0), fundamental_width, base_length - fundamental_width/2.0, fundamental_width);
+		phyz::ConvexUnionGeometry base_piece = phyz::ConvexUnionGeometry::box(base_pos + mthz::Vec3(0, -fundamental_width/2.0, 0), fundamental_width, base_length - fundamental_width/2.0, fundamental_width);
 
 		mthz::Vec3 loop_pos = pos + mthz::Vec3(-loop_width / 2.0 - fundamental_width, base_length - fundamental_width, -fundamental_width / 2.0);
-		phyz::Geometry loop1 = phyz::Geometry::box(loop_pos, loop_width + 2 * fundamental_width, fundamental_width, fundamental_width);
-		phyz::Geometry loop2 = phyz::Geometry::box(loop_pos + mthz::Vec3(0, fundamental_width, 0), fundamental_width, loop_height, fundamental_width);
-		phyz::Geometry loop3 = phyz::Geometry::box(loop_pos + mthz::Vec3(loop_width + fundamental_width, fundamental_width, 0), fundamental_width, loop_height, fundamental_width);
-		phyz::Geometry loop4 = phyz::Geometry::box(loop_pos + mthz::Vec3(0, loop_height + fundamental_width, 0), loop_width + 2 * fundamental_width, fundamental_width, fundamental_width);
+		phyz::ConvexUnionGeometry loop1 = phyz::ConvexUnionGeometry::box(loop_pos, loop_width + 2 * fundamental_width, fundamental_width, fundamental_width);
+		phyz::ConvexUnionGeometry loop2 = phyz::ConvexUnionGeometry::box(loop_pos + mthz::Vec3(0, fundamental_width, 0), fundamental_width, loop_height, fundamental_width);
+		phyz::ConvexUnionGeometry loop3 = phyz::ConvexUnionGeometry::box(loop_pos + mthz::Vec3(loop_width + fundamental_width, fundamental_width, 0), fundamental_width, loop_height, fundamental_width);
+		phyz::ConvexUnionGeometry loop4 = phyz::ConvexUnionGeometry::box(loop_pos + mthz::Vec3(0, loop_height + fundamental_width, 0), loop_width + 2 * fundamental_width, fundamental_width, fundamental_width);
 
-		return phyz::Geometry({ base_piece, loop1, loop2, loop3, loop4 });
+		return phyz::ConvexUnionGeometry({ base_piece, loop1, loop2, loop3, loop4 });
 	}
 
 	void run() override {
@@ -98,7 +98,7 @@ public:
 		//*******BASE PLATE*******
 		//************************
 		double s = 200;
-		phyz::Geometry geom2 = phyz::Geometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
+		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
@@ -117,53 +117,53 @@ public:
 		double drop_channel_support_width = 0.33;
 
 		mthz::Vec3 channel_beam1_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0 + rail_width, 0, -drop_channel_width / 2.0 - drop_channel_support_width);
-		phyz::Geometry channel_beam1 = phyz::Geometry::box(channel_beam1_pos, drop_channel_support_width, drop_channel_height, drop_channel_support_width);
+		phyz::ConvexUnionGeometry channel_beam1 = phyz::ConvexUnionGeometry::box(channel_beam1_pos, drop_channel_support_width, drop_channel_height, drop_channel_support_width);
 
 		mthz::Vec3 channel_beam2_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0 + rail_width, 0, drop_channel_width / 2.0);
-		phyz::Geometry channel_beam2 = phyz::Geometry::box(channel_beam2_pos, drop_channel_support_width, drop_channel_height, drop_channel_support_width);
+		phyz::ConvexUnionGeometry channel_beam2 = phyz::ConvexUnionGeometry::box(channel_beam2_pos, drop_channel_support_width, drop_channel_height, drop_channel_support_width);
 
-		phyz::Geometry drop_channel_cap1 = phyz::Geometry::box(channel_beam1_pos + mthz::Vec3(0, drop_channel_height, 0), drop_channel_support_width, drop_channel_support_width, 2 * drop_channel_support_width + drop_channel_width);
+		phyz::ConvexUnionGeometry drop_channel_cap1 = phyz::ConvexUnionGeometry::box(channel_beam1_pos + mthz::Vec3(0, drop_channel_height, 0), drop_channel_support_width, drop_channel_support_width, 2 * drop_channel_support_width + drop_channel_width);
 
 		mthz::Vec3 channel_beam3_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width - drop_channel_support_width, 0, -drop_channel_width / 2.0 - drop_channel_support_width);
-		phyz::Geometry channel_beam3 = phyz::Geometry::box(channel_beam3_pos, drop_channel_support_width, drop_channel_height, drop_channel_support_width);
+		phyz::ConvexUnionGeometry channel_beam3 = phyz::ConvexUnionGeometry::box(channel_beam3_pos, drop_channel_support_width, drop_channel_height, drop_channel_support_width);
 
 		mthz::Vec3 channel_beam4_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width - drop_channel_support_width, 0, drop_channel_width / 2.0);
-		phyz::Geometry channel_beam4 = phyz::Geometry::box(channel_beam4_pos, drop_channel_support_width, drop_channel_height, drop_channel_support_width);
+		phyz::ConvexUnionGeometry channel_beam4 = phyz::ConvexUnionGeometry::box(channel_beam4_pos, drop_channel_support_width, drop_channel_height, drop_channel_support_width);
 
-		phyz::Geometry drop_channel_cap2 = phyz::Geometry::box(channel_beam3_pos + mthz::Vec3(0, drop_channel_height, 0), drop_channel_support_width, drop_channel_support_width, 2 * drop_channel_support_width + drop_channel_width);
+		phyz::ConvexUnionGeometry drop_channel_cap2 = phyz::ConvexUnionGeometry::box(channel_beam3_pos + mthz::Vec3(0, drop_channel_height, 0), drop_channel_support_width, drop_channel_support_width, 2 * drop_channel_support_width + drop_channel_width);
 
 		double each_rail_length = (rail_length - drop_channel_width) / 2.0;
 		mthz::Vec3 rail1_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0, rail_height - rail_width, -rail_length / 2.0);
-		phyz::Geometry rail1 = phyz::Geometry::box(rail1_pos, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry rail1 = phyz::ConvexUnionGeometry::box(rail1_pos, rail_width, rail_width, each_rail_length);
 
 		mthz::Vec3 rail2_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0, rail_height - rail_width, drop_channel_width / 2.0);
-		phyz::Geometry rail2 = phyz::Geometry::box(rail2_pos, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry rail2 = phyz::ConvexUnionGeometry::box(rail2_pos, rail_width, rail_width, each_rail_length);
 
 		mthz::Vec3 rail3_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width, rail_height - rail_width, -rail_length / 2.0);
-		phyz::Geometry rail3 = phyz::Geometry::box(rail3_pos, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry rail3 = phyz::ConvexUnionGeometry::box(rail3_pos, rail_width, rail_width, each_rail_length);
 
 		mthz::Vec3 rail4_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width, rail_height - rail_width, drop_channel_width / 2.0);
-		phyz::Geometry rail4 = phyz::Geometry::box(rail4_pos, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry rail4 = phyz::ConvexUnionGeometry::box(rail4_pos, rail_width, rail_width, each_rail_length);
 
-		phyz::Geometry arm_rest_box = phyz::Geometry::box(rail3_pos + mthz::Vec3(rail_width, 0, 0), arm_channel_width, rail_width, rail_width);
+		phyz::ConvexUnionGeometry arm_rest_box = phyz::ConvexUnionGeometry::box(rail3_pos + mthz::Vec3(rail_width, 0, 0), arm_channel_width, rail_width, rail_width);
 
 		mthz::Vec3 bot_rail1_position = rail1_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y, 0);
-		phyz::Geometry bot_rail1 = phyz::Geometry::box(bot_rail1_position, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry bot_rail1 = phyz::ConvexUnionGeometry::box(bot_rail1_position, rail_width, rail_width, each_rail_length);
 		
 		mthz::Vec3 bot_rail2_position = rail2_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y, 0);
-		phyz::Geometry bot_rail2 = phyz::Geometry::box(bot_rail2_position, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry bot_rail2 = phyz::ConvexUnionGeometry::box(bot_rail2_position, rail_width, rail_width, each_rail_length);
 
 		mthz::Vec3 bot_rail3_position = rail3_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y, 0);
-		phyz::Geometry bot_rail3 = phyz::Geometry::box(bot_rail3_position, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry bot_rail3 = phyz::ConvexUnionGeometry::box(bot_rail3_position, rail_width, rail_width, each_rail_length);
 
 		mthz::Vec3 bot_rail4_position = rail4_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y, 0);
-		phyz::Geometry bot_rail4 = phyz::Geometry::box(bot_rail4_position, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry bot_rail4 = phyz::ConvexUnionGeometry::box(bot_rail4_position, rail_width, rail_width, each_rail_length);
 
 		double leg_height = rail1_pos.y - trebuchet_pos.y;
-		phyz::Geometry leg1 = phyz::Geometry::box(rail1_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, 0), rail_width, leg_height - rail_width, rail_width);
-		phyz::Geometry leg2 = phyz::Geometry::box(rail2_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, each_rail_length - rail_width), rail_width, leg_height - rail_width, rail_width); 
-		phyz::Geometry leg3 = phyz::Geometry::box(rail3_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, 0), rail_width, leg_height - rail_width, rail_width);
-		phyz::Geometry leg4 = phyz::Geometry::box(rail4_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, each_rail_length - rail_width), rail_width, leg_height - rail_width, rail_width);
+		phyz::ConvexUnionGeometry leg1 = phyz::ConvexUnionGeometry::box(rail1_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, 0), rail_width, leg_height - rail_width, rail_width);
+		phyz::ConvexUnionGeometry leg2 = phyz::ConvexUnionGeometry::box(rail2_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, each_rail_length - rail_width), rail_width, leg_height - rail_width, rail_width); 
+		phyz::ConvexUnionGeometry leg3 = phyz::ConvexUnionGeometry::box(rail3_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, 0), rail_width, leg_height - rail_width, rail_width);
+		phyz::ConvexUnionGeometry leg4 = phyz::ConvexUnionGeometry::box(rail4_pos + mthz::Vec3(0, trebuchet_pos.y - rail1_pos.y + rail_width, each_rail_length - rail_width), rail_width, leg_height - rail_width, rail_width);
 
 		double support_width = drop_channel_support_width * 0.75;
 		double support_height = 4;
@@ -173,19 +173,19 @@ public:
 		double support_gap = 0.01;
 
 		mthz::Vec3 support1_pos = bot_rail1_position + mthz::Vec3(rail_width + support_gap, 0, 0);
-		phyz::Geometry support1 = phyz::Geometry::box(support1_pos, support_width, support_hypotenous, support_width)
+		phyz::ConvexUnionGeometry support1 = phyz::ConvexUnionGeometry::box(support1_pos, support_width, support_hypotenous, support_width)
 			.getRotated(mthz::Quaternion(support_angle, mthz::Vec3(1, 0, 0)), support1_pos);
 
 		mthz::Vec3 support2_pos = bot_rail2_position + mthz::Vec3(rail_width + support_gap, 0, each_rail_length);
-		phyz::Geometry support2 = phyz::Geometry::box(support2_pos + mthz::Vec3(0, 0, -support_width), support_width, support_hypotenous, support_width)
+		phyz::ConvexUnionGeometry support2 = phyz::ConvexUnionGeometry::box(support2_pos + mthz::Vec3(0, 0, -support_width), support_width, support_hypotenous, support_width)
 			.getRotated(mthz::Quaternion(-support_angle, mthz::Vec3(1, 0, 0)), support2_pos);
 
 		mthz::Vec3 support3_pos = bot_rail3_position + mthz::Vec3(-support_width - support_gap, 0, 0);
-		phyz::Geometry support3 = phyz::Geometry::box(support3_pos, support_width, support_hypotenous, support_width)
+		phyz::ConvexUnionGeometry support3 = phyz::ConvexUnionGeometry::box(support3_pos, support_width, support_hypotenous, support_width)
 			.getRotated(mthz::Quaternion(support_angle, mthz::Vec3(1, 0, 0)), support3_pos);
 
 		mthz::Vec3 support4_pos = bot_rail4_position + mthz::Vec3(-support_width - support_gap, 0, each_rail_length);
-		phyz::Geometry support4 = phyz::Geometry::box(support4_pos + mthz::Vec3(0, 0, -support_width), support_width, support_hypotenous, support_width)
+		phyz::ConvexUnionGeometry support4 = phyz::ConvexUnionGeometry::box(support4_pos + mthz::Vec3(0, 0, -support_width), support_width, support_hypotenous, support_width)
 			.getRotated(mthz::Quaternion(-support_angle, mthz::Vec3(1, 0, 0)), support4_pos);
 
 
@@ -201,11 +201,11 @@ public:
 		double weight_dist = arm_channel_width/2.0 + (rail_width + drop_channel_support_width + weight_gap);
 		double weight_axle_length = 2 * (weight_dist + weight_thickness + weight_axle_excess);
 		mthz::Vec3 weight_center = trebuchet_pos + mthz::Vec3(0, weight_height, 0);
-		phyz::Geometry weight_axle = phyz::Geometry::cylinder(weight_center - mthz::Vec3(0, weight_axle_length / 2.0, 0), weight_axle_radius, weight_axle_length)
+		phyz::ConvexUnionGeometry weight_axle = phyz::ConvexUnionGeometry::cylinder(weight_center - mthz::Vec3(0, weight_axle_length / 2.0, 0), weight_axle_radius, weight_axle_length)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), weight_center);
 
-		phyz::Geometry weight1 = phyz::Geometry::box(weight_center + mthz::Vec3(weight_dist, -weight_width / 2.0, -weight_width / 2.0), weight_thickness, weight_width, weight_width, weight_material);
-		phyz::Geometry weight2 = phyz::Geometry::box(weight_center + mthz::Vec3(-weight_dist - weight_thickness, -weight_width / 2.0, -weight_width / 2.0), weight_thickness, weight_width, weight_width, weight_material);
+		phyz::ConvexUnionGeometry weight1 = phyz::ConvexUnionGeometry::box(weight_center + mthz::Vec3(weight_dist, -weight_width / 2.0, -weight_width / 2.0), weight_thickness, weight_width, weight_width, weight_material);
+		phyz::ConvexUnionGeometry weight2 = phyz::ConvexUnionGeometry::box(weight_center + mthz::Vec3(-weight_dist - weight_thickness, -weight_width / 2.0, -weight_width / 2.0), weight_thickness, weight_width, weight_width, weight_material);
 
 
 		double release_pin_radius = 0.06;
@@ -216,11 +216,11 @@ public:
 		double release_pin_length = drop_channel_width + 2 * drop_channel_support_width + 2 * release_pin_excess;
 
 		mthz::Vec3 release_pin1_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0 + rail_width + drop_channel_support_width / 2.0, release_pin_height, -drop_channel_width / 2.0 - drop_channel_support_width - release_pin_excess);
-		phyz::Geometry release_pin1 = phyz::Geometry::cylinder(release_pin1_pos, release_pin_radius, release_pin_length, 10, weight_material)
+		phyz::ConvexUnionGeometry release_pin1 = phyz::ConvexUnionGeometry::cylinder(release_pin1_pos, release_pin_radius, release_pin_length, 10, weight_material)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), release_pin1_pos);
 
 		mthz::Vec3 release_pin2_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width - drop_channel_support_width / 2.0, release_pin_height, -drop_channel_width / 2.0 - drop_channel_support_width - release_pin_excess);
-		phyz::Geometry release_pin2 = phyz::Geometry::cylinder(release_pin2_pos, release_pin_radius, release_pin_length, 10, weight_material)
+		phyz::ConvexUnionGeometry release_pin2 = phyz::ConvexUnionGeometry::cylinder(release_pin2_pos, release_pin_radius, release_pin_length, 10, weight_material)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), release_pin2_pos);
 
 
@@ -229,7 +229,7 @@ public:
 		double trebuchet_arm_thickness = 0.3;
 
 		mthz::Vec3 trebuchet_arm_pos = weight_center + mthz::Vec3(-trebuchet_arm_thickness / 2.0, -trebuchet_arm_height / 2.0, -trebuchet_arm_length + trebuchet_arm_height / 2.0);
-		phyz::Geometry trebuchet_main_arm = phyz::Geometry::box(trebuchet_arm_pos, trebuchet_arm_thickness, trebuchet_arm_height, trebuchet_arm_length);
+		phyz::ConvexUnionGeometry trebuchet_main_arm = phyz::ConvexUnionGeometry::box(trebuchet_arm_pos, trebuchet_arm_thickness, trebuchet_arm_height, trebuchet_arm_length);
 
 		double roller_distance = 2;
 		double roller_axle_excess = 0.05;
@@ -240,25 +240,25 @@ public:
 		double roller_axle_length = arm_channel_width + 2 * (rail_width - roller_gap_to_wall + roller_axle_excess);
 		mthz::Vec3 roller_center_position = weight_center + mthz::Vec3(0, 0, -roller_distance);
 
-		phyz::Geometry roller_axle = phyz::Geometry::cylinder(roller_center_position + mthz::Vec3(0, -roller_axle_length / 2.0, 0), roller_axle_radius, roller_axle_length)
+		phyz::ConvexUnionGeometry roller_axle = phyz::ConvexUnionGeometry::cylinder(roller_center_position + mthz::Vec3(0, -roller_axle_length / 2.0, 0), roller_axle_radius, roller_axle_length)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), roller_center_position);
 
 		double roller_radius = 0.25;
 		double roller_length = arm_channel_width / 2.0 + rail_width - roller_gap_to_wall - roller_gap_to_arm - trebuchet_arm_thickness / 2.0;
 
-		phyz::Geometry roller_wheel1 = phyz::Geometry::cylinder(roller_center_position + mthz::Vec3(0, trebuchet_arm_thickness/2.0 + roller_gap_to_arm, 0), roller_radius, roller_length)
+		phyz::ConvexUnionGeometry roller_wheel1 = phyz::ConvexUnionGeometry::cylinder(roller_center_position + mthz::Vec3(0, trebuchet_arm_thickness/2.0 + roller_gap_to_arm, 0), roller_radius, roller_length)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), roller_center_position);
 
-		phyz::Geometry roller_wheel2 = phyz::Geometry::cylinder(roller_center_position + mthz::Vec3(0, trebuchet_arm_thickness / 2.0 + roller_gap_to_arm, 0), roller_radius, roller_length)
+		phyz::ConvexUnionGeometry roller_wheel2 = phyz::ConvexUnionGeometry::cylinder(roller_center_position + mthz::Vec3(0, trebuchet_arm_thickness / 2.0 + roller_gap_to_arm, 0), roller_radius, roller_length)
 			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), roller_center_position);
 
 		double chain_loop_length = 0.7;
 		double chain_loop_gap_size = 0.08;
 		double chain_loop_thickness = 0.15;
 
-		phyz::Geometry chain_loop_piece1 = phyz::Geometry::box(trebuchet_arm_pos + mthz::Vec3(0, - chain_loop_gap_size, 0), trebuchet_arm_thickness, chain_loop_gap_size, chain_loop_thickness);
-		phyz::Geometry chain_loop_piece2 = phyz::Geometry::box(trebuchet_arm_pos + mthz::Vec3(0, - chain_loop_gap_size, chain_loop_length - chain_loop_thickness), trebuchet_arm_thickness, chain_loop_gap_size, chain_loop_thickness);
-		phyz::Geometry chain_loop_piece3 = phyz::Geometry::box(trebuchet_arm_pos + mthz::Vec3(0, - chain_loop_gap_size - chain_loop_thickness, 0), trebuchet_arm_thickness, chain_loop_thickness, chain_loop_length);
+		phyz::ConvexUnionGeometry chain_loop_piece1 = phyz::ConvexUnionGeometry::box(trebuchet_arm_pos + mthz::Vec3(0, - chain_loop_gap_size, 0), trebuchet_arm_thickness, chain_loop_gap_size, chain_loop_thickness);
+		phyz::ConvexUnionGeometry chain_loop_piece2 = phyz::ConvexUnionGeometry::box(trebuchet_arm_pos + mthz::Vec3(0, - chain_loop_gap_size, chain_loop_length - chain_loop_thickness), trebuchet_arm_thickness, chain_loop_gap_size, chain_loop_thickness);
+		phyz::ConvexUnionGeometry chain_loop_piece3 = phyz::ConvexUnionGeometry::box(trebuchet_arm_pos + mthz::Vec3(0, - chain_loop_gap_size - chain_loop_thickness, 0), trebuchet_arm_thickness, chain_loop_thickness, chain_loop_length);
 
 		double hook_penetration = 0.1;
 		mthz::Vec3 hook_position = trebuchet_arm_pos + mthz::Vec3(trebuchet_arm_thickness / 2.0, 0, 0);
@@ -266,7 +266,7 @@ public:
 		double hook_width = 0.1;
 		double hook_length = 0.4;
 		double hook_angle = 0;
-		phyz::Geometry hook = phyz::Geometry::box(hook_position + mthz::Vec3(-hook_width / 2.0, -hook_penetration, -hook_width / 2.0), hook_width, hook_length + hook_penetration, hook_width)
+		phyz::ConvexUnionGeometry hook = phyz::ConvexUnionGeometry::box(hook_position + mthz::Vec3(-hook_width / 2.0, -hook_penetration, -hook_width / 2.0), hook_width, hook_length + hook_penetration, hook_width)
 			.getRotated(mthz::Quaternion(-PI / 2.0 + hook_angle, mthz::Vec3(1, 0, 0)), hook_position);
 
 		double chain_arm_gap = 0.1;
@@ -292,21 +292,21 @@ public:
 		double chain1_loop_gap = 0.2;
 		double chain1_loop_size = hook_width + chain1_loop_gap;
 		double chain1_base_dist = hook_position.y - chain1_pos.y - (chain1_loop_size + chain1_loop_gap) / 2.0;
-		phyz::Geometry chain1_loop = generateChainLoop(chain1_pos, chain_width, chain1_loop_size, chain1_loop_size, chain1_base_dist);
+		phyz::ConvexUnionGeometry chain1_loop = generateChainLoop(chain1_pos, chain_width, chain1_loop_size, chain1_loop_size, chain1_base_dist);
 
 		double chain2_loop_width = trebuchet_arm_thickness + 0.05;
 		double chain2_loop_height = 2 * chain_loop_thickness;
 		double chain2_base_dist = trebuchet_arm_pos.y - chain2_pos.y - chain_loop_gap_size / 2.0 - chain2_loop_height - chain_width / 6.0;
-		phyz::Geometry chain2_loop = generateChainLoop(chain2_pos, chain_width, chain2_loop_width, chain2_loop_height, chain2_base_dist);
+		phyz::ConvexUnionGeometry chain2_loop = generateChainLoop(chain2_pos, chain_width, chain2_loop_width, chain2_loop_height, chain2_base_dist);
 		
 		double bucket_clip_width = chain_width / 3.0;
 		double bucket_clip_length = bucket_clip_width * 2;
 
 		mthz::Vec3 bucket_clip1_pos = chain1_final_link_pos + mthz::Vec3(-bucket_clip_width / 2.0, -bucket_clip_width / 2.0, -bucket_clip_width / 2.0);
-		phyz::Geometry bucket_clip1 = phyz::Geometry::box(bucket_clip1_pos, bucket_clip_width, bucket_clip_width, bucket_clip_length);
+		phyz::ConvexUnionGeometry bucket_clip1 = phyz::ConvexUnionGeometry::box(bucket_clip1_pos, bucket_clip_width, bucket_clip_width, bucket_clip_length);
 
 		mthz::Vec3 bucket_clip2_pos = chain2_final_link_pos + mthz::Vec3(-bucket_clip_width / 2.0, -bucket_clip_width / 2.0, - bucket_clip_length + bucket_clip_width / 2.0);
-		phyz::Geometry bucket_clip2 = phyz::Geometry::box(bucket_clip2_pos, bucket_clip_width, bucket_clip_width, bucket_clip_length);
+		phyz::ConvexUnionGeometry bucket_clip2 = phyz::ConvexUnionGeometry::box(bucket_clip2_pos, bucket_clip_width, bucket_clip_width, bucket_clip_length);
 
 		double bucket_width = chain2_pos.z - chain1_pos.z - 2 * bucket_clip_length + bucket_clip_width;
 		double bucket_wall_thickness = 0.06;
@@ -316,36 +316,36 @@ public:
 		double projectile_radius = 1.2 * bucket_width/2.0;
 		phyz::Material projectile_material = phyz::Material::modified_density(0.2);
 		mthz::Vec3 projectile_position = mthz::Vec3(chain1_final_link_pos.x, chain1_final_link_pos.y + projectile_radius - bucket_depth + bucket_wall_thickness, 0.5 * (chain1_final_link_pos.z + chain2_final_link_pos.z));
-		phyz::Geometry projectile = phyz::Geometry::sphere(projectile_position, projectile_radius);
+		phyz::ConvexUnionGeometry projectile = phyz::ConvexUnionGeometry::sphere(projectile_position, projectile_radius);
 
-		phyz::Geometry bucket_floor = phyz::Geometry::box(bucket_pos, bucket_width, bucket_wall_thickness, bucket_width);
-		phyz::Geometry bucket_wall1 = phyz::Geometry::box(bucket_pos + mthz::Vec3(0, bucket_wall_thickness, 0), bucket_width, bucket_depth - bucket_wall_thickness, bucket_wall_thickness);
-		phyz::Geometry bucket_wall2 = phyz::Geometry::box(bucket_pos + mthz::Vec3(0, bucket_wall_thickness, bucket_wall_thickness), bucket_wall_thickness, bucket_depth - bucket_wall_thickness, bucket_width - 2 * bucket_wall_thickness);
-		phyz::Geometry bucket_wall3 = phyz::Geometry::box(bucket_pos + mthz::Vec3(bucket_width - bucket_wall_thickness, bucket_wall_thickness, bucket_wall_thickness), bucket_wall_thickness, bucket_depth - bucket_wall_thickness, bucket_width - 2 * bucket_wall_thickness);
-		phyz::Geometry bucket_wall4 = phyz::Geometry::box(bucket_pos + mthz::Vec3(0, bucket_wall_thickness, bucket_width - bucket_wall_thickness), bucket_width, bucket_depth - bucket_wall_thickness, bucket_wall_thickness);
+		phyz::ConvexUnionGeometry bucket_floor = phyz::ConvexUnionGeometry::box(bucket_pos, bucket_width, bucket_wall_thickness, bucket_width);
+		phyz::ConvexUnionGeometry bucket_wall1 = phyz::ConvexUnionGeometry::box(bucket_pos + mthz::Vec3(0, bucket_wall_thickness, 0), bucket_width, bucket_depth - bucket_wall_thickness, bucket_wall_thickness);
+		phyz::ConvexUnionGeometry bucket_wall2 = phyz::ConvexUnionGeometry::box(bucket_pos + mthz::Vec3(0, bucket_wall_thickness, bucket_wall_thickness), bucket_wall_thickness, bucket_depth - bucket_wall_thickness, bucket_width - 2 * bucket_wall_thickness);
+		phyz::ConvexUnionGeometry bucket_wall3 = phyz::ConvexUnionGeometry::box(bucket_pos + mthz::Vec3(bucket_width - bucket_wall_thickness, bucket_wall_thickness, bucket_wall_thickness), bucket_wall_thickness, bucket_depth - bucket_wall_thickness, bucket_width - 2 * bucket_wall_thickness);
+		phyz::ConvexUnionGeometry bucket_wall4 = phyz::ConvexUnionGeometry::box(bucket_pos + mthz::Vec3(0, bucket_wall_thickness, bucket_width - bucket_wall_thickness), bucket_width, bucket_depth - bucket_wall_thickness, bucket_wall_thickness);
 
 		std::vector<phyz::RigidBody*> trebuchet_bodies;
 
-		phyz::Geometry trebuchet_frame = { channel_beam1, channel_beam2, channel_beam3, channel_beam4, drop_channel_cap1, drop_channel_cap2, 
+		phyz::ConvexUnionGeometry trebuchet_frame = { channel_beam1, channel_beam2, channel_beam3, channel_beam4, drop_channel_cap1, drop_channel_cap2, 
 			rail1, rail2, rail3, rail4, bot_rail1, bot_rail2, bot_rail3, bot_rail4, arm_rest_box, leg1, leg2, leg3, leg4, support1, support2, support3, support4 };
 		phyz::RigidBody* trebuchet_frame_r = p.createRigidBody(trebuchet_frame, true);
 
-		phyz::Geometry release_pins = { release_pin1, release_pin2 };
+		phyz::ConvexUnionGeometry release_pins = { release_pin1, release_pin2 };
 		phyz::RigidBody* release_pins_r = p.createRigidBody(release_pins);
 
-		phyz::Geometry weight = { weight_axle, weight1, weight2 };
+		phyz::ConvexUnionGeometry weight = { weight_axle, weight1, weight2 };
 		phyz::RigidBody* weight_r = p.createRigidBody(weight);
 
-		phyz::Geometry trebuchet_arm = { trebuchet_main_arm, roller_axle, chain_loop_piece1, chain_loop_piece2, chain_loop_piece3, hook };
+		phyz::ConvexUnionGeometry trebuchet_arm = { trebuchet_main_arm, roller_axle, chain_loop_piece1, chain_loop_piece2, chain_loop_piece3, hook };
 		phyz::RigidBody* trebuchet_arm_r = p.createRigidBody(trebuchet_arm, false);
 
-		phyz::Geometry roller = { roller_wheel1, roller_wheel2 };
+		phyz::ConvexUnionGeometry roller = { roller_wheel1, roller_wheel2 };
 		phyz::RigidBody* roller_r = p.createRigidBody(roller);
 
 		phyz::RigidBody* chain1_loop_r = p.createRigidBody(chain1_loop);
 		phyz::RigidBody* chain2_loop_r = p.createRigidBody(chain2_loop);
 
-		phyz::Geometry bucket = { bucket_clip1, bucket_clip2, bucket_floor, bucket_wall1, bucket_wall2, bucket_wall3, bucket_wall4 };
+		phyz::ConvexUnionGeometry bucket = { bucket_clip1, bucket_clip2, bucket_floor, bucket_wall1, bucket_wall2, bucket_wall3, bucket_wall4 };
 		phyz::RigidBody* bucket_r = p.createRigidBody(bucket);
 
 		phyz::RigidBody* projectile_r = p.createRigidBody(projectile);
@@ -397,27 +397,27 @@ public:
 			double pillar_width = 0.3;
 			int n_stories = 4;
 			phyz::Material tower_material = phyz::Material::modified_density(0.05);
-			phyz::Geometry pillar = phyz::Geometry::box(mthz::Vec3(), pillar_width, tower_story_height, pillar_width, tower_material);
-			phyz::Geometry floor_plate = phyz::Geometry::box(mthz::Vec3(), tower_width / 2.0, floor_height, tower_width / 2.0, tower_material);
+			phyz::ConvexUnionGeometry pillar = phyz::ConvexUnionGeometry::box(mthz::Vec3(), pillar_width, tower_story_height, pillar_width, tower_material);
+			phyz::ConvexUnionGeometry floor_plate = phyz::ConvexUnionGeometry::box(mthz::Vec3(), tower_width / 2.0, floor_height, tower_width / 2.0, tower_material);
 
 
 
 			for (int i = 0; i < n_stories; i++) {
 				mthz::Vec3 story_pos = tower_pos + mthz::Vec3(0, i * (floor_height + tower_story_height), 0);
-				phyz::Geometry pillar1 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, -tower_width / 2.0));
-				phyz::Geometry pillar2 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -tower_width / 2.0));
-				phyz::Geometry pillar3 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -tower_width / 2.0));
-				phyz::Geometry pillar4 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, -pillar_width / 2.0));
-				phyz::Geometry pillar5 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -pillar_width / 2.0));
-				phyz::Geometry pillar6 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -pillar_width / 2.0));
-				phyz::Geometry pillar7 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, tower_width / 2.0 - pillar_width));
-				phyz::Geometry pillar8 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, tower_width / 2.0 - pillar_width));
-				phyz::Geometry pillar9 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, tower_width / 2.0 - pillar_width));
+				phyz::ConvexUnionGeometry pillar1 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, -tower_width / 2.0));
+				phyz::ConvexUnionGeometry pillar2 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -tower_width / 2.0));
+				phyz::ConvexUnionGeometry pillar3 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -tower_width / 2.0));
+				phyz::ConvexUnionGeometry pillar4 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, -pillar_width / 2.0));
+				phyz::ConvexUnionGeometry pillar5 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -pillar_width / 2.0));
+				phyz::ConvexUnionGeometry pillar6 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -pillar_width / 2.0));
+				phyz::ConvexUnionGeometry pillar7 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, tower_width / 2.0 - pillar_width));
+				phyz::ConvexUnionGeometry pillar8 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, tower_width / 2.0 - pillar_width));
+				phyz::ConvexUnionGeometry pillar9 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, tower_width / 2.0 - pillar_width));
 
-				phyz::Geometry floor_plate1 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, -tower_width / 2.0));
-				phyz::Geometry floor_plate2 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, -tower_width / 2.0));
-				phyz::Geometry floor_plate3 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, 0));
-				phyz::Geometry floor_plate4 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, 0));
+				phyz::ConvexUnionGeometry floor_plate1 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, -tower_width / 2.0));
+				phyz::ConvexUnionGeometry floor_plate2 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, -tower_width / 2.0));
+				phyz::ConvexUnionGeometry floor_plate3 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, 0));
+				phyz::ConvexUnionGeometry floor_plate4 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, 0));
 
 				phyz::RigidBody* pillar1_r = p.createRigidBody(pillar1);
 				phyz::RigidBody* pillar2_r = p.createRigidBody(pillar2);

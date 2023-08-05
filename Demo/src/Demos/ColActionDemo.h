@@ -35,7 +35,7 @@ public:
 		Color color;
 	};
 
-	Agent genAgent(phyz::Geometry g, phyz::PhysicsEngine& p, Agent::Color color) {
+	Agent genAgent(phyz::ConvexUnionGeometry g, phyz::PhysicsEngine& p, Agent::Color color) {
 		Mesh m = fromGeometry(g);
 		phyz::RigidBody* r = p.createRigidBody(g);
 
@@ -62,12 +62,12 @@ public:
 
 		phyz::Material bouncy{ 1.0, 1.0, 0.0, 0.0 };
 
-		phyz::Geometry wall1 = phyz::Geometry::box(mthz::Vec3(-box_size / 2.0, -box_size/2.0 - wall_width, -box_size / 2.0), box_size, wall_width, box_size, bouncy);
-		phyz::Geometry wall2 = phyz::Geometry::box(mthz::Vec3(-box_size / 2.0, box_size/2.0, -box_size / 2.0), box_size, wall_width, box_size, bouncy);
-		phyz::Geometry wall3 = phyz::Geometry::box(mthz::Vec3(-box_size / 2.0 - wall_width, -box_size/2.0, -box_size / 2.0), wall_width, box_size, box_size, bouncy);
-		phyz::Geometry wall4 = phyz::Geometry::box(mthz::Vec3(box_size / 2.0, -box_size/2.0, -box_size / 2.0), wall_width, box_size, box_size, bouncy);
-		phyz::Geometry wall5 = phyz::Geometry::box(mthz::Vec3(-box_size / 2.0, -box_size/2.0, -box_size / 2.0 - wall_width), box_size, box_size, wall_width, bouncy);
-		phyz::Geometry wall6 = phyz::Geometry::box(mthz::Vec3(-box_size / 2.0, -box_size / 2.0, box_size / 2.0), box_size, box_size, wall_width, bouncy);
+		phyz::ConvexUnionGeometry wall1 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-box_size / 2.0, -box_size/2.0 - wall_width, -box_size / 2.0), box_size, wall_width, box_size, bouncy);
+		phyz::ConvexUnionGeometry wall2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-box_size / 2.0, box_size/2.0, -box_size / 2.0), box_size, wall_width, box_size, bouncy);
+		phyz::ConvexUnionGeometry wall3 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-box_size / 2.0 - wall_width, -box_size/2.0, -box_size / 2.0), wall_width, box_size, box_size, bouncy);
+		phyz::ConvexUnionGeometry wall4 = phyz::ConvexUnionGeometry::box(mthz::Vec3(box_size / 2.0, -box_size/2.0, -box_size / 2.0), wall_width, box_size, box_size, bouncy);
+		phyz::ConvexUnionGeometry wall5 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-box_size / 2.0, -box_size/2.0, -box_size / 2.0 - wall_width), box_size, box_size, wall_width, bouncy);
+		phyz::ConvexUnionGeometry wall6 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-box_size / 2.0, -box_size / 2.0, box_size / 2.0), box_size, box_size, wall_width, bouncy);
 
 		p.createRigidBody(wall1, true);
 		p.createRigidBody(wall2, true);
@@ -78,7 +78,7 @@ public:
 
 		double agent_size = 0.35;
 		int agent_num = 6;
-		phyz::Geometry agent = phyz::Geometry::box(mthz::Vec3(), agent_size, agent_size, agent_size, bouncy);
+		phyz::ConvexUnionGeometry agent = phyz::ConvexUnionGeometry::box(mthz::Vec3(), agent_size, agent_size, agent_size, bouncy);
 
 		mthz::Vec3 red_corner_pos(-box_size / 2.0, -box_size / 2, -box_size / 2);
 		mthz::Vec3 green_corner_pos(-agent_num * agent_size, -agent_num * agent_size, -agent_num * agent_size);
@@ -87,9 +87,9 @@ public:
 		for (int i = 0; i < agent_num; i++) {
 			for (int j = 0; j < agent_num; j++) {
 				for (int k = 0; k < agent_num; k++) {
-					phyz::Geometry red_agent = agent.getTranslated(red_corner_pos + mthz::Vec3(i * 2 * agent_size, j * 2 * agent_size, k * 2 * agent_size));
-					phyz::Geometry green_agent = agent.getTranslated(green_corner_pos + mthz::Vec3(i * 2 * agent_size, j * 2 * agent_size, k * 2 * agent_size));
-					phyz::Geometry blue_agent = agent.getTranslated(blue_corner_pos + mthz::Vec3(i * 2 * agent_size, j * 2 * agent_size, k * 2 * agent_size));
+					phyz::ConvexUnionGeometry red_agent = agent.getTranslated(red_corner_pos + mthz::Vec3(i * 2 * agent_size, j * 2 * agent_size, k * 2 * agent_size));
+					phyz::ConvexUnionGeometry green_agent = agent.getTranslated(green_corner_pos + mthz::Vec3(i * 2 * agent_size, j * 2 * agent_size, k * 2 * agent_size));
+					phyz::ConvexUnionGeometry blue_agent = agent.getTranslated(blue_corner_pos + mthz::Vec3(i * 2 * agent_size, j * 2 * agent_size, k * 2 * agent_size));
 
 					agents.push_back(genAgent(red_agent, p, Agent::Red));
 					agents.push_back(genAgent(red_agent, p, Agent::Green));

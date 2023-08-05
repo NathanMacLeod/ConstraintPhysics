@@ -6,7 +6,7 @@ namespace phyz {
 	template <typename T>
 	class Pair {
 	public:
-		Pair(T* t1, T* t2) {
+		Pair(T t1, int t1_id, T t2, int t2_id) {
 			//keep ordering consistent to avoid {x, y}; {y, x} duplicates
 			if ((int)t1 < (int)t2) {
 				this->t1 = t1;
@@ -18,25 +18,26 @@ namespace phyz {
 			}
 		}
 
-		T* t1 = nullptr;
-		T* t2 = nullptr;
+		T t1 = nullptr;
+		T t2 = nullptr;
+		int t1_id = -1;
+		int t2_id = -1;
 
 		//for use in std::set, used by octree class
-		//use of pointer values probably makes octree non-determenistic, but octree is obsolete now that I have AABB tree and thus is only kept around for fun, so whatever
 		bool operator<(const Pair& p) const {
-			if ((int)t1 < (int)p.t1) {
+			if (t1_id < p.t1_id) {
 				return true;
 			}
-			else if ((int)t1 > (int)p.t1) {
+			else if (t1_id > p.t1_id) {
 				return false;
 			}
 			else {
-				return (int)t2 < (int)p.t2;
+				return t2_id < p.t2_id;
 			}
 		}
 
 		bool operator==(const Pair& p) const {
-			return t1 == p.t1 && t2 == p.t2;
+			return t1_id == p.t1_id && t2_id == p.t2_id;
 		}
 	};
 

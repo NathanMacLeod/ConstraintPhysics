@@ -42,7 +42,7 @@ public:
 		//*******BASE PLATE*******
 		//************************
 		double s = 100;
-		phyz::Geometry geom2 = phyz::Geometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
+		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
@@ -56,19 +56,19 @@ public:
 		double crane_tower_width = 2;
 		double leg_width = 0.33;
 
-		phyz::Geometry leg1 = phyz::Geometry::box(crane_tower_pos + mthz::Vec3(-crane_tower_width / 2.0, 0, -crane_tower_width / 2.0), leg_width, crane_tower_height, leg_width);
-		phyz::Geometry leg2 = phyz::Geometry::box(crane_tower_pos + mthz::Vec3(crane_tower_width / 2.0 - leg_width, 0, -crane_tower_width / 2.0), leg_width, crane_tower_height, leg_width);
-		phyz::Geometry leg3 = phyz::Geometry::box(crane_tower_pos + mthz::Vec3(crane_tower_width / 2.0 - leg_width, 0, crane_tower_width / 2.0 - leg_width), leg_width, crane_tower_height, leg_width);
-		phyz::Geometry leg4 = phyz::Geometry::box(crane_tower_pos + mthz::Vec3(-crane_tower_width / 2.0, 0, crane_tower_width / 2.0 - leg_width), leg_width, crane_tower_height, leg_width);
-		phyz::Geometry tower_base = phyz::Geometry::box(crane_tower_pos + mthz::Vec3(-crane_tower_width / 2.0, crane_tower_height, -crane_tower_width / 2.0), crane_tower_width, leg_width, crane_tower_width);
+		phyz::ConvexUnionGeometry leg1 = phyz::ConvexUnionGeometry::box(crane_tower_pos + mthz::Vec3(-crane_tower_width / 2.0, 0, -crane_tower_width / 2.0), leg_width, crane_tower_height, leg_width);
+		phyz::ConvexUnionGeometry leg2 = phyz::ConvexUnionGeometry::box(crane_tower_pos + mthz::Vec3(crane_tower_width / 2.0 - leg_width, 0, -crane_tower_width / 2.0), leg_width, crane_tower_height, leg_width);
+		phyz::ConvexUnionGeometry leg3 = phyz::ConvexUnionGeometry::box(crane_tower_pos + mthz::Vec3(crane_tower_width / 2.0 - leg_width, 0, crane_tower_width / 2.0 - leg_width), leg_width, crane_tower_height, leg_width);
+		phyz::ConvexUnionGeometry leg4 = phyz::ConvexUnionGeometry::box(crane_tower_pos + mthz::Vec3(-crane_tower_width / 2.0, 0, crane_tower_width / 2.0 - leg_width), leg_width, crane_tower_height, leg_width);
+		phyz::ConvexUnionGeometry tower_base = phyz::ConvexUnionGeometry::box(crane_tower_pos + mthz::Vec3(-crane_tower_width / 2.0, crane_tower_height, -crane_tower_width / 2.0), crane_tower_width, leg_width, crane_tower_width);
 		double cabin_height = crane_tower_width * 0.67;
-		phyz::Geometry cabin = phyz::Geometry::box(crane_tower_pos + mthz::Vec3(-crane_tower_width, crane_tower_height + leg_width, -crane_tower_width / 2.0), crane_tower_width * 1.5, cabin_height, crane_tower_width, phyz::Material::modified_density(2));
+		phyz::ConvexUnionGeometry cabin = phyz::ConvexUnionGeometry::box(crane_tower_pos + mthz::Vec3(-crane_tower_width, crane_tower_height + leg_width, -crane_tower_width / 2.0), crane_tower_width * 1.5, cabin_height, crane_tower_width, phyz::Material::modified_density(2));
 
 		double crane_length = crane_tower_height;
 		double crane_height = crane_length / 8.0;
 		double crane_width = crane_height / 3.0;
 		mthz::Vec3 crane_pos = crane_tower_pos + mthz::Vec3(crane_tower_width/2.0, crane_tower_height + leg_width + cabin_height/3.0, 0);
-		phyz::Geometry crane = phyz::Geometry::box(crane_pos + mthz::Vec3(-crane_height / 2.0, -crane_height / 2.0, -crane_width/2.0), crane_length + crane_height / 2.0, crane_height, crane_width, phyz::Material::modified_density(2));
+		phyz::ConvexUnionGeometry crane = phyz::ConvexUnionGeometry::box(crane_pos + mthz::Vec3(-crane_height / 2.0, -crane_height / 2.0, -crane_width/2.0), crane_length + crane_height / 2.0, crane_height, crane_width, phyz::Material::modified_density(2));
 		
 		bodies.push_back({ fromGeometry(leg1), p.createRigidBody(leg1, true) });
 		bodies.push_back({ fromGeometry(leg2), p.createRigidBody(leg2, true) });
@@ -84,14 +84,14 @@ public:
 		
 		double chain_width = crane_width;
 		double chain_height = chain_width * 4;
-		phyz::Geometry chain = phyz::Geometry::box(mthz::Vec3(-chain_width / 2.0, 0, -chain_width / 2.0), chain_width, -chain_height, chain_width, phyz::Material::modified_density(2));
+		phyz::ConvexUnionGeometry chain = phyz::ConvexUnionGeometry::box(mthz::Vec3(-chain_width / 2.0, 0, -chain_width / 2.0), chain_width, -chain_height, chain_width, phyz::Material::modified_density(2));
 		int n_chain = 6;
 		mthz::Vec3 chain_start_pos = crane_pos + mthz::Vec3(crane_length, -crane_height / 2.0, 0);
 		phyz::RigidBody* previous_chain = nullptr;
 
 		for (int i = 0; i < n_chain; i++) {
 			mthz::Vec3 this_chain_pos = chain_start_pos - mthz::Vec3(0, i * chain_height, 0);
-			phyz::Geometry this_chain = chain.getTranslated(this_chain_pos);
+			phyz::ConvexUnionGeometry this_chain = chain.getTranslated(this_chain_pos);
 			phyz::RigidBody* this_chain_r = p.createRigidBody(this_chain);
 
 			if (i == 0) {
@@ -107,7 +107,7 @@ public:
 
 		mthz::Vec3 final_chain_pos = chain_start_pos + mthz::Vec3(0, -n_chain * chain_height, 0);
 		double ball_size = 0.65;
-		phyz::Geometry ball = phyz::Geometry::psuedoSphere(final_chain_pos + mthz::Vec3(0, -ball_size, 0), ball_size, 15, 20, phyz::Material::modified_density(1));//phyz::Geometry::sphere(final_chain_pos + mthz::Vec3(0, -ball_size, 0), ball_size, phyz::Material::modified_density(1));
+		phyz::ConvexUnionGeometry ball = phyz::ConvexUnionGeometry::psuedoSphere(final_chain_pos + mthz::Vec3(0, -ball_size, 0), ball_size, 15, 20, phyz::Material::modified_density(1));//phyz::ConvexUnionGeometry::sphere(final_chain_pos + mthz::Vec3(0, -ball_size, 0), ball_size, phyz::Material::modified_density(1));
 		phyz::RigidBody* ball_r = p.createRigidBody(ball);
 		p.addBallSocketConstraint(ball_r, previous_chain, final_chain_pos);
 		bodies.push_back({ fromGeometry(ball), ball_r });
@@ -126,27 +126,27 @@ public:
 		double floor_height = 0.25;
 		double pillar_width = 0.3;
 		int n_stories = 9;
-		phyz::Geometry pillar = phyz::Geometry::box(mthz::Vec3(), pillar_width, tower_story_height, pillar_width);
-		phyz::Geometry floor_plate = phyz::Geometry::box(mthz::Vec3(), tower_width / 2.0, floor_height, tower_width / 2.0);
+		phyz::ConvexUnionGeometry pillar = phyz::ConvexUnionGeometry::box(mthz::Vec3(), pillar_width, tower_story_height, pillar_width);
+		phyz::ConvexUnionGeometry floor_plate = phyz::ConvexUnionGeometry::box(mthz::Vec3(), tower_width / 2.0, floor_height, tower_width / 2.0);
 
 		std::vector<phyz::RigidBody*> tower_bodies;
 
 		for (int i = 0; i < n_stories; i++) {
 			mthz::Vec3 story_pos = tower_pos + mthz::Vec3(0, i * (floor_height + tower_story_height), 0);
-			phyz::Geometry pillar1 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, - tower_width / 2.0));
-			phyz::Geometry pillar2 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -tower_width / 2.0));
-			phyz::Geometry pillar3 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -tower_width / 2.0));
-			phyz::Geometry pillar4 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, -pillar_width / 2.0));
-			phyz::Geometry pillar5 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -pillar_width / 2.0));
-			phyz::Geometry pillar6 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -pillar_width / 2.0));
-			phyz::Geometry pillar7 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, tower_width / 2.0 - pillar_width));
-			phyz::Geometry pillar8 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, tower_width / 2.0 - pillar_width));
-			phyz::Geometry pillar9 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, tower_width / 2.0 - pillar_width));
+			phyz::ConvexUnionGeometry pillar1 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, - tower_width / 2.0));
+			phyz::ConvexUnionGeometry pillar2 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -tower_width / 2.0));
+			phyz::ConvexUnionGeometry pillar3 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -tower_width / 2.0));
+			phyz::ConvexUnionGeometry pillar4 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, -pillar_width / 2.0));
+			phyz::ConvexUnionGeometry pillar5 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -pillar_width / 2.0));
+			phyz::ConvexUnionGeometry pillar6 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -pillar_width / 2.0));
+			phyz::ConvexUnionGeometry pillar7 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, tower_width / 2.0 - pillar_width));
+			phyz::ConvexUnionGeometry pillar8 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, tower_width / 2.0 - pillar_width));
+			phyz::ConvexUnionGeometry pillar9 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, tower_width / 2.0 - pillar_width));
 
-			phyz::Geometry floor_plate1 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, -tower_width / 2.0));
-			phyz::Geometry floor_plate2 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, -tower_width / 2.0));
-			phyz::Geometry floor_plate3 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, 0));
-			phyz::Geometry floor_plate4 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, 0));
+			phyz::ConvexUnionGeometry floor_plate1 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, -tower_width / 2.0));
+			phyz::ConvexUnionGeometry floor_plate2 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, -tower_width / 2.0));
+			phyz::ConvexUnionGeometry floor_plate3 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, 0));
+			phyz::ConvexUnionGeometry floor_plate4 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, 0));
 
 			phyz::RigidBody* pillar1_r = p.createRigidBody(pillar1);
 			phyz::RigidBody* pillar2_r = p.createRigidBody(pillar2);

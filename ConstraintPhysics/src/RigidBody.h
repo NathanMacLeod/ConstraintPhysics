@@ -13,9 +13,11 @@ namespace phyz {
 
 	class RigidBody {
 	private:
-		RigidBody(const Geometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id);
+		RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id);
+		RigidBody(const StaticMeshGeometry& source_geometry, unsigned int id);
 	public:
 		typedef int PKey;
+		enum GeometryType { CONVEX_UNION, STATIC_MESH };
 
 		PKey trackPoint(mthz::Vec3 p); //track the movement of p which is on the body b. P given in local coordinates
 		mthz::Vec3 getTrackedP(PKey pk);
@@ -25,14 +27,15 @@ namespace phyz {
 		double getMass();
 		double getInvMass();
 		mthz::Mat3 getInvTensor();
-		bool getAsleep() { return asleep;  }
-		bool getIsFixed() { return fixed; }
-		bool getNoCollision() { return no_collision; }
+		inline bool getAsleep() { return asleep;  }
+		inline bool getIsFixed() { return fixed; }
+		inline bool getNoCollision() { return no_collision; }
 		mthz::Vec3 getPos() { return getTrackedP(origin_pkey); }
-		mthz::Vec3 getCOM() { return com; }
-		mthz::Quaternion getOrientation() { return orientation; }
+		inline mthz::Vec3 getCOM() { return com; }
+		inline mthz::Quaternion getOrientation() { return orientation; }
 		mthz::Vec3 getVel();
 		mthz::Vec3 getAngVel();
+		inline GeometryType getGeometryType() { return geometry_type; }
 
 		void applyForce(mthz::Vec3 force) { vel += force * getInvMass(); }
 		void applyTorque(mthz::Vec3 torque) { ang_vel += getInvTensor() * torque; }
@@ -91,9 +94,16 @@ namespace phyz {
 		double sleep_ready_counter;
 		int non_sleepy_tick_count;
 		
-		std::vector<ConvexPrimitive> geometry;
+		GeometryType geometry_type;
+
+		//used for convex union
 		std::vector<AABB> geometry_AABB;
+		std::vector<ConvexPrimitive> geometry;
 		std::vector<ConvexPrimitive> reference_geometry;
+
+		//for static mesh
+		StaticMeshGeometry reference_mesh;
+		StaticMeshGeometry mesh;
 		
 		std::vector<mthz::Vec3> track_p;
 	};

@@ -41,7 +41,7 @@ public:
 		//*******BASE PLATE*******
 		//************************
 		double s = 100;
-		phyz::Geometry geom2 = phyz::Geometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
+		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
@@ -55,26 +55,26 @@ public:
 		double base_radius = 1.5;
 		double base_height = 0.25;
 
-		phyz::Geometry base_plate = phyz::Geometry::cylinder(base_position, base_radius, base_height);
+		phyz::ConvexUnionGeometry base_plate = phyz::ConvexUnionGeometry::cylinder(base_position, base_radius, base_height);
 
 		mthz::Vec3 column_position = base_position + mthz::Vec3(0, base_height, 0);
 		double column_radius = 0.35;
 		double column_height = 1.5;
 
-		phyz::Geometry column = phyz::Geometry::cylinder(column_position, column_radius, column_height);
+		phyz::ConvexUnionGeometry column = phyz::ConvexUnionGeometry::cylinder(column_position, column_radius, column_height);
 		
 		mthz::Vec3 spinner_base_position = column_position + mthz::Vec3(0, column_height, 0);
 		double spinner_base_radius = column_radius * 1.2;
 		double spinner_base_length = column_radius * 2.1;
 
-		phyz::Geometry spinner_base = phyz::Geometry::cylinder(spinner_base_position + mthz::Vec3(0, -spinner_base_length / 2.0, 0), spinner_base_radius, spinner_base_length)
+		phyz::ConvexUnionGeometry spinner_base = phyz::ConvexUnionGeometry::cylinder(spinner_base_position + mthz::Vec3(0, -spinner_base_length / 2.0, 0), spinner_base_radius, spinner_base_length)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner_base_position);
 
 		mthz::Vec3 spinner_plate_position = spinner_base_position + mthz::Vec3(0, 0, spinner_base_length / 2.0);
 		double spinner_plate_radius = spinner_base_radius - 0.05;
 		double spinner_plate_thickness = 0.1;
 
-		phyz::Geometry spinner_plate = phyz::Geometry::cylinder(spinner_plate_position, spinner_plate_radius, spinner_plate_thickness)
+		phyz::ConvexUnionGeometry spinner_plate = phyz::ConvexUnionGeometry::cylinder(spinner_plate_position, spinner_plate_radius, spinner_plate_thickness)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), spinner_plate_position);
 
 		double flywheel_thickness = 0.25;
@@ -83,17 +83,17 @@ public:
 		double arm_length = 0.85;
 
 		mthz::Vec3 arm1_pos = spinner_plate_position + mthz::Vec3(-arm_width / 2.0, flywheel_thickness / 2.0, spinner_plate_thickness);
-		phyz::Geometry arm1 = phyz::Geometry::box(arm1_pos, arm_width, arm_thickness, arm_length);
+		phyz::ConvexUnionGeometry arm1 = phyz::ConvexUnionGeometry::box(arm1_pos, arm_width, arm_thickness, arm_length);
 
 		mthz::Vec3 arm2_pos = spinner_plate_position + mthz::Vec3(-arm_width / 2.0, -flywheel_thickness / 2.0 - arm_thickness, spinner_plate_thickness);
-		phyz::Geometry arm2 = phyz::Geometry::box(arm2_pos, arm_width, arm_thickness, arm_length);
+		phyz::ConvexUnionGeometry arm2 = phyz::ConvexUnionGeometry::box(arm2_pos, arm_width, arm_thickness, arm_length);
 
 		mthz::Vec3 flywheel_position = spinner_plate_position + mthz::Vec3(0, 0, spinner_plate_thickness + arm_length - arm_thickness / 2.0);
 		double flywheel_radius = 0.65;
-		phyz::Geometry flywheel = phyz::Geometry::cylinder(flywheel_position + mthz::Vec3(0, -flywheel_thickness/2.0, 0), flywheel_radius, flywheel_thickness);
+		phyz::ConvexUnionGeometry flywheel = phyz::ConvexUnionGeometry::cylinder(flywheel_position + mthz::Vec3(0, -flywheel_thickness/2.0, 0), flywheel_radius, flywheel_thickness);
 
-		phyz::Geometry base = { base_plate, column, spinner_base };
-		phyz::Geometry arm = { spinner_plate, arm1, arm2 };
+		phyz::ConvexUnionGeometry base = { base_plate, column, spinner_base };
+		phyz::ConvexUnionGeometry arm = { spinner_plate, arm1, arm2 };
 
 		phyz::RigidBody* base_r = p.createRigidBody(base);
 		p.addHingeConstraint(base_r, r2, base_position, mthz::Vec3(0, 1, 0));

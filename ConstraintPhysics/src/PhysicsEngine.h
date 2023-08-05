@@ -62,7 +62,8 @@ namespace phyz {
 		static void setPrintPerformanceData(bool print_data);
 
 		void timeStep();
-		RigidBody* createRigidBody(const Geometry& geometry, bool fixed=false, mthz::Vec3 position=mthz::Vec3(), mthz::Quaternion orientation=mthz::Quaternion());
+		RigidBody* createRigidBody(const ConvexUnionGeometry& geometry, bool fixed=false, mthz::Vec3 position=mthz::Vec3(), mthz::Quaternion orientation=mthz::Quaternion());
+		RigidBody* createRigidBody(const StaticMeshGeometry& geometry);
 		void removeRigidBody(RigidBody* r);
 		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel=mthz::Vec3(), const mthz::Vec3&delta_psuedo_ang_vel=mthz::Vec3());
 		void disallowCollisionSet(const std::initializer_list<RigidBody*>& bodies);
@@ -151,7 +152,7 @@ namespace phyz {
 
 		BroadPhaseStructure broadphase = AABB_TREE;
 		double aabbtree_margin_size = 0.1;
-		AABBTree<RigidBody> aabb_tree = AABBTree<RigidBody>(aabbtree_margin_size);
+		AABBTree<RigidBody*> aabb_tree = AABBTree<RigidBody*>(aabbtree_margin_size);
 		mthz::Vec3 octree_center = mthz::Vec3(0, 0, 0);
 		double octree_size = 2000;
 		double octree_minsize = 1;

@@ -160,7 +160,7 @@ public:
 		double funnel_tube_height = 2.5;
 		double funne_tube_radius = 6 * ball_radius;
 		mthz::Vec3 funnel_pos = mthz::Vec3(0, 0, 0);
-		phyz::Geometry funnel = phyz::Geometry::funnel(mthz::Vec3(), 5 * ball_radius, funnel_tube_height, funnel_radius, PI / 2 * 0.8, 0.15, 30);
+		phyz::ConvexUnionGeometry funnel = phyz::ConvexUnionGeometry::funnel(mthz::Vec3(), 5 * ball_radius, funnel_tube_height, funnel_radius, PI / 2 * 0.8, 0.15, 30);
 
 		double dropper_height = 6.2;
 		double dropper_radius = 4;
@@ -177,19 +177,19 @@ public:
 		double dropper_extruder_cube_size = 0.5;
 			
 		mthz::Vec3 dropper_ramp_pos = funnel_pos + mthz::Vec3(dropper_radius, dropper_height, dropper_ramp_offset);
-		phyz::Geometry dropper_ramp = phyz::Geometry::uShape(dropper_ramp_pos, dropper_ramp_radius, 2 * dropper_ramp_radius, dropper_ramp_length).getRotated(mthz::Quaternion(PI / 2.0 - dropper_ramp_angle, mthz::Vec3(1, 0, 0)), dropper_ramp_pos);
+		phyz::ConvexUnionGeometry dropper_ramp = phyz::ConvexUnionGeometry::uShape(dropper_ramp_pos, dropper_ramp_radius, 2 * dropper_ramp_radius, dropper_ramp_length).getRotated(mthz::Quaternion(PI / 2.0 - dropper_ramp_angle, mthz::Vec3(1, 0, 0)), dropper_ramp_pos);
 
 		mthz::Vec3 dropper_extruder_pos = dropper_ramp_pos + mthz::Vec3(0, dropper_height_above_ramp + (dropper_ramp_length - dropper_ramp_gap) * sin(dropper_ramp_angle), (dropper_ramp_length - dropper_ramp_gap) * cos(dropper_ramp_angle));
-		phyz::Geometry dropper_extruder_tube = phyz::Geometry::ring(dropper_extruder_pos, dropper_extruder_radius, dropper_extruder_radius + dropper_extruder_thickness, dropper_extruder_height);
-		phyz::Geometry dropper_extruder_cube = phyz::Geometry::box(dropper_extruder_pos + mthz::Vec3(-dropper_extruder_cube_size / 2.0, dropper_extruder_height, -dropper_extruder_cube_size / 2.0), dropper_extruder_cube_size, dropper_extruder_cube_size, dropper_extruder_cube_size);
-		phyz::Geometry extruder = { dropper_extruder_tube, dropper_extruder_cube };
+		phyz::ConvexUnionGeometry dropper_extruder_tube = phyz::ConvexUnionGeometry::ring(dropper_extruder_pos, dropper_extruder_radius, dropper_extruder_radius + dropper_extruder_thickness, dropper_extruder_height);
+		phyz::ConvexUnionGeometry dropper_extruder_cube = phyz::ConvexUnionGeometry::box(dropper_extruder_pos + mthz::Vec3(-dropper_extruder_cube_size / 2.0, dropper_extruder_height, -dropper_extruder_cube_size / 2.0), dropper_extruder_cube_size, dropper_extruder_cube_size, dropper_extruder_cube_size);
+		phyz::ConvexUnionGeometry extruder = { dropper_extruder_tube, dropper_extruder_cube };
 
 		std::vector<mthz::Vec3> dropper_spawn_positions;
 		int n_droppers = 10;
 		for (int i = 0; i < n_droppers; i++) {
 			mthz::Quaternion rot = mthz::Quaternion(2 * PI * i / n_droppers, mthz::Vec3(0, 1, 0));
-			phyz::Geometry dropper_ramp_rotated = dropper_ramp.getRotated(rot, funnel_pos);
-			phyz::Geometry extruder_rotated = extruder.getRotated(rot, funnel_pos);
+			phyz::ConvexUnionGeometry dropper_ramp_rotated = dropper_ramp.getRotated(rot, funnel_pos);
+			phyz::ConvexUnionGeometry extruder_rotated = extruder.getRotated(rot, funnel_pos);
 
 			bodies.push_back(TransformablePhysBod(fromGeometry(dropper_ramp_rotated, blue), p.createRigidBody(dropper_ramp_rotated, true)));
 			bodies.push_back(TransformablePhysBod(fromGeometry(extruder_rotated, yellow), p.createRigidBody(extruder_rotated, true)));
@@ -205,9 +205,9 @@ public:
 		double bucket_bottom_density = 6.5 * bucket_height;
 
 		mthz::Vec3 bucket_position = funnel_pos + mthz::Vec3(0, -bucket_funnel_gap - bucket_height - bucket_thickness, 0);
-		phyz::Geometry bucket_floor = phyz::Geometry::cylinder(bucket_position, bucket_radius + bucket_thickness, bucket_thickness, 10, phyz::Material::modified_density(bucket_bottom_density));
-		phyz::Geometry bucket_wall = phyz::Geometry::ring(bucket_position + mthz::Vec3(0, bucket_thickness, 0), bucket_radius, bucket_radius + bucket_thickness, bucket_height, 10);
-		phyz::Geometry bucket = { bucket_floor, bucket_wall };
+		phyz::ConvexUnionGeometry bucket_floor = phyz::ConvexUnionGeometry::cylinder(bucket_position, bucket_radius + bucket_thickness, bucket_thickness, 10, phyz::Material::modified_density(bucket_bottom_density));
+		phyz::ConvexUnionGeometry bucket_wall = phyz::ConvexUnionGeometry::ring(bucket_position + mthz::Vec3(0, bucket_thickness, 0), bucket_radius, bucket_radius + bucket_thickness, bucket_height, 10);
+		phyz::ConvexUnionGeometry bucket = { bucket_floor, bucket_wall };
 
 		double bucket_pivot_height = bucket_height / 4.0;
 		double bucket_support_block_width = bucket_radius;
@@ -219,18 +219,18 @@ public:
 		mthz::Vec3 bucket_pivot_pos = bucket_position + mthz::Vec3(0, bucket_pivot_height, 0);
 
 
-		phyz::Geometry bucket_support_block1 = phyz::Geometry::box(bucket_pivot_pos + mthz::Vec3(-bucket_radius - bucket_thickness - bucket_support_gap - bucket_support_block_thickness, -bucket_support_block_height + bucket_support_block_width / 2.0, -bucket_support_block_width / 2.0),
+		phyz::ConvexUnionGeometry bucket_support_block1 = phyz::ConvexUnionGeometry::box(bucket_pivot_pos + mthz::Vec3(-bucket_radius - bucket_thickness - bucket_support_gap - bucket_support_block_thickness, -bucket_support_block_height + bucket_support_block_width / 2.0, -bucket_support_block_width / 2.0),
 			bucket_support_block_thickness, bucket_support_block_height, bucket_support_block_width);
-		phyz::Geometry bucket_support_block2 = phyz::Geometry::box(bucket_pivot_pos + mthz::Vec3(bucket_radius + bucket_thickness + bucket_support_gap, -bucket_support_block_height + bucket_support_block_width / 2.0, -bucket_support_block_width / 2.0),
+		phyz::ConvexUnionGeometry bucket_support_block2 = phyz::ConvexUnionGeometry::box(bucket_pivot_pos + mthz::Vec3(bucket_radius + bucket_thickness + bucket_support_gap, -bucket_support_block_height + bucket_support_block_width / 2.0, -bucket_support_block_width / 2.0),
 			bucket_support_block_thickness, bucket_support_block_height, bucket_support_block_width);
 
-		phyz::Geometry bucket_support_block = { bucket_support_block1, bucket_support_block2 };
+		phyz::ConvexUnionGeometry bucket_support_block = { bucket_support_block1, bucket_support_block2 };
 
 		double bucket_rest_rod_radius = 0.1;
 		double bucket_rest_rod_length = 3 * bucket_radius;
 		mthz::Vec3 bucket_rest_rod_pos = bucket_position + mthz::Vec3(-bucket_rest_rod_length / 2.0, bucket_height * 0.75, bucket_radius + bucket_thickness + bucket_rest_rod_radius);
 
-		phyz::Geometry bucket_rest_rod = phyz::Geometry::cylinder(bucket_rest_rod_pos, bucket_rest_rod_radius, bucket_rest_rod_length).getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), bucket_rest_rod_pos)
+		phyz::ConvexUnionGeometry bucket_rest_rod = phyz::ConvexUnionGeometry::cylinder(bucket_rest_rod_pos, bucket_rest_rod_radius, bucket_rest_rod_length).getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), bucket_rest_rod_pos)
 			.getRotated(mthz::Quaternion(bucket_rest_angle, mthz::Vec3(1, 0, 0)), bucket_pivot_pos);
 
 		double ramp_length = 16;
@@ -242,10 +242,10 @@ public:
 
 		mthz::Vec3 ramp_position = bucket_position + mthz::Vec3(-ramp_width / 2.0, -ramp_height_under_bucket, 0);
 
-		phyz::Geometry ramp_base = phyz::Geometry::box(ramp_position, ramp_width, ramp_thickness, ramp_length);
-		phyz::Geometry ramp_guard1 = phyz::Geometry::box(ramp_position + mthz::Vec3(-ramp_thickness, 0, 0), ramp_thickness, ramp_thickness + ramp_guard_height, ramp_length);
-		phyz::Geometry ramp_guard2 = phyz::Geometry::box(ramp_position + mthz::Vec3(ramp_width, 0, 0), ramp_thickness, ramp_thickness + ramp_guard_height, ramp_length);
-		phyz::Geometry ramp = { ramp_base, ramp_guard1, ramp_guard2 };
+		phyz::ConvexUnionGeometry ramp_base = phyz::ConvexUnionGeometry::box(ramp_position, ramp_width, ramp_thickness, ramp_length);
+		phyz::ConvexUnionGeometry ramp_guard1 = phyz::ConvexUnionGeometry::box(ramp_position + mthz::Vec3(-ramp_thickness, 0, 0), ramp_thickness, ramp_thickness + ramp_guard_height, ramp_length);
+		phyz::ConvexUnionGeometry ramp_guard2 = phyz::ConvexUnionGeometry::box(ramp_position + mthz::Vec3(ramp_width, 0, 0), ramp_thickness, ramp_thickness + ramp_guard_height, ramp_length);
+		phyz::ConvexUnionGeometry ramp = { ramp_base, ramp_guard1, ramp_guard2 };
 		ramp = ramp.getRotated(mthz::Quaternion(ramp_angle, mthz::Vec3(1, 0, 0)), ramp_position);
 
 		double display_case_thickness = 0.1;
@@ -255,12 +255,12 @@ public:
 		double bottom_density = 11500;
 		mthz::Vec3 display_position = ramp_position + mthz::Vec3(0, -ramp_length * sin(ramp_angle) - display_height, ramp_length * cos(ramp_angle) + ramp_thickness * sin(ramp_angle));
 
-		phyz::Geometry display_rear_wall = phyz::Geometry::box(display_position + mthz::Vec3(0, 0, -display_case_thickness), ramp_width, display_height, ramp_thickness);
-		phyz::Geometry display_negx_wall = phyz::Geometry::box(display_position + mthz::Vec3(-display_case_thickness, 0, -display_case_thickness), display_case_thickness, display_height + display_guard_height, 2 * display_case_thickness + display_gap);
-		phyz::Geometry display_posx_wall = phyz::Geometry::box(display_position + mthz::Vec3(ramp_width, 0, -display_case_thickness), display_case_thickness, display_height + display_guard_height, 2 * display_case_thickness + display_gap);
-		phyz::Geometry display_front_wall = phyz::Geometry::box(display_position + mthz::Vec3(0, 0, display_gap), ramp_width, display_height, ramp_thickness);
-		phyz::Geometry display_front_guard = phyz::Geometry::box(display_position + mthz::Vec3(0, display_height, display_gap), ramp_width, display_guard_height, ramp_thickness);
-		phyz::Geometry display_bottom = phyz::Geometry::box(display_position + mthz::Vec3(-display_case_thickness, -display_case_thickness, -display_case_thickness), 2 * display_case_thickness + ramp_width, display_case_thickness, 2 * display_case_thickness + display_gap, phyz::Material::modified_density(bottom_density));
+		phyz::ConvexUnionGeometry display_rear_wall = phyz::ConvexUnionGeometry::box(display_position + mthz::Vec3(0, 0, -display_case_thickness), ramp_width, display_height, ramp_thickness);
+		phyz::ConvexUnionGeometry display_negx_wall = phyz::ConvexUnionGeometry::box(display_position + mthz::Vec3(-display_case_thickness, 0, -display_case_thickness), display_case_thickness, display_height + display_guard_height, 2 * display_case_thickness + display_gap);
+		phyz::ConvexUnionGeometry display_posx_wall = phyz::ConvexUnionGeometry::box(display_position + mthz::Vec3(ramp_width, 0, -display_case_thickness), display_case_thickness, display_height + display_guard_height, 2 * display_case_thickness + display_gap);
+		phyz::ConvexUnionGeometry display_front_wall = phyz::ConvexUnionGeometry::box(display_position + mthz::Vec3(0, 0, display_gap), ramp_width, display_height, ramp_thickness);
+		phyz::ConvexUnionGeometry display_front_guard = phyz::ConvexUnionGeometry::box(display_position + mthz::Vec3(0, display_height, display_gap), ramp_width, display_guard_height, ramp_thickness);
+		phyz::ConvexUnionGeometry display_bottom = phyz::ConvexUnionGeometry::box(display_position + mthz::Vec3(-display_case_thickness, -display_case_thickness, -display_case_thickness), 2 * display_case_thickness + ramp_width, display_case_thickness, 2 * display_case_thickness + display_gap, phyz::Material::modified_density(bottom_density));
 
 		phyz::RigidBody* display_rear_wall_r = p.createRigidBody(display_rear_wall, true);
 		bodies.push_back(TransformablePhysBod(fromGeometry(display_rear_wall, blue), display_rear_wall_r));
@@ -301,7 +301,7 @@ public:
 		
 		double delete_box_height = -50;
 		double delete_box_dim = 10000;
-		phyz::Geometry delete_box = phyz::Geometry::box(mthz::Vec3(-delete_box_dim / 2.0, delete_box_height - delete_box_dim, -delete_box_dim / 2.0), delete_box_dim, delete_box_dim, delete_box_dim);
+		phyz::ConvexUnionGeometry delete_box = phyz::ConvexUnionGeometry::box(mthz::Vec3(-delete_box_dim / 2.0, delete_box_height - delete_box_dim, -delete_box_dim / 2.0), delete_box_dim, delete_box_dim, delete_box_dim);
 		phyz::RigidBody* delete_box_r = p.createRigidBody(delete_box, true);
 
 		phyz::RigidBody* funnel_r = p.createRigidBody(funnel, true);
@@ -419,7 +419,7 @@ public:
 
 				if (tick_count % ticks_per_balldrop == 0) {
 					for (mthz::Vec3 spawn_pos : dropper_spawn_positions) {
-						phyz::Geometry ball = phyz::Geometry::sphere(spawn_pos, ball_radius);
+						phyz::ConvexUnionGeometry ball = phyz::ConvexUnionGeometry::sphere(spawn_pos, ball_radius);
 						phyz::RigidBody* ball_r = p.createRigidBody(ball);
 						bodies.push_back(TransformablePhysBod(fromGeometry(ball), ball_r));
 
@@ -519,7 +519,7 @@ public:
 					if (tick_count % ticks_per_balldrop == 0 && p.getNextBodyID() - starting_id < ball_colors.size()) {
 						for (mthz::Vec3 spawn_pos : dropper_spawn_positions) {
 							n_balls_spawned++;
-							phyz::Geometry ball = phyz::Geometry::sphere(spawn_pos, ball_radius);
+							phyz::ConvexUnionGeometry ball = phyz::ConvexUnionGeometry::sphere(spawn_pos, ball_radius);
 							phyz::RigidBody* ball_r = p.createRigidBody(ball);
 							int ball_id = ball_r->getID();
 							bodies.push_back(TransformablePhysBod(fromGeometry(ball, ball_colors[ball_id - starting_id]), ball_r));

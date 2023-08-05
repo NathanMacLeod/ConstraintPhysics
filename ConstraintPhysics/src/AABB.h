@@ -7,13 +7,13 @@ namespace phyz{
 		mthz::Vec3 min;
 		mthz::Vec3 max;
 
-		static bool intersects(const AABB& a, const AABB& b) {
+		static bool intersects(AABB a, AABB b) {
 			return ! (a.max.x < b.min.x || a.min.x > b.max.x
 				   || a.max.y < b.min.y || a.min.y > b.max.y
 				   || a.max.z < b.min.z || a.min.z > b.max.z);
 		}
 
-		static AABB combine(const AABB& a, const AABB& b) {
+		static AABB combine(AABB a, AABB b) {
 			AABB out;
 			out.min.x = std::min<double>(a.min.x, b.min.x);
 			out.min.y = std::min<double>(a.min.y, b.min.y);
@@ -49,13 +49,21 @@ namespace phyz{
 			return out;
 		}
 
-		static double volume(const AABB& a) {
+		static double volume(AABB a) {
 			return	  (a.max.x - a.min.x)
 					* (a.max.y - a.min.y)
 					* (a.max.z - a.min.z);
 		}
 
-		static AABB getScaled(const AABB& a, double scale_factor) {
+		static double surfaceArea(AABB a) {
+			double dx = a.max.x - a.min.x;
+			double dy = a.max.y - a.min.y;
+			double dz = a.max.z - a.min.z;
+
+			return 2 * (dx * dy) + (dy * dz) + (dz * dx);
+		}
+
+		static AABB getScaled(AABB a, double scale_factor) {
 			mthz::Vec3 center = (a.max + a.min) / 2.0;
 
 			return AABB{
@@ -64,7 +72,7 @@ namespace phyz{
 			};
 		}
 
-		static bool isAABBContained(const AABB& contained_aabb, const AABB& containing_aabb) {
+		static bool isAABBContained(AABB contained_aabb, AABB containing_aabb) {
 			return	   contained_aabb.min.x >= containing_aabb.min.x
 					&& contained_aabb.min.y >= containing_aabb.min.y
 					&& contained_aabb.min.z >= containing_aabb.min.z
@@ -74,7 +82,7 @@ namespace phyz{
 		}
 
 		//slab method
-		static bool rayIntersectsAABB(const AABB& aabb, mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+		static bool rayIntersectsAABB(AABB aabb, mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
 			double t_min = -std::numeric_limits<double>::infinity();
 			double t_max = std::numeric_limits<double>::infinity();
 

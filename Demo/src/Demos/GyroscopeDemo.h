@@ -41,7 +41,7 @@ public:
 		//*******BASE PLATE*******
 		//************************
 		double s = 100;
-		phyz::Geometry geom2 = phyz::Geometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
+		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
@@ -57,12 +57,12 @@ public:
 		double outer_ring_thickness = 0.1;
 		double outer_ring_radius = 1;
 		int ring_detail = 15;
-		phyz::Geometry outer_ring = phyz::Geometry::ring(gyroscope_center + mthz::Vec3(0, -outer_ring_width / 2.0, 0), outer_ring_radius - outer_ring_thickness, outer_ring_radius, outer_ring_width, ring_detail);
+		phyz::ConvexUnionGeometry outer_ring = phyz::ConvexUnionGeometry::ring(gyroscope_center + mthz::Vec3(0, -outer_ring_width / 2.0, 0), outer_ring_radius - outer_ring_thickness, outer_ring_radius, outer_ring_width, ring_detail);
 
 		double mid_ring_width = 0.3;
 		double mid_ring_thickness = 0.1;
 		double mid_ring_radius = outer_ring_radius - 0.02;
-		phyz::Geometry mid_ring = phyz::Geometry::ring(gyroscope_center + mthz::Vec3(0, -mid_ring_width / 2.0, 0), mid_ring_radius - mid_ring_thickness, mid_ring_radius, mid_ring_width, ring_detail)
+		phyz::ConvexUnionGeometry mid_ring = phyz::ConvexUnionGeometry::ring(gyroscope_center + mthz::Vec3(0, -mid_ring_width / 2.0, 0), mid_ring_radius - mid_ring_thickness, mid_ring_radius, mid_ring_width, ring_detail)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), gyroscope_center);
 			
 		double axle_radius = 0.075;
@@ -70,19 +70,19 @@ public:
 		double axle_excess = 0.1;
 
 		mthz::Vec3 axle_pos = gyroscope_center + mthz::Vec3(0, -axle_length + mid_ring_radius + axle_excess, 0);
-		phyz::Geometry axle = phyz::Geometry::cylinder(axle_pos, axle_radius, axle_length);
+		phyz::ConvexUnionGeometry axle = phyz::ConvexUnionGeometry::cylinder(axle_pos, axle_radius, axle_length);
 
 		double ball_radius = 0.125;
 		double ball_seperation = 0.02;
 
-		phyz::Geometry ball = phyz::Geometry::sphere(axle_pos + mthz::Vec3(0, -ball_seperation, 0), ball_radius);
+		phyz::ConvexUnionGeometry ball = phyz::ConvexUnionGeometry::sphere(axle_pos + mthz::Vec3(0, -ball_seperation, 0), ball_radius);
 
 		double spinner_radius = 0.8;
 		double spinner_thickness = 0.5;
 
-		phyz::Geometry spinner = phyz::Geometry::cylinder(gyroscope_center + mthz::Vec3(0, -spinner_thickness / 2.0, 0), spinner_radius, spinner_thickness, 10, phyz::Material::modified_density(1.0));
+		phyz::ConvexUnionGeometry spinner = phyz::ConvexUnionGeometry::cylinder(gyroscope_center + mthz::Vec3(0, -spinner_thickness / 2.0, 0), spinner_radius, spinner_thickness, 10, phyz::Material::modified_density(1.0));
 
-		phyz::Geometry gyroscope_body = { outer_ring, mid_ring, axle, ball};
+		phyz::ConvexUnionGeometry gyroscope_body = { outer_ring, mid_ring, axle, ball};
 		
 		
 		phyz::RigidBody* body_r = p.createRigidBody(gyroscope_body);
@@ -157,7 +157,7 @@ public:
 				double block_size = 0.3;
 				double block_speed = 15;
 
-				phyz::Geometry block = phyz::Geometry::box(pos + mthz::Vec3(-block_size / 2.0, -block_size / 2.0, -block_size / 2.0), block_size, block_size, block_size);
+				phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::box(pos + mthz::Vec3(-block_size / 2.0, -block_size / 2.0, -block_size / 2.0), block_size, block_size, block_size);
 				phyz::RigidBody* block_r = p.createRigidBody(block);
 
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));

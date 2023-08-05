@@ -76,125 +76,12 @@ namespace phyz {
 		return copy;
 	}
 
-	ConvexPrimitive::RayHitInfo ConvexPrimitive::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
+	RayQueryReturn ConvexPrimitive::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
 		switch (type) {
 		case POLYHEDRON:	return ((Polyhedron*)geometry)->testRayIntersection(ray_origin, ray_dir);
 		case SPHERE:		return ((Sphere*)geometry)->testRayIntersection(ray_origin, ray_dir);
 		}
 	}
-
-	StaticMesh::StaticMesh(const StaticMesh& c) 
-		: aabb_tree(0)
-	{
-
-	}
-
-	StaticMesh::StaticMesh(const std::vector<mthz::Vec3>& points, const std::vector<TriIndices>& triangle_indices)
-		: aabb_tree(0)
-	{
-		struct Edge {
-			unsigned int p1_indx, p2_indx;
-			unsigned int opposite_point_indx;
-
-			bool isCompliment(Edge e) {
-				return p1_indx == e.p2_indx && p2_indx == e.p1_indx;
-			}
-		};
-
-		struct TriangleGraphNode {
-			unsigned int p1_indx, p2_indx, p3_indx;
-			int tri_neighbor_indices[3]; //neighbor1 shares p1 p2 edge, neighbor2 shared p2 p3 edge, neighbor3 shares p3 p1 edge
-			Edge edges[3];
-			mthz::Vec3 normal;
-		};
-
-		std::vector<TriangleGraphNode> neighbor_graph;
-		neighbor_graph.reserve(triangle_indices.size());
-		for (TriIndices t : triangle_indices) {
-			mthz::Vec3 v1 = points[t.i2] - points[t.i1];
-			mthz::Vec3 v2 = points[t.i3] - points[t.i1];
-			mthz::Vec3 normal = v1.cross(v2).normalize();
-			neighbor_graph.push_back(TriangleGraphNode{ t.i1, t.i2, t.i3, {-1, -1, -1}, {Edge{t.i1, t.i2, t.i3}, Edge{t.i2, t.i3, t.i1}, Edge{t.i3, t.i1, t.i2}}, normal});
-		}
-
-		//brute force determine all neighbors
-		for (int i = 0; i < neighbor_graph.size(); i++) {
-			for (int j = i + 1; j < neighbor_graph.size(); j++) {
-
-				for (int k = 0; k < 3; k++) {
-					for (int w = 0; w < 3; w++) {
-
-						if (neighbor_graph[i].edges[k].isCompliment(neighbor_graph[j].edges[w])) {
-							assert(neighbor_graph[i].tri_neighbor_indices[k] == -1 && neighbor_graph[j].tri_neighbor_indices[w] == -1);
-							neighbor_graph[i].tri_neighbor_indices[k] = j;
-							neighbor_graph[j].tri_neighbor_indices[w] = i;
-						}
-
-					}
-				}
-
-			}
-		}
-
-		//using the neighbor graph to compute all the finalized StaticMeshTri objects
-		//neighbor info is needed to determine the gauss arcs for valid edge collisions.
-		triangles.reserve(neighbor_graph.size());
-		for (TriangleGraphNode t : neighbor_graph) {
-			StaticMeshTri tri;
-			tri.normal = t.normal;
-			tri.p1 = points[t.p1_indx]; tri.p2 = points[t.p2_indx]; tri.p1 = points[t.p3_indx];
-	
-			unsigned int gauss_vert_indx = 1;
-			std::vector<GaussVert> gauss_map_verticies = { GaussVert{t.normal} };
-			std::vector<GaussArc> gauss_arcs;
-			for (int i = 0; i < 3; i++) {
-				if (t.tri_neighbor_indices[i] == -1) {
-					//no neighbor on this edge, so need to expose the entire 180 edge. Gauss arc doesnt really work for 180 degree arc, so we split it into 2 90 arcs
-					mthz::Vec3 edge_dir = points[t.edges[i].p2_indx] - points[t.edges[i].p1_indx];
-					mthz::Vec3 edge_out_dir = edge_dir.cross(t.normal).normalize();
-
-					gauss_map_verticies.push_back(GaussVert{ edge_out_dir });
-					gauss_map_verticies.push_back(GaussVert{ -t.normal });
-					gauss_arcs.push_back(GaussArc{ 0, gauss_vert_indx });
-					gauss_arcs.push_back(GaussArc{ gauss_vert_indx, gauss_vert_indx + 1 });
-
-					gauss_vert_indx += 2;
-				}
-				else {
-					//neighbors version of the same edge
-					Edge complimentary_edge;
-					for (int j = 0; j < 3; j++) {
-						Edge neighbor_edge = neighbor_graph[t.tri_neighbor_indices[i]].edges[j];
-						if (t.edges[i].isCompliment(neighbor_edge)) {
-							complimentary_edge = neighbor_edge;
-						}
-					}
-
-					mthz::Vec3 this_opposite_tip = points[t.edges[i].opposite_point_indx];
-					mthz::Vec3 neighbor_opposite_tip = points[complimentary_edge.opposite_point_indx];
-
-					bool edge_concave = (neighbor_opposite_tip - this_opposite_tip).dot(t.normal) >= 0;
-					if (edge_concave) continue; //Geometry can never collide with this edge
-
-					mthz::Vec3 neighbor_normal = neighbor_graph[t.tri_neighbor_indices[i]].normal;
-					gauss_map_verticies.push_back(GaussVert{ neighbor_normal });
-					gauss_arcs.push_back(GaussArc{ 0, gauss_vert_indx });
-
-					gauss_vert_indx++;
-				}
-			}
-		}
-	}
-
-	StaticMesh getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point = mthz::Vec3(0, 0, 0)) const;
-
-	StaticMesh getTranslated(mthz::Vec3 t) const;
-
-	StaticMesh getScaled(double d, mthz::Vec3 center_of_dialtion) const;
-
-	AABB gen_AABB() const override;
-
-	ConvexPrimitive::RayHitInfo testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
 
 	Sphere::Sphere(const Sphere& c) 
 		: center(c.center), radius(c.radius)
@@ -228,7 +115,7 @@ namespace phyz {
 		return AABB{ min, max };
 	}
 
-	ConvexPrimitive::RayHitInfo Sphere::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+	RayQueryReturn Sphere::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
 		assert(abs(1 - ray_dir.mag()) < 0.0001); //should be unit length
 
 		mthz::Vec3 rel_org = ray_origin - center;
@@ -258,7 +145,7 @@ namespace phyz {
 			else t = std::min<double>(t1, t2);
 		}
 		
-		return ConvexPrimitive::RayHitInfo{ true, ray_origin + t * ray_dir, t };
+		return RayQueryReturn{ true, ray_origin + t * ray_dir, t };
 	}
 
 	Polyhedron::Polyhedron(const Polyhedron& c)
@@ -406,7 +293,7 @@ namespace phyz {
 
 	}
 
-	ConvexPrimitive::RayHitInfo Polyhedron::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+	RayQueryReturn Polyhedron::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
 		for (const Surface& s : surfaces) {
 			mthz::Vec3 sp = s.getPointI(0);
 			mthz::Vec3 n = s.normal();
@@ -423,7 +310,7 @@ namespace phyz {
 				if (out_dir.dot(intersection_point - edge_p1) > 0) continue; //the intersection of the ray with the surfaces plane does not lie within the surface
 			}
 
-			return ConvexPrimitive::RayHitInfo{ true, intersection_point, t };
+			return RayQueryReturn{ true, intersection_point, t };
 		}
 
 		return { false };

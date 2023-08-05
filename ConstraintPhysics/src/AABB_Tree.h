@@ -12,7 +12,9 @@ namespace phyz {
 	class AABBTree {
 	public:
 
-		AABBTree(double aabb_margin_size) : aabb_margin_size(aabb_margin_size), root(nullptr) {}
+		enum CostFunction { VOLUME, SURFACE_AREA };
+
+		AABBTree(double aabb_margin_size, CostFunction cost_type=VOLUME) : aabb_margin_size(aabb_margin_size), root(nullptr), cost_type(cost_type) {}
 
 		~AABBTree() {
 			if (root == nullptr) return;
@@ -34,9 +36,9 @@ namespace phyz {
 			}
 		}
 
-		void add(const T* object, const AABB& object_bounds) {
-			Node* new_leaf = new Node(object, object_bounds, aabb_margin_size);
-			object_node_map[object->getID()] = new_leaf;
+		void add(T object, int object_id, const AABB& object_bounds) {
+			Node* new_leaf = new Node(object, object_id, object_bounds, aabb_margin_size, cost_type);
+			object_node_map[object_id] = new_leaf;
 
 			if (root == nullptr) {
 				root = new_leaf;
@@ -56,7 +58,7 @@ namespace phyz {
 				if (c.inherited_cost >= best_candidate_cost) continue;
 
 				AABB candidate_aabb = AABB::combine(new_leaf->node_aabb, c.node->node_aabb);
-				double direct_cost = AABB::volume(candidate_aabb);
+				double direct_cost = cost_type == VOLUME ? AABB::volume(candidate_aabb) : AABB::surfaceArea(candidate_aabb);
 				double candidate_cost = c.inherited_cost + direct_cost;
 
 				if (candidate_cost < best_candidate_cost) {
@@ -68,7 +70,7 @@ namespace phyz {
 				if (!c.node->is_leaf) {
 					assert(c.node->left != nullptr && c.node->right != nullptr);
 
-					double child_inherited_cost = c.inherited_cost + direct_cost - c.node->volume;
+					double child_inherited_cost = c.inherited_cost + direct_cost - c.node->cost_value;
 					candidates.push_back({ c.node->left, child_inherited_cost });
 					candidates.push_back({ c.node->right, child_inherited_cost });
 				}
@@ -102,10 +104,10 @@ namespace phyz {
 			rebalanceAncestors(new_leaf);
 		}
 
-		void remove(const T* object) {
-			assert(object_node_map.find(object->getID()) != object_node_map.end());
-			Node* to_remove_leaf = object_node_map[object->getID()];
-			object_node_map.erase(object->getID());
+		void remove(unsigned int object_id) {
+			assert(object_node_map.find(object_id) != object_node_map.end());
+			Node* to_remove_leaf = object_node_map[object_id];
+			object_node_map.erase(object_id);
 
 
 			if (to_remove_leaf == root) {
@@ -135,13 +137,13 @@ namespace phyz {
 			delete to_remove_leaf;
 		}
 
-		void update(const T* object, const AABB& updated_object_bounds) {
-			assert(object_node_map.find(object->getID()) != object_node_map.end());
-			Node* object_leaf = object_node_map[object->getID()];
+		void update(T object, int object_id, const AABB& updated_object_bounds) {
+			assert(object_node_map.find(object_id) != object_node_map.end());
+			Node* object_leaf = object_node_map[object_id];
 
 			if (!AABB::isAABBContained(updated_object_bounds, object_leaf->node_aabb)) {
-				remove(object);
-				add(object, updated_object_bounds);
+				remove(object_id);
+				add(object, object_id, updated_object_bounds);
 			}
 			else {
 				object_leaf->leaf_object_true_aabb = updated_object_bounds;
@@ -195,7 +197,7 @@ namespace phyz {
 				else {
 					//leaf x leaf
 					if (AABB::intersects(tp.n1->leaf_object_true_aabb, tp.n2->leaf_object_true_aabb)) {
-						col_pairs.push_back(Pair<T>((T*)tp.n1->leaf_object, (T*)tp.n2->leaf_object));
+						col_pairs.push_back(Pair<T>(tp.n1->leaf_object, tp.n1->leaf_object_id, tp.n2->leaf_object, tp.n2->leaf_object_id));
 					}
 				}
 			}
@@ -221,17 +223,40 @@ namespace phyz {
 			return col_pairs;
 		}
 
-		std::vector<T*> raycastHitCandidates(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
-			if (root == nullptr) return std::vector<T*>();
+		std::vector<T> getCollisionCandidatesWith(AABB target) const {
+			if (root == nullptr) return std::vector<T>();
 
-			std::vector<T*> out;
+			std::vector<T> out;
 			std::vector<Node*> node_candidates = { root };
 			while (!node_candidates.empty()) {
 				Node* n = node_candidates.back();
 				node_candidates.pop_back();
 
 				if (n->is_leaf) {
-					if (AABB::rayIntersectsAABB(n->leaf_object_true_aabb, ray_origin, ray_dir)) out.push_back((T*)n->leaf_object);
+					if (AABB::intersects(n->leaf_object_true_aabb, target)) out.push_back(n->leaf_object);
+				}
+				else {
+					if (AABB::intersects(n->node_aabb, target)) {
+						node_candidates.push_back(n->left);
+						node_candidates.push_back(n->right);
+					}
+				}
+			}
+
+			return out;
+		}
+
+		std::vector<T> raycastHitCandidates(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
+			if (root == nullptr) return std::vector<T>();
+
+			std::vector<T> out;
+			std::vector<Node*> node_candidates = { root };
+			while (!node_candidates.empty()) {
+				Node* n = node_candidates.back();
+				node_candidates.pop_back();
+
+				if (n->is_leaf) {
+					if (AABB::rayIntersectsAABB(n->leaf_object_true_aabb, ray_origin, ray_dir)) out.push_back(n->leaf_object);
 				}
 				else {
 					if (AABB::rayIntersectsAABB(n->node_aabb, ray_origin, ray_dir)) {
@@ -249,35 +274,34 @@ namespace phyz {
 		class Node {
 		public:
 			Node()
-				: parent(nullptr), left(nullptr), right(nullptr), is_leaf(false), leaf_object(nullptr), volume(0) {}
+				: parent(nullptr), left(nullptr), right(nullptr), is_leaf(false), leaf_object_id(-1), cost_value(0) {}
 
-			Node(const T* object, const AABB& object_aabb, double aabb_margin_size)
-				: parent(nullptr), left(nullptr), right(nullptr), is_leaf(true), leaf_object(object), leaf_object_true_aabb(object_aabb)
+			Node(T object, int object_id, const AABB& object_aabb, double aabb_margin_size, CostFunction cost_type)
+				: parent(nullptr), left(nullptr), right(nullptr), is_leaf(true), leaf_object(object), leaf_object_id(object_id), leaf_object_true_aabb(object_aabb)
 			{
 				setAABB(AABB{
 					object_aabb.min - mthz::Vec3(aabb_margin_size, aabb_margin_size, aabb_margin_size),
 					object_aabb.max + mthz::Vec3(aabb_margin_size, aabb_margin_size, aabb_margin_size)
-					});
+					}, cost_type);
 			}
 
-			void setAABB(const AABB& aabb, double aabb_volume = -1) {
+			void setAABB(const AABB& aabb, CostFunction cost_type, double aabb_cost = -1) {
 				node_aabb = aabb;
-				if (aabb_volume == -1) {
-					volume = AABB::volume(aabb);
+				if (aabb_cost == -1) {
+					cost_value = cost_type == VOLUME ? AABB::volume(aabb) : AABB::surfaceArea(aabb);
 				}
 				else {
-					volume = aabb_volume;
-					assert(aabb_volume == AABB::volume(aabb));
+					cost_value = aabb_cost;
 				}
 			}
 
-			void calculateAndUpdateAABB() {
+			void calculateAndUpdateAABB(CostFunction cost_type) {
 				//there is no reason this function should be used with leaf nodes. Probably implies a bug
 				assert(!is_leaf);
 				//non-leaf nodes should always have two children
 				assert(left != nullptr && right != nullptr);
 
-				setAABB(AABB::combine(left->node_aabb, right->node_aabb));
+				setAABB(AABB::combine(left->node_aabb, right->node_aabb), cost_type);
 			}
 
 			static void swpNodes(Node* n1, Node* n2) {
@@ -301,13 +325,14 @@ namespace phyz {
 			//in case of non-leaf is the merged bounding box of the two children nodes
 			//in case of leaf node, is the enlarged bounding box of the object
 			AABB node_aabb;
-			double volume;
+			double cost_value;
 
 			//for use in checking all collisions
 			bool internal_collision_checked_flag = false;
 
 			bool is_leaf;
-			const T* leaf_object;
+			T leaf_object;
+			int leaf_object_id;
 			AABB leaf_object_true_aabb;
 		};
 
@@ -322,6 +347,7 @@ namespace phyz {
 			Node* n2;
 		};
 
+		CostFunction cost_type;
 		double aabb_margin_size;
 		std::unordered_map<unsigned int, Node*> object_node_map;
 		Node* root;
@@ -329,7 +355,7 @@ namespace phyz {
 		void haveAncestorsRecalculateAABB(Node* altered_node) {
 			Node* current = altered_node->parent;
 			while (current != nullptr) {
-				current->calculateAndUpdateAABB();
+				current->calculateAndUpdateAABB(cost_type);
 				current = current->parent;
 			}
 		}
@@ -345,49 +371,49 @@ namespace phyz {
 					//cl: swap current with sibling->left
 					//sr: swap sibling with current->right
 					AABB cl_aabb, cr_aabb, sl_aabb, sr_aabb;
-					double cl_vol, cr_vol, sl_vol, sr_vol;
+					double cl_cost, cr_cost, sl_cost, sr_cost;
 
 					//current cannot be a leaf as we are following parent pointers
 					sl_aabb = AABB::combine(current->right->node_aabb, sibling->node_aabb);
 					sr_aabb = AABB::combine(current->left->node_aabb, sibling->node_aabb);
-					sl_vol = AABB::volume(sl_aabb);
-					sr_vol = AABB::volume(sr_aabb);
+					sl_cost = cost_type == VOLUME ? AABB::volume(sl_aabb) : AABB::surfaceArea(sl_aabb);
+					sr_cost = cost_type == VOLUME ? AABB::volume(sr_aabb) : AABB::surfaceArea(sr_aabb);
 
 					if (sibling->is_leaf) {
 						//inf worst possible, disqualifies the nodes
-						cl_vol = std::numeric_limits<double>::infinity();
-						cr_vol = std::numeric_limits<double>::infinity();
+						cl_cost = std::numeric_limits<double>::infinity();
+						cr_cost = std::numeric_limits<double>::infinity();
 					}
 					else {
 						cl_aabb = AABB::combine(sibling->right->node_aabb, current->node_aabb);
 						cr_aabb = AABB::combine(sibling->left->node_aabb, current->node_aabb);
-						cl_vol = AABB::volume(cl_aabb);
-						cr_vol = AABB::volume(cr_aabb);
+						cl_cost = cost_type == VOLUME ? AABB::volume(cl_aabb) : AABB::surfaceArea(cl_aabb);
+						cr_cost = cost_type == VOLUME ? AABB::volume(cr_aabb) : AABB::surfaceArea(cr_aabb);
 					}
 
-					double cl_vol_change = cl_vol - sibling->volume;
-					double cr_vol_change = cr_vol - sibling->volume;
-					double sl_vol_change = sl_vol - current->volume;
-					double sr_vol_change = sr_vol - current->volume;
+					double cl_cost_change = cl_cost - sibling->cost_value;
+					double cr_cost_change = cr_cost - sibling->cost_value;
+					double sl_cost_change = sl_cost - current->cost_value;
+					double sr_cost_change = sr_cost - current->cost_value;
 
-					double min = std::min<double>(cl_vol_change, std::min<double>(cr_vol_change, std::min<double>(sl_vol_change, sr_vol_change)));
+					double min = std::min<double>(cl_cost_change, std::min<double>(cr_cost_change, std::min<double>(sl_cost_change, sr_cost_change)));
 
 					if (min >= 0) { /*no swap is best*/ }
-					else if (min == cl_vol_change) {
+					else if (min == cl_cost_change) {
 						Node::swpNodes(current, sibling->left);
-						sibling->setAABB(cl_aabb, cl_vol);
+						sibling->setAABB(cl_aabb, cost_type, cl_cost);
 					}
-					else if (min == cr_vol_change) {
+					else if (min == cr_cost_change) {
 						Node::swpNodes(current, sibling->right);
-						sibling->setAABB(cr_aabb, cr_vol);
+						sibling->setAABB(cr_aabb, cost_type, cr_cost);
 					}
-					else if (min == sl_vol_change) {
+					else if (min == sl_cost_change) {
 						Node::swpNodes(sibling, current->left);
-						current->setAABB(sl_aabb, sl_vol);
+						current->setAABB(sl_aabb, cost_type, sl_cost);
 					}
 					else {
 						Node::swpNodes(sibling, current->right);
-						current->setAABB(sr_aabb, sr_vol);
+						current->setAABB(sr_aabb, cost_type, sr_cost);
 					}
 				}
 

@@ -19,7 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\AABB_Tree.cpp" />
     <ClCompile Include="src\CollisionDetect.cpp" />
     <ClCompile Include="src\ConstraintSolver.cpp" />
     <ClCompile Include="src\ConvexPrimitive.cpp" />
