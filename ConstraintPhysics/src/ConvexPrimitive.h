@@ -15,7 +15,7 @@ namespace phyz {
 
 	struct Material {
 		const static Material default_material() { return {1.0, 0.3, 0.6, 1.1}; }
-		static Material ice() { return { 0.6, 0.3, 0.1, 0.2 }; }
+		static Material ice() { return { 0.6, 0.3, 0.01, 0.2 }; }
 		static Material rubber() { return { 0.8, 0.6, 1.0, 1.4 }; }
 		static Material high_friction()  { return {0.7, 0.3, 1.0, 2.0}; }
 		static Material super_friction() { return { 0.8, 0.6, 40.0, 100.0 }; }

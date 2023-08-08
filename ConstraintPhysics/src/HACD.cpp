@@ -76,7 +76,6 @@ namespace phyz {
 		for (int i = 0; i < out.vertices.size(); i++) {
 			if (referenced_index.find(i) == referenced_index.end()) {
 				mthz::Vec3 v = out.vertices[i];
-				printf("%f %f %f\n", v.x, v.y, v.z);
 			}
 		}
 

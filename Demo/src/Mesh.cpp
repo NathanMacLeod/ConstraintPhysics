@@ -49,7 +49,7 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 
 			for (mthz::Vec3 v : c.getPoints()) {
 				color col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
-				vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, 1.0f, 1.0f, 0.7f, 5.0f });
+				vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, col.ambient_k, col.diffuse_k, col.specular_k, col.specular_p });
 			}
 
 			for (const phyz::Surface& s : c.getSurfaces()) {
@@ -68,15 +68,15 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 		case phyz::SPHERE:
 		{
 			const phyz::Sphere& s = (const phyz::Sphere&)*prim.getGeometry();
-			int n_rows = 6;
-			int n_cols = 8;
+			int n_rows = 16;
+			int n_cols = 18;
 
 			mthz::Vec3 bottom_pole = s.getCenter() - mthz::Vec3(0, s.getRadius(), 0);
 			mthz::Vec3 top_pole = s.getCenter() + mthz::Vec3(0, s.getRadius(), 0);
 			color bot_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
 			color top_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
-			vertices.push_back(Vertex{ (float)bottom_pole.x, (float)bottom_pole.y, (float)bottom_pole.z, bot_col.r, bot_col.g, bot_col.b, 1.0f, 1.0f, 0.7f, 5.0f });
-			vertices.push_back(Vertex{ (float)top_pole.x, (float)top_pole.y, (float)top_pole.z, top_col.r, top_col.g, top_col.b, 1.0f, 1.0f, 0.7f, 5.0f });
+			vertices.push_back(Vertex{ (float)bottom_pole.x, (float)bottom_pole.y, (float)bottom_pole.z, bot_col.r, bot_col.g, bot_col.b, bot_col.ambient_k, bot_col.diffuse_k, bot_col.specular_k, bot_col.specular_p });
+			vertices.push_back(Vertex{ (float)top_pole.x, (float)top_pole.y, (float)top_pole.z, top_col.r, top_col.g, top_col.b, top_col.ambient_k, top_col.diffuse_k, top_col.specular_k, top_col.specular_p });
 
 			//create other vertices
 			for (int row = 1; row < n_rows; row++) {
@@ -87,7 +87,7 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 
 					mthz::Vec3 v = s.getCenter() + s.getRadius() * mthz::Vec3(cos(theta) * sin(phi), cos(phi), sin(theta) * sin(phi));
 					color v_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
-					vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, v_col.r, v_col.g, v_col.b, 1.0f, 1.0f, 0.7f, 5.0f });
+					vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, v_col.r, v_col.g, v_col.b, v_col.ambient_k, v_col.diffuse_k, v_col.specular_k, v_col.specular_p });
 				}
 			}
 
@@ -141,7 +141,7 @@ Mesh fromStaticMeshInput(const phyz::MeshInput& g, color c) {
 
 	for (mthz::Vec3 v : g.points) {
 		color col = (c == auto_generate) ? color{ frand(), frand(), frand() } : c;
-		vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, 1.0f, 1.0f, 0.7f, 5.0f });
+		vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, col.ambient_k, col.diffuse_k, col.specular_k, col.specular_p });
 	}
 
 	for (const phyz::TriIndices& t : g.triangle_indices) {

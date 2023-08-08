@@ -501,7 +501,7 @@ namespace phyz {
 		return out;
 	}
 
-	MeshInput generateGridMeshInput(mthz::Vec3 position, int grid_length, int grid_width, double grid_size) {
+	MeshInput generateGridMeshInput(int grid_length, int grid_width, double grid_size, mthz::Vec3 position) {
 		std::vector<mthz::Vec3> points((grid_length + 1) * (grid_width + 1));
 		std::vector<TriIndices> triangle_indices(grid_length * grid_width * 2);
 
@@ -525,6 +525,63 @@ namespace phyz {
 		return MeshInput{ triangle_indices, points };
 	}
 
+	MeshInput generateRadialMeshInput(int n_rot_segments, int n_radial_segments, double radius_size, mthz::Vec3 position) {
+		assert(n_radial_segments >= 1);
+
+		std::vector<mthz::Vec3> points(1 + n_rot_segments * n_radial_segments);
+		std::vector<TriIndices> triangle_indices(n_rot_segments + 2 * n_rot_segments * (n_radial_segments - 1));
+
+		points[0] = position; //center;
+		int offset = 1;
+
+		double dTheta = 2 * PI / n_rot_segments;
+		for (int r = 1; r < n_radial_segments+1; r++) {
+			for (int t = 0; t < n_rot_segments; t++) {
+				double theta = dTheta * t;
+				points[offset + t + (r-1) * n_rot_segments] = position + r * radius_size * mthz::Vec3(mthz::Vec3(cos(theta), 0, -sin(theta)));
+			}
+		}
+
+		
+		for (unsigned int t = 0; t < n_rot_segments; t++) {
+			triangle_indices[t] = TriIndices{ 0, t + offset, ((t + 1) % n_rot_segments) + offset, Material::default_material() };
+		}
+
+		
+		for (int r = 0; r < n_radial_segments - 1; r++) {
+			for (unsigned int t = 0; t < n_rot_segments; t++) {
+
+				unsigned int indx1 = (r+1) * n_rot_segments + t + offset;
+				unsigned int indx2 = (r+1) * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
+				unsigned int indx3 = r * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
+				unsigned int indx4 = r * n_rot_segments + t + offset;
+
+				triangle_indices[2 * (t + r * n_rot_segments) + n_rot_segments] = TriIndices{ indx1, indx2, indx3, Material::default_material() };
+				triangle_indices[2 * (t + r * n_rot_segments) + 1 + n_rot_segments] = TriIndices{ indx1, indx3, indx4, Material::default_material() };
+			}
+		}
+
+		return MeshInput{ triangle_indices, points };
+	}
+
+	MeshInput generateMeshInputFromMesh(const Mesh& m, mthz::Vec3 position, double scaling) {
+		std::vector<mthz::Vec3> points;
+		std::vector<TriIndices> triangle_indices;
+
+		points.reserve(m.vertices.size());
+		triangle_indices.reserve(m.face_indices.size());
+
+		for (mthz::Vec3 v : m.vertices) {
+			points.push_back(position + scaling * v);
+		}
+		for (const std::vector<unsigned int>& face : m.face_indices) {
+			assert(face.size() == 3);
+			triangle_indices.push_back(TriIndices{face[0], face[1], face[2], Material::default_material()});
+		}
+
+		return MeshInput{ triangle_indices, points };
+	}
+
 	StaticMeshGeometry::StaticMeshGeometry(const StaticMeshGeometry& c)
 		: aabb_tree(0, AABBTree<unsigned int>::SURFACE_AREA), triangles(c.triangles)
 	{
@@ -538,9 +595,28 @@ namespace phyz {
 	{
 		const int NO_ASSIGNED_ID = -1;
 		struct Edge {
+			Edge() {}
+
+			Edge(unsigned int p1_indx, unsigned int p2_indx, unsigned int opposite_point_indx) 
+				: p1_indx(p1_indx), p2_indx(p2_indx), opposite_point_indx(opposite_point_indx), assigned_id(NO_ASSIGNED_ID)
+			{
+				unsigned int edge_min_indx, edge_max_indx;
+				if (p1_indx > p2_indx) {
+					edge_max_indx = p1_indx;
+					edge_min_indx = p2_indx;
+				}
+				else {
+					edge_max_indx = p2_indx;
+					edge_min_indx = p1_indx;
+				}
+
+				key = ((uint64_t(edge_max_indx) << 32) & 0xFFFFFFFF00000000) + edge_min_indx;
+			}
+
 			unsigned int p1_indx, p2_indx;
 			unsigned int opposite_point_indx;
 			int assigned_id = NO_ASSIGNED_ID;
+			uint64_t key;
 
 			bool isCompliment(Edge e) {
 				return p1_indx == e.p2_indx && p2_indx == e.p1_indx;
@@ -564,23 +640,32 @@ namespace phyz {
 			neighbor_graph.push_back(TriangleGraphNode{ t.i1, t.i2, t.i3, {-1, -1, -1}, {Edge{t.i1, t.i2, t.i3}, Edge{t.i2, t.i3, t.i1}, Edge{t.i3, t.i1, t.i2}}, normal, t.material });
 		}
 
-		//brute force determine all neighbors
+		std::unordered_map<uint64_t, unsigned int> edge_face_map;
+
 		for (int i = 0; i < neighbor_graph.size(); i++) {
-			for (int j = i + 1; j < neighbor_graph.size(); j++) {
 
-				for (int k = 0; k < 3; k++) {
-					for (int w = 0; w < 3; w++) {
+			for (int j = 0; j < 3; j++) {
+				Edge e = neighbor_graph[i].edges[j];
 
-						if (neighbor_graph[i].edges[k].isCompliment(neighbor_graph[j].edges[w])) {
-							assert(neighbor_graph[i].tri_neighbor_indices[k] == -1 && neighbor_graph[j].tri_neighbor_indices[w] == -1);
-							neighbor_graph[i].tri_neighbor_indices[k] = j;
-							neighbor_graph[j].tri_neighbor_indices[w] = i;
+				auto query = edge_face_map.find(e.key);
+				if (query != edge_face_map.end()) {
+					neighbor_graph[i].tri_neighbor_indices[j] = query->second;
+
+					for (int k = 0; k < 3; k++) {
+						if (neighbor_graph[query->second].edges[k].key == e.key) {
+							neighbor_graph[query->second].tri_neighbor_indices[k] = i;
 						}
-
 					}
+
+					edge_face_map.erase(query);
+				}
+				else {
+					edge_face_map[e.key] = i;
 				}
 
+				
 			}
+
 		}
 
 		int next_triangle_id = 0;
@@ -589,13 +674,16 @@ namespace phyz {
 		//using the neighbor graph to compute all the finalized StaticMeshTri objects
 		//neighbor info is needed to determine the gauss arcs for valid edge collisions.
 		triangles.reserve(neighbor_graph.size());
+
 		for (TriangleGraphNode t : neighbor_graph) {
+
 			StaticMeshFace tri;
+			tri.concave_neighbor_count = 0;
 			tri.normal = t.normal;
 
-			tri.vertices[0] = StaticMeshVertex{ input.points[t.p1_indx], std::vector<mthz::Vec3>(), (int) t.p1_indx + vertex_id_offset };
-			tri.vertices[1] = StaticMeshVertex{ input.points[t.p2_indx], std::vector<mthz::Vec3>(), (int) t.p2_indx + vertex_id_offset };
-			tri.vertices[2] = StaticMeshVertex{ input.points[t.p3_indx], std::vector<mthz::Vec3>(), (int) t.p3_indx + vertex_id_offset };
+			tri.vertices[0] = StaticMeshVertex{ input.points[t.p1_indx], (int) t.p1_indx + vertex_id_offset };
+			tri.vertices[1] = StaticMeshVertex{ input.points[t.p2_indx], (int) t.p2_indx + vertex_id_offset };
+			tri.vertices[2] = StaticMeshVertex{ input.points[t.p3_indx], (int) t.p3_indx + vertex_id_offset };
 
 			tri.material = t.material;
 			tri.id = next_triangle_id++;
@@ -610,8 +698,7 @@ namespace phyz {
 				tri.edges[i].id = t.edges[i].assigned_id;
 
 				if (t.tri_neighbor_indices[i] == -1) { //no neighboring triangle on the edge
-					tri.edges[i].gauss_vert1 = tri.normal;
-					tri.edges[i].out_direction = tri.edges[i].out_direction;
+					tri.gauss_region.push_back(tri.edges[i].out_direction);
 				}
 				else {
 					//neighbors version of the same edge
@@ -626,15 +713,22 @@ namespace phyz {
 					mthz::Vec3 this_opposite_tip = input.points[t.edges[i].opposite_point_indx];
 					mthz::Vec3 neighbor_opposite_tip = input.points[complimentary_edge.opposite_point_indx];
 
-					bool edge_concave = (neighbor_opposite_tip - this_opposite_tip).dot(t.normal) >= 0;
-					if (edge_concave) continue; //Geometry can never collide with this edge
-
-					tri.edges[i].gauss_vert1 = tri.normal;
-					tri.edges[i].gauss_vert2 = neighbor_graph[t.tri_neighbor_indices[i]].normal;
+					double EPS = 0.00001;
+					bool edge_concave = (neighbor_opposite_tip - this_opposite_tip).normalize().dot(t.normal) >= -EPS;
+					if (edge_concave) {
+						tri.concave_neighbor_count++;
+						if (tri.concave_neighbor_count <= 1) {
+							tri.gauss_region.push_back(tri.normal);
+						}
+					}
+					else {
+						tri.gauss_region.push_back(neighbor_graph[t.tri_neighbor_indices[i]].normal);
+					}
 				}
 			}
 
 			tri.aabb = tri.computeAABB();
+			//tri.concave_neighbor_count = 3;
 
 			triangles.push_back(tri);
 		}
@@ -647,18 +741,18 @@ namespace phyz {
 		for (int i = 0; i < triangles.size(); i++) {
 			triangles[i].normal = rot * reference.triangles[i].normal;
 			
+
+			for (int j = 0; j < triangles[i].gauss_region.size(); j++) {
+				triangles[i].gauss_region[j] = rot * reference.triangles[i].gauss_region[j];
+			}
+
 			for (int j = 0; j < 3; j++) {
 				triangles[i].vertices[j].p = trans + rot * (reference.triangles[i].vertices[j].p - center_of_rotation) + center_of_rotation;
-				for (int k = 0; k < triangles[i].vertices[j].gauss_region.size(); k++) {
-					triangles[i].vertices[j].gauss_region[k] = rot * reference.triangles[i].vertices[j].gauss_region[k];
-				}
 
 				triangles[i].edges[j].p1 = trans + rot * (reference.triangles[i].edges[j].p1 - center_of_rotation) + center_of_rotation;
 				triangles[i].edges[j].p2 = trans + rot * (reference.triangles[i].edges[j].p2 - center_of_rotation) + center_of_rotation;
 
 				triangles[i].edges[j].out_direction = rot * reference.triangles[i].edges[j].out_direction;
-				triangles[i].edges[j].gauss_vert1 = rot * reference.triangles[i].edges[j].gauss_vert1;
-				triangles[i].edges[j].gauss_vert2 = rot * reference.triangles[i].edges[j].gauss_vert2;
 			}
 
 			aabb_tree.add(i, i, triangles[i].aabb);

@@ -1,6 +1,7 @@
 #pragma once
 #include "ConvexPrimitive.h"
 #include "AABB_Tree.h"
+#include "HACD.h"
 
 namespace phyz {
 	class RigidBody;
@@ -49,11 +50,12 @@ namespace phyz {
 		std::vector<mthz::Vec3> points;
 	};
 
-	MeshInput generateGridMeshInput(mthz::Vec3 position, int grid_length, int grid_width, double grid_size);
+	MeshInput generateGridMeshInput(int grid_length, int grid_width, double grid_size, mthz::Vec3 positon=mthz::Vec3());
+	MeshInput generateRadialMeshInput(int n_rot_segments, int n_radial_segments, double radius_size, mthz::Vec3 positon = mthz::Vec3());
+	MeshInput generateMeshInputFromMesh(const Mesh& m, mthz::Vec3 positon=mthz::Vec3(), double scaling=1.0);
 
 	struct StaticMeshVertex {
 		mthz::Vec3 p;
-		std::vector<mthz::Vec3> gauss_region;
 		//Material material;
 		int id;
 	};
@@ -61,7 +63,6 @@ namespace phyz {
 	struct StaticMeshEdge {
 		mthz::Vec3 p1, p2;
 		mthz::Vec3 out_direction;
-		mthz::Vec3 gauss_vert1, gauss_vert2;
 		//Material material;
 		int id;
 	};
@@ -70,8 +71,9 @@ namespace phyz {
 		mthz::Vec3 normal;
 		StaticMeshVertex vertices[3];
 		StaticMeshEdge edges[3];
+		std::vector<mthz::Vec3> gauss_region;
+		int concave_neighbor_count;
 		Material material;
-		GaussMap gauss_map;
 		AABB aabb;
 		int id;
 

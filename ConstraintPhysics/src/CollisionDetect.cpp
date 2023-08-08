@@ -552,13 +552,16 @@ namespace phyz {
 		return out;
 	}
 
-	static ExtremaInfo findTriangleExtrema(const StaticMeshFace& tri, mthz::Vec3 dir) {
+	//anti tunneling weighted is for trying to force penetration in the correct direction. It can give an incorrect "does seperating axis exist" test though
+	static ExtremaInfo findTriangleExtrema(const StaticMeshFace& tri, mthz::Vec3 dir, bool anti_tunneling_weighted) {
 		ExtremaInfo extrema;
-		if (dir.dot(tri.normal) > 0) {
-			extrema.min_val = -std::numeric_limits<double>::infinity();
-		}
-		else {
-			extrema.max_val = std::numeric_limits<double>::infinity();
+		if (anti_tunneling_weighted) {
+			if (dir.dot(tri.normal) > 0) {
+				extrema.min_val = -std::numeric_limits<double>::infinity();
+			}
+			else {
+				extrema.max_val = std::numeric_limits<double>::infinity();
+			}
 		}
 
 		for (int i = 0; i < 3; i++) {
@@ -608,7 +611,12 @@ namespace phyz {
 			return projectTriangleFace(t, u, w);
 		}		
 
-		for (StaticMeshEdge e : t.edges) {
+		for (int i = 0; i < 3; i++) {
+			if (i != p_ID && (i + 1) % 3 != p_ID) {
+				continue;
+			}
+
+			StaticMeshEdge e = t.edges[i];
 			double sin_ang = abs((e.p2 - e.p1).normalize().dot(n));
 			if (sin_ang <= SIN_TOL) {
 				return projectTriangleEdge(e, n, p, u, w);
@@ -623,41 +631,96 @@ namespace phyz {
 
 	}
 
-	Manifold SAT_PolyTriangle(const Polyhedron& a, int a_id, const Material& a_mat, const StaticMeshFace& b) {
+	//consider neighboring triangles when picking the axis of least penetration
+	static bool normalDirectionValid(const StaticMeshFace& s, mthz::Vec3 normal) {
+		//return true;
+		double EPS = 0.0001;
+
+		switch (s.concave_neighbor_count) {
+		case 0:
+		case 1:
+			//the three points in counter-clockwise widning define a region on the surface of the sphere. the normal should lie in that surface to be valid
+			assert(s.gauss_region.size() == 3);
+			for (int i = 0; i < s.gauss_region.size(); i++) {
+				mthz::Vec3 inner_region_direction = s.gauss_region[i].cross(s.gauss_region[(i + 1) % s.gauss_region.size()]);
+				if (normal.dot(inner_region_direction) < 0) return false;
+			}
+			break;
+		case 2:
+		{
+			//the normal should lie on the arc defined by the two points
+			assert(s.gauss_region.size() == 2);
+			mthz::Vec3 arc_normal = s.gauss_region[0].cross(s.gauss_region[1]);
+			//check vector lies close to the plane
+			if (abs(normal.dot(arc_normal)) > EPS) return false;
+			mthz::Vec3 v0_up = arc_normal.cross(s.gauss_region[0]);
+
+			//check vector doesnt lie outside the arc within the plane
+			if (normal.dot(v0_up) < 0) return false;
+			mthz::Vec3 v1_down = s.gauss_region[1].cross(arc_normal);
+			if (normal.dot(v1_down) < 0) return false;
+			break;
+		}
+		case 3:
+			assert(s.gauss_region.size() == 1);
+			if (normal.dot(s.normal) < 1 - EPS) return false; //s.normal is only valid direction
+			break;
+		}
+		
+		return true;
+	}
+
+	static Manifold SAT_PolyTriangle(const Polyhedron& a, int a_id, const Material& a_mat, const StaticMeshFace& b, bool ignore_gauss_restrictions) {
 		Manifold out;
 		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		const GaussMap& ag = a.getGaussMap();
 
-		for (const GaussVert& g : ag.face_verts) {
-			if (!g.SAT_redundant) {
-				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(a.getPoints()[g.SAT_reference_point_index]));
-				CheckNormResults x = sat_checknorm(recentered_g_extrema, findTriangleExtrema(b, g.v), g.v);
-				if (x.seprAxisExists()) {
-					out.max_pen_depth = -1;
-					return out;
-				}
-				else if (x.pen_depth < min_pen.pen_depth) {
-					min_pen = x;
-				}
-			}
-		}
-		CheckNormResults b_norm_x = sat_checknorm(findExtrema(a, b.normal), findTriangleExtrema(b, b.normal), b.normal);
+		ExtremaInfo poly_info = findExtrema(a, b.normal);
+		CheckNormResults b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, false), b.normal);
 		if (b_norm_x.seprAxisExists()) {
 			out.max_pen_depth = -1;
 			return out;
 		}
-		else if (b_norm_x.pen_depth < min_pen.pen_depth) {
+		b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, true), b.normal);
+		if (b_norm_x.pen_depth < min_pen.pen_depth) { //no normalDirectionValid check needed for this direction
+
 			min_pen = b_norm_x;
 		}
 
+		for (const GaussVert& g : ag.face_verts) {
+			if (!g.SAT_redundant) {
+				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(a.getPoints()[g.SAT_reference_point_index]));
+				CheckNormResults x = sat_checknorm(recentered_g_extrema, findTriangleExtrema(b, g.v, false), g.v);
+				if (x.seprAxisExists()) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+				x = sat_checknorm(recentered_g_extrema, findTriangleExtrema(b, g.v, true), g.v);
+				if (x.pen_depth < min_pen.pen_depth && (ignore_gauss_restrictions || normalDirectionValid(b, -x.norm))) {
+					min_pen = x;
+				}
+			}
+		}
+		
+		struct SimpleArc {
+			mthz::Vec3 gv1, gv2;
+		};
+
+		std::vector<SimpleArc> triangle_arcs =
+		{
+			SimpleArc{b.normal, b.edges[0].out_direction}, SimpleArc{b.edges[0].out_direction, -b.normal},
+			SimpleArc{b.normal, b.edges[1].out_direction}, SimpleArc{b.edges[1].out_direction, -b.normal},
+			SimpleArc{b.normal, b.edges[2].out_direction}, SimpleArc{b.edges[2].out_direction, -b.normal},
+		};
+
 		for (const GaussArc& arc1 : ag.arcs) {
-			for (StaticMeshEdge edge : b.edges) {
+			for (SimpleArc sa : triangle_arcs) {
 
 				mthz::Vec3 a1 = ag.face_verts[arc1.v1_indx].v;
 				mthz::Vec3 a2 = ag.face_verts[arc1.v2_indx].v;
-				mthz::Vec3 b1 = -edge.gauss_vert1;
-				mthz::Vec3 b2 = -edge.gauss_vert2;
+				mthz::Vec3 b1 = -sa.gv1;
+				mthz::Vec3 b2 = -sa.gv2;
 
 				//check arcs arent on opposite hemispheres
 				mthz::Vec3 a_avg = a1 + a2;
@@ -682,12 +745,14 @@ namespace phyz {
 					n *= -1;
 				}
 
-				CheckNormResults x = sat_checknorm(findExtrema(a, n), findTriangleExtrema(b, n), n);
+				ExtremaInfo poly_extrema = findExtrema(a, n);
+				CheckNormResults x = sat_checknorm(poly_extrema, findTriangleExtrema(b, n, false), n);
 				if (x.seprAxisExists()) {
 					out.max_pen_depth = -1;
 					return out;
 				}
-				else if (x.pen_depth < min_pen.pen_depth) {
+				x = sat_checknorm(poly_extrema, findTriangleExtrema(b, n, true), n);
+				if (x.pen_depth < min_pen.pen_depth && (ignore_gauss_restrictions || normalDirectionValid(b, -x.norm))) {
 					min_pen = x;
 				}
 			}
@@ -779,6 +844,77 @@ namespace phyz {
 		return out;
 	}
 
+	static Manifold SAT_SphereTriangle(const Sphere& a, int a_id, const Material& a_mat, const StaticMeshFace& b) {
+		Manifold out;
+		out.max_pen_depth = -1;
+		uint32_t a_feature_id = -1;
+		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+
+		ExtremaInfo sphere_extrema = getSphereExtrema(a, b.normal);
+		CheckNormResults b_norm_x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, b.normal, false), b.normal);
+		if (b_norm_x.seprAxisExists()) {
+			out.max_pen_depth = -1;
+			return out;
+		}
+		b_norm_x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, b.normal, true), b.normal);
+		if (b_norm_x.pen_depth < min_pen.pen_depth) {
+			min_pen = b_norm_x;
+		}
+
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p = b.vertices[i].p;
+			mthz::Vec3 n = (p - a.getCenter()).normalize();
+			ExtremaInfo sphere_extrema = getSphereExtrema(a, n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n, false), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n, true), n);
+			if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+				a_feature_id = i;
+			}
+		}
+		for (StaticMeshEdge e : b.edges) {
+			mthz::Vec3 edge_dir = (e.p2 - e.p1).normalize();
+			mthz::Vec3 sample = e.p1 - a.getCenter();
+			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
+			ExtremaInfo sphere_extrema = getSphereExtrema(a, n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n, false), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n, true), n);
+			if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+				a_feature_id = e.id;
+			}
+		}
+
+		out.normal = min_pen.norm;
+
+		ContactP cp;
+		cp.pos = a.getCenter() + out.normal * a.getRadius();
+		cp.pen_depth = min_pen.pen_depth;
+		cp.restitution = std::max<double>(a_mat.restitution, b.material.restitution);
+		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b.material.kinetic_friction_coeff) / 2.0;
+		cp.static_friction_coeff = (a_mat.static_friction_coeff + b.material.static_friction_coeff) / 2.0;
+
+		uint64_t cID = 0;
+		cID |= 0x00000000FFFFFFFF & a_id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.id) << 32);
+
+		cp.magicID = MagicID{ cID, a_feature_id }; //not bothering with featureid
+
+		out.points.push_back(cp);
+
+		out.max_pen_depth = min_pen.pen_depth;
+
+		return out;
+	}
+
 	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b) {
 		std::vector<unsigned int> tri_candidates = b.getAABBTree().getCollisionCandidatesWith(a_aabb);
 		std::vector<Manifold> manifolds_out;
@@ -786,9 +922,15 @@ namespace phyz {
 		for (unsigned int i : tri_candidates) {
 			const StaticMeshFace& tri = b.getTriangles()[i];
 
-			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri);
-			if (m.max_pen_depth > 0) {
+			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri, false);
+			if (m.max_pen_depth > 0 && m.points.size() > 0) {
 				manifolds_out.push_back(m);
+			}
+			else if (m.max_pen_depth > 0) {
+				m = SAT_PolyTriangle(a, a_id, a_mat, tri, true);
+				if (m.max_pen_depth > 0) {
+					manifolds_out.push_back(m);
+				}
 			}
 		}
 
@@ -796,7 +938,25 @@ namespace phyz {
 	}
 
 	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b) {
-		return std::vector<Manifold>();
+		std::vector<unsigned int> tri_candidates = b.getAABBTree().getCollisionCandidatesWith(a_aabb);
+		std::vector<Manifold> manifolds_out;
+
+		for (unsigned int i : tri_candidates) {
+			const StaticMeshFace& tri = b.getTriangles()[i];
+
+			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri);
+			if (m.max_pen_depth > 0 && m.points.size() > 0) {
+				manifolds_out.push_back(m);
+			}
+			//else if (m.max_pen_depth > 0) {
+			//	m = SAT_SphereTriangle(a, a_id, a_mat, tri, true);
+			//	if (m.max_pen_depth > 0) {
+			//		manifolds_out.push_back(m);
+			//	}
+			//}
+		}
+
+		return manifolds_out;
 	}
 
 	Manifold merge_manifold(const Manifold& m1, const Manifold& m2) {
