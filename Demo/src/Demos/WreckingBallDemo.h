@@ -44,7 +44,7 @@ public:
 		double s = 100;
 		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
-		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
+		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		bodies.push_back({ m2, r2 });
 
@@ -70,12 +70,12 @@ public:
 		mthz::Vec3 crane_pos = crane_tower_pos + mthz::Vec3(crane_tower_width/2.0, crane_tower_height + leg_width + cabin_height/3.0, 0);
 		phyz::ConvexUnionGeometry crane = phyz::ConvexUnionGeometry::box(crane_pos + mthz::Vec3(-crane_height / 2.0, -crane_height / 2.0, -crane_width/2.0), crane_length + crane_height / 2.0, crane_height, crane_width, phyz::Material::modified_density(2));
 		
-		bodies.push_back({ fromGeometry(leg1), p.createRigidBody(leg1, true) });
-		bodies.push_back({ fromGeometry(leg2), p.createRigidBody(leg2, true) });
-		bodies.push_back({ fromGeometry(leg3), p.createRigidBody(leg3, true) });
-		bodies.push_back({ fromGeometry(leg4), p.createRigidBody(leg4, true) });
+		bodies.push_back({ fromGeometry(leg1), p.createRigidBody(leg1, phyz::RigidBody::FIXED) });
+		bodies.push_back({ fromGeometry(leg2), p.createRigidBody(leg2, phyz::RigidBody::FIXED) });
+		bodies.push_back({ fromGeometry(leg3), p.createRigidBody(leg3, phyz::RigidBody::FIXED) });
+		bodies.push_back({ fromGeometry(leg4), p.createRigidBody(leg4, phyz::RigidBody::FIXED) });
 
-		phyz::RigidBody* base_r = p.createRigidBody(tower_base, true);
+		phyz::RigidBody* base_r = p.createRigidBody(tower_base, phyz::RigidBody::FIXED);
 		phyz::RigidBody* cabin_r = p.createRigidBody(cabin);
 		phyz::RigidBody* crane_r = p.createRigidBody(crane);
 		bodies.push_back({ fromGeometry(tower_base), base_r });

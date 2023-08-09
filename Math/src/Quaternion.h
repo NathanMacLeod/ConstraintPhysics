@@ -50,7 +50,7 @@ namespace mthz {
 			return mat;
 		}
 
-		Quaternion conjugate() const {
+		inline Quaternion conjugate() const {
 			return Quaternion(r, -i, -j, -k);
 		}
 
@@ -61,15 +61,15 @@ namespace mthz {
 				r * q.k + i * q.j - j * q.i + k * q.r);
 		}
 
-		double magSqrd() const {
+		inline double magSqrd() const {
 			return r * r + i * i + j * j + k * k;
 		}
 
-		double mag() const {
+		inline double mag() const {
 			return sqrt(r * r + i * i + j * j + k * k);
 		}
 
-		Quaternion normalize() const {
+		inline Quaternion normalize() const {
 			double magnitude = mag();
 			return Quaternion(r / magnitude, i / magnitude, j / magnitude, k / magnitude);
 		}
@@ -83,6 +83,14 @@ namespace mthz {
 			i = new_i;
 			j = new_j;
 			k = new_k;
+		}
+
+		bool operator==(const Quaternion q) {
+			return r == q.r && i == q.i && j == q.j && k == q.k;
+		}
+
+		bool operator!=(const Quaternion q) {
+			return r != q.r || i != q.i || j != q.j || k != q.k;
 		}
 	};
 

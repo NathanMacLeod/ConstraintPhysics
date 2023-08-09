@@ -191,8 +191,8 @@ public:
 			phyz::ConvexUnionGeometry dropper_ramp_rotated = dropper_ramp.getRotated(rot, funnel_pos);
 			phyz::ConvexUnionGeometry extruder_rotated = extruder.getRotated(rot, funnel_pos);
 
-			bodies.push_back(TransformablePhysBod(fromGeometry(dropper_ramp_rotated, blue), p.createRigidBody(dropper_ramp_rotated, true)));
-			bodies.push_back(TransformablePhysBod(fromGeometry(extruder_rotated, yellow), p.createRigidBody(extruder_rotated, true)));
+			bodies.push_back(TransformablePhysBod(fromGeometry(dropper_ramp_rotated, blue), p.createRigidBody(dropper_ramp_rotated, phyz::RigidBody::FIXED)));
+			bodies.push_back(TransformablePhysBod(fromGeometry(extruder_rotated, yellow), p.createRigidBody(extruder_rotated, phyz::RigidBody::FIXED)));
 
 			mthz::Vec3 ball_spawn_pos = rot.applyRotation(dropper_extruder_pos + mthz::Vec3(0, dropper_extruder_height / 2.0, 0));
 			dropper_spawn_positions.push_back(ball_spawn_pos);
@@ -262,18 +262,18 @@ public:
 		phyz::ConvexUnionGeometry display_front_guard = phyz::ConvexUnionGeometry::box(display_position + mthz::Vec3(0, display_height, display_gap), ramp_width, display_guard_height, ramp_thickness);
 		phyz::ConvexUnionGeometry display_bottom = phyz::ConvexUnionGeometry::box(display_position + mthz::Vec3(-display_case_thickness, -display_case_thickness, -display_case_thickness), 2 * display_case_thickness + ramp_width, display_case_thickness, 2 * display_case_thickness + display_gap, phyz::Material::modified_density(bottom_density));
 
-		phyz::RigidBody* display_rear_wall_r = p.createRigidBody(display_rear_wall, true);
+		phyz::RigidBody* display_rear_wall_r = p.createRigidBody(display_rear_wall, phyz::RigidBody::FIXED);
 		bodies.push_back(TransformablePhysBod(fromGeometry(display_rear_wall, blue), display_rear_wall_r));
 
-		phyz::RigidBody* display_posx_wall_r = p.createRigidBody(display_posx_wall, true);
+		phyz::RigidBody* display_posx_wall_r = p.createRigidBody(display_posx_wall, phyz::RigidBody::FIXED);
 		bodies.push_back(TransformablePhysBod(fromGeometry(display_posx_wall, blue), display_posx_wall_r));
 
-		phyz::RigidBody* display_negx_wall_r = p.createRigidBody(display_negx_wall, true);
+		phyz::RigidBody* display_negx_wall_r = p.createRigidBody(display_negx_wall, phyz::RigidBody::FIXED);
 		bodies.push_back(TransformablePhysBod(fromGeometry(display_negx_wall, blue), display_negx_wall_r));
 
-		phyz::RigidBody* display_front_wall_r = p.createRigidBody(display_front_wall, true);
+		phyz::RigidBody* display_front_wall_r = p.createRigidBody(display_front_wall, phyz::RigidBody::FIXED);
 
-		phyz::RigidBody* display_front_guard_r = p.createRigidBody(display_front_guard, true);
+		phyz::RigidBody* display_front_guard_r = p.createRigidBody(display_front_guard, phyz::RigidBody::FIXED);
 		bodies.push_back(TransformablePhysBod(fromGeometry(display_front_guard, blue), display_front_guard_r));
 
 		phyz::RigidBody* display_bottom_r = p.createRigidBody(display_bottom);
@@ -284,11 +284,11 @@ public:
 		phyz::ConstraintID bottom_hinge = p.addHingeConstraint(display_rear_wall_r, display_bottom_r, display_position, mthz::Vec3(1, 0, 0));
 		p.setMotorTargetPosition(bottom_hinge, 10000, 0);
 
-		phyz::RigidBody* ramp_r = p.createRigidBody(ramp, true);
+		phyz::RigidBody* ramp_r = p.createRigidBody(ramp, phyz::RigidBody::FIXED);
 		bodies.push_back(TransformablePhysBod(fromGeometry(ramp, blue), ramp_r));
 
 		phyz::RigidBody* bucket_r = p.createRigidBody(bucket);
-		phyz::RigidBody* bucket_support_r = p.createRigidBody(bucket_support_block, true);
+		phyz::RigidBody* bucket_support_r = p.createRigidBody(bucket_support_block, phyz::RigidBody::FIXED);
 
 		bucket_r->setSleepDisabled(true);
 		p.addHingeConstraint(bucket_r, bucket_support_r, bucket_pivot_pos, mthz::Vec3(1, 0, 0), 350, 350, PI * 0.03);
@@ -296,15 +296,15 @@ public:
 		bodies.push_back(TransformablePhysBod(fromGeometry(bucket, blue), bucket_r));
 		bodies.push_back(TransformablePhysBod(fromGeometry(bucket_support_block, yellow), bucket_support_r));
 
-		phyz::RigidBody* bucket_rest_rod_r = p.createRigidBody(bucket_rest_rod, true);
+		phyz::RigidBody* bucket_rest_rod_r = p.createRigidBody(bucket_rest_rod, phyz::RigidBody::FIXED);
 		bodies.push_back({ fromGeometry(bucket_rest_rod, yellow), bucket_rest_rod_r });
 		
 		double delete_box_height = -50;
 		double delete_box_dim = 10000;
 		phyz::ConvexUnionGeometry delete_box = phyz::ConvexUnionGeometry::box(mthz::Vec3(-delete_box_dim / 2.0, delete_box_height - delete_box_dim, -delete_box_dim / 2.0), delete_box_dim, delete_box_dim, delete_box_dim);
-		phyz::RigidBody* delete_box_r = p.createRigidBody(delete_box, true);
+		phyz::RigidBody* delete_box_r = p.createRigidBody(delete_box, phyz::RigidBody::FIXED);
 
-		phyz::RigidBody* funnel_r = p.createRigidBody(funnel, true);
+		phyz::RigidBody* funnel_r = p.createRigidBody(funnel, phyz::RigidBody::FIXED);
 		bodies.push_back(TransformablePhysBod(fromGeometry(funnel, orange), funnel_r));
 
 		float t = 0;
@@ -330,7 +330,7 @@ public:
 			p.setMotorTargetPosition(bottom_hinge, 10000, -PI/2.0);
 
 			display_release_tick_counter = ticks_for_release_time;
-			display_bottom_r->setFixed(false);
+			display_bottom_r->setMovementType(phyz::RigidBody::DYNAMIC);
 		});
 
 		int tick_count = 0;
@@ -414,7 +414,7 @@ public:
 
 				
 				if (display_release_tick_counter < 0 && abs(p.getMotorAngularPosition(bottom_hinge)) < 0.01) {
-					display_bottom_r->setFixed(true);
+					display_bottom_r->setMovementType(phyz::RigidBody::FIXED);
 				}
 
 				if (tick_count % ticks_per_balldrop == 0) {
@@ -513,7 +513,7 @@ public:
 						p.setMotorTargetPosition(bottom_hinge, 10000, 0);
 					}
 					if (display_release_tick_counter < 0 && abs(p.getMotorAngularPosition(bottom_hinge)) < 0.01) {
-						display_bottom_r->setFixed(true);
+						display_bottom_r->setMovementType(phyz::RigidBody::FIXED);
 					}
 
 					if (tick_count % ticks_per_balldrop == 0 && p.getNextBodyID() - starting_id < ball_colors.size()) {

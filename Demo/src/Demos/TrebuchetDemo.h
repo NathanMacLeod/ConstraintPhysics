@@ -100,7 +100,7 @@ public:
 		double s = 200;
 		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
-		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
+		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		bodies.push_back({ m2, r2 });
 
@@ -328,7 +328,7 @@ public:
 
 		phyz::ConvexUnionGeometry trebuchet_frame = { channel_beam1, channel_beam2, channel_beam3, channel_beam4, drop_channel_cap1, drop_channel_cap2, 
 			rail1, rail2, rail3, rail4, bot_rail1, bot_rail2, bot_rail3, bot_rail4, arm_rest_box, leg1, leg2, leg3, leg4, support1, support2, support3, support4 };
-		phyz::RigidBody* trebuchet_frame_r = p.createRigidBody(trebuchet_frame, true);
+		phyz::RigidBody* trebuchet_frame_r = p.createRigidBody(trebuchet_frame, phyz::RigidBody::FIXED);
 
 		phyz::ConvexUnionGeometry release_pins = { release_pin1, release_pin2 };
 		phyz::RigidBody* release_pins_r = p.createRigidBody(release_pins);
@@ -337,7 +337,7 @@ public:
 		phyz::RigidBody* weight_r = p.createRigidBody(weight);
 
 		phyz::ConvexUnionGeometry trebuchet_arm = { trebuchet_main_arm, roller_axle, chain_loop_piece1, chain_loop_piece2, chain_loop_piece3, hook };
-		phyz::RigidBody* trebuchet_arm_r = p.createRigidBody(trebuchet_arm, false);
+		phyz::RigidBody* trebuchet_arm_r = p.createRigidBody(trebuchet_arm);
 
 		phyz::ConvexUnionGeometry roller = { roller_wheel1, roller_wheel2 };
 		phyz::RigidBody* roller_r = p.createRigidBody(roller);

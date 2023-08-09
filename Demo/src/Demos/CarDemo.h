@@ -65,7 +65,7 @@ public:
 		double s = 100;
 		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -1, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
-		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
+		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		r2->setCOMtoPosition(mthz::Vec3(0, -5, 0));
 		bodies.push_back({ m2, r2 });
@@ -446,7 +446,7 @@ public:
 
 		phyz::ConvexUnionGeometry front_wheel1_arm = { front_wheel1_elbow, front_wheel1_forearm };
 		phyz::ConvexUnionGeometry front_wheel2_arm = { front_wheel2_elbow, front_wheel2_forearm };
-		bool steering_lock = false;
+		phyz::RigidBody::MovementType steering_lock = phyz::RigidBody::DYNAMIC;
 
 		phyz::RigidBody* base_r = p.createRigidBody(base);
 		Mesh base_m = fromGeometry(base);
@@ -723,7 +723,7 @@ public:
 				}
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_B)) {
-				rear_wheel2_r->setFixed(!rear_wheel2_r->getIsFixed());
+				rear_wheel2_r->setMovementType(rear_wheel2_r->getMovementType() == phyz::RigidBody::FIXED? phyz::RigidBody::DYNAMIC : phyz::RigidBody::FIXED);
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_G)) {
 				if (!nuked) {

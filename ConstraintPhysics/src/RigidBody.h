@@ -18,6 +18,7 @@ namespace phyz {
 	public:
 		typedef int PKey;
 		enum GeometryType { CONVEX_UNION, STATIC_MESH };
+		enum MovementType { DYNAMIC, FIXED, KINEMATIC };
 
 		PKey trackPoint(mthz::Vec3 p); //track the movement of p which is on the body b. P given in local coordinates
 		mthz::Vec3 getTrackedP(PKey pk);
@@ -27,8 +28,8 @@ namespace phyz {
 		double getMass();
 		double getInvMass();
 		mthz::Mat3 getInvTensor();
-		inline bool getAsleep() { return asleep;  }
-		inline bool getIsFixed() { return fixed; }
+		bool getAsleep();
+		inline MovementType getMovementType() { return movement_type; }
 		inline bool getNoCollision() { return no_collision; }
 		mthz::Vec3 getPos() { return getTrackedP(origin_pkey); }
 		inline mthz::Vec3 getCOM() { return com; }
@@ -46,14 +47,14 @@ namespace phyz {
 		void setOrientation(const mthz::Quaternion orientation);
 		void setVel(mthz::Vec3 vel);
 		void setAngVel(mthz::Vec3 ang_vel);
-		void setFixed(bool fixed);
+		void setMovementType(MovementType type);
 		void setNoCollision(bool no_collision);
 		void setSleepDisabled(bool b) { sleep_disabled = b; }
 
 		friend class PhysicsEngine;
 	private:
 		AABB aabb;
-		bool fixed;
+		MovementType movement_type;
 		mthz::Vec3 local_coord_origin;
 		PKey origin_pkey;
 		unsigned int id;

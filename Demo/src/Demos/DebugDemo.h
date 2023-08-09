@@ -43,6 +43,7 @@ public:
 		int grid_count = 360;
 		double grid_size = 0.25;
 		phyz::Mesh dragon = phyz::readOBJ("resources/mesh/xyzrgb_dragon.obj", 0.1);
+		//phyz::Mesh cow = phyz::readOBJ("resources/mesh/cow.obj", 2.0);
 		phyz::MeshInput dragon_input = phyz::generateMeshInputFromMesh(dragon, center + mthz::Vec3(0, 4, 0));
 		phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, center + mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));//phyz::generateRadialMeshInput(center, 8, 100, 1);
 
@@ -53,14 +54,16 @@ public:
 			v.y += cos((v - center).mag() / 2.33);
 		}
 		for (phyz::TriIndices& t : grid.triangle_indices) {
-			//t.material = phyz::Material::ice();
+			t.material = phyz::Material::ice();
 		}
 
 		phyz::RigidBody* gr = p.createRigidBody(grid);
-		static_meshes.push_back(fromStaticMeshInput(grid, color{ 0.4, 0.2, 0.7, 0.25, 0.75, 0.63, 51.2 }));
+		static_meshes.push_back(fromStaticMeshInput(grid, color{ 0.4, 0.2, 0.7}));
 
 		phyz::RigidBody* r = p.createRigidBody(dragon_input);
-		static_meshes.push_back(fromStaticMeshInput(dragon_input, color{1.0, 0.84, 0.0}));
+		//r->setVel(mthz::Vec3(0.25, 0, 0));
+		//bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
+		static_meshes.push_back(fromStaticMeshInput(dragon_input, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }));
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
@@ -111,7 +114,7 @@ public:
 				double block_size = 1.0;
 				double block_speed = 15;
 
-				phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::box(pos + mthz::Vec3(-block_size / 2.0, -block_size / 2.0, -block_size / 2.0), block_size, block_size, block_size);
+				phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::box(pos + mthz::Vec3(-block_size / 2.0, -block_size / 2.0, -block_size / 2.0), block_size, block_size, block_size/*, phyz::Material::ice()*/);
 				phyz::RigidBody* block_r = p.createRigidBody(block);
 
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
@@ -122,9 +125,9 @@ public:
 
 			if (rndr::getKeyPressed(GLFW_KEY_B)) {
 				double width = 1.2;
-				phyz::ConvexUnionGeometry box = phyz::ConvexUnionGeometry::box(center + mthz::Vec3(-width / 2.0 , 6, -width / 2.0), width, width, width/*, phyz::Material::ice()*/);
+				phyz::ConvexUnionGeometry box = phyz::ConvexUnionGeometry::box(center + mthz::Vec3(-width / 2.0 , 6, -width / 2.0), width, width, width, phyz::Material::ice());
 				phyz::RigidBody* box_r = p.createRigidBody(box);
-				box_r->setVel(mthz::Vec3(4, 0, 4));
+				//box_r->setVel(mthz::Vec3(4, 0, 4));
 				bodies.push_back({ fromGeometry(box), box_r });
 			}
 
@@ -133,7 +136,7 @@ public:
 				double block_speed = 15;
 
 				phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::sphere(pos, block_size / 2.0/*, phyz::Material::ice()*/);
-				phyz::RigidBody* block_r = p.createRigidBody(block);
+				phyz::RigidBody* block_r = p.createRigidBody(block, phyz::RigidBody::KINEMATIC);
 
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
 				block_r->setVel(camera_dir * block_speed);

@@ -20,26 +20,26 @@ namespace mthz {
 			this->z = z;
 		}
 
-		double magSqrd() const {
+		inline double magSqrd() const {
 			return x * x + y * y + z * z;
 		}
 
-		double mag() const {
+		inline double mag() const {
 			return sqrt(x * x + y * y + z * z);
 		}
 
-		Vec3 normalize() const {
+		inline Vec3 normalize() const {
 			double magnitude = mag();
 			return (magnitude == 0)? Vec3(0, 0, 0) : Vec3(x / magnitude, y / magnitude, z / magnitude);
 		}
 
-		Vec3 cross(const Vec3 v) const {
+		inline Vec3 cross(const Vec3 v) const {
 			return Vec3(y * v.z - z * v.y,
 				z * v.x - x * v.z,
 				x * v.y - y * v.x);
 		}
 
-		double dot(const Vec3 v) const {
+		inline double dot(const Vec3 v) const {
 			return x * v.x + y * v.y + z * v.z;
 		}
 
@@ -49,55 +49,59 @@ namespace mthz {
 			*w = this->cross(*u).normalize();
 		}
 
-		double& operator[](int index) {
+		inline double& operator[](int index) {
 			if (index == 0) return x;
 			if (index == 1) return y;
 			if (index == 2) return z;
 			assert(false);
 		}
 
-		double operator[](int index) const {
+		inline double operator[](int index) const {
 			if (index == 0) return x;
 			if (index == 1) return y;
 			if (index == 2) return z;
 			assert(false);
 		}
 
-		bool operator==(const Vec3 v) const {
+		inline bool operator==(const Vec3 v) const {
 			return x == v.x && y == v.y && z == v.z; //need to be carful using == with floats
 		}
 
-		Vec3 operator+(const Vec3 v) const {
+		inline bool operator!=(const Vec3 v) const {
+			return x != v.x || y != v.y || z != v.z; //need to be carful using == with floats
+		}
+
+		inline Vec3 operator+(const Vec3 v) const {
 			return Vec3(x + v.x, y + v.y, z + v.z);
 		}
 
-		Vec3 operator-(const Vec3 v) const {
+		inline Vec3 operator-(const Vec3 v) const {
 			return Vec3(x - v.x, y - v.y, z - v.z);
 		}
 
-		Vec3 operator-() const {
+		inline Vec3 operator-() const {
 			return Vec3(-x, -y, -z);
 		}
 
-		void operator+=(const Vec3 v) {
+		inline void operator+=(const Vec3 v) {
 			x += v.x;
 			y += v.y;
 			z += v.z;
 		}
 
-		void operator-=(const Vec3 v) {
+		inline void operator-=(const Vec3 v) {
 			x -= v.x;
 			y -= v.y;
 			z -= v.z;
 		}
 
-		void operator*=(const double d) {
+		inline void operator*=(const double d) {
 			x *= d;
 			y *= d;
 			z *= d;
 		}
 
-		void operator/=(const double d) {
+		inline void operator/=(const double d) {
 			x /= d;
 			y /= d;
 			z /= d;

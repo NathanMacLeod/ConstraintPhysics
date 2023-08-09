@@ -12,7 +12,7 @@ namespace phyz {
 		: geometry_type(CONVEX_UNION), geometry(source_geometry.getPolyhedra()), reference_geometry(source_geometry.getPolyhedra()), vel(0, 0, 0), ang_vel(0, 0, 0),
 		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), id(id)
 	{
-		fixed = false;
+		movement_type = DYNAMIC;
 		calculateMassProperties(source_geometry, &this->com, &this->reference_tensor, &this->mass);
 		reference_invTensor = reference_tensor.inverse();
 		tensor = reference_tensor;
@@ -37,7 +37,7 @@ namespace phyz {
 		: geometry_type(STATIC_MESH), reference_mesh(source_geometry), mesh(source_geometry), vel(0, 0, 0), ang_vel(0, 0, 0), psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), 
 		asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), id(id)
 	{
-		fixed = true;
+		movement_type = FIXED;
 		mass = std::numeric_limits<double>::quiet_NaN();
 		reference_tensor *= std::numeric_limits<double>::quiet_NaN();
 
@@ -94,11 +94,11 @@ namespace phyz {
 		alertWakingAction();
 	}
 
-	void RigidBody::setFixed(bool fixed) { 
-		assert(fixed || geometry_type == CONVEX_UNION);
+	void RigidBody::setMovementType(MovementType type) { 
+		assert(geometry_type != STATIC_MESH || type != DYNAMIC);
 
-		this->fixed = fixed; 
-		if (!fixed) {
+		this->movement_type = type; 
+		if (type != FIXED) {
 			alertWakingAction();
 		}
 	}
@@ -125,23 +125,27 @@ namespace phyz {
 	}
 
 	double RigidBody::getMass() {
-		return (fixed)? std::numeric_limits<double>::infinity() : mass;
+		return (movement_type == FIXED || movement_type == KINEMATIC)? std::numeric_limits<double>::infinity() : mass;
 	}
 
 	double RigidBody::getInvMass() {
-		return (fixed) ? 0 : 1.0 / mass;
-	}
-
-	mthz::Vec3 RigidBody::getVel() { 
-		return (fixed)? mthz::Vec3(0, 0, 0) : vel;
-	}
-
-	mthz::Vec3 RigidBody::getAngVel() { 
-		return (fixed) ? mthz::Vec3(0, 0, 0) : ang_vel;
+		return (movement_type == FIXED || movement_type == KINEMATIC) ? 0 : 1.0 / mass;
 	}
 
 	mthz::Mat3 RigidBody::getInvTensor() {
-		return (fixed) ? mthz::Mat3::zero() : invTensor;
+		return (movement_type == FIXED || movement_type == KINEMATIC) ? mthz::Mat3::zero() : invTensor;
+	}
+
+	mthz::Vec3 RigidBody::getVel() { 
+		return (movement_type == FIXED)? mthz::Vec3(0, 0, 0) : vel;
+	}
+
+	mthz::Vec3 RigidBody::getAngVel() { 
+		return (movement_type == FIXED) ? mthz::Vec3(0, 0, 0) : ang_vel;
+	}
+
+	bool RigidBody::getAsleep() {
+		return asleep && movement_type == DYNAMIC;
 	}
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical
@@ -216,6 +220,9 @@ namespace phyz {
 	}
 
 	void RigidBody::sleep() {
+		assert(movement_type == DYNAMIC);
+		if (movement_type != DYNAMIC) return;
+
 		asleep = true;
 		vel = mthz::Vec3(0, 0, 0);
 		ang_vel = mthz::Vec3(0, 0, 0);

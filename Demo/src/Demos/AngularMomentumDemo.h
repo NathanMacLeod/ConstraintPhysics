@@ -43,7 +43,7 @@ public:
 		double s = 100;
 		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
-		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
+		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		bodies.push_back({ m2, r2 });
 

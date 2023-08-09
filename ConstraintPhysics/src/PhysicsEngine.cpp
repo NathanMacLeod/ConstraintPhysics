@@ -71,7 +71,7 @@ namespace phyz {
 			}
 			b->recievedWakingAction = false;
 
-			if (!b->asleep && !b->fixed) {
+			if (b->movement_type == RigidBody::DYNAMIC && !b->getAsleep()) {
 				b->recordMovementState(sleep_delay / step_time);
 
 				if (bodySleepy(b)) {
@@ -106,7 +106,7 @@ namespace phyz {
 			break;
 		case AABB_TREE:
 			for (RigidBody* b : bodies) {
-				aabb_tree.update(b, b->getID(), b->aabb);
+				aabb_tree.update(b, b->getMovementType() == RigidBody::DYNAMIC, b->getID(), b->aabb);
 			}
 			possible_intersections = aabb_tree.getAllCollisionCandidates();
 			break;
@@ -144,7 +144,7 @@ namespace phyz {
 
 			std::vector<Pair<RigidBody*>> aabb_pairs;
 			for (RigidBody* b : bodies) {
-				aabb_tree.update(b, b->getID(), b->aabb);
+				aabb_tree.update(b, b->getMovementType() == RigidBody::DYNAMIC, b->getID(), b->aabb);
 			}
 			aabb_pairs = aabb_tree.getAllCollisionCandidates();
 
@@ -175,7 +175,10 @@ namespace phyz {
 			RigidBody* b1 = p.t1;
 			RigidBody* b2 = p.t2;
 
-			if ((!b1->fixed || !b2->fixed) && (!b1->asleep || !b2->asleep) && collisionAllowed(b1, b2)) {
+
+			bool collision_possible = (b1->getMovementType() == RigidBody::DYNAMIC || b2->getMovementType() == RigidBody::DYNAMIC) && (!b1->getAsleep() || !b2->getAsleep());
+
+			if (collision_possible && collisionAllowed(b1, b2)) {
 
 				std::vector<Manifold> manifolds;
 
@@ -337,15 +340,23 @@ namespace phyz {
 		auto t6 = std::chrono::system_clock::now();
 
 		auto update_body = [&](RigidBody* b) {
-			if (!b->fixed && !b->asleep) {
+			if ((b->getMovementType() != RigidBody::FIXED) && !b->getAsleep()) {
+				mthz::Vec3 prev_com = b->getCOM();
+				mthz::Quaternion prev_orientation = b->getOrientation();
+
 				b->com += (b->vel + b->psuedo_vel) * step_time;
+
 				if (b->ang_vel.magSqrd() != 0) {
-					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count, is_internal_gyro_forces_disabled);
+					bool no_gyro = is_internal_gyro_forces_disabled || b->getMovementType() == RigidBody::KINEMATIC;
+
+					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count, no_gyro);
 					mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
 					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
 				}
 
-				b->updateGeometry();
+				if (b->getCOM() != prev_com || b->getOrientation() != prev_orientation) {
+					b->updateGeometry();
+				}
 
 				b->psuedo_vel = mthz::Vec3(0, 0, 0);
 				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
@@ -390,25 +401,31 @@ namespace phyz {
 		}
 	}
 
-	RigidBody* PhysicsEngine::createRigidBody(const ConvexUnionGeometry& geometry, bool fixed, mthz::Vec3 position, mthz::Quaternion orientation) {
+	RigidBody* PhysicsEngine::createRigidBody(const ConvexUnionGeometry& geometry, RigidBody::MovementType movement_type, mthz::Vec3 position, mthz::Quaternion orientation) {
 		RigidBody* r = new RigidBody(geometry, position, orientation, next_id++);
-		r->fixed = fixed;
+		r->setMovementType(movement_type);
 		bodies.push_back(r);
 		constraint_graph_nodes[r->getID()] = new ConstraintGraphNode(r);
 
 		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
-			aabb_tree.add(r, r->getID(), r->aabb);
+			aabb_tree.add(r, r->getMovementType() == RigidBody::DYNAMIC, r->getID(), r->aabb);
 		}
 		return r;
 	}
 
-	RigidBody* PhysicsEngine::createRigidBody(const StaticMeshGeometry& geometry) {
+	RigidBody* PhysicsEngine::createRigidBody(const StaticMeshGeometry& geometry, bool fixed) {
 		RigidBody* r = new RigidBody(geometry, next_id++);
+		if (fixed) {
+			r->setMovementType(RigidBody::FIXED);
+		}
+		else {
+			r->setMovementType(RigidBody::KINEMATIC);
+		}
 		bodies.push_back(r);
 		constraint_graph_nodes[r->getID()] = new ConstraintGraphNode(r);
 
 		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
-			aabb_tree.add(r, r->getID(), r->aabb);
+			aabb_tree.add(r, r->getMovementType() == RigidBody::DYNAMIC, r->getID(), r->aabb);
 		}
 		return r;
 	}
@@ -809,7 +826,7 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel, const mthz::Vec3& delta_psuedo_ang_vel) {
-		if (b->fixed) return;
+		if (b->getMovementType() == RigidBody::FIXED || b->getMovementType() == RigidBody::KINEMATIC) return;
 
 		b->vel += delta_vel;
 		b->ang_vel += delta_ang_vel;
@@ -820,14 +837,14 @@ namespace phyz {
 		assert(!std::isinf(b->ang_vel.mag()) && !std::isinf(b->vel.mag()) && !std::isinf(b->psuedo_ang_vel.mag()) && !std::isinf(b->psuedo_vel.mag()));
 
 		double wake_vel = 0.25 * vel_sleep_coeff * gravity.mag(); //a little extra sensitive
-		if (b->asleep && (b->vel.mag() > wake_vel || b->ang_vel.mag() > wake_vel)) {
+		if (b->getAsleep() && (b->vel.mag() > wake_vel || b->ang_vel.mag() > wake_vel)) {
 			constraint_graph_lock.lock();
-			if (b->asleep) { //in case of race condition, shouldn't really matter too much though
+			if (b->getAsleep()) { //in case of race condition, shouldn't really matter too much though
 				wakeupIsland(constraint_graph_nodes[b->getID()]);
 			}
 			 constraint_graph_lock.unlock();
 		}
-		else if (b->asleep) {
+		else if (b->getAsleep()) {
 			b->vel = mthz::Vec3(0, 0, 0);
 			b->ang_vel = mthz::Vec3(0, 0, 0);
 		}
@@ -858,7 +875,7 @@ namespace phyz {
 
 		//reinsert all elements
 		for (RigidBody* r : bodies) {
-			aabb_tree.add(r, r->getID(), r->aabb);
+			aabb_tree.add(r, r->getMovementType() == RigidBody::DYNAMIC, r->getID(), r->aabb);
 		}
 	}
 
@@ -922,7 +939,7 @@ namespace phyz {
 	void PhysicsEngine::forceAABBTreeUpdate() {
 		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
 			for (RigidBody* b : bodies) {
-				aabb_tree.update(b, b->getID(), b->aabb);
+				aabb_tree.update(b, b->getMovementType() == RigidBody::DYNAMIC, b->getID(), b->aabb);
 			}
 		}
 	}
@@ -970,7 +987,7 @@ namespace phyz {
 	}
 
 	bool PhysicsEngine::readyToSleep(RigidBody* b) {
-		return b->sleep_ready_counter >= sleep_delay || b->fixed;
+		return b->getMovementType() != RigidBody::KINEMATIC && (b->sleep_ready_counter >= sleep_delay || b->getMovementType() == RigidBody::FIXED);
 	}
 
 	//Fixed bodies need to be treated a little weird. They should not bridge islands together (two seperate piles on the same floor should be different islands).
@@ -986,12 +1003,12 @@ namespace phyz {
 			bool already_visited = !visited->insert(visiting_node).second;
 			if (already_visited) continue;
 
-			if (!visiting_node->b->fixed) {
+			if (visiting_node->b->getMovementType() == RigidBody::DYNAMIC) {
 				action(visiting_node, in);
 			}
 			for (SharedConstraintsEdge* e : visiting_node->constraints) {
 				ConstraintGraphNode* n = e->other(visiting_node);
-				if (!n->b->fixed && visited->find(n) == visited->end()) {
+				if (n->b->getMovementType() == RigidBody::DYNAMIC && visited->find(n) == visited->end()) {
 					to_visit.push_back(n);
 				}
 			}
@@ -1151,7 +1168,7 @@ namespace phyz {
 				for (auto j = e->contactConstraints.begin(); j != e->contactConstraints.end();) {
 					Contact* contact = *j;
 					contact->is_live_contact = false;
-					if (!contact->b1->asleep && !contact->b2->asleep && contact->memory_life-- < 0) {
+					if (!contact->b1->getAsleep() && !contact->b2->getAsleep() && contact->memory_life-- < 0) {
 						delete contact;
 						j = e->contactConstraints.erase(j);
 					}
@@ -1260,7 +1277,7 @@ namespace phyz {
 			ConstraintGraphNode* n = kv_pair.second;
 
 			//fixed bodies can only be leaves of graph
-			if (n->b->fixed || n->b->asleep || visited.find(n) != visited.end()) {
+			if (n->b->getMovementType() != RigidBody::DYNAMIC || visited.find(n) != visited.end()) {
 				continue;
 			}
 
@@ -1278,53 +1295,60 @@ namespace phyz {
 			int new_contact_life = this->contact_life;
 			bfsVisitAll(n, &visited, (void*)&in, [&visited, new_contact_life, this](ConstraintGraphNode* curr, void* in) {
 				InStruct* output = (InStruct*)in;
-				if (*output->all_ready_to_sleep && !readyToSleep(curr->b)) {
-					*output->all_ready_to_sleep = false;
-				}
+
+				bool interacting_with_kinematic = false;
+				
 				output->island_bodies->push_back(curr->b);
 				for (SharedConstraintsEdge* e : curr->constraints) {
 					ConstraintGraphNode* n = e->other(curr);
-					if (visited.find(n) == visited.end()) {		
-						for (Contact* c: e->contactConstraints) {
-							if (c->is_live_contact) {
-								output->island_constraints->push_back(&c->contact);
-								output->island_constraints->push_back(&c->friction);
-							}
-						}
-						for (BallSocket* bs : e->ballSocketConstraints) {
-							output->island_constraints->push_back(&bs->constraint);
-						}
-						for (Hinge* h : e->hingeConstraints) {
-							output->island_constraints->push_back(&h->constraint);
-							if (h->motor.constraintIsActive()) {
-								output->island_constraints->push_back(&h->motor.motor_constraint);
-							}
-						}
-						for (Slider* s : e->sliderConstraints) {
-							output->island_constraints->push_back(&s->constraint);
-							if (s->max_piston_force != 0) {
-								output->island_constraints->push_back(&s->piston_force);
-							}
-							if (s->slide_limit_exceeded) {
-								output->island_constraints->push_back(&s->slide_limit);
-							}
-						}
-						for (SlidingHinge* s : e->slidingHingeConstraints) {
-							output->island_constraints->push_back(&s->constraint);
-							if (s->max_piston_force != 0) {
-								output->island_constraints->push_back(&s->piston_force);
-							}
-							if (s->slide_limit_exceeded) {
-								output->island_constraints->push_back(&s->slide_limit);
-							}
-							if (s->motor.constraintIsActive()) {
-								output->island_constraints->push_back(&s->motor.motor_constraint);
-							}
-						}
-						for (Weld* w : e->weldConstraints) {
-							output->island_constraints->push_back(&w->constraint);
+
+					if (n->b->getMovementType() == RigidBody::KINEMATIC) interacting_with_kinematic = true;
+					if (curr->b->getAsleep() && (n->b->getAsleep() || n->b->getMovementType() == RigidBody::FIXED) || visited.find(n) != visited.end()) continue;
+
+					for (Contact* c: e->contactConstraints) {
+						if (c->is_live_contact) {
+							output->island_constraints->push_back(&c->contact);
+							output->island_constraints->push_back(&c->friction);
 						}
 					}
+					for (BallSocket* bs : e->ballSocketConstraints) {
+						output->island_constraints->push_back(&bs->constraint);
+					}
+					for (Hinge* h : e->hingeConstraints) {
+						output->island_constraints->push_back(&h->constraint);
+						if (h->motor.constraintIsActive()) {
+							output->island_constraints->push_back(&h->motor.motor_constraint);
+						}
+					}
+					for (Slider* s : e->sliderConstraints) {
+						output->island_constraints->push_back(&s->constraint);
+						if (s->max_piston_force != 0) {
+							output->island_constraints->push_back(&s->piston_force);
+						}
+						if (s->slide_limit_exceeded) {
+							output->island_constraints->push_back(&s->slide_limit);
+						}
+					}
+					for (SlidingHinge* s : e->slidingHingeConstraints) {
+						output->island_constraints->push_back(&s->constraint);
+						if (s->max_piston_force != 0) {
+							output->island_constraints->push_back(&s->piston_force);
+						}
+						if (s->slide_limit_exceeded) {
+							output->island_constraints->push_back(&s->slide_limit);
+						}
+						if (s->motor.constraintIsActive()) {
+							output->island_constraints->push_back(&s->motor.motor_constraint);
+						}
+					}
+					for (Weld* w : e->weldConstraints) {
+						output->island_constraints->push_back(&w->constraint);
+					}
+					
+				}
+
+				if (interacting_with_kinematic || !readyToSleep(curr->b)) {
+					*output->all_ready_to_sleep = false;
 				}
 			});
 			if (sleeping_enabled && all_ready_to_sleep) {

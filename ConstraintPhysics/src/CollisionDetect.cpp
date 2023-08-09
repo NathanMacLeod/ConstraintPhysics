@@ -670,9 +670,10 @@ namespace phyz {
 		return true;
 	}
 
-	static Manifold SAT_PolyTriangle(const Polyhedron& a, int a_id, const Material& a_mat, const StaticMeshFace& b, bool ignore_gauss_restrictions) {
+	static Manifold SAT_PolyTriangle(const Polyhedron& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
 		Manifold out;
 		out.max_pen_depth = -1;
+		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		const GaussMap& ag = a.getGaussMap();
 
@@ -684,8 +685,10 @@ namespace phyz {
 		}
 		b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, true), b.normal);
 		if (b_norm_x.pen_depth < min_pen.pen_depth) { //no normalDirectionValid check needed for this direction
-
 			min_pen = b_norm_x;
+		}
+		if (b_norm_x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -b_norm_x.norm)) {
+			min_gauss_valid_pen = b_norm_x;
 		}
 
 		for (const GaussVert& g : ag.face_verts) {
@@ -697,8 +700,11 @@ namespace phyz {
 					return out;
 				}
 				x = sat_checknorm(recentered_g_extrema, findTriangleExtrema(b, g.v, true), g.v);
-				if (x.pen_depth < min_pen.pen_depth && (ignore_gauss_restrictions || normalDirectionValid(b, -x.norm))) {
+				if (x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
+				}
+				if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+					min_gauss_valid_pen = x;
 				}
 			}
 		}
@@ -752,21 +758,27 @@ namespace phyz {
 					return out;
 				}
 				x = sat_checknorm(poly_extrema, findTriangleExtrema(b, n, true), n);
-				if (x.pen_depth < min_pen.pen_depth && (ignore_gauss_restrictions || normalDirectionValid(b, -x.norm))) {
+				if (x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
+				}
+				if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+					min_gauss_valid_pen = x;
 				}
 			}
 		}
 
+		CheckNormResults nongauss_min_pen = min_pen;
+		if (min_gauss_valid_pen.pen_depth < min_pen.pen_depth + non_gauss_valid_penalty) min_pen = min_gauss_valid_pen;
+
 		out.normal = min_pen.norm;
 		mthz::Vec3 norm = min_pen.norm;
-		mthz::Vec3 a_maxP = a.getPoints()[min_pen.a_maxPID];
-		mthz::Vec3 b_maxP = b.vertices[min_pen.b_maxPID].p;
+		mthz::Vec3 a_maxP = a.getPoints()[nongauss_min_pen.a_maxPID];
+		mthz::Vec3 b_maxP = b.vertices[nongauss_min_pen.b_maxPID].p;
 
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
-		ContactArea a_contact = findContactArea(a, norm, a_maxP, min_pen.a_maxPID, u, w);
-		ContactArea b_contact = findTriangleContactArea(b, (-1) * norm, b_maxP, min_pen.b_maxPID, u, w);
+		ContactArea a_contact = findContactArea(a, nongauss_min_pen.norm, a_maxP, nongauss_min_pen.a_maxPID, u, w);
+		ContactArea b_contact = findTriangleContactArea(b, (-1) * nongauss_min_pen.norm, b_maxP, nongauss_min_pen.b_maxPID, u, w);
 
 		std::vector<ProjP> man_pool;
 		std::vector<uint64_t> man_pool_magics;
@@ -844,10 +856,11 @@ namespace phyz {
 		return out;
 	}
 
-	static Manifold SAT_SphereTriangle(const Sphere& a, int a_id, const Material& a_mat, const StaticMeshFace& b) {
+	static Manifold SAT_SphereTriangle(const Sphere& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
 		Manifold out;
 		out.max_pen_depth = -1;
 		uint32_t a_feature_id = -1;
+		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
 		ExtremaInfo sphere_extrema = getSphereExtrema(a, b.normal);
@@ -859,6 +872,9 @@ namespace phyz {
 		b_norm_x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, b.normal, true), b.normal);
 		if (b_norm_x.pen_depth < min_pen.pen_depth) {
 			min_pen = b_norm_x;
+		}
+		if (b_norm_x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -b_norm_x.norm)) {
+			min_gauss_valid_pen = b_norm_x;
 		}
 
 		for (int i = 0; i < 3; i++) {
@@ -874,6 +890,9 @@ namespace phyz {
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 				a_feature_id = i;
+			}
+			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+				min_gauss_valid_pen = x;
 			}
 		}
 		for (StaticMeshEdge e : b.edges) {
@@ -891,12 +910,17 @@ namespace phyz {
 				min_pen = x;
 				a_feature_id = e.id;
 			}
+			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+				min_gauss_valid_pen = x;
+			}
 		}
 
+		CheckNormResults nongauss_min_pen = min_pen;
+		if (min_gauss_valid_pen.pen_depth < min_pen.pen_depth + non_gauss_valid_penalty) min_pen = min_gauss_valid_pen;
 		out.normal = min_pen.norm;
 
 		ContactP cp;
-		cp.pos = a.getCenter() + out.normal * a.getRadius();
+		cp.pos = a.getCenter() + min_pen.norm * a.getRadius();
 		cp.pen_depth = min_pen.pen_depth;
 		cp.restitution = std::max<double>(a_mat.restitution, b.material.restitution);
 		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b.material.kinetic_friction_coeff) / 2.0;
@@ -921,16 +945,11 @@ namespace phyz {
 
 		for (unsigned int i : tri_candidates) {
 			const StaticMeshFace& tri = b.getTriangles()[i];
+			double non_gauss_valid_normal_penalty = 0.1 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
-			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri, false);
+			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
 				manifolds_out.push_back(m);
-			}
-			else if (m.max_pen_depth > 0) {
-				m = SAT_PolyTriangle(a, a_id, a_mat, tri, true);
-				if (m.max_pen_depth > 0) {
-					manifolds_out.push_back(m);
-				}
 			}
 		}
 
@@ -943,17 +962,12 @@ namespace phyz {
 
 		for (unsigned int i : tri_candidates) {
 			const StaticMeshFace& tri = b.getTriangles()[i];
+			double non_gauss_valid_normal_penalty = 0.4 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
-			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri);
+			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
 				manifolds_out.push_back(m);
 			}
-			//else if (m.max_pen_depth > 0) {
-			//	m = SAT_SphereTriangle(a, a_id, a_mat, tri, true);
-			//	if (m.max_pen_depth > 0) {
-			//		manifolds_out.push_back(m);
-			//	}
-			//}
 		}
 
 		return manifolds_out;

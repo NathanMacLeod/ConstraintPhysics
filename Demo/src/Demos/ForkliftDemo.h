@@ -136,7 +136,7 @@ public:
 		double s = 500;
 		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
-		phyz::RigidBody* r2 = p.createRigidBody(geom2, true);
+		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		bodies.push_back({ m2, r2 });
 
@@ -393,15 +393,15 @@ public:
 
 		mthz::Vec3 shelf_position(-shelf_width * n_slots / 2.0, 0, 20);
 		phyz::ConvexUnionGeometry shelf = phyz::ConvexUnionGeometry::box(shelf_position + mthz::Vec3(0, shelf_height, 0), shelf_width * n_slots, shelf_thickness, shelf_width);
-		phyz::RigidBody* shelf_r = p.createRigidBody(shelf, true);
+		phyz::RigidBody* shelf_r = p.createRigidBody(shelf, phyz::RigidBody::FIXED);
 		bodies.push_back({ fromGeometry(shelf), shelf_r });
 
 		phyz::ConvexUnionGeometry leg_shape = phyz::ConvexUnionGeometry::box(mthz::Vec3(), leg_width, shelf_height, leg_width);
 		phyz::ConvexUnionGeometry leg1 = leg_shape.getTranslated(shelf_position);
 		phyz::ConvexUnionGeometry leg2 = leg_shape.getTranslated(shelf_position + mthz::Vec3(0, 0, shelf_width - leg_width));
 
-		phyz::RigidBody* leg1_r = p.createRigidBody(leg1, true);
-		phyz::RigidBody* leg2_r = p.createRigidBody(leg2, true);
+		phyz::RigidBody* leg1_r = p.createRigidBody(leg1, phyz::RigidBody::FIXED);
+		phyz::RigidBody* leg2_r = p.createRigidBody(leg2, phyz::RigidBody::FIXED);
 
 		bodies.push_back({ fromGeometry(leg1), leg1_r });
 		bodies.push_back({ fromGeometry(leg2), leg2_r });
@@ -411,8 +411,8 @@ public:
 			phyz::ConvexUnionGeometry close_leg = leg_shape.getTranslated(shelf_position + mthz::Vec3(leg_x - leg_width, 0, 0));
 			phyz::ConvexUnionGeometry far_leg = leg_shape.getTranslated(shelf_position + mthz::Vec3(leg_x - leg_width, 0, shelf_width - leg_width));
 
-			phyz::RigidBody* close_leg_r = p.createRigidBody(close_leg, true);
-			phyz::RigidBody* far_leg_r = p.createRigidBody(far_leg, true);
+			phyz::RigidBody* close_leg_r = p.createRigidBody(close_leg, phyz::RigidBody::FIXED);
+			phyz::RigidBody* far_leg_r = p.createRigidBody(far_leg, phyz::RigidBody::FIXED);
 
 			bodies.push_back({ fromGeometry(close_leg), close_leg_r });
 			bodies.push_back({ fromGeometry(far_leg), far_leg_r });

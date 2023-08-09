@@ -586,7 +586,7 @@ namespace phyz {
 		: aabb_tree(0, AABBTree<unsigned int>::SURFACE_AREA), triangles(c.triangles)
 	{
 		for (int i = 0; i < triangles.size(); i++) {
-			aabb_tree.add(i, i, triangles[i].aabb);
+			aabb_tree.add(i, true, i, triangles[i].aabb);
 		}
 	}
 
@@ -755,7 +755,7 @@ namespace phyz {
 				triangles[i].edges[j].out_direction = rot * reference.triangles[i].edges[j].out_direction;
 			}
 
-			aabb_tree.add(i, i, triangles[i].aabb);
+			aabb_tree.add(i, true, i, triangles[i].aabb);
 		}
 	}
 

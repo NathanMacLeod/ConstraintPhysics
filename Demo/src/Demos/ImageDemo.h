@@ -265,7 +265,7 @@ public:
 				phyz::ConvexUnionGeometry pin = phyz::ConvexUnionGeometry::cylinder(pin_pos,cylinder_radius, base_dim.z)
 					.getRotated(mthz::Quaternion(PI/2.0, mthz::Vec3(1, 0, 0)), pin_pos);
 
-				pre_bodies.push_back(BodyHistory(p.createRigidBody(pin, true), pin, color{130, 0, 0}));
+				pre_bodies.push_back(BodyHistory(p.createRigidBody(pin, phyz::RigidBody::FIXED), pin, color{130, 0, 0}));
 			}
 		}
 
@@ -334,11 +334,11 @@ public:
 			}
 		}
 
-		phyz::RigidBody* base_r = p.createRigidBody(base, true);
-		phyz::RigidBody* negx_wall_r = p.createRigidBody(negx_wall, true);
-		phyz::RigidBody* posx_wall_r = p.createRigidBody(posx_wall, true);
-		phyz::RigidBody* back_wall_r = p.createRigidBody(back_wall, true);
-		phyz::RigidBody* front_wall_r = p.createRigidBody(front_wall, true);
+		phyz::RigidBody* base_r = p.createRigidBody(base, phyz::RigidBody::FIXED);
+		phyz::RigidBody* negx_wall_r = p.createRigidBody(negx_wall, phyz::RigidBody::FIXED);
+		phyz::RigidBody* posx_wall_r = p.createRigidBody(posx_wall, phyz::RigidBody::FIXED);
+		phyz::RigidBody* back_wall_r = p.createRigidBody(back_wall, phyz::RigidBody::FIXED);
+		phyz::RigidBody* front_wall_r = p.createRigidBody(front_wall, phyz::RigidBody::FIXED);
 
 		phyz::RigidBody* spinner1_r = p.createRigidBody(spinner1);
 		phyz::RigidBody* spinner2_r = p.createRigidBody(spinner2);

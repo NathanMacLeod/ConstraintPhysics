@@ -63,6 +63,10 @@ namespace phyz{
 			return 2 * (dx * dy) + (dy * dz) + (dz * dx);
 		}
 
+		static double longestDimension(AABB a) {
+			return std::max<double>(a.max.x - a.min.x, std::max<double>(a.max.y - a.min.y, a.max.z - a.min.z));
+		}
+
 		static AABB getScaled(AABB a, double scale_factor) {
 			mthz::Vec3 center = (a.max + a.min) / 2.0;
 

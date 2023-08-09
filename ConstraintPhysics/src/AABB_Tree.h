@@ -36,8 +36,8 @@ namespace phyz {
 			}
 		}
 
-		void add(T object, int object_id, const AABB& object_bounds) {
-			Node* new_leaf = new Node(object, object_id, object_bounds, aabb_margin_size, cost_type);
+		void add(T object, bool object_static, int object_id, const AABB& object_bounds) {
+			Node* new_leaf = new Node(object, object_static, object_id, object_bounds, aabb_margin_size, cost_type);
 			object_node_map[object_id] = new_leaf;
 
 			if (root == nullptr) {
@@ -137,13 +137,13 @@ namespace phyz {
 			delete to_remove_leaf;
 		}
 
-		void update(T object, int object_id, const AABB& updated_object_bounds) {
+		void update(T object, bool object_static, int object_id, const AABB& updated_object_bounds) {
 			assert(object_node_map.find(object_id) != object_node_map.end());
 			Node* object_leaf = object_node_map[object_id];
 
 			if (!AABB::isAABBContained(updated_object_bounds, object_leaf->node_aabb)) {
 				remove(object_id);
-				add(object, object_id, updated_object_bounds);
+				add(object, object_static, object_id, updated_object_bounds);
 			}
 			else {
 				object_leaf->leaf_object_true_aabb = updated_object_bounds;
@@ -276,12 +276,14 @@ namespace phyz {
 			Node()
 				: parent(nullptr), left(nullptr), right(nullptr), is_leaf(false), leaf_object_id(-1), cost_value(0) {}
 
-			Node(T object, int object_id, const AABB& object_aabb, double aabb_margin_size, CostFunction cost_type)
+			Node(T object, bool object_static, int object_id, const AABB& object_aabb, double aabb_margin_size, CostFunction cost_type)
 				: parent(nullptr), left(nullptr), right(nullptr), is_leaf(true), leaf_object(object), leaf_object_id(object_id), leaf_object_true_aabb(object_aabb)
 			{
+				double margin = object_static ? 0 : aabb_margin_size;
+
 				setAABB(AABB{
-					object_aabb.min - mthz::Vec3(aabb_margin_size, aabb_margin_size, aabb_margin_size),
-					object_aabb.max + mthz::Vec3(aabb_margin_size, aabb_margin_size, aabb_margin_size)
+					object_aabb.min - mthz::Vec3(margin, margin, margin),
+					object_aabb.max + mthz::Vec3(margin, margin, margin)
 					}, cost_type);
 			}
 

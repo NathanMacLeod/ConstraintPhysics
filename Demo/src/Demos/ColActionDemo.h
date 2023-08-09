@@ -69,12 +69,12 @@ public:
 		phyz::ConvexUnionGeometry wall5 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-box_size / 2.0, -box_size/2.0, -box_size / 2.0 - wall_width), box_size, box_size, wall_width, bouncy);
 		phyz::ConvexUnionGeometry wall6 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-box_size / 2.0, -box_size / 2.0, box_size / 2.0), box_size, box_size, wall_width, bouncy);
 
-		p.createRigidBody(wall1, true);
-		p.createRigidBody(wall2, true);
-		p.createRigidBody(wall3, true);
-		p.createRigidBody(wall4, true);
-		p.createRigidBody(wall5, true);
-		p.createRigidBody(wall6, true);
+		p.createRigidBody(wall1, phyz::RigidBody::FIXED);
+		p.createRigidBody(wall2, phyz::RigidBody::FIXED);
+		p.createRigidBody(wall3, phyz::RigidBody::FIXED);
+		p.createRigidBody(wall4, phyz::RigidBody::FIXED);
+		p.createRigidBody(wall5, phyz::RigidBody::FIXED);
+		p.createRigidBody(wall6, phyz::RigidBody::FIXED);
 
 		double agent_size = 0.35;
 		int agent_num = 6;
