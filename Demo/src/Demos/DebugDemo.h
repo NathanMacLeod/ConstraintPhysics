@@ -60,10 +60,9 @@ public:
 		phyz::RigidBody* gr = p.createRigidBody(grid);
 		static_meshes.push_back(fromStaticMeshInput(grid, color{ 0.4, 0.2, 0.7}));
 
-		phyz::RigidBody* r = p.createRigidBody(dragon_input);
-		//r->setVel(mthz::Vec3(0.25, 0, 0));
-		//bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
-		static_meshes.push_back(fromStaticMeshInput(dragon_input, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }));
+		phyz::RigidBody* r = p.createRigidBody(dragon_input, false);
+		bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
+		//static_meshes.push_back(fromStaticMeshInput(dragon_input, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }));
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");

@@ -734,27 +734,34 @@ namespace phyz {
 		}
 	}
 
+	StaticMeshFace StaticMeshFace::getTransformed(const mthz::Mat3& rot, mthz::Vec3 translation, mthz::Vec3 center_of_rotation) const {
+		StaticMeshFace out = *this;
+
+		out.normal = rot * normal;
+
+
+		for (int j = 0; j < gauss_region.size(); j++) {
+			out.gauss_region[j] = rot * gauss_region[j];
+		}
+
+		for (int j = 0; j < 3; j++) {
+			out.vertices[j].p = translation + rot * (vertices[j].p - center_of_rotation) + center_of_rotation;
+
+			out.edges[j].p1 = translation + rot * (edges[j].p1 - center_of_rotation) + center_of_rotation;
+			out.edges[j].p2 = translation + rot * (edges[j].p2 - center_of_rotation) + center_of_rotation;
+
+			out.edges[j].out_direction = rot * edges[j].out_direction;
+		}
+
+		return out;
+	}
+
 	void StaticMeshGeometry::recomputeFromReference(const StaticMeshGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) {
 		aabb_tree = AABBTree<unsigned int>(0, AABBTree<unsigned int>::SURFACE_AREA); //reset tree
 
 		assert(triangles.size() == reference.triangles.size());
 		for (int i = 0; i < triangles.size(); i++) {
-			triangles[i].normal = rot * reference.triangles[i].normal;
-			
-
-			for (int j = 0; j < triangles[i].gauss_region.size(); j++) {
-				triangles[i].gauss_region[j] = rot * reference.triangles[i].gauss_region[j];
-			}
-
-			for (int j = 0; j < 3; j++) {
-				triangles[i].vertices[j].p = trans + rot * (reference.triangles[i].vertices[j].p - center_of_rotation) + center_of_rotation;
-
-				triangles[i].edges[j].p1 = trans + rot * (reference.triangles[i].edges[j].p1 - center_of_rotation) + center_of_rotation;
-				triangles[i].edges[j].p2 = trans + rot * (reference.triangles[i].edges[j].p2 - center_of_rotation) + center_of_rotation;
-
-				triangles[i].edges[j].out_direction = rot * reference.triangles[i].edges[j].out_direction;
-			}
-
+			triangles[i] = reference.triangles[i].getTransformed(rot, trans, center_of_rotation);
 			aabb_tree.add(i, true, i, triangles[i].aabb);
 		}
 	}

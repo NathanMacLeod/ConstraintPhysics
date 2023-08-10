@@ -1,5 +1,6 @@
 #pragma once
 #include "../../Math/src/Vec3.h"
+#include "../../Math/src/Quaternion.h"
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -65,8 +66,8 @@ namespace phyz {
 	inline ExtremaInfo recenter(const ExtremaInfo& info, double old_ref_value, double new_ref_value);
 	inline ExtremaInfo findExtrema(const Polyhedron& c, mthz::Vec3 axis);
 	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b);
-	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b);
-	std::vector<Manifold> detectCollision(const StaticMeshGeometry& a, const ConvexPrimitive& b, AABB b_aabb);
+	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
+	std::vector<Manifold> detectCollision(const StaticMeshGeometry& a, mthz::Vec3 a_world_position, mthz::Quaternion a_world_orientation, const ConvexPrimitive& b, AABB b_aabb);
 
 }
 

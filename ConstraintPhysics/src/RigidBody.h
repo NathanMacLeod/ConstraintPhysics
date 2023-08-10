@@ -104,6 +104,7 @@ namespace phyz {
 
 		//for static mesh
 		StaticMeshGeometry reference_mesh;
+		AABB reference_aabb;
 		StaticMeshGeometry mesh;
 		
 		std::vector<mthz::Vec3> track_p;

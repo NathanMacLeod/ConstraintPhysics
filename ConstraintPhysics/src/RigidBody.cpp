@@ -45,7 +45,8 @@ namespace phyz {
 		tensor = reference_tensor;
 		invTensor = reference_invTensor;
 
-		aabb = mesh.genAABB();
+		reference_aabb = reference_mesh.genAABB();
+		aabb = reference_aabb;
 		local_coord_origin = -com;
 		origin_pkey = trackPoint(mthz::Vec3(0, 0, 0));
 		recievedWakingAction = false;
@@ -213,8 +214,20 @@ namespace phyz {
 			}
 			aabb = AABB::combine(geometry_AABB);
 		}
-		else {
-			mesh.recomputeFromReference(reference_mesh, rot, com);
+		else if (geometry_type == STATIC_MESH) {
+			if (movement_type == FIXED) {
+				mesh.recomputeFromReference(reference_mesh, rot, com);
+				aabb = mesh.genAABB();
+			}
+			else {
+				//u, v, w, origin are the world's x, y, z, origin from perspective of local coordinates
+				mthz::Vec3 u = rot_conjugate * mthz::Vec3(1, 0, 0);
+				mthz::Vec3 v = rot_conjugate * mthz::Vec3(0, 1, 0);
+				mthz::Vec3 w = rot_conjugate * mthz::Vec3(0, 0, 1);
+				mthz::Vec3 origin = -rot_conjugate * com;
+
+				aabb = AABB::conformNewBasis(reference_aabb, u, v, w, origin);
+			}
 		}
 		
 	}

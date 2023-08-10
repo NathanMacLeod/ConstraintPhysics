@@ -40,8 +40,8 @@ namespace phyz {
 	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat);
 	static Manifold detectSphereSphere(const Sphere& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
 	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
-	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b);
-	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b);
+	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
+	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 
 	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b) {
 		switch (a.getType()) {
@@ -73,23 +73,23 @@ namespace phyz {
 		
 	}
 
-	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b) {
+	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
 		switch (a.getType()) {
 		case POLYHEDRON:
-			return SAT_PolyMesh((const Polyhedron&)*a.getGeometry(), a_aabb, a.getID(), a.material, b);
+			return SAT_PolyMesh((const Polyhedron&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		case SPHERE:
-			return SAT_SphereMesh((const Sphere&)*a.getGeometry(), a_aabb, a.getID(), a.material, b);
+			return SAT_SphereMesh((const Sphere&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		}
 	}
 
-	std::vector<Manifold> detectCollision(const StaticMeshGeometry& a, const ConvexPrimitive& b, AABB b_aabb) {
+	std::vector<Manifold> detectCollision(const StaticMeshGeometry& a, mthz::Vec3 a_world_position, mthz::Quaternion a_world_orientation, const ConvexPrimitive& b, AABB b_aabb) {
 		std::vector<Manifold> out;
 		switch (b.getType()) {
 		case POLYHEDRON:
-			out = SAT_PolyMesh((const Polyhedron&)*b.getGeometry(), b_aabb, b.getID(), b.material, a);
+			out = SAT_PolyMesh((const Polyhedron&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
 			break;
 		case SPHERE:
-			out = SAT_SphereMesh((const Sphere&)*b.getGeometry(), b_aabb, b.getID(), b.material, a);
+			out = SAT_SphereMesh((const Sphere&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
 			break;
 		}
 
@@ -939,12 +939,28 @@ namespace phyz {
 		return out;
 	}
 
-	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b) {
-		std::vector<unsigned int> tri_candidates = b.getAABBTree().getCollisionCandidatesWith(a_aabb);
+	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
+		mthz::Mat3 local_to_world_rot = b_world_orientation.getRotMatrix();
+
+		std::vector<unsigned int> tri_candidates;
+		bool local_transformation_required = b_world_position != mthz::Vec3() || b_world_orientation != mthz::Quaternion();
+		if (!local_transformation_required) {
+			tri_candidates = b.getAABBTree().getCollisionCandidatesWith(a_aabb);
+		}
+		else {
+			//local basis transformed to world coordinates
+			mthz::Vec3 u = local_to_world_rot * mthz::Vec3(1, 0, 0);
+			mthz::Vec3 v = local_to_world_rot * mthz::Vec3(0, 1, 0);
+			mthz::Vec3 w = local_to_world_rot * mthz::Vec3(0, 0, 1);
+
+			AABB local_coord_aabb = AABB::conformNewBasis(a_aabb, u, v, w, b_world_position);
+			tri_candidates = b.getAABBTree().getCollisionCandidatesWith(local_coord_aabb);
+		}
+
 		std::vector<Manifold> manifolds_out;
 
 		for (unsigned int i : tri_candidates) {
-			const StaticMeshFace& tri = b.getTriangles()[i];
+			StaticMeshFace tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
 			double non_gauss_valid_normal_penalty = 0.1 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
 			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
@@ -956,7 +972,7 @@ namespace phyz {
 		return manifolds_out;
 	}
 
-	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b) {
+	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
 		std::vector<unsigned int> tri_candidates = b.getAABBTree().getCollisionCandidatesWith(a_aabb);
 		std::vector<Manifold> manifolds_out;
 

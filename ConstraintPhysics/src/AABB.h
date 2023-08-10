@@ -49,6 +49,40 @@ namespace phyz{
 			return out;
 		}
 
+		static AABB conformNewBasis(AABB a, mthz::Vec3 u, mthz::Vec3 v, mthz::Vec3 w, mthz::Vec3 xyz_origin) {
+			std::vector<mthz::Vec3> xyz_relative_vertices(8);
+
+			xyz_relative_vertices[0] = mthz::Vec3(a.min.x, a.min.y, a.min.z) - xyz_origin;
+			xyz_relative_vertices[1] = mthz::Vec3(a.min.x, a.min.y, a.max.z) - xyz_origin;
+			xyz_relative_vertices[2] = mthz::Vec3(a.min.x, a.max.y, a.min.z) - xyz_origin;
+			xyz_relative_vertices[3] = mthz::Vec3(a.min.x, a.max.y, a.max.z) - xyz_origin;
+			xyz_relative_vertices[4] = mthz::Vec3(a.max.x, a.min.y, a.min.z) - xyz_origin;
+			xyz_relative_vertices[5] = mthz::Vec3(a.max.x, a.min.y, a.max.z) - xyz_origin;
+			xyz_relative_vertices[6] = mthz::Vec3(a.max.x, a.max.y, a.min.z) - xyz_origin;
+			xyz_relative_vertices[7] = mthz::Vec3(a.max.x, a.max.y, a.max.z) - xyz_origin;
+
+			double inf = std::numeric_limits<double>::infinity();
+			AABB out = {
+				mthz::Vec3(inf, inf, inf),
+				mthz::Vec3(-inf, -inf, -inf)
+			};
+
+			for (int i = 0; i < 8; i++) {
+				mthz::Vec3 uvw_coord = mthz::Vec3(xyz_relative_vertices[i].dot(u), xyz_relative_vertices[i].dot(v), xyz_relative_vertices[i].dot(w));
+
+				//out's X, Y, Z represent U, V, W, basis respectively.
+				out.min.x = std::min<double>(out.min.x, uvw_coord.x);
+				out.min.y = std::min<double>(out.min.y, uvw_coord.y);
+				out.min.z = std::min<double>(out.min.z, uvw_coord.z);
+
+				out.max.x = std::max<double>(out.max.x, uvw_coord.x);
+				out.max.y = std::max<double>(out.max.y, uvw_coord.y);
+				out.max.z = std::max<double>(out.max.z, uvw_coord.z);
+			}
+
+			return out;
+		}
+
 		static double volume(AABB a) {
 			return	  (a.max.x - a.min.x)
 					* (a.max.y - a.min.y)

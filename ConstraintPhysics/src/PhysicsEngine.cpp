@@ -205,7 +205,16 @@ namespace phyz {
 				}
 				else if (b1->getGeometryType() == RigidBody::CONVEX_UNION) {
 					for (int i = 0; i < b1->geometry.size(); i++) {
-						std::vector<Manifold> detected_manifolds = detectCollision(b1->geometry[i], b1->geometry_AABB[i], b2->mesh);
+						bool use_local_transformation_on_mesh = b2->getMovementType() == RigidBody::KINEMATIC;
+
+						std::vector<Manifold> detected_manifolds;
+						if (use_local_transformation_on_mesh) {
+							detected_manifolds = detectCollision(b1->geometry[i], b1->geometry_AABB[i], b2->reference_mesh, b2->getCOM(), b2->getOrientation());
+						}
+						else {
+							detected_manifolds = detectCollision(b1->geometry[i], b1->geometry_AABB[i], b2->mesh, mthz::Vec3(), mthz::Quaternion());
+						}
+
 						for (const Manifold& m : detected_manifolds) {
 							manifolds.push_back(m);
 						}
@@ -213,7 +222,15 @@ namespace phyz {
 				}
 				else {
 					for (int i = 0; i < b2->geometry.size(); i++) {
-						std::vector<Manifold> detected_manifolds = detectCollision(b1->mesh, b2->geometry[i], b2->geometry_AABB[i]);
+						bool use_local_transformation_on_mesh = b1->getMovementType() == RigidBody::KINEMATIC;
+
+						std::vector<Manifold> detected_manifolds;
+						if (use_local_transformation_on_mesh) {
+							detected_manifolds = detectCollision(b1->reference_mesh, b1->getCOM(), b1->getOrientation(), b2->geometry[i], b2->geometry_AABB[i]);
+						}
+						else {
+							detected_manifolds = detectCollision(b1->mesh, mthz::Vec3(), mthz::Quaternion(), b2->geometry[i], b2->geometry_AABB[i]);
+						}
 						for (const Manifold& m : detected_manifolds) {
 							manifolds.push_back(m);
 						}
