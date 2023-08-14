@@ -43,6 +43,7 @@ namespace phyz {
 		void applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position);
 		void setToPosition(const mthz::Vec3& pos);
 		void setCOMtoPosition(const mthz::Vec3& pos);
+		void setMass(double mass, bool adjust_inertia_tensor_proportionally = true);
 		void translate(const mthz::Vec3& v);
 		void setOrientation(const mthz::Quaternion orientation);
 		void setVel(mthz::Vec3 vel);

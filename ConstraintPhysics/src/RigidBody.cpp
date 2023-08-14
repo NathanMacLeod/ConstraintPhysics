@@ -72,6 +72,17 @@ namespace phyz {
 		alertWakingAction();
 	}
 
+	void RigidBody::setMass(double mass, bool adjust_inertia_tensor_proportionally) {
+		if (adjust_inertia_tensor_proportionally) {
+			double new_mass_ratio = mass / this->mass;
+			reference_tensor *= new_mass_ratio;
+			reference_invTensor /= new_mass_ratio;
+			tensor *= new_mass_ratio;
+			invTensor /= new_mass_ratio;
+		}
+		this->mass = mass;
+	}
+
 	void RigidBody::translate(const mthz::Vec3& v) {
 		com += v;
 		updateGeometry();
