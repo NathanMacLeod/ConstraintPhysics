@@ -144,6 +144,10 @@ namespace phyz {
 		return (movement_type == FIXED || movement_type == KINEMATIC) ? 0 : 1.0 / mass;
 	}
 
+	mthz::Mat3 RigidBody::getTensor() {
+		return (movement_type == FIXED || movement_type == KINEMATIC) ? tensor * std::numeric_limits<double>::infinity() : tensor;
+	}
+
 	mthz::Mat3 RigidBody::getInvTensor() {
 		return (movement_type == FIXED || movement_type == KINEMATIC) ? mthz::Mat3::zero() : invTensor;
 	}

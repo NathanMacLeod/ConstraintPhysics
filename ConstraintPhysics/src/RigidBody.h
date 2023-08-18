@@ -27,6 +27,7 @@ namespace phyz {
 
 		double getMass();
 		double getInvMass();
+		mthz::Mat3 getTensor();
 		mthz::Mat3 getInvTensor();
 		bool getAsleep();
 		inline MovementType getMovementType() { return movement_type; }
