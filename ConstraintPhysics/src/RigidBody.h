@@ -10,6 +10,7 @@
 #include <set>
 
 namespace phyz {
+	struct RayHitInfo;
 
 	class RigidBody {
 	private:
@@ -38,6 +39,7 @@ namespace phyz {
 		mthz::Vec3 getVel();
 		mthz::Vec3 getAngVel();
 		inline GeometryType getGeometryType() { return geometry_type; }
+		RayHitInfo checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
 
 		void applyForce(mthz::Vec3 force) { vel += force * getInvMass(); }
 		void applyTorque(mthz::Vec3 torque) { ang_vel += getInvTensor() * torque; }

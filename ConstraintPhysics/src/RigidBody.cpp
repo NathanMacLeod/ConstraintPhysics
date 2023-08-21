@@ -1,4 +1,5 @@
 #include "RigidBody.h"
+#include "PhysicsEngine.h"
 #include <limits>
 #include <algorithm>
 #include <cassert>
@@ -162,6 +163,22 @@ namespace phyz {
 
 	bool RigidBody::getAsleep() {
 		return asleep && movement_type == DYNAMIC;
+	}
+
+	RayHitInfo RigidBody::checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+		RayQueryReturn closest_hit_info = { false };
+
+		for (int i = 0; i < geometry.size(); i++) {
+			//check ray actually hits the convex primitive AABB. if geometry.size == 1 then the convex primitive AABB == the rigid body AABB, which is redundant to check
+			if (geometry.size() != 1 && !AABB::rayIntersectsAABB(geometry_AABB[i], ray_origin, ray_dir)) continue;
+
+			RayQueryReturn hit_info = geometry[i].testRayIntersection(ray_origin, ray_dir);
+			if (hit_info.did_hit && (!closest_hit_info.did_hit || hit_info.intersection_dist < closest_hit_info.intersection_dist)) {
+				closest_hit_info = hit_info;
+			}
+		}
+		
+		return RayHitInfo{ closest_hit_info.did_hit, this, closest_hit_info.intersection_point, closest_hit_info.intersection_dist };
 	}
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical

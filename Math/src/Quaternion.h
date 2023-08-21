@@ -32,6 +32,10 @@ namespace mthz {
 			k = rot_axis.z * sin_theta;
 		}
 
+		double angleTo(mthz::Quaternion q) {
+			return 2 * acos(r * q.r);
+		}
+
 		Vec3 applyRotation(Vec3 v) const {
 			return Vec3(v.x * (r * r + i * i - j * j - k * k) + v.y * (2 * i * j - 2 * r * k) + v.z * (2 * i * k + 2 * r * j),
 				v.x * (2 * i * j + 2 * r * k) + v.y * (r * r - i * i + j * j - k * k) + v.z * (2 * j * k - 2 * r * i),

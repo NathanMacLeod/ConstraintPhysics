@@ -509,29 +509,22 @@ namespace phyz {
 			}
 		}
 
-		RayQueryReturn closest_hit_info = { false };
+
+		RayHitInfo closest_hit_info = { false };
 		RigidBody* closest_hit_body = nullptr;
 		for (RigidBody* b : candidates) {
+
 			if (std::find(ignore_list.begin(), ignore_list.end(), b) != ignore_list.end()) continue;
 
-			for (int i = 0; i < b->geometry.size(); i++) {
-				//check ray actually hits the convex primitive AABB. if geometry.size == 1 then the convex primitive AABB == the rigid body AABB, which is redundant to check
-				if (b->geometry.size() != 1 && !AABB::rayIntersectsAABB(b->geometry_AABB[i], ray_origin, ray_dir)) continue;
-
-				RayQueryReturn hit_info = b->geometry[i].testRayIntersection(ray_origin, ray_dir);
-				if (hit_info.did_hit && (!closest_hit_info.did_hit || hit_info.intersection_dist < closest_hit_info.intersection_dist)) {
-					closest_hit_info = hit_info;
-					closest_hit_body = b;
-				}
+			RayHitInfo hit_info = b->checkRayIntersection(ray_origin, ray_dir);
+			if (hit_info.did_hit && (!closest_hit_info.did_hit || hit_info.hit_distance < closest_hit_info.hit_distance)) {
+				closest_hit_info = hit_info;
+				closest_hit_body = b;
 			}
+
 		}
 
-		//struct RayHitInfo {
-		//bool did_hit;
-		//RigidBody* hit_object;
-		//mthz::Vec3 hit_position;
-		//double hit_distance;
-		return RayHitInfo{ closest_hit_info.did_hit, closest_hit_body, closest_hit_info.intersection_point, closest_hit_info.intersection_dist };
+		return closest_hit_info;
 	}
 
 	std::vector<RigidBody*> PhysicsEngine::getBodies() {
