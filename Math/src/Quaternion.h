@@ -33,7 +33,7 @@ namespace mthz {
 		}
 
 		double angleTo(mthz::Quaternion q) {
-			return 2 * acos(r * q.r);
+			return 2 * acos(r * q.r + i * q.i + j * q.j + k * q.k);
 		}
 
 		Vec3 applyRotation(Vec3 v) const {
