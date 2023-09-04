@@ -149,20 +149,33 @@ namespace phyz {
 
 	static ContactArea findContactArea(const Polyhedron& c, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
 
+		int best_surface_index = -1;
+		double best_surface_tolerance = 1.0;
 		for (int surface_index : c.getFaceIndicesAdjacentToPointI(p_ID)) {
 			const Surface& s = c.getSurfaces()[surface_index];
 			double cos_ang = s.normal().dot(n);
-			if (1 - cos_ang <= COS_TOL) {
-				return projectFace(s, u, w);
+			if (1 - cos_ang < best_surface_tolerance) {
+				best_surface_tolerance = 1 - cos_ang;
+				best_surface_index = surface_index;
 			}
 		}
+		if (best_surface_tolerance <= COS_TOL) {
+			return projectFace(c.getSurfaces()[best_surface_index], u, w);
+		}
 
+		int best_edge_index = -1;
+		double best_edge_tolerance = 1.0;
 		for (int edge_index : c.getEdgeIndicesAdjacentToPointI(p_ID)) {
 			const Edge& e = c.getEdges()[edge_index];
 			double sin_ang = abs((e.p2() - e.p1()).normalize().dot(n));
-			if  (sin_ang <= SIN_TOL) {
-				return projectEdge(e, n, p, u, w);
+			if (sin_ang < best_edge_tolerance) {
+				best_edge_tolerance = sin_ang;
+				best_edge_index = edge_index;
 			}
+		}
+
+		if (best_edge_tolerance <= SIN_TOL) {
+			return projectEdge(c.getEdges()[best_edge_index], n, p, u, w);
 		}
 
 		return ContactArea{

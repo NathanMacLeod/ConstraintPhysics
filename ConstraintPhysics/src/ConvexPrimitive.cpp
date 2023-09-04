@@ -427,7 +427,7 @@ namespace phyz {
 
 			bool redundant = false;
 			for (GaussVert& g : g.face_verts) {
-				if (s1.normal().dot(g.v) < -0.999) {
+				if (s1.normal().dot(g.v) < -0.999999999) {
 					redundant = true;
 					break;
 				}
