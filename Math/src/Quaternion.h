@@ -33,7 +33,17 @@ namespace mthz {
 		}
 
 		double angleTo(mthz::Quaternion q) {
-			return 2 * acos(r * q.r + i * q.i + j * q.j + k * q.k);
+			return 2 * acos(abs(r * q.r + i * q.i + j * q.j + k * q.k));
+		}
+
+		Vec3 getRotAxis() {
+			mthz::Vec3 axis(i, j, k);
+			assert(axis.magSqrd() != 0);
+
+			//As a result of quaternions 'doubling' the rotation angle, there ends up being two quaternions for every rotation,
+			//with the opposite pair traveling about the opposite axis but in the negative angular direction. If angular direciton is negative, we need to invert the axis too.
+			if (r < 0)	return -axis.normalize();
+			else		return axis.normalize();
 		}
 
 		Vec3 applyRotation(Vec3 v) const {

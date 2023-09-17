@@ -124,6 +124,11 @@ namespace phyz {
 		Polyhedron(const Polyhedron& c);
 		Polyhedron(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices);
 
+		//polyhedrons don't work well as colliders if they have coplanar faces. This method
+		//is to get a cleaned version of a polyhedron if it was fed data that might contain coplanar faces
+		//note will not work if polyhedron in concave (but Polyhedron shouldn't be concave in the first place)
+		static Polyhedron getPolyAfterFindMergedCoplanarFaces(const Polyhedron& p);
+
 		Polyhedron getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point = mthz::Vec3(0, 0, 0)) const;
 		Polyhedron getTranslated(mthz::Vec3 t) const;
 		Polyhedron getScaled(double d, mthz::Vec3 center_of_dialtion) const;

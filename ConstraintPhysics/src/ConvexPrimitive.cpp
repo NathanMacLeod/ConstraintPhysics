@@ -1,5 +1,6 @@
 #include "ConvexPrimitive.h"
 
+#include <map>
 #include <limits>
 #include <algorithm>
 #include <cassert>
@@ -157,6 +158,133 @@ namespace phyz {
 		for (int i = 0; i < c.edges.size(); i++) {
 			edges.push_back(Edge(c.edges[i], this));
 		}
+	}
+
+	Polyhedron Polyhedron::getPolyAfterFindMergedCoplanarFaces(const Polyhedron& p) {
+		std::vector<bool> is_surface_already_grouped(p.getSurfaces().size(), false);
+
+		struct SurfaceGroup {
+			mthz::Vec3 shared_norm;
+			std::vector<Surface> surfaces;
+		};
+
+		double EPS = 0.00000000001;
+		std::vector<SurfaceGroup> groups;
+		for (const Surface& s : p.getSurfaces()) {
+			bool not_added_to_group = true;
+			for (SurfaceGroup& g : groups) {
+				if (1 - g.shared_norm.dot(s.normal()) < EPS) {
+					g.surfaces.push_back(s);
+					not_added_to_group = false;
+					break;
+				}
+			}
+
+			if (not_added_to_group) {
+				groups.push_back(SurfaceGroup{ s.normal(), {s} });
+			}
+		}
+
+		//some vertices might be deleted, so indices are not going to remain accurate.
+		std::map<int, int> new_vertex_indices;
+		std::vector<mthz::Vec3> remaining_vertices;
+		std::vector<std::vector<int>> surface_vertex_indices;
+
+		for (const SurfaceGroup& g : groups) {
+			std::vector<int> extrema_point_indices;
+
+			if (g.surfaces.size() == 1) extrema_point_indices = g.surfaces[0].point_indexes;
+			else {
+				//since p is convex, then all surfaces are also convex. Treat vertices as a point cloud, and use gift wrapping to generate the outer surface
+				struct FaceCoordP {
+					double u, v;
+					int original_index;
+				};
+				std::vector<FaceCoordP> all_points;
+				mthz::Vec3 u, v;
+				g.shared_norm.getPerpendicularBasis(&u, &v);
+
+				for (const Surface& s : g.surfaces) {
+					for (int vert_indx : s.point_indexes) {
+						mthz::Vec3 pos = p.getPoints()[vert_indx];
+						all_points.push_back(FaceCoordP{ u.dot(pos), v.dot(pos), vert_indx });
+					}
+				}
+
+				double POS_EPS = 0.000000000001;
+				FaceCoordP min_u = all_points[0];
+				for (FaceCoordP p : all_points) {
+					if (abs(p.u - min_u.u) < POS_EPS) min_u = p.v < min_u.v ? p : min_u;
+					else if (p.u < min_u.u) min_u = p;
+				}
+				std::vector<FaceCoordP> hull_points = { min_u };
+				double anglefrom_u = 0; double anglefrom_v = 1; //for calculating angle via dot product
+
+				double COLINEAR_ANGLE_EPS = 0.00000000001;
+				int max_itr = 50000;
+				int itr = 0;
+				while (itr++ < max_itr) {
+					FaceCoordP prev_hullP = hull_points.back();
+
+					//find the point that is has the leftmost angle to the prev point (see: https://en.wikipedia.org/wiki/Gift_wrapping_algorithm)
+					FaceCoordP min_angle_p;
+					double min_angle_dist = 0; //for tiebreaking colinear points
+					double min_angle_angle = std::numeric_limits<double>::infinity();
+					for (FaceCoordP p : all_points) {
+						if (p.original_index == prev_hullP.original_index) continue;
+
+						double rel_pos_u = p.u - prev_hullP.u;
+						double rel_pos_v = p.v - prev_hullP.v;
+						double dist = sqrt(rel_pos_u * rel_pos_u + rel_pos_v * rel_pos_v);
+						double normed_dot_value = (anglefrom_u * rel_pos_u + anglefrom_v * rel_pos_v) / dist;
+						double angle = acos(normed_dot_value);
+
+						if (abs(min_angle_angle - angle) < COLINEAR_ANGLE_EPS) {
+							//points colinear- tiebreaker based on distance 
+							if (dist > min_angle_dist) {
+								min_angle_p = p;
+								min_angle_dist = dist;
+								min_angle_angle = angle;
+							}
+						}
+						else if (angle < min_angle_angle) {
+							min_angle_p = p;
+							min_angle_dist = dist;
+							min_angle_angle = angle;
+						}
+					}
+
+					if (min_angle_p.original_index == hull_points[0].original_index) {
+						break;
+					}
+					
+					hull_points.push_back(min_angle_p);
+					double rel_pos_u = min_angle_p.u - prev_hullP.u;
+					double rel_pos_v = min_angle_p.v - prev_hullP.v;
+					double dist = sqrt(rel_pos_u * rel_pos_u + rel_pos_v * rel_pos_v);
+					anglefrom_u = rel_pos_u / dist; anglefrom_v = rel_pos_v / dist;
+					
+				}
+				assert(itr != max_itr);
+				
+
+				for (FaceCoordP p : hull_points) extrema_point_indices.push_back(p.original_index);
+			}
+
+			std::vector<int> merged_surface_indices;
+
+			for (int i : extrema_point_indices) {
+				if (new_vertex_indices.find(i) == new_vertex_indices.end()) {
+					new_vertex_indices[i] = remaining_vertices.size();
+					remaining_vertices.push_back(p.getPoints()[i]);
+				}
+				merged_surface_indices.push_back(new_vertex_indices[i]);
+			}
+
+			surface_vertex_indices.push_back(merged_surface_indices);
+		}
+
+		return Polyhedron(remaining_vertices, surface_vertex_indices);
 	}
 
 	Polyhedron::Polyhedron(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices)

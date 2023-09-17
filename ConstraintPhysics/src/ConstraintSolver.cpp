@@ -604,8 +604,10 @@ namespace phyz {
 			double u_correct = -pos_error.dot(u) * pos_correct_hardness;
 			double w_correct = -pos_error.dot(w) * pos_correct_hardness;
 
-			mthz::Quaternion orientation_diff = b->getOrientation() * a->getOrientation().conjugate();
-			mthz::Vec3 rot_correct = mthz::Vec3(orientation_diff.i, orientation_diff.j, orientation_diff.k) * rot_correct_hardness;
+			mthz::Quaternion a_orient = a->getOrientation();
+			mthz::Quaternion b_orient = b->getOrientation();
+			mthz::Quaternion orientation_diff = b_orient * a_orient.conjugate();
+			mthz::Vec3 rot_correct = a_orient.angleTo(b_orient) * orientation_diff.getRotAxis() * rot_correct_hardness;
 			psuedo_target_val = NVec<5>{ u_correct, w_correct, rot_correct.x, rot_correct.y, rot_correct.z };
 		}
 	}
@@ -917,8 +919,10 @@ namespace phyz {
 		{
 			mthz::Vec3 pos_correct = (pos_b - pos_a) * pos_correct_hardness;
 
-			mthz::Quaternion orientation_diff = b->getOrientation() * a->getOrientation().conjugate();
-			mthz::Vec3 rot_correct =  mthz::Vec3(orientation_diff.i, orientation_diff.j, orientation_diff.k)* rot_correct_hardness;
+			mthz::Quaternion a_orient = a->getOrientation();
+			mthz::Quaternion b_orient = b->getOrientation();
+			mthz::Quaternion orientation_diff = b_orient * a_orient.conjugate();
+			mthz::Vec3 rot_correct = a_orient.angleTo(b_orient) * orientation_diff.getRotAxis() * rot_correct_hardness;
 			psuedo_target_val = NVec<6>{ pos_correct.x, pos_correct.y, pos_correct.z, rot_correct.x, rot_correct.y, rot_correct.z };
 		}
 	}
