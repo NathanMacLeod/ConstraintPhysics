@@ -161,8 +161,6 @@ namespace phyz {
 	}
 
 	Polyhedron Polyhedron::getPolyAfterFindMergedCoplanarFaces(const Polyhedron& p) {
-		std::vector<bool> is_surface_already_grouped(p.getSurfaces().size(), false);
-
 		struct SurfaceGroup {
 			mthz::Vec3 shared_norm;
 			std::vector<Surface> surfaces;

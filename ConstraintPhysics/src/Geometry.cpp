@@ -474,6 +474,16 @@ namespace phyz {
 		return out;
 	}
 
+	ConvexUnionGeometry ConvexUnionGeometry::getNewMaterial(Material material) {
+		ConvexUnionGeometry out;
+		out.polyhedra.reserve(polyhedra.size());
+		for (const ConvexPrimitive& c : polyhedra) {
+			out.polyhedra.push_back(c);
+			out.polyhedra.back().material = material;
+		}
+		return out;
+	}
+
 	ConvexUnionGeometry ConvexUnionGeometry::getTranslated(const mthz::Vec3 v) const {
 		ConvexUnionGeometry out;
 		out.polyhedra.reserve(polyhedra.size());

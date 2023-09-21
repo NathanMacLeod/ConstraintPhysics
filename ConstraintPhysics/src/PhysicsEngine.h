@@ -33,6 +33,7 @@ namespace phyz {
 	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifold)> ColAction;
 
 	struct ConstraintID {
+		ConstraintID() : uniqueID(-1) {}
 		enum Type { BALL, HINGE, SLIDER, SPRING, SLIDING_HINGE, WELD };
 		inline Type getType() { return type; }
 
@@ -62,7 +63,7 @@ namespace phyz {
 		static void setPrintPerformanceData(bool print_data);
 
 		void timeStep();
-		RigidBody* createRigidBody(const ConvexUnionGeometry& geometry, RigidBody::MovementType movement_type=RigidBody::DYNAMIC, mthz::Vec3 position=mthz::Vec3(), mthz::Quaternion orientation=mthz::Quaternion());
+		RigidBody* createRigidBody(const ConvexUnionGeometry& geometry, RigidBody::MovementType movement_type=RigidBody::DYNAMIC, mthz::Vec3 position=mthz::Vec3(), mthz::Quaternion orientation=mthz::Quaternion(), bool override_center_of_mass=false, mthz::Vec3 center_of_mass_override=mthz::Vec3());
 		RigidBody* createRigidBody(const StaticMeshGeometry& geometry, bool fixed=true);
 		void removeRigidBody(RigidBody* r);
 		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel=mthz::Vec3(), const mthz::Vec3&delta_psuedo_ang_vel=mthz::Vec3());
@@ -102,25 +103,30 @@ namespace phyz {
 		void removeCollisionAction(ColActionID action_key);
 
 		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=350);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength=350, double rot_correct_strength=350,
-			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
-		//TODO: fix slider constraints. The way position correct is handeled means that having slider axis that are not alligned at the default orientation of each object will not work.
-		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 350,
-			double rot_correct_strength=350, double negative_slide_limit=-std::numeric_limits<double>::infinity(), double positive_slide_limit=std::numeric_limits<double>::infinity());
-		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 350,
-			double rot_correct_strength = 350, double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity(),
-			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local,
+			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity(), double pos_correct_strength = 350, double rot_correct_strength = 350);
+
+		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, 
+			double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity(), double pos_correct_strength = 350, double rot_correct_strength=350);
+
+		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local,
+			double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity(), double min_angle = -std::numeric_limits<double>::infinity(), 
+			double max_angle = std::numeric_limits<double>::infinity(), double pos_correct_strength = 350, double rot_correct_strength = 350);
+
 		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_point_local, mthz::Vec3 b2_attach_point_local, double pos_correct_strength = 350, double rot_correct_strength = 350);
 
 
 		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength = 350);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength = 350, double rot_correct_strength = 350,
-			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
-		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = 350,
-			double rot_correct_strength = 350, double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity());
-		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = 350,
-			double rot_correct_strength = 350, double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity(),
-			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double min_angle = -std::numeric_limits<double>::infinity(), 
+			double max_angle = std::numeric_limits<double>::infinity(), double pos_correct_strength = 350, double rot_correct_strength = 350);
+
+		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double negative_slide_limit = -std::numeric_limits<double>::infinity(), 
+			double positive_slide_limit = std::numeric_limits<double>::infinity(), double pos_correct_strength = 350, double rot_correct_strength = 350);
+
+		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double negative_slide_limit = -std::numeric_limits<double>::infinity(),
+			double positive_slide_limit = std::numeric_limits<double>::infinity(), double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity(), 
+			double pos_correct_strength = 350, double rot_correct_strength = 350);
+
 		ConstraintID addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length = -1);
 		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strength = 350, double rot_correct_strength = 350);
 

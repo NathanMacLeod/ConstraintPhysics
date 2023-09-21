@@ -88,7 +88,7 @@ public:
 		phyz::RigidBody* body_r = p.createRigidBody(gyroscope_body);
 		phyz::RigidBody* spinner_r = p.createRigidBody(spinner);
 
-		p.addHingeConstraint(body_r, spinner_r, gyroscope_center, mthz::Vec3(0, 1, 0), 2000, 2000);
+		p.addHingeConstraint(body_r, spinner_r, gyroscope_center, mthz::Vec3(0, 1, 0), -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), 2000, 2000);
 
 		bodies.push_back({ fromGeometry(gyroscope_body), body_r });
 		bodies.push_back({ fromGeometry(spinner), spinner_r });

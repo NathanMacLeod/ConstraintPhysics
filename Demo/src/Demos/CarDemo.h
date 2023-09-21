@@ -577,12 +577,12 @@ public:
 		constraints.push_back(p.addHingeConstraint(front_wheel1_rod_r, front_wheel1_arm_r, front_wheel1_rod_arm_connect, mthz::Vec3(0, 1, 0)));
 		constraints.push_back(p.addBallSocketConstraint(front_wheel1_rod_r, pinion_r, front_wheel1_rod_pinion_connect));
 		constraints.push_back(p.addHingeConstraint(front_wheel1_arm_r, front_wheel1_r, front_wheel1_position, mthz::Vec3(0, 0, -1)));
-		phyz::ConstraintID front_wheel1_turn_c = p.addHingeConstraint(base_r, front_wheel1_arm_r, front_wheel1_arm_pos, mthz::Vec3(0, 1, 0), 350, 350, -0.6, 0.6);
+		phyz::ConstraintID front_wheel1_turn_c = p.addHingeConstraint(base_r, front_wheel1_arm_r, front_wheel1_arm_pos, mthz::Vec3(0, 1, 0), -0.6, 0.6);
 		constraints.push_back(front_wheel1_turn_c);
 		constraints.push_back(p.addHingeConstraint(front_wheel2_rod_r, front_wheel2_arm_r, front_wheel2_rod_arm_connect, mthz::Vec3(0, 1, 0)));
 		constraints.push_back(p.addBallSocketConstraint(front_wheel2_rod_r, pinion_r, front_wheel2_rod_pinion_connect));
 		constraints.push_back(p.addHingeConstraint(front_wheel2_arm_r, front_wheel2_r, front_wheel2_position, mthz::Vec3(0, 0, -1)));
-		phyz::ConstraintID front_wheel2_turn_c = p.addHingeConstraint(base_r, front_wheel2_arm_r, front_wheel2_arm_pos, mthz::Vec3(0, 1, 0), 350, 350, -0.6, 0.6);
+		phyz::ConstraintID front_wheel2_turn_c = p.addHingeConstraint(base_r, front_wheel2_arm_r, front_wheel2_arm_pos, mthz::Vec3(0, 1, 0), -0.6, 0.6);
 		constraints.push_back(front_wheel2_turn_c);
 
 		base_r->setNoCollision(true);

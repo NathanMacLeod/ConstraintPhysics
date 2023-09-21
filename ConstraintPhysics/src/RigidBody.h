@@ -14,7 +14,7 @@ namespace phyz {
 
 	class RigidBody {
 	private:
-		RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id);
+		RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id, bool overide_center_of_mass, mthz::Vec3 local_coords_com_override);
 		RigidBody(const StaticMeshGeometry& source_geometry, unsigned int id);
 	public:
 		typedef int PKey;

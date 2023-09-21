@@ -29,6 +29,7 @@ namespace phyz {
 		static ConvexUnionGeometry funnel(mthz::Vec3 pos, double tube_radius, double tube_height, double bowl_radius, double bowl_angle, double thickness, int n_segments = 15, Material material = Material::default_material());
 
 		static ConvexUnionGeometry merge(const ConvexUnionGeometry& g1, const ConvexUnionGeometry& g2);
+		ConvexUnionGeometry getNewMaterial(Material material);
 		ConvexUnionGeometry getTranslated(const mthz::Vec3 v) const;
 		ConvexUnionGeometry getRotated(const mthz::Quaternion q, const mthz::Vec3& rot_point=mthz::Vec3(0, 0, 0)) const;
 		ConvexUnionGeometry getScaled(double d, mthz::Vec3 center_of_dialation=mthz::Vec3(0, 0, 0)) const;

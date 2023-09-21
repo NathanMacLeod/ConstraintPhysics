@@ -115,7 +115,7 @@ public:
 		double rotate_torque = 0.2 * 90;
 		phyz::ConstraintID rotate_motor = p.addHingeConstraint(base_r, cabin_r, crane_tower_pos + mthz::Vec3(0, crane_tower_height + crane_tower_width, 0), mthz::Vec3(0, 1, 0));
 		double lift_torque = 60 * 90;
-		phyz::ConstraintID lift_motor = p.addHingeConstraint(cabin_r, crane_r, crane_pos, mthz::Vec3(0, 0, 1), 350, 350, -PI / 2.0, PI / 4.0);
+		phyz::ConstraintID lift_motor = p.addHingeConstraint(cabin_r, crane_r, crane_pos, mthz::Vec3(0, 0, 1), -PI / 2.0, PI / 4.0);
 
 		//*************
 		//****TOWER****

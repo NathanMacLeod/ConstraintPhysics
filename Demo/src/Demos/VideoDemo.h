@@ -291,7 +291,7 @@ public:
 		phyz::RigidBody* bucket_support_r = p.createRigidBody(bucket_support_block, phyz::RigidBody::FIXED);
 
 		bucket_r->setSleepDisabled(true);
-		p.addHingeConstraint(bucket_r, bucket_support_r, bucket_pivot_pos, mthz::Vec3(1, 0, 0), 350, 350, PI * 0.03);
+		p.addHingeConstraint(bucket_r, bucket_support_r, bucket_pivot_pos, mthz::Vec3(1, 0, 0), PI * 0.03);
 
 		bodies.push_back(TransformablePhysBod(fromGeometry(bucket, blue), bucket_r));
 		bodies.push_back(TransformablePhysBod(fromGeometry(bucket_support_block, yellow), bucket_support_r));

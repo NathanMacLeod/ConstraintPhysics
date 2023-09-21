@@ -418,8 +418,8 @@ namespace phyz {
 		}
 	}
 
-	RigidBody* PhysicsEngine::createRigidBody(const ConvexUnionGeometry& geometry, RigidBody::MovementType movement_type, mthz::Vec3 position, mthz::Quaternion orientation) {
-		RigidBody* r = new RigidBody(geometry, position, orientation, next_id++);
+	RigidBody* PhysicsEngine::createRigidBody(const ConvexUnionGeometry& geometry, RigidBody::MovementType movement_type, mthz::Vec3 position, mthz::Quaternion orientation, bool override_center_of_mass, mthz::Vec3 center_of_mass_override) {
+		RigidBody* r = new RigidBody(geometry, position, orientation, next_id++, override_center_of_mass, center_of_mass_override);
 		r->setMovementType(movement_type);
 		bodies.push_back(r);
 		constraint_graph_nodes[r->getID()] = new ConstraintGraphNode(r);
@@ -565,11 +565,11 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::BALL, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength, double rot_correct_strength, double min_angle, double max_angle) {
-		return addHingeConstraint(b1, b2, attach_pos_local, attach_pos_local, rot_axis_local, rot_axis_local, pos_correct_strength, rot_correct_strength, min_angle, max_angle);
+	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double min_angle, double max_angle, double pos_correct_strength, double rot_correct_strength) {
+		return addHingeConstraint(b1, b2, attach_pos_local, attach_pos_local, rot_axis_local, rot_axis_local, min_angle, max_angle, pos_correct_strength, rot_correct_strength);
 	}
 
-	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength, double rot_correct_strength, double min_angle, double max_angle) {
+	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle, double pos_correct_strength, double rot_correct_strength) {
 		disallowCollision(b1, b2);
 		int uniqueID = nextConstraintID++;
 
@@ -597,12 +597,12 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::HINGE, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength, double rot_correct_strength, double negative_slide_limit, double positive_slide_limit) {
-		return addSliderConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, pos_correct_strength, rot_correct_strength, negative_slide_limit, positive_slide_limit);
+	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double negative_slide_limit, double positive_slide_limit, double pos_correct_strength, double rot_correct_strength) {
+		return addSliderConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, negative_slide_limit, positive_slide_limit, pos_correct_strength, rot_correct_strength);
 	}
 
 	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local,
-		double pos_correct_strength, double rot_correct_strength, double negative_slide_limit, double positive_slide_limit) {
+		double negative_slide_limit, double positive_slide_limit, double pos_correct_strength, double rot_correct_strength) {
 		disallowCollision(b1, b2);
 		int uniqueID = nextConstraintID++;
 
@@ -633,12 +633,12 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::SLIDER, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength, double rot_correct_strength, double negative_slide_limit, double positive_slide_limit, double min_angle, double max_angle) {
-		return addSlidingHingeConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, pos_correct_strength, rot_correct_strength, negative_slide_limit, positive_slide_limit, min_angle, max_angle);
+	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double negative_slide_limit, double positive_slide_limit, double min_angle, double max_angle, double pos_correct_strength, double rot_correct_strength) {
+		return addSlidingHingeConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, negative_slide_limit, positive_slide_limit, min_angle, max_angle, pos_correct_strength, rot_correct_strength);
 	}
 
 	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local,
-		double pos_correct_strength, double rot_correct_strength, double negative_slide_limit, double positive_slide_limit, double min_angle, double max_angle) {
+		double negative_slide_limit, double positive_slide_limit, double min_angle, double max_angle, double pos_correct_strength, double rot_correct_strength) {
 		disallowCollision(b1, b2);
 		int uniqueID = nextConstraintID++;
 

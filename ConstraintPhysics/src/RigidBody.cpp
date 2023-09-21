@@ -7,14 +7,14 @@
 
 namespace phyz {
 
-	static void calculateMassProperties(const ConvexUnionGeometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass);
+	static void calculateMassProperties(const ConvexUnionGeometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass, bool override_center_of_mass, mthz::Vec3 center_of_mass_override);
 
-	RigidBody::RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id)
+	RigidBody::RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id, bool overide_center_of_mass = false, mthz::Vec3 local_coords_com_override = mthz::Vec3(0, 0, 0))
 		: geometry_type(CONVEX_UNION), geometry(source_geometry.getPolyhedra()), reference_geometry(source_geometry.getPolyhedra()), vel(0, 0, 0), ang_vel(0, 0, 0),
 		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), id(id)
 	{
 		movement_type = DYNAMIC;
-		calculateMassProperties(source_geometry, &this->com, &this->reference_tensor, &this->mass);
+		calculateMassProperties(source_geometry, &this->com, &this->reference_tensor, &this->mass, overide_center_of_mass, local_coords_com_override);
 		reference_invTensor = reference_tensor.inverse();
 		tensor = reference_tensor;
 		invTensor = reference_invTensor;
@@ -367,8 +367,8 @@ namespace phyz {
 	}
 
 	//based off of 'Fast and Accurate Computation of Polyhedral Mass Properties' (Brian Miritch)
-	static void calculateMassProperties(const ConvexUnionGeometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass) {
-		*com = mthz::Vec3(0, 0, 0);
+	static void calculateMassProperties(const ConvexUnionGeometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass, bool override_center_of_mass, mthz::Vec3 center_of_mass_override) {
+		*com = override_center_of_mass? center_of_mass_override : mthz::Vec3(0, 0, 0);
 		*mass = 0;
 		*tensor = mthz::Mat3(); //default zeroed
 		for (const ConvexPrimitive& primitive : geometry.getPolyhedra()) {
@@ -381,18 +381,25 @@ namespace phyz {
 
 				for (const Surface& s : g.getSurfaces()) {
 					mthz::Vec3 n = s.normal();
+					
 					IntrgVals a, b, c;
 					Axis proj_axis;
 
-					//project onto most parralel plane
-					if (abs(n.x) >= abs(n.y) && abs(n.x) >= abs(n.z)) {
-						proj_axis = X;
-					}
-					else if (abs(n.y) >= abs(n.x) && abs(n.y) >= abs(n.z)) {
-						proj_axis = Y;
+					if (abs(n.z) > 0.01) {
+						proj_axis = Z;
 					}
 					else {
-						proj_axis = Z;
+
+						//project onto most parralel plane
+						if (abs(n.x) >= abs(n.y) && abs(n.x) >= abs(n.z)) {
+							proj_axis = X;
+						}
+						else if (abs(n.y) >= abs(n.x) && abs(n.y) >= abs(n.z)) {
+							proj_axis = Y;
+						}
+						else {
+							proj_axis = Z;
+						}
 					}
 
 					//green's theorem
@@ -431,6 +438,7 @@ namespace phyz {
 					double k = nc * getAxisVal(sample_point, C, proj_axis) + nb * getAxisVal(sample_point, B, proj_axis) + na * getAxisVal(sample_point, A, proj_axis);
 
 					//value propogation from projected surface integrals to the actual surface integrals
+					double surf_area = nc_i * g1;
 					a.v = nc_i * ga;
 					b.v = nc_i * gb;
 					c.v = nc_i * nc_i * (k * g1 - na * ga - nb * gb);
@@ -478,7 +486,7 @@ namespace phyz {
 				}
 
 				*mass += primitive.material.density * vol;
-				*com += mthz::Vec3(vol_x, vol_y, vol_z) * primitive.material.density;
+				if (!override_center_of_mass) *com += mthz::Vec3(vol_x, vol_y, vol_z) * primitive.material.density;
 
 				tensor->v[0][0] += (vol_y2 + vol_z2) * primitive.material.density;
 				tensor->v[0][1] -= vol_xy * primitive.material.density;
@@ -494,7 +502,7 @@ namespace phyz {
 				double sphere_mass = (4.0 / 3.0) * PI * s.getRadius() * s.getRadius() * s.getRadius() * primitive.material.density;
 
 				*mass += sphere_mass;
-				*com += sphere_mass * s.getCenter();
+				if (!override_center_of_mass) *com += sphere_mass * s.getCenter();
 
 				double k = 2.0 / 5.0 * sphere_mass * s.getRadius() * s.getRadius();
 				mthz::Mat3 sphere_tensor = recenterTensor(sphere_mass, k * mthz::Mat3::iden(), mthz::Vec3(0, 0, 0), s.getCenter());
@@ -507,7 +515,7 @@ namespace phyz {
 
 		}
 
-		*com /= *mass;
+		if (!override_center_of_mass) *com /= *mass;
 		*tensor = recenterTensor(*mass, *tensor, *com);
 	}
 }
