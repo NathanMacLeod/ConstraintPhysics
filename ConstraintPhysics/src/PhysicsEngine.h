@@ -32,6 +32,11 @@ namespace phyz {
 	typedef int ColActionID;
 	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifold)> ColAction;
 
+	//PSUEDO_VELOCITY: position correction is done by calcualting a bonus velocity to push constrained objects back to valid positions
+	//MASTER_SLAVE: The master body (designed by master_b1 bool) dictates the correct position, and the slave object is translated to it. 
+	//Psuedo velocities are still calculated and applied for the sake of other constraints that interact with the master/slave pair.
+	enum PosErrorResolutionMode { PSUEDO_VELOCITY, MASTER_SLAVE };
+
 	struct ConstraintID {
 		ConstraintID() : uniqueID(-1) {}
 		enum Type { BALL, HINGE, SLIDER, SPRING, SLIDING_HINGE, WELD };
@@ -130,7 +135,7 @@ namespace phyz {
 		ConstraintID addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length = -1);
 		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strength = 350, double rot_correct_strength = 350);
 
-
+		void setConstraintPosCorrectMethod(ConstraintID id, PosErrorResolutionMode error_correct_method, bool b1_master = true);
 		void removeConstraint(ConstraintID id, bool reenable_collision=true);
 
 		void setMotorOff(ConstraintID id);
@@ -172,7 +177,6 @@ namespace phyz {
 		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
 		void maintainConstraintGraphApplyPoweredConstraints();
 		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
-		std::vector<std::vector<Constraint*>> sleepOrSolveIslands();
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
 		bool bodySleepy(RigidBody* r);
 		void deleteRigidBody(RigidBody* r);
@@ -219,6 +223,8 @@ namespace phyz {
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			double pos_correct_hardness;
+			PosErrorResolutionMode pos_error_mode;
+			bool b1_master;
 			int uniqueID;
 		};
 
@@ -258,6 +264,8 @@ namespace phyz {
 			mthz::Vec3 b2_rot_axis_body_space;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
+			PosErrorResolutionMode pos_error_mode;
+			bool b1_master;
 			int uniqueID;
 		};
 
@@ -278,6 +286,8 @@ namespace phyz {
 			double positive_slide_limit;
 			double negative_slide_limit;
 			bool slide_limit_exceeded;
+			PosErrorResolutionMode pos_error_mode;
+			bool b1_master;
 			int uniqueID;
 		};
 
@@ -299,6 +309,8 @@ namespace phyz {
 			double positive_slide_limit;
 			double negative_slide_limit;
 			bool slide_limit_exceeded;
+			PosErrorResolutionMode pos_error_mode;
+			bool b1_master;
 			int uniqueID;
 		};
 
@@ -310,6 +322,8 @@ namespace phyz {
 			RigidBody::PKey b2_point_key;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
+			PosErrorResolutionMode pos_error_mode;
+			bool b1_master;
 			int uniqueID;
 		};
 
@@ -323,6 +337,18 @@ namespace phyz {
 			double resting_length;
 			int uniqueID;
 		};
+
+		struct ActiveConstraintData {
+			std::vector<std::vector<Constraint*>> island_systems;
+			std::vector<BallSocket*> mast_slav_bss;
+			std::vector<Hinge*> mast_slav_hs;
+			std::vector<Slider*> mast_slav_ss;
+			std::vector<SlidingHinge*> mast_slav_shs;
+			std::vector<Weld*> mast_slav_ws;
+		};
+
+		ActiveConstraintData sleepOrSolveIslands();
+		void applyMasterSlavePosCorrect(const ActiveConstraintData& a);
 
 		struct SharedConstraintsEdge {
 			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contactConstraints(std::vector<Contact*>()) {}

@@ -47,6 +47,7 @@ namespace phyz {
 		void setToPosition(const mthz::Vec3& pos);
 		void setCOMtoPosition(const mthz::Vec3& pos);
 		void setMass(double mass, bool adjust_inertia_tensor_proportionally = true);
+		void rotate(mthz::Quaternion q);
 		void translate(const mthz::Vec3& v);
 		void setOrientation(const mthz::Quaternion orientation);
 		void setVel(mthz::Vec3 vel);
@@ -72,12 +73,17 @@ namespace phyz {
 		bool recievedWakingAction;
 		bool sleep_disabled;
 
+		mthz::Vec3 prev_com;
+		mthz::Quaternion prev_orientation;
+
 		void sleep();
 		void wake();
 		void alertWakingAction();
 
 		void rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr = 1, bool gyro_accel_disabled=false);
 		void updateGeometry();
+		void translateNoGeomUpdate(mthz::Vec3 v);
+		void rotateNoGeomUpdate(mthz::Quaternion q);
 
 		struct MovementState {
 			mthz::Vec3 vel;

@@ -84,6 +84,12 @@ namespace phyz {
 		this->mass = mass;
 	}
 
+	void RigidBody::rotate(mthz::Quaternion q) {
+		this->orientation = q * orientation;
+		updateGeometry();
+		alertWakingAction();
+	}
+
 	void RigidBody::translate(const mthz::Vec3& v) {
 		com += v;
 		updateGeometry();
@@ -191,6 +197,7 @@ namespace phyz {
 		}
 
 		if (gyro_accel_disabled) {
+			//simple update to orientation
 			mthz::Quaternion rot(ang_vel.mag() * fElapsedTime, ang_vel.normalize());
 			orientation = rot * orientation;
 			return;
@@ -262,6 +269,14 @@ namespace phyz {
 			}
 		}
 		
+	}
+
+	void RigidBody::translateNoGeomUpdate(mthz::Vec3 v) {
+		com += v;
+	}
+
+	void RigidBody::rotateNoGeomUpdate(mthz::Quaternion q) {
+		orientation = q * orientation;
 	}
 
 	void RigidBody::sleep() {
