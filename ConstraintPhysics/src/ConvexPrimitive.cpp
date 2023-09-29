@@ -84,6 +84,181 @@ namespace phyz {
 		}
 	}
 
+	Cylinder::Cylinder(const Cylinder& c) 
+		: center(c.center), height_axis(c.height_axis), radius(c.radius), height(c.height), gauss_verts(c.gauss_verts), gauss_arcs(c.gauss_arcs)
+	{}
+
+	Cylinder::Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis, int edge_approximation_detail) 
+		: center(center), height_axis(height_axis), radius(radius), height(height), gauss_verts(2 + edge_approximation_detail), gauss_arcs(2 * edge_approximation_detail)
+	{
+		mthz::Mat3 rot;
+		mthz::Vec3 unrotated_height_axis = mthz::Vec3(0, 1, 0);
+		if (height_axis == unrotated_height_axis) {
+			rot = mthz::Mat3::iden();
+		}
+		else {
+			rot = mthz::Quaternion(acos(height_axis.dot(unrotated_height_axis)), unrotated_height_axis.cross(height_axis).normalize()).getRotMatrix();
+		}
+
+		gauss_verts[0] = rot * mthz::Vec3(0, 1, 0);
+		gauss_verts[1] = rot * mthz::Vec3(0, -1, 0);
+
+		double dTheta = 2 * PI / edge_approximation_detail;
+		for (unsigned int i = 0; i < edge_approximation_detail; i++) {
+			double theta = i * dTheta;
+			gauss_verts[i + 2] = rot * mthz::Vec3(sin(theta), 0, cos(theta));
+			gauss_arcs[2 * i] = { 0, i }; //arc connecting top to side
+			gauss_arcs[2 * i + 1] = { 1, i }; //arc connecting side to bottom.
+		}
+	}
+
+	Cylinder Cylinder::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
+		mthz::Vec3 new_center = pivot_point + q.applyRotation(center - pivot_point);
+		mthz::Vec3 new_height_axis = q.applyRotation(height_axis);
+		return Cylinder(new_center, radius, height, new_height_axis, gauss_verts.size() - 2);
+	}
+
+	Cylinder Cylinder::getTranslated(mthz::Vec3 t) const {
+		return Cylinder(center + t, radius, height, height_axis, gauss_verts.size() - 2);
+	}
+
+	Cylinder Cylinder::getScaled(double d, mthz::Vec3 center_of_dialtion) const {
+		return Cylinder(d * (center - center_of_dialtion) + center_of_dialtion, radius * d, height * d, height_axis, gauss_verts.size() - 2);
+	}
+
+	void Cylinder::recomputeFromReference(const ConvexGeometry& reference_geometry, const mthz::Mat3& rot, mthz::Vec3 trans) {
+		assert(getType() == reference_geometry.getType());
+		const Cylinder& reference = (const Cylinder&)reference_geometry;
+		assert(reference.gauss_verts.size() == gauss_verts.size());
+
+		center = rot * reference.center + trans;
+		height_axis = rot * reference.height_axis;
+		for (int i = 0; i < gauss_verts.size(); i++) {
+			gauss_verts[i] = rot * reference.gauss_verts[i];
+		}
+		
+	}
+
+	AABB Cylinder::gen_AABB() const {
+		mthz::Vec3 topdisk_center = center + 0.5 * height * height_axis;
+		mthz::Vec3 botdisk_center = center - 0.5 * height * height_axis;
+
+		mthz::Vec3 top_posx = getExtremaOfDisk(topdisk_center, height_axis, radius, mthz::Vec3(1, 0, 0));
+		mthz::Vec3 top_negx = 2 * topdisk_center - top_posx;
+		mthz::Vec3 top_posy = getExtremaOfDisk(topdisk_center, height_axis, radius, mthz::Vec3(0, 1, 0));
+		mthz::Vec3 top_negy = 2 * topdisk_center - top_posy;
+		mthz::Vec3 top_posz = getExtremaOfDisk(topdisk_center, height_axis, radius, mthz::Vec3(0, 0, 1));
+		mthz::Vec3 top_negz = 2 * topdisk_center - top_posz;
+
+		mthz::Vec3 bot_posx = getExtremaOfDisk(botdisk_center, height_axis, radius, mthz::Vec3(1, 0, 0));
+		mthz::Vec3 bot_negx = 2 * botdisk_center - bot_posx;
+		mthz::Vec3 bot_posy = getExtremaOfDisk(botdisk_center, height_axis, radius, mthz::Vec3(0, 1, 0));
+		mthz::Vec3 bot_negy = 2 * botdisk_center - bot_posy;
+		mthz::Vec3 bot_posz = getExtremaOfDisk(botdisk_center, height_axis, radius, mthz::Vec3(0, 0, 1));
+		mthz::Vec3 bot_negz = 2 * botdisk_center - bot_posz;
+
+		return AABB::encapsulatePointCloud({
+			top_posx, top_negx, bot_posx, bot_negx,
+			top_posy, top_negy, bot_posy, bot_negy,
+			top_posz, top_negz, bot_posz, bot_negz
+		});
+	}
+
+	RayQueryReturn checkDiskIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir, mthz::Vec3 disk_center, mthz::Vec3 disk_normal, double radius) {
+		double t = disk_normal.dot(disk_center - ray_origin) / disk_normal.dot(ray_dir);
+		mthz::Vec3 intersection_point = ray_origin + t * ray_dir;
+
+		if (t < 0 || (intersection_point - disk_center).magSqrd() > radius * radius) return { false };
+		return RayQueryReturn{ true, intersection_point, t };
+	}
+
+	RayQueryReturn Cylinder::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+		RayQueryReturn out = { false };
+		mthz::Vec3 height_axis = getHeightAxis();
+		mthz::Vec3 u, v;
+		height_axis.getPerpendicularBasis(&u, &v);
+
+		double org_u = u.dot(ray_origin);
+		double org_v = v.dot(ray_origin);
+		double center_u = u.dot(center);
+		double center_v = v.dot(center);
+		double dir_u = u.dot(ray_dir);
+		double dir_v = v.dot(ray_dir);
+
+		bool ray_parralel_to_side = dir_u * dir_u + dir_v * dir_v < 0.000000001;
+		if (!ray_parralel_to_side) {
+			//check for intersection with the side. First treat like a circle and check for intersection, then verify it intersects at the correct height;
+			//solve quadratic ax^2 + bx + c = 0;
+			double a = dir_u * dir_u + dir_v * dir_v;
+			double b = 2 * (dir_u * org_u + dir_v * org_v - dir_u * center_u - dir_v * center_v);
+			double c = (org_u - center_u) * (org_u - center_u) + (org_v - center_v) * (org_v - center_v) - radius * radius;
+
+			double radical = b * b - 4 * a * c;
+			if (radical < 0) goto exit_side_test; //radical < 0 means no intersection occurs
+
+			double t1 = (-b + sqrt(radical)) / (2 * a);
+			double t2 = (-b - sqrt(radical)) / (2 * a);
+
+			double intersect_dist;
+			if (t1 < 0 && t2 < 0) goto exit_side_test; //intersection occurs behind origin
+			else if (t1 < 0) intersect_dist = t2;
+			else if (t2 < 0) intersect_dist = t1;
+			else intersect_dist = std::min<double>(t1, t2);
+
+			mthz::Vec3 intersect_point = ray_origin + intersect_dist * ray_dir;
+			double intersect_height = intersect_point.dot(height_axis);
+			if (abs(intersect_height - center.dot(height_axis)) < height / 2.0) {
+				out = RayQueryReturn{ true, intersect_point, intersect_dist };
+			}
+		}
+	exit_side_test:
+		//check intersection with the caps
+		RayQueryReturn top_intersection = checkDiskIntersection(ray_origin, ray_dir, center + height_axis * (height / 2.0), height_axis, radius);
+		RayQueryReturn bot_intersection = checkDiskIntersection(ray_origin, ray_dir, center + height_axis * (height / 2.0), height_axis, radius);
+		if (top_intersection.did_hit && (!out.did_hit || top_intersection.intersection_dist < out.intersection_dist)) out = top_intersection;
+		if (bot_intersection.did_hit && (!out.did_hit || bot_intersection.intersection_dist < out.intersection_dist)) out = bot_intersection;
+
+		return out;
+	}
+
+	mthz::Vec3 Cylinder::getExtremaOfDisk(mthz::Vec3 disk_center, mthz::Vec3 disk_normal, double radius, mthz::Vec3 target_direction) {
+		//both the parralel and perpendicular cases would involve division by 0
+		if (abs(disk_normal.dot(target_direction)) > 0.99999999) return disk_center;
+		if (abs(disk_normal.dot(target_direction)) < 0.00000001) return disk_center + target_direction * radius;
+
+		mthz::Vec3 u, v, w; //u, v, w equivalent of x, y, z in basis where target_direction is z axis
+		w = target_direction; target_direction.getPerpendicularBasis(&u, &v);
+
+		mthz::Vec3 uvw_center = mthz::Vec3(
+			disk_center.dot(u),
+			disk_center.dot(v),
+			disk_center.dot(w)
+		);
+
+		mthz::Vec3 uvw_norm = mthz::Vec3(
+			disk_normal.dot(u),
+			disk_normal.dot(v),
+			disk_normal.dot(w)
+		);
+
+		//partial derivatives given plane defined by the norm
+		double dwdu = -uvw_norm.x / uvw_norm.z;
+		double dwdv = -uvw_norm.y / uvw_norm.z; 
+
+		double gradient_mag = sqrt(dwdu * dwdu + dwdv * dwdv);
+
+		double gradient_u = dwdu / gradient_mag;
+		double gradient_v = dwdv / gradient_mag;
+
+		//du^2 + dv^2 
+		double uv_mag_sqrd = radius * radius / (1 + gradient_mag * gradient_mag);
+		double dw = sqrt(radius * radius - uv_mag_sqrd);
+		double du = gradient_u * sqrt(uv_mag_sqrd);
+		double dv = gradient_v * sqrt(uv_mag_sqrd);
+
+		return disk_center + u * du + v * dv + w * dw;
+	}
+
 	Sphere::Sphere(const Sphere& c) 
 		: center(c.center), radius(c.radius)
 	{}

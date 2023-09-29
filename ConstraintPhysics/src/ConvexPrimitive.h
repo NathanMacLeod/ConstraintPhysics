@@ -31,7 +31,7 @@ namespace phyz {
 		double static_friction_coeff;
 	};
 
-	enum ConvexGeometryType { POLYHEDRON, SPHERE };
+	enum ConvexGeometryType { POLYHEDRON, SPHERE, CYLINDER };
 	class ConvexGeometry {
 	public:
 		virtual void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) = 0;
@@ -116,6 +116,42 @@ namespace phyz {
 	struct GaussMap {
 		std::vector<GaussVert> face_verts;
 		std::vector<GaussArc> arcs;
+	};
+
+	class Cylinder : ConvexGeometry {
+	public:
+		Cylinder() {}
+		Cylinder(const Cylinder& c);
+		Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis, int edge_approximation_detail = 20);
+
+		Cylinder getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point = mthz::Vec3(0, 0, 0)) const;
+		Cylinder getTranslated(mthz::Vec3 t) const;
+		Cylinder getScaled(double d, mthz::Vec3 center_of_dialtion) const;
+		void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) override;
+		AABB gen_AABB() const override;
+		ConvexGeometryType getType() const override { return CYLINDER; };
+
+		inline double getRadius() const { return radius; }
+		inline double getHeight() const { return height; }
+		inline mthz::Vec3 getHeightAxis() const { return height_axis; }
+		inline mthz::Vec3 getCenter() const { return center; }
+
+		RayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
+
+		static mthz::Vec3 getExtremaOfDisk(mthz::Vec3 disk_center, mthz::Vec3 disk_normal, double radius, mthz::Vec3 target_direction);
+
+		friend class Surface;
+		friend class Edge;
+		friend class RigidBody;
+	private:
+
+		std::vector<mthz::Vec3> gauss_verts;
+		std::vector<GaussArc> gauss_arcs;
+
+		mthz::Vec3 center;
+		mthz::Vec3 height_axis;
+		double radius;
+		double height;
 	};
 
 	class Polyhedron : ConvexGeometry {

@@ -78,7 +78,7 @@ namespace phyz {
 		AABB aabb;
 		int id;
 
-		inline AABB computeAABB() const { return AABB::combine({ AABB{vertices[0].p, vertices[0].p}, AABB{vertices[1].p, vertices[1].p}, AABB{vertices[2].p, vertices[2].p}}); }
+		inline AABB computeAABB() const { return AABB::encapsulatePointCloud({ vertices[0].p, vertices[1].p, vertices[2].p }); }
 		StaticMeshFace getTransformed(const mthz::Mat3& rot, mthz::Vec3 translation, mthz::Vec3 center_of_rotation) const;
 	};
 

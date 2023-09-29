@@ -70,7 +70,7 @@ namespace mthz {
 			return Quaternion(r, -i, -j, -k);
 		}
 
-		Quaternion operator*(const Quaternion q) {
+		Quaternion operator*(const Quaternion q) const {
 			return Quaternion(r * q.r - i * q.i - j * q.j - k * q.k,
 				r * q.i + i * q.r + j * q.k - k * q.j,
 				r * q.j - i * q.k + j * q.r + k * q.i,

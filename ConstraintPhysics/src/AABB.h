@@ -36,7 +36,7 @@ namespace phyz{
 				mthz::Vec3(-inf, -inf, -inf)
 			};
 
-			for (const AABB& aabb : v) {
+			for (AABB aabb : v) {
 				out.min.x = std::min<double>(out.min.x, aabb.min.x);
 				out.min.y = std::min<double>(out.min.y, aabb.min.y);
 				out.min.z = std::min<double>(out.min.z, aabb.min.z);
@@ -47,6 +47,24 @@ namespace phyz{
 			}
 
 			return out;
+		}
+
+		static AABB encapsulatePointCloud(const std::vector<mthz::Vec3>& points) {
+			double inf = std::numeric_limits<double>::infinity();
+			AABB out = {
+				mthz::Vec3(inf, inf, inf),
+				mthz::Vec3(-inf, -inf, -inf)
+			};
+
+			for (mthz::Vec3 p : points) {
+				out.min.x = std::min<double>(out.min.x, p.x);
+				out.min.y = std::min<double>(out.min.y, p.y);
+				out.min.z = std::min<double>(out.min.z, p.z);
+
+				out.max.x = std::max<double>(out.max.x, p.x);
+				out.max.y = std::max<double>(out.max.y, p.y);
+				out.max.z = std::max<double>(out.max.z, p.z);
+			}
 		}
 
 		static AABB conformNewBasis(AABB a, mthz::Vec3 u, mthz::Vec3 v, mthz::Vec3 w, mthz::Vec3 xyz_origin) {

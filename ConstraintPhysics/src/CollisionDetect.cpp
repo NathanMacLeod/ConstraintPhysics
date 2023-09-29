@@ -40,6 +40,7 @@ namespace phyz {
 	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat);
 	static Manifold detectSphereSphere(const Sphere& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
 	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
+	static Manifold detectSphereCylinder(const Sphere& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat);
 	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 
@@ -67,8 +68,20 @@ namespace phyz {
 			}
 			case SPHERE:
 				return detectSphereSphere((const Sphere&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
+			case CYLINDER:
+				return detectSphereCylinder((const Sphere&)*a.getGeometry(), a.getID(), a.material, (const Cylinder&)*b.getGeometry(), b.getID(), b.material);
 			}
 			break;
+		case CYLINDER:
+			switch (b.getType()) {
+			case SPHERE:
+				Manifold out = detectSphereCylinder((const Sphere&)*b.getGeometry(), b.getID(), b.material, (const Cylinder&)*a.getGeometry(), a.getID(), a.material);
+				out.normal = -out.normal; //physics engine expects the manifold to be facing away from a. detectSphereCylinder generates normal facing away from the sphere
+				for (ContactP& p : out.points) {
+					p.magicID = swapOrder(p.magicID);
+				}
+				return out;
+			}
 		}
 		
 	}
@@ -277,6 +290,45 @@ namespace phyz {
 		return extrema;
 	}
 
+	ExtremaInfo getSphereExtrema(const Sphere& s, mthz::Vec3 dir) {
+		ExtremaInfo out;
+		double center_val = dir.dot(s.getCenter());
+		out.max_val = center_val + s.getRadius();
+		out.min_val = center_val - s.getRadius();
+		out.min_pID = -1;
+		out.max_pID = -1;
+
+		return out;
+	}
+
+	ExtremaInfo getCylinderExtrema(const Cylinder& c, mthz::Vec3 dir) {
+		ExtremaInfo out;
+		mthz::Vec3 center = c.getCenter();
+		mthz::Vec3 height_axis = c.getHeightAxis();
+		double height = c.getHeight();
+		double radius = c.getRadius();
+		mthz::Vec3 topdisk_center = center + height / 2.0 * height_axis;
+
+		//exploiting symmetry
+		mthz::Vec3 topdisk_max = Cylinder::getExtremaOfDisk(topdisk_center, height_axis, radius, dir);
+		mthz::Vec3 topdisk_min = 2 * topdisk_center - topdisk_max;
+		mthz::Vec3 botdisk_max = 2 * center - topdisk_min;
+		mthz::Vec3 botdisk_min = 2 * center - topdisk_max;
+
+		
+		double topdisk_max_v = dir.dot(topdisk_max);
+		double topdisk_min_v = dir.dot(topdisk_min);
+		double botdisk_max_v = dir.dot(botdisk_max);
+		double botdisk_min_v = dir.dot(botdisk_min);
+
+		out.max_val = std::max<double>(topdisk_max_v, botdisk_max_v);
+		out.min_val = std::min<double>(topdisk_min_v, botdisk_min_v);
+		out.min_pID = -1;
+		out.max_pID = -1;
+
+		return out;
+	}
+
 	static CheckNormResults sat_checknorm(const ExtremaInfo& a_info, const ExtremaInfo& b_info, mthz::Vec3 n) {
 		double forward_pen_depth = a_info.max_val - b_info.min_val;
 		double reverse_pen_depth = b_info.max_val - a_info.min_val;
@@ -479,17 +531,6 @@ namespace phyz {
 		return out;
 	}
 
-	ExtremaInfo getSphereExtrema(const Sphere& s, mthz::Vec3 dir) {
-		ExtremaInfo out;
-		double center_val = dir.dot(s.getCenter());
-		out.max_val = center_val + s.getRadius();
-		out.min_val = center_val - s.getRadius();
-		out.min_pID = -1;
-		out.max_pID = -1;
-
-		return out;
-	}
-
 	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat) {
 		Manifold out;
 		out.max_pen_depth = -1;
@@ -560,6 +601,91 @@ namespace phyz {
  
 		out.points.push_back(cp);
 		
+		out.max_pen_depth = min_pen.pen_depth;
+
+		return out;
+	}
+
+	
+
+	//still some room from optomization
+	Manifold detectSphereCylinder(const Sphere& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat) {
+		Manifold out;
+		out.max_pen_depth = -1;
+		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+
+		mthz::Vec3 height_axis = b.getHeightAxis();
+		{
+			CheckNormResults x = sat_checknorm(getSphereExtrema(a, height_axis), getCylinderExtrema(b, height_axis), height_axis);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+
+		mthz::Vec3 diff = b.getCenter() - a.getCenter();
+		mthz::Vec3 barrel_axis = (diff - height_axis * height_axis.dot(diff)).normalize();
+		{
+			CheckNormResults x = sat_checknorm(getSphereExtrema(a, barrel_axis), getCylinderExtrema(b, barrel_axis), barrel_axis);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+
+		
+		mthz::Vec3 topdisk_center = b.getCenter() + height_axis * 0.5 * b.getHeight();
+		mthz::Vec3 topdisk_close_point = Cylinder::getExtremaOfDisk(topdisk_center, height_axis, b.getRadius(), -diff.normalize());
+		{
+			mthz::Vec3 edge_axis = topdisk_close_point - a.getCenter();
+			CheckNormResults x = sat_checknorm(getSphereExtrema(a, edge_axis), getCylinderExtrema(b, edge_axis), edge_axis);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+		mthz::Vec3 botdisk_center = b.getCenter() + height_axis * 0.5 * b.getHeight();
+		mthz::Vec3 botdisk_close_point = Cylinder::getExtremaOfDisk(botdisk_center, height_axis, b.getRadius(), -diff.normalize());
+		{
+			mthz::Vec3 edge_axis = botdisk_close_point - a.getCenter();
+			CheckNormResults x = sat_checknorm(getSphereExtrema(a, edge_axis), getCylinderExtrema(b, edge_axis), edge_axis);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+
+		out.normal = min_pen.norm;
+
+		mthz::Vec3 botdisk_center = b.getCenter() - height_axis * 0.5 * b.getHeight();
+
+		ContactP cp;
+		cp.pos = b.getCenter() - out.normal * b.getRadius(); //sat_checknorm ensures normals always point away from a. to get normal pointing away from b - sign added
+		cp.pen_depth = min_pen.pen_depth;
+		cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
+		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
+		cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+
+		uint64_t cID = 0;
+		cID |= 0x00000000FFFFFFFF & a_id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b_id) << 32);
+
+		cp.magicID = MagicID{ cID, a_feature_id }; //not bothering with featureid
+
+		out.points.push_back(cp);
+
 		out.max_pen_depth = min_pen.pen_depth;
 
 		return out;

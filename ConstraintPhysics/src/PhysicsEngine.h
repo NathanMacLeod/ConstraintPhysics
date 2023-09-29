@@ -57,7 +57,7 @@ namespace phyz {
 		double hit_distance;
 	};
 
-	enum BroadPhaseStructure { NONE, OCTREE, AABB_TREE, TEST_COMPARE};
+	enum BroadPhaseStructure { NONE, OCTREE, AABB_TREE, TEST_COMPARE };
 
 	class PhysicsEngine {
 	public:
