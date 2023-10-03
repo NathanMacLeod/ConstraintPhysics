@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IndexBuffer.h"
+#include "Texture.h"
 
 #include <vector>
 #include <GL/glew.h>
@@ -66,29 +67,44 @@ namespace rndr {
 		unsigned int vertexBufferID;
 	};
 
+	class Shader;
 
 	class BatchArray {
 	public:
 		BatchArray(const VertexArrayLayout& layout, unsigned int vertex_capacity);
 		~BatchArray();
 
+		struct TexturePushStatus {
+			bool failed_no_capacity;
+			float assigned_unit;
+		};
+
+		TexturePushStatus attemptPushTexture(Texture t);
+
 		void push(void* vertex_data, int vertex_count, std::vector<unsigned int> index_data);
 		void flush();
 
-		unsigned int remainingCapacity() const;
-		void bindVertexArray() const;
-		void unbindVertexArray() const;
-		IndexBuffer generateIndexBuffer() const;
+		unsigned int remainingVertexCapacity() const;
+		unsigned int remainingIndexCapacity() const;
+		inline unsigned int getIndexCount() const { return n_indices_allocated; }
+		inline unsigned int getTextureCount() const { return assigned_textures.size(); }
+
+		void bind() const;
+		void unbind() const;
 
 	private:
+		unsigned int texture_capcity = 32;
 		unsigned int vertex_capacity;
+		unsigned int index_capacity;
 		unsigned int n_vertices_allocated;
+		unsigned int n_indices_allocated;
 		unsigned int vertex_size;
 
 		unsigned int vertexArrayID;
 		unsigned int vertexBufferID;
-		std::vector<unsigned int> index_buffer_data;
+		unsigned int indexBufferID;
 
-
+		std::vector<Texture> assigned_textures;
 	};
+
 }

@@ -23,6 +23,12 @@ struct Mesh {
 	std::vector<unsigned int> indices;
 };
 
+struct MeshAndPosTransform {
+	const Mesh* m;
+	mthz::Vec3 position;
+	mthz::Quaternion orientation;
+};
+
 struct PhysBod {
 	Mesh mesh;
 	phyz::RigidBody* r;

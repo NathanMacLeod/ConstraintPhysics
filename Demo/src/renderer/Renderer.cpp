@@ -9,45 +9,48 @@
 namespace rndr {
 
     static std::chrono::time_point<std::chrono::system_clock> t_last;
-	static GLFWwindow* window;
-    static enum KeyState {KEY_PRESSED, KEY_DOWN, KEY_UP};
+    static int window_width, window_height;
+    static GLFWwindow* window;
+    static enum KeyState { KEY_PRESSED, KEY_DOWN, KEY_UP };
     static const int N_KEYS = 350;
     static KeyState keys[N_KEYS];
 
-    void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,
-        GLenum severity, GLsizei length,
-        const GLchar* msg, const void* data);
+        void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,
+            GLenum severity, GLsizei length,
+            const GLchar* msg, const void* data);
 
     static void keyEvent(GLFWwindow* window, int key, int scancode, int action, int mods);
 
     static bool first_tick;
 
-	int init(int width, int height, const std::string& name) {
-		if (!glfwInit()) {
-			std::printf("glew init failed!\n");
-			return -1;
-		}
+    int init(int width, int height, const std::string& name) {
+        window_width = width;
+        window_height = height;
+        if (!glfwInit()) {
+            std::printf("glew init failed!\n");
+            return -1;
+        }
 
         first_tick = true;
 #ifndef NDEBUG
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 #endif
 
-		window = glfwCreateWindow(width, height, "Hello World", NULL, NULL);
-		if (!window)
-		{
-			glfwTerminate();
-			return -1;
-		}
+        window = glfwCreateWindow(width, height, "Hello World", NULL, NULL);
+        if (!window)
+        {
+            glfwTerminate();
+            return -1;
+        }
 
-		glfwMakeContextCurrent(window);
+        glfwMakeContextCurrent(window);
         for (int i = 0; i < N_KEYS; i++) { keys[i] = KeyState::KEY_UP; }
         glfwSetKeyCallback(window, keyEvent);
 
-		if (glewInit() != GLEW_OK) {
-			std::printf("glew init failed!\n");
-			return -1;
-		}
+        if (glewInit() != GLEW_OK) {
+            std::printf("glew init failed!\n");
+            return -1;
+        }
 
 #ifndef NDEBUG
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -63,7 +66,25 @@ namespace rndr {
         std::printf("%s\n", glGetString(GL_VERSION));
 
         return 1;
-	}
+    }
+
+    int getWindowWidth() {
+        return window_width;
+    }
+
+    int getWindowHeight() {
+        return window_height;
+    }
+
+    void setMode2D() {
+        glDisable(GL_DEPTH_TEST);
+        glDepthFunc(GL_ALWAYS);
+    }
+
+    void setMode3D() {
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+    }
 
     static void keyEvent(GLFWwindow* window, int key, int scancode, int action, int mods) {
         if (key == -1 || key >= N_KEYS) {
@@ -75,6 +96,17 @@ namespace rndr {
         else if (action == GLFW_PRESS) {
             keys[key] = KeyState::KEY_PRESSED;
         }
+    }
+
+    void lockMouse() {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+
+    MousePos getMousePosition() {
+        MousePos out;
+        glfwGetCursorPos(window, &out.x, &out.y);
+        out.y = window_height - out.y;
+        return out;
     }
 
     bool getKeyDown(int key) {
@@ -108,12 +140,16 @@ namespace rndr {
     }
 
     void draw(const BatchArray& ba, const Shader& s) {
-        ba.bindVertexArray();
-        IndexBuffer ib = ba.generateIndexBuffer();
-        ib.bind();
         s.bind();
-        glDrawElements(GL_TRIANGLES, ib.getCount(), GL_UNSIGNED_INT, nullptr);
+        ba.bind();
+        glDrawElements(GL_TRIANGLES, ba.getIndexCount(), GL_UNSIGNED_INT, nullptr);
     }
+
+    //void draw(const BatchArray& ba, const Shader& s) {
+    //    ba.bind();
+    //    s.bind();
+    //    //glDrawElements(GL_TRIANGLES, ba.getIndexCount(), GL_UNSIGNED_INT, nullptr);
+    //}
 
     bool render_loop(float* fElapsedTimeOut) {
         glfwSwapBuffers(window);

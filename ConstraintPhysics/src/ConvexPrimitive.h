@@ -122,7 +122,7 @@ namespace phyz {
 	public:
 		Cylinder() {}
 		Cylinder(const Cylinder& c);
-		Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis, int edge_approximation_detail = 20);
+		Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis = mthz::Vec3(0, 1, 0), int edge_approximation_detail = 12, int face_approximation_detail = 8);
 
 		Cylinder getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point = mthz::Vec3(0, 0, 0)) const;
 		Cylinder getTranslated(mthz::Vec3 t) const;
@@ -133,8 +133,16 @@ namespace phyz {
 
 		inline double getRadius() const { return radius; }
 		inline double getHeight() const { return height; }
+		inline int getTopSurfaceID() const { return 0; }
+		inline int getBotSurfaceID() const { return 1; }
 		inline mthz::Vec3 getHeightAxis() const { return height_axis; }
 		inline mthz::Vec3 getCenter() const { return center; }
+		inline mthz::Vec3 getTopDiskCenter() const { return center + 0.5 * height * height_axis; }
+		inline mthz::Vec3 getBotDiskCenter() const { return center - 0.5 * height * height_axis; }
+		inline const std::vector<mthz::Vec3>& getTopFaceApprox() const { return top_face_approximation; }
+		inline const std::vector<mthz::Vec3>& getBotFaceApprox() const { return bot_face_approximation; }
+		inline const std::vector<mthz::Vec3>& getGuassVerts() const { return gauss_verts; }
+		inline const std::vector<GaussArc>& getGuassArcs() const { return gauss_arcs; }
 
 		RayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
 
@@ -144,7 +152,8 @@ namespace phyz {
 		friend class Edge;
 		friend class RigidBody;
 	private:
-
+		std::vector<mthz::Vec3> top_face_approximation;
+		std::vector<mthz::Vec3> bot_face_approximation;
 		std::vector<mthz::Vec3> gauss_verts;
 		std::vector<GaussArc> gauss_arcs;
 

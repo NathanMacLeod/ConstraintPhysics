@@ -129,6 +129,60 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 			vertex_offset += 2 + (n_rows - 1) * n_cols;
 			break;
 		}
+		case phyz::CYLINDER:
+		{
+			const phyz::Cylinder& c = (const phyz::Cylinder&)*prim.getGeometry();
+			double height = c.getHeight();
+			mthz::Vec3 height_axis = c.getHeightAxis();
+
+			mthz::Mat3 rot;
+			mthz::Vec3 unrotated_height_axis = mthz::Vec3(0, 1, 0);
+			if (height_axis == unrotated_height_axis) {
+				rot = mthz::Mat3::iden();
+			}
+			else {
+				rot = mthz::Quaternion(acos(height_axis.dot(unrotated_height_axis)), unrotated_height_axis.cross(height_axis).normalize()).getRotMatrix();
+			}
+
+			int verts_per_disk = 15;
+			int n_verts = verts_per_disk * 2;
+			double d_theta = 2 * PI / verts_per_disk;
+			for (int i = 0; i < verts_per_disk; i++) {
+				mthz::Vec3 r = rot * mthz::Vec3(c.getRadius() * sin(i * d_theta), 0, c.getRadius() * cos(i * d_theta));
+				mthz::Vec3 bot_v = c.getCenter() - height * height_axis / 2 + r;
+				mthz::Vec3 top_v = c.getCenter() + height * height_axis / 2 + r;
+
+				color v_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+				vertices.push_back(Vertex{ (float)bot_v.x, (float)bot_v.y, (float)bot_v.z, v_col.r, v_col.g, v_col.b, v_col.ambient_k, v_col.diffuse_k, v_col.specular_k, v_col.specular_p });
+				vertices.push_back(Vertex{ (float)top_v.x, (float)top_v.y, (float)top_v.z, v_col.r, v_col.g, v_col.b, v_col.ambient_k, v_col.diffuse_k, v_col.specular_k, v_col.specular_p });
+
+				int i1 = 2 * i;
+				int i2 = (2 * i + 2) % n_verts;
+				int i3 = (2 * i + 3) % n_verts;
+				int i4 = (2 * i + 1) % n_verts;
+
+				indices.push_back(i1 + vertex_offset);
+				indices.push_back(i2 + vertex_offset);
+				indices.push_back(i3 + vertex_offset);
+
+				indices.push_back(i1 + vertex_offset);
+				indices.push_back(i3 + vertex_offset);
+				indices.push_back(i4 + vertex_offset);
+			}
+
+			for (int i = 0; i < verts_per_disk - 1; i++) {
+				//bottom face
+				indices.push_back(vertex_offset);
+				indices.push_back((2 * (i + 2)) % n_verts + vertex_offset);
+				indices.push_back(2 * (i + 1) + vertex_offset);
+				//top face
+				indices.push_back(1 + vertex_offset);
+				indices.push_back(1 + 2 * (i + 1) + vertex_offset);
+				indices.push_back((1 + 2 * (i + 2)) % n_verts + vertex_offset);
+			}
+
+			vertex_offset += n_verts;
+		}
 		}
 	}
 

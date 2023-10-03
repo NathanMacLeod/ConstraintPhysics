@@ -154,7 +154,7 @@ public:
 		mthz::Vec3 y_axis = mthz::Vec3(0, 1, 0);
 		mthz::Vec3 z_axis = mthz::Vec3(0, 0, 1);
 		mthz::Vec3 crankshaft_position = engine_gear1_position + mthz::Vec3(engine_gear2_height, 0, 0);
-		phyz::ConvexUnionGeometry crankshaft_bar = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), crankshaft_width / 2.0, crankshaft_segment_length, 7, phyz::Material::modified_density(0.1)).getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)));
+		phyz::ConvexUnionGeometry crankshaft_bar = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), crankshaft_width / 2.0, crankshaft_segment_length, phyz::Material::modified_density(0.1)).getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)));
 		double crankshaft_wall_height = crankshaft_radius + crankshaft_width;
 		phyz::ConvexUnionGeometry crankshaft_wall = phyz::ConvexUnionGeometry::box(mthz::Vec3(0, -crankshaft_width / 2.0, -crankshaft_width / 2.0), crankshaft_wall_width, crankshaft_wall_height, crankshaft_width, phyz::Material::modified_density(0.1));
 		phyz::ConvexUnionGeometry crankshaft_segment = { crankshaft_wall, crankshaft_bar.getTranslated(mthz::Vec3(crankshaft_wall_width, crankshaft_radius, 0)),
@@ -183,7 +183,7 @@ public:
 		double piston_arm_width = 2 * crankshaft_radius;
 		double piston_arm_height = 0.45 * crankshaft_segment_length;
 		double piston_arm_length = 0.15 * scale;
-		phyz::ConvexUnionGeometry piston = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), piston_radius, piston_height, 10, phyz::Material::modified_density(0.1));
+		phyz::ConvexUnionGeometry piston = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), piston_radius, piston_height, phyz::Material::modified_density(0.1));
 		phyz::ConvexUnionGeometry piston_arm = phyz::ConvexUnionGeometry::box(mthz::Vec3(-piston_arm_height / 2.0, -piston_arm_width * 0.33, -piston_arm_width / 4.0), piston_arm_height,
 			piston_arm_length + piston_arm_width * 0.66, piston_arm_width / 2.0, phyz::Material::modified_density(0.1));
 
@@ -298,11 +298,11 @@ public:
 		double rear_wheel1_radius = 0.75;
 		double rear_wheel1_height = 0.15;
 		mthz::Vec3 rear_wheel1_position = axle1_position + mthz::Vec3(0, 0, axle1_length);
-		phyz::ConvexUnionGeometry rear_wheel1 = phyz::ConvexUnionGeometry::cylinder(rear_wheel1_position, rear_wheel1_radius, rear_wheel1_height, 20, phyz::Material::rubber())
+		phyz::ConvexUnionGeometry rear_wheel1 = phyz::ConvexUnionGeometry::cylinder(rear_wheel1_position, rear_wheel1_radius, rear_wheel1_height, phyz::Material::rubber())
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), rear_wheel1_position);
 
 		mthz::Vec3 rear_wheel2_position = axle2_position - mthz::Vec3(0, 0, axle1_length);
-		phyz::ConvexUnionGeometry rear_wheel2 = phyz::ConvexUnionGeometry::cylinder(rear_wheel2_position, rear_wheel1_radius, rear_wheel1_height, 20, phyz::Material::rubber())
+		phyz::ConvexUnionGeometry rear_wheel2 = phyz::ConvexUnionGeometry::cylinder(rear_wheel2_position, rear_wheel1_radius, rear_wheel1_height, phyz::Material::rubber())
 			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(1, 0, 0)), rear_wheel2_position);
 
 		double steering_wheel_radius = 0.2;
@@ -331,7 +331,7 @@ public:
 		double sw_joint1_gap = sw_joint1_arm1_length * 0.8;
 		mthz::Vec3 sw_joint1_pivot_position = steering_wheel_rod1_position + mthz::Vec3(0, steering_wheel_rod1_length + sw_joint1_gap - sw_joint1_pivot_width / 2.0, 0);
 		mthz::Vec3 sw_joint1_pivot_pos_oriented = steering_wheel_orientation.rotateAbout(sw_joint1_pivot_position, steering_wheel_position);
-		phyz::ConvexUnionGeometry sw_joint1_pivot = phyz::ConvexUnionGeometry::cylinder(sw_joint1_pivot_position, sw_joint1_pivot_radius, sw_joint1_pivot_width, 10, phyz::Material::modified_density(70)).getRotated(steering_wheel_orientation, steering_wheel_position);
+		phyz::ConvexUnionGeometry sw_joint1_pivot = phyz::ConvexUnionGeometry::cylinder(sw_joint1_pivot_position, sw_joint1_pivot_radius, sw_joint1_pivot_width, phyz::Material::modified_density(70)).getRotated(steering_wheel_orientation, steering_wheel_position);
 
 		mthz::Vec3 steering_wheel_rod2_target = pos + mthz::Vec3(0.75, 0.1, base_dim.z / 2.0);
 		mthz::Vec3 rod2_target_diff = steering_wheel_rod2_target - sw_joint1_pivot_pos_oriented;
@@ -356,7 +356,7 @@ public:
 
 		mthz::Vec3 sw_joint2_pivot_position = steering_wheel_rod2_position + mthz::Vec3(0, steering_wheel_rod2_length + sw_joint1_gap - sw_joint1_pivot_width / 2.0, 0);
 		mthz::Vec3 sw_joint2_pivot_pos_oriented = sw_joint1_pivot_pos_oriented + rod2_orientation.rotateAbout(sw_joint2_pivot_position, mthz::Vec3(0, 0, 0));
-		phyz::ConvexUnionGeometry sw_joint2_pivot = phyz::ConvexUnionGeometry::cylinder(sw_joint2_pivot_position, sw_joint1_pivot_radius, sw_joint1_pivot_width, 10, phyz::Material::modified_density(70)).getRotated(rod2_orientation).getTranslated(sw_joint1_pivot_pos_oriented);
+		phyz::ConvexUnionGeometry sw_joint2_pivot = phyz::ConvexUnionGeometry::cylinder(sw_joint2_pivot_position, sw_joint1_pivot_radius, sw_joint1_pivot_width, phyz::Material::modified_density(70)).getRotated(rod2_orientation).getTranslated(sw_joint1_pivot_pos_oriented);
 
 		double steering_wheel_rod3_length = 0.3;
 		mthz::Vec3 steering_wheel_rod3_position = mthz::Vec3(0, sw_joint1_gap, 0);
@@ -387,7 +387,7 @@ public:
 
 		double front_wheel1_radius = 0.66 * rear_wheel1_radius;
 		mthz::Vec3 front_wheel1_position = mthz::Vec3(pinion_position.x - 0.45, rear_wheel1_position.y - (rear_wheel1_radius - front_wheel1_radius), rear_wheel1_position.z);
-		phyz::ConvexUnionGeometry front_wheel1 = phyz::ConvexUnionGeometry::cylinder(front_wheel1_position, front_wheel1_radius, rear_wheel1_height, 20, phyz::Material::rubber())
+		phyz::ConvexUnionGeometry front_wheel1 = phyz::ConvexUnionGeometry::cylinder(front_wheel1_position, front_wheel1_radius, rear_wheel1_height, phyz::Material::rubber())
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), front_wheel1_position);
 
 		double front_wheel1_elbow_length = 0.125;
@@ -412,7 +412,7 @@ public:
 			.getRotated(mthz::Quaternion(elev, mthz::Vec3(0, 0, 1)), front_wheel1_rod_pinion_connect).getRotated(mthz::Quaternion(rot, mthz::Vec3(0, 1, 0)), front_wheel1_rod_pinion_connect);
 
 		mthz::Vec3 front_wheel2_position = mthz::Vec3(pinion_position.x - 0.45, rear_wheel1_position.y - (rear_wheel1_radius - front_wheel1_radius), rear_wheel2_position.z);
-		phyz::ConvexUnionGeometry front_wheel2 = phyz::ConvexUnionGeometry::cylinder(front_wheel2_position, front_wheel1_radius, rear_wheel1_height, 20, phyz::Material::rubber())
+		phyz::ConvexUnionGeometry front_wheel2 = phyz::ConvexUnionGeometry::cylinder(front_wheel2_position, front_wheel1_radius, rear_wheel1_height, phyz::Material::rubber())
 			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(1, 0, 0)), front_wheel2_position);
 
 		phyz::ConvexUnionGeometry front_wheel2_elbow = phyz::ConvexUnionGeometry::box(front_wheel2_position - mthz::Vec3(front_wheel1_arm_width / 2.0, front_wheel1_arm_width / 2.0, 0), front_wheel1_arm_width, front_wheel1_arm_width,
@@ -797,7 +797,7 @@ public:
 
 			double aspect_ratio = (double)properties.window_height / properties.window_width;
 			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0));
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 60.0));
 			shader.setUniform3f("u_ambient_light", 0.4, 0.4, 0.4);
 			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
 			shader.setUniform3f("u_pointlight_col", 0.6, 0.6, 0.6);
@@ -807,7 +807,7 @@ public:
 
 				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, b.r->getAsleep(), color{ 1.0f, 0.0f, 0.0f });
 
-				if (batch_array.remainingCapacity() <= transformed_mesh.vertices.size()) {
+				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}

@@ -1,4 +1,5 @@
 #include "VertexArray.h"
+#include "Shader.h"
 #include <cassert>
 
 /**************************************************************************
@@ -57,19 +58,25 @@ namespace rndr {
 		glBindVertexArray(0);
 	}
 
-
 	BatchArray::BatchArray(const VertexArrayLayout& layout, unsigned int vertex_capacity)
-		: vertex_capacity(vertex_capacity)
+		: vertex_capacity(vertex_capacity), n_indices_allocated(0), n_vertices_allocated(0)
 	{
+		const int INDEX_BUFFER_SIZE_FACTOR = 6;
+		index_capacity = INDEX_BUFFER_SIZE_FACTOR * vertex_capacity;
+
 		vertex_size = layout.GetStride();
 
 		glGenBuffers(1, &vertexBufferID);
 		glBindBuffer(GL_ARRAY_BUFFER, vertexBufferID);
 		glBufferData(GL_ARRAY_BUFFER, vertex_capacity * vertex_size, nullptr, GL_DYNAMIC_DRAW);
 
+		glGenBuffers(1, &indexBufferID);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferID);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * vertex_capacity * sizeof(unsigned int), nullptr, GL_DYNAMIC_DRAW);
+
 		glGenVertexArrays(1, &vertexArrayID);
 
-		bindVertexArray();
+		glBindVertexArray(vertexArrayID);
 		const auto& elements = layout.getElements();
 		unsigned int offset = 0;
 		for (unsigned int i = 0; i < elements.size(); i++) {
@@ -82,39 +89,77 @@ namespace rndr {
 
 	BatchArray::~BatchArray() {
 		glDeleteBuffers(1, &vertexBufferID);
+		glDeleteBuffers(1, &indexBufferID);
 		glDeleteVertexArrays(1, &vertexArrayID);
 	}
 
+	BatchArray::TexturePushStatus BatchArray::attemptPushTexture(Texture t) {
+		if (t.isNoTexture()) {
+			return { false, -1.0f }; //-1.0f value is to be interpreted as 'no texture' by the shader
+		}
+		else {
+			//check if the same texture has already been pushed
+			for (int i = 0; i < assigned_textures.size(); i++) {
+				if (assigned_textures[i].getTextureID() == t.getTextureID()) {
+					return { false, (float)i };
+				}
+			}
+
+			//is a new texture, check for capacity
+			if (assigned_textures.size() < texture_capcity) {
+				assigned_textures.push_back(t);
+				return { false, (float)(assigned_textures.size() - 1) };
+			}
+			else {
+				return { true };
+			}
+		}
+	}
+
 	void BatchArray::push(void* vertex_data, int vertex_count, std::vector<unsigned int> index_data) {
-		assert(vertex_count + n_vertices_allocated <= vertex_capacity);
+		assert(vertex_count + n_vertices_allocated <= vertex_capacity && index_data.size() + n_indices_allocated <= index_capacity);
 
-		glBufferSubData(GL_ARRAY_BUFFER, n_vertices_allocated * vertex_size, vertex_count * vertex_size, vertex_data);
-
-		for (unsigned int i : index_data) {
-			index_buffer_data.push_back(i + n_vertices_allocated);
+		std::vector<unsigned int> adjusted_indices(index_data);
+		for (int i = 0; i < adjusted_indices.size(); i++) {
+			adjusted_indices[i] += n_vertices_allocated;
 		}
 
+		bind();
+
+		glBufferSubData(GL_ARRAY_BUFFER, n_vertices_allocated * vertex_size, vertex_count * vertex_size, vertex_data);
+		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, n_indices_allocated * sizeof(unsigned int), adjusted_indices.size() * sizeof(unsigned int), adjusted_indices.data());
+
 		n_vertices_allocated += vertex_count;
+		n_indices_allocated += index_data.size();
 	}
 
 	void BatchArray::flush() {
 		n_vertices_allocated = 0;
-		index_buffer_data.clear();
+		n_indices_allocated = 0;
+		assigned_textures.clear();
 	}
 
-	unsigned int BatchArray::remainingCapacity() const {
+	unsigned int BatchArray::remainingVertexCapacity() const {
 		return vertex_capacity - n_vertices_allocated;
 	}
 
-	void BatchArray::bindVertexArray() const {
+	unsigned int BatchArray::remainingIndexCapacity() const {
+		return index_capacity - n_indices_allocated;
+	}
+
+	void BatchArray::bind() const {
+		for (int i = 0; i < assigned_textures.size(); i++) {
+			assigned_textures[i].bindToTextureUnitI(i);
+		}
+
 		glBindVertexArray(vertexArrayID);
+		glBindBuffer(GL_ARRAY_BUFFER, vertexBufferID);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferID);
 	}
 
-	void BatchArray::unbindVertexArray() const {
+	void BatchArray::unbind() const {
 		glBindVertexArray(0);
-	}
-
-	IndexBuffer BatchArray::generateIndexBuffer() const {
-		return IndexBuffer(index_buffer_data.data(), index_buffer_data.size());
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 }

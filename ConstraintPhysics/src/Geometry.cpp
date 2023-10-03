@@ -40,6 +40,10 @@ namespace phyz {
 		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Sphere(center, radius), material));
 	}
 
+	ConvexUnionGeometry ConvexUnionGeometry::cylinder(mthz::Vec3 pos, double radius, double height, Material material) {
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Cylinder(pos + mthz::Vec3(0, height/2.0, 0), radius, height), material));
+	}
+
 	ConvexUnionGeometry ConvexUnionGeometry::psuedoSphere(mthz::Vec3 center, double radius, int n_rows, int n_cols, Material material) {
 		std::vector<mthz::Vec3> points;
 		std::vector<std::vector<int>> surface_indices;
@@ -230,7 +234,7 @@ namespace phyz {
 		return dodecahedron;
 	}
 
-	ConvexUnionGeometry ConvexUnionGeometry::cylinder(mthz::Vec3 pos, double radius, double height, int detail, Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::polyCylinder(mthz::Vec3 pos, double radius, double height, int detail, Material material) {
 		int n_faces = 3 + detail;
 		std::vector<mthz::Vec3> points(n_faces * 2);
 		std::vector<std::vector<int>> surface_indices(2 + n_faces);
@@ -324,7 +328,7 @@ namespace phyz {
 
 	ConvexUnionGeometry ConvexUnionGeometry::gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity, Material material, double tooth_width) {
 
-		ConvexUnionGeometry wheel = cylinder(pos, radius, height, 2 * n_teeth - 3, material);
+		ConvexUnionGeometry wheel = polyCylinder(pos, radius, height, 2 * n_teeth - 3, material);
 		double default_tooth_width = radius * PI / n_teeth;
 		tooth_width = (tooth_width == -1)?  default_tooth_width : tooth_width;
 		ConvexUnionGeometry toothG= tooth(pos + mthz::Vec3(radius, 0, -0.5 * (tooth_width - default_tooth_width)), tooth_width, tooth_length, height, material);
@@ -340,7 +344,7 @@ namespace phyz {
 	}
 
 	ConvexUnionGeometry ConvexUnionGeometry::bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity, Material material, double hole_radius, int circle_detail) {
-		ConvexUnionGeometry wheel = (hole_radius == 0) ? cylinder(pos, radius, height, circle_detail, material) : ring(pos, hole_radius, radius, height, circle_detail, material);
+		ConvexUnionGeometry wheel = (hole_radius == 0) ? polyCylinder(pos, radius, height, circle_detail, material) : ring(pos, hole_radius, radius, height, circle_detail, material);
 		mthz::Vec3 tooth_pos = pos + mthz::Vec3(radius - tooth_radius, height, 0);
 		ConvexUnionGeometry toothG = tooth(tooth_pos, tooth_width, tooth_height, -tooth_radius, material).getRotated(mthz::Quaternion(PI/2.0, mthz::Vec3(0, 0, 1)), tooth_pos);
 

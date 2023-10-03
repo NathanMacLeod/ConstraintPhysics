@@ -208,7 +208,7 @@ public:
 
 			double aspect_ratio = (double)properties.window_height / properties.window_width;
 			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0));
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 60.0));
 			shader.setUniform3f("u_ambient_light", 0.4, 0.4, 0.4);
 			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
 			shader.setUniform3f("u_pointlight_col", 0.6, 0.6, 0.6);
@@ -218,7 +218,7 @@ public:
 
 				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, b.r->getAsleep(), color{ 1.0f, 0.0f, 0.0f });
 
-				if (batch_array.remainingCapacity() <= transformed_mesh.vertices.size()) {
+				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}

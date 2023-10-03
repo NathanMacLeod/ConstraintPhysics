@@ -205,7 +205,7 @@ public:
 		double bucket_bottom_density = 6.5 * bucket_height;
 
 		mthz::Vec3 bucket_position = funnel_pos + mthz::Vec3(0, -bucket_funnel_gap - bucket_height - bucket_thickness, 0);
-		phyz::ConvexUnionGeometry bucket_floor = phyz::ConvexUnionGeometry::cylinder(bucket_position, bucket_radius + bucket_thickness, bucket_thickness, 10, phyz::Material::modified_density(bucket_bottom_density));
+		phyz::ConvexUnionGeometry bucket_floor = phyz::ConvexUnionGeometry::polyCylinder(bucket_position, bucket_radius + bucket_thickness, bucket_thickness, 10, phyz::Material::modified_density(bucket_bottom_density));
 		phyz::ConvexUnionGeometry bucket_wall = phyz::ConvexUnionGeometry::ring(bucket_position + mthz::Vec3(0, bucket_thickness, 0), bucket_radius, bucket_radius + bucket_thickness, bucket_height, 10);
 		phyz::ConvexUnionGeometry bucket = { bucket_floor, bucket_wall };
 
@@ -230,7 +230,7 @@ public:
 		double bucket_rest_rod_length = 3 * bucket_radius;
 		mthz::Vec3 bucket_rest_rod_pos = bucket_position + mthz::Vec3(-bucket_rest_rod_length / 2.0, bucket_height * 0.75, bucket_radius + bucket_thickness + bucket_rest_rod_radius);
 
-		phyz::ConvexUnionGeometry bucket_rest_rod = phyz::ConvexUnionGeometry::cylinder(bucket_rest_rod_pos, bucket_rest_rod_radius, bucket_rest_rod_length).getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), bucket_rest_rod_pos)
+		phyz::ConvexUnionGeometry bucket_rest_rod = phyz::ConvexUnionGeometry::polyCylinder(bucket_rest_rod_pos, bucket_rest_rod_radius, bucket_rest_rod_length).getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), bucket_rest_rod_pos)
 			.getRotated(mthz::Quaternion(bucket_rest_angle, mthz::Vec3(1, 0, 0)), bucket_pivot_pos);
 
 		double ramp_length = 16;
@@ -563,7 +563,7 @@ public:
 
 				double aspect_ratio = (double)properties.window_height / properties.window_width;
 				//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-				shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 120.0));
+				shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 60.0));
 				shader.setUniform3f("u_ambient_light", 0.95, 0.95, 0.95);
 				shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
 				shader.setUniform3f("u_pointlight_col", 0.05, 0.05, 0.05);
@@ -571,7 +571,7 @@ public:
 
 				for (TransformablePhysBod& b : bodies) {
 
-					if (batch_array.remainingCapacity() <= b.transformed_mesh.vertices.size()) {
+					if (batch_array.remainingVertexCapacity() <= b.transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < b.transformed_mesh.indices.size()) {
 						rndr::draw(batch_array, shader);
 						batch_array.flush();
 					}

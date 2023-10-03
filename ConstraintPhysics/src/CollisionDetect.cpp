@@ -39,7 +39,9 @@ namespace phyz {
 
 	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat);
 	static Manifold detectSphereSphere(const Sphere& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
+	static Manifold detectCylinderCylinder(const Cylinder& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat);
 	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
+	static Manifold SAT_PolyCylinder(const Polyhedron& a, int a_id, const Material& a_mat, const Cylinder&b, int b_id, const Material& b_mat);
 	static Manifold detectSphereCylinder(const Sphere& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat);
 	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
@@ -50,9 +52,10 @@ namespace phyz {
 			switch (b.getType()) {
 			case POLYHEDRON:
 				return SAT_PolyPoly((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Polyhedron&)*b.getGeometry(), b.getID(), b.material);
-
 			case SPHERE:
 				return SAT_PolySphere((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
+			case CYLINDER:
+				return SAT_PolyCylinder((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Cylinder&)*b.getGeometry(), b.getID(), b.material);
 			}
 			break;
 		case SPHERE:
@@ -74,13 +77,26 @@ namespace phyz {
 			break;
 		case CYLINDER:
 			switch (b.getType()) {
+			case POLYHEDRON:
+			{
+				Manifold out = SAT_PolyCylinder((const Polyhedron&)*b.getGeometry(), b.getID(), b.material, (const Cylinder&)*a.getGeometry(), a.getID(), a.material);
+				out.normal = -out.normal; //physics engine expects the manifold to be facing away from a. SAT_PolySphere generates normal facing away from the polyhedron
+				for (ContactP& p : out.points) {
+					p.magicID = swapOrder(p.magicID);
+				}
+				return out;
+			}
 			case SPHERE:
+			{
 				Manifold out = detectSphereCylinder((const Sphere&)*b.getGeometry(), b.getID(), b.material, (const Cylinder&)*a.getGeometry(), a.getID(), a.material);
 				out.normal = -out.normal; //physics engine expects the manifold to be facing away from a. detectSphereCylinder generates normal facing away from the sphere
 				for (ContactP& p : out.points) {
 					p.magicID = swapOrder(p.magicID);
 				}
 				return out;
+			}
+			case CYLINDER:
+				return detectCylinderCylinder((const Cylinder&)*a.getGeometry(), a.getID(), a.material, (const Cylinder&)*b.getGeometry(), b.getID(), b.material);
 			}
 		}
 		
@@ -129,30 +145,30 @@ namespace phyz {
 		double w;
 	};
 
+	static enum ContactAreaOrigin { FACE, EDGE, VERTEX, CYLINDER_BARREL };
+
 	static struct ContactArea {
 		std::vector<ProjP> ps;
 		std::vector<int> p_IDs;
 		int surfaceID;
+		ContactAreaOrigin origin;
 	};
 
 	static inline ContactArea projectFace(const Surface& s, mthz::Vec3 u, mthz::Vec3 w) {
-		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1 };
-
 		int n_points = s.n_points();
-		out.ps = std::vector<ProjP>(n_points);
-		out.p_IDs = std::vector<int>(n_points);
+		ContactArea out = { std::vector<ProjP>(n_points), std::vector<int>(n_points), s.getSurfaceID(), FACE};
+		
 		for (int i = 0; i < n_points; i++) {
 			mthz::Vec3 v = s.getPointI(i);
 			out.ps[i] = ProjP{ v.dot(u), v.dot(w) };
 			out.p_IDs[i] = s.point_indexes[i];
 		}
-		out.surfaceID = s.getSurfaceID();
 
 		return out;
 	}
 
 	static inline ContactArea projectEdge(const Edge& e, mthz::Vec3 n, mthz::Vec3 p, mthz::Vec3 u, mthz::Vec3 w) {
-		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1 };
+		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1, EDGE };
 
 		out.ps = { ProjP{ e.p1().dot(u), e.p1().dot(w) }, ProjP{ e.p2().dot(u), e.p2().dot(w) } };
 		out.p_IDs = { e.p1_indx, e.p2_indx };
@@ -194,9 +210,96 @@ namespace phyz {
 		return ContactArea{
 			{ ProjP{ p.dot(u), p.dot(w) } },
 			{ p_ID },
-			-1
+			-1,
+			VERTEX
 		};
 		
+	}
+
+	static inline ContactArea projectTriangleFace(const StaticMeshFace& s, mthz::Vec3 u, mthz::Vec3 w) {
+		ContactArea out = { std::vector<ProjP>(3), std::vector<int>(3), s.id, FACE };
+
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 v = s.vertices[i].p;
+			out.ps[i] = ProjP{ v.dot(u), v.dot(w) };
+			out.p_IDs[i] = i;
+		}
+
+		return out;
+	}
+
+	static inline ContactArea projectTriangleEdge(const StaticMeshEdge& e, mthz::Vec3 n, mthz::Vec3 p, mthz::Vec3 u, mthz::Vec3 w) {
+		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1, EDGE };
+
+		out.ps = { ProjP{ e.p1.dot(u), e.p1.dot(w) }, ProjP{ e.p2.dot(u), e.p2.dot(w) } };
+		out.p_IDs = { e.id, e.id };
+
+		return out;
+	}
+
+	static ContactArea findTriangleContactArea(const StaticMeshFace& t, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
+
+		double cos_ang = t.normal.dot(n);
+		if (1 - cos_ang <= COS_TOL) {
+			return projectTriangleFace(t, u, w);
+		}
+
+		for (int i = 0; i < 3; i++) {
+			if (i != p_ID && (i + 1) % 3 != p_ID) {
+				continue;
+			}
+
+			StaticMeshEdge e = t.edges[i];
+			double sin_ang = abs((e.p2 - e.p1).normalize().dot(n));
+			if (sin_ang <= SIN_TOL) {
+				return projectTriangleEdge(e, n, p, u, w);
+			}
+		}
+
+		return ContactArea{
+			{ ProjP{ p.dot(u), p.dot(w) } },
+			{ p_ID },
+			-1,
+			VERTEX
+		};
+
+	}
+
+	static inline ContactArea projectCylinderFace(const std::vector<mthz::Vec3> face_verts, mthz::Vec3 u, mthz::Vec3 w, int face_id) {
+		int n_points = face_verts.size();
+		ContactArea out = { std::vector<ProjP>(n_points), std::vector<int>(n_points), face_id, FACE };
+
+		for (int i = 0; i < n_points; i++) {
+			out.ps[i] = { face_verts[i].dot(u), face_verts[i].dot(w) };
+			out.p_IDs[i] = i;
+		}
+
+		return out;
+	}
+
+	static ContactArea findCylinderContactArea(const Cylinder& c, mthz::Vec3 n, mthz::Vec3 u, mthz::Vec3 w) {
+		mthz::Vec3 height_axis = c.getHeightAxis();
+		if (1 - abs(height_axis.dot(n)) <= COS_TOL && n.dot(height_axis) > 0) {
+			return projectCylinderFace(c.getTopFaceApprox(), u, w, c.getTopSurfaceID());
+		}
+		else if (1 - abs(height_axis.dot(n)) <= COS_TOL) {
+			return projectCylinderFace(c.getBotFaceApprox(), u, w, c.getTopSurfaceID());
+		}
+		else if (height_axis.cross(n).mag() <= SIN_TOL) {
+			mthz::Vec3 barrel_axis = (n - height_axis * height_axis.dot(n)).normalize();
+			mthz::Vec3 p1 = c.getCenter() + barrel_axis * c.getRadius() + 0.5 * c.getHeight() * height_axis;
+			mthz::Vec3 p2 = p1 = c.getHeight() * height_axis;
+
+			return ContactArea{ {{p1.dot(u), p1.dot(w)}, {p2.dot(u), p2.dot(w)}}, {0, 1}, -1, CYLINDER_BARREL };
+		}
+		else if (n.dot(height_axis) > 0) {
+			mthz::Vec3 p = Cylinder::getExtremaOfDisk(c.getTopDiskCenter(), height_axis, c.getRadius(), n);
+			return ContactArea{ {{p.dot(u), p.dot(w)}}, {0}, -1, EDGE };
+		}
+		else {
+			mthz::Vec3 p = Cylinder::getExtremaOfDisk(c.getBotDiskCenter(), height_axis, c.getRadius(), n);
+			return ContactArea{ {{p.dot(u), p.dot(w)}}, {0}, -1, EDGE };
+		}
 	}
 
 	static bool pInside(const std::vector<ProjP> poly, ProjP p) {
@@ -266,6 +369,7 @@ namespace phyz {
 		return true;
 	}
 
+
 	ExtremaInfo recenter(const ExtremaInfo& info, double old_ref_value, double new_ref_value) {
 		double diff = new_ref_value - old_ref_value;
 		return ExtremaInfo{ info.min_pID, info.max_pID, info.min_val + diff, info.max_val + diff};
@@ -307,7 +411,7 @@ namespace phyz {
 		mthz::Vec3 height_axis = c.getHeightAxis();
 		double height = c.getHeight();
 		double radius = c.getRadius();
-		mthz::Vec3 topdisk_center = center + height / 2.0 * height_axis;
+		mthz::Vec3 topdisk_center = c.getTopDiskCenter();
 
 		//exploiting symmetry
 		mthz::Vec3 topdisk_max = Cylinder::getExtremaOfDisk(topdisk_center, height_axis, radius, dir);
@@ -374,8 +478,8 @@ namespace phyz {
 				}
 			}
 		}
-		for (const GaussArc& arc1 : ag.arcs) {
-			for (const GaussArc& arc2 : bg.arcs) {
+		for (GaussArc arc1 : ag.arcs) {
+			for (GaussArc arc2 : bg.arcs) {
 
 				mthz::Vec3 a1 = ag.face_verts[arc1.v1_indx].v;
 				mthz::Vec3 a2 = ag.face_verts[arc1.v2_indx].v;
@@ -531,6 +635,206 @@ namespace phyz {
 		return out;
 	}
 
+	static Manifold detectCylinderCylinder(const Cylinder& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat) {
+		Manifold out;
+		out.max_pen_depth = -1;
+		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+
+		mthz::Vec3 a_height_axis = a.getHeightAxis();
+		{
+			CheckNormResults x = sat_checknorm(getCylinderExtrema(a, a_height_axis), getCylinderExtrema(b, a_height_axis), a_height_axis);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+
+		mthz::Vec3 b_height_axis = b.getHeightAxis();
+		{
+			CheckNormResults x = sat_checknorm(getCylinderExtrema(a, b_height_axis), getCylinderExtrema(b, b_height_axis), b_height_axis);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+
+		mthz::Vec3 diff = b.getCenter() - a.getCenter();
+		mthz::Vec3 a_barrel_axis = (diff - a_height_axis * a_height_axis.dot(diff)).normalize();
+		{
+			CheckNormResults x = sat_checknorm(getCylinderExtrema(a, a_barrel_axis), getCylinderExtrema(b, a_barrel_axis), a_barrel_axis);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+		mthz::Vec3 b_barrel_axis = (diff - b_height_axis * b_height_axis.dot(diff)).normalize();
+		{
+			CheckNormResults x = sat_checknorm(getCylinderExtrema(a, b_barrel_axis), getCylinderExtrema(b, b_barrel_axis), b_barrel_axis);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+
+		std::vector<mthz::Vec3> a_gauss_verts = a.getGuassVerts();
+		std::vector<mthz::Vec3> b_gauss_verts = b.getGuassVerts();
+		for (GaussArc arc1 : a.getGuassArcs()) {
+			for (GaussArc arc2 : b.getGuassArcs()) {
+
+				mthz::Vec3 a1 = a_gauss_verts[arc1.v1_indx];
+				mthz::Vec3 a2 = a_gauss_verts[arc1.v2_indx];
+				mthz::Vec3 b1 = -b_gauss_verts[arc2.v1_indx];
+				mthz::Vec3 b2 = -b_gauss_verts[arc2.v2_indx];
+
+				//check arcs arent on opposite hemispheres
+				mthz::Vec3 a_avg = a1 + a2;
+				if (a_avg.dot(b1) + a_avg.dot(b2) <= 0) {
+					continue;
+				}
+
+				mthz::Vec3 a_perp = a1.cross(a2);
+				mthz::Vec3 b_perp = b1.cross(b2);
+				//check arc b1b2 crosses plane defined by a1a2 and vice verca
+				if (a_perp.dot(b1) * a_perp.dot(b2) > 0 || b_perp.dot(a1) * b_perp.dot(a2) > 0) {
+					continue;
+				}
+
+				mthz::Vec3 n = a_perp.cross(b_perp);
+				if (n.magSqrd() == 0) {
+					continue;
+				}
+
+				n = n.normalize();
+				if (a_avg.dot(n) < 0) {
+					n *= -1;
+				}
+
+				CheckNormResults x = sat_checknorm(getCylinderExtrema(a, n), getCylinderExtrema(b, n), n);
+				if (x.seprAxisExists()) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+				else if (x.pen_depth < min_pen.pen_depth) {
+					min_pen = x;
+					x = sat_checknorm(getCylinderExtrema(a, n), getCylinderExtrema(b, n), n);
+				}
+			}
+		}
+
+		out.normal = min_pen.norm;
+		mthz::Vec3 norm = min_pen.norm;
+
+		mthz::Vec3 u, w;
+		norm.getPerpendicularBasis(&u, &w);
+		ContactArea a_contact = findCylinderContactArea(a, norm, u, w);
+		ContactArea b_contact = findCylinderContactArea(b, -norm, u, w);
+
+		
+		std::vector<ProjP> man_pool;
+		std::vector<uint64_t> man_pool_magics;
+
+		if (a_contact.origin == EDGE) {
+			man_pool = a_contact.ps;
+			man_pool_magics = { 0x0 };
+		}
+		else if (b_contact.origin == EDGE) {
+			man_pool = b_contact.ps;
+			man_pool_magics = { 0x0 };
+		}
+		else {
+			for (int i = 0; i < a_contact.ps.size(); i++) {
+				ProjP p = a_contact.ps[i];
+				if (pInside(b_contact.ps, p)) {
+					man_pool.push_back(p);
+					uint64_t m = 0;
+					m |= 0x00000000FFFFFFFF & a_contact.p_IDs[i];
+					m |= 0xFFFFFFFF00000000 & (uint64_t(b_contact.surfaceID) << 32);
+					man_pool_magics.push_back(m);
+				}
+			}
+			for (int i = 0; i < b_contact.ps.size(); i++) {
+				ProjP p = b_contact.ps[i];
+				if (pInside(a_contact.ps, p)) {
+					man_pool.push_back(p);
+					uint64_t m = 0;
+					m |= 0x00000000FFFFFFFF & a_contact.surfaceID;
+					m |= 0xFFFFFFFF00000000 & (uint64_t(b_contact.p_IDs[i]) << 32);
+					man_pool_magics.push_back(m);
+				}
+			}
+			if (a_contact.ps.size() >= 2 && b_contact.ps.size() >= 2) {
+				int itr_max_a = (a_contact.ps.size() == 2) ? 1 : a_contact.ps.size();
+				int itr_max_b = (b_contact.ps.size() == 2) ? 1 : b_contact.ps.size();
+				for (int i = 0; i < itr_max_a; i++) {
+					int a2_indx = (i + 1) % a_contact.ps.size();
+					ProjP a1 = a_contact.ps[i];
+					ProjP a2 = a_contact.ps[a2_indx];
+					int a1_ID = a_contact.p_IDs[i];
+					int a2_ID = a_contact.p_IDs[a2_indx];
+
+					for (int j = 0; j < itr_max_b; j++) {
+						int b2_indx = (j + 1) % b_contact.ps.size();
+						ProjP b1 = b_contact.ps[j];
+						ProjP b2 = b_contact.ps[b2_indx];
+						int b1_ID = b_contact.p_IDs[j];
+						int b2_ID = b_contact.p_IDs[b2_indx];
+
+						ProjP out;
+						if (findIntersection(a1, a2, b1, b2, &out)) {
+							man_pool.push_back(out);
+							uint64_t m = 0;
+							m |= 0x00000000FFFFFFFF & getEdgeID(a1_ID, a2_ID);
+							m |= 0xFFFFFFFF00000000 & (uint64_t(getEdgeID(b1_ID, b2_ID)) << 32);
+							man_pool_magics.push_back(m);
+						}
+					}
+				}
+			}
+		}
+
+		mthz::Vec3 a_maxP = a_height_axis.dot(norm) > 0 ?
+			Cylinder::getExtremaOfDisk(a.getTopDiskCenter(), a_height_axis, a.getRadius(), norm)
+		  :	Cylinder::getExtremaOfDisk(a.getBotDiskCenter(), a_height_axis, a.getRadius(), norm);
+
+		double a_pen = min_pen.pen_depth;
+		double a_dot_val = a_maxP.dot(norm);
+		mthz::Vec3 n_offset = norm * a_dot_val;
+
+		uint64_t cID = 0;
+		cID |= 0x00000000FFFFFFFF & a_id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b_id) << 32);
+
+		out.points.reserve(man_pool.size());
+		for (int i = 0; i < man_pool.size(); i++) {
+			ProjP p = man_pool[i];
+			ContactP cp;
+			cp.pos = u * p.u + w * p.w + n_offset;
+			cp.pen_depth = cp.pos.dot(norm) - a_dot_val + a_pen;
+			cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
+			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
+			cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+			cp.magicID = MagicID{ cID, man_pool_magics[i] };
+			out.points.push_back(cp);
+		}
+		out.max_pen_depth = min_pen.pen_depth;
+
+		printf("norm: (%f, %f, %f), pen depth: %f, manifold size: %d\n", out.normal.x, out.normal.y, out.normal.z, out.max_pen_depth, out.points.size());
+
+		return out;
+	}
+
 	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat) {
 		Manifold out;
 		out.max_pen_depth = -1;
@@ -606,10 +910,191 @@ namespace phyz {
 		return out;
 	}
 
-	
+	static Manifold SAT_PolyCylinder(const Polyhedron& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat) {
+		Manifold out;
+		out.max_pen_depth = -1;
+		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		const GaussMap& ag = a.getGaussMap();
+
+		//check poly face axis
+		for (const GaussVert& g : ag.face_verts) {
+			if (!g.SAT_redundant) {
+				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(a.getPoints()[g.SAT_reference_point_index]));
+				CheckNormResults x = sat_checknorm(recentered_g_extrema, getCylinderExtrema(b, g.v), g.v);
+				if (x.seprAxisExists()) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+				else if (x.pen_depth < min_pen.pen_depth) {
+					min_pen = x;
+				}
+			}
+		}
+		//check cylinder face axis
+		mthz::Vec3 b_height_axis = b.getHeightAxis();
+		{
+			CheckNormResults x = sat_checknorm(findExtrema(a, b_height_axis), getCylinderExtrema(b, b_height_axis), b_height_axis);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+		//check edge collisions against the round body of the cylinder
+		for (Edge e : a.getEdges()) {
+			mthz::Vec3 edge_dir = e.p2() - e.p1();
+			mthz::Vec3 dir = edge_dir.cross(b_height_axis);
+			if (dir.mag() < 0.00000000001) continue;
+
+			mthz::Vec3 dir_normed = dir.normalize();
+			CheckNormResults x = sat_checknorm(findExtrema(a, dir_normed), getCylinderExtrema(b, dir_normed), dir_normed);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
+
+		for (GaussArc arc1 : ag.arcs) {
+			for (GaussArc arc2 : b.getGuassArcs()) {
+
+				mthz::Vec3 a1 = ag.face_verts[arc1.v1_indx].v;
+				mthz::Vec3 a2 = ag.face_verts[arc1.v2_indx].v;
+				mthz::Vec3 b1 = -b.getGuassVerts()[arc2.v1_indx];
+				mthz::Vec3 b2 = -b.getGuassVerts()[arc2.v2_indx];
+
+				//check arcs arent on opposite hemispheres
+				mthz::Vec3 a_avg = a1 + a2;
+				if (a_avg.dot(b1) + a_avg.dot(b2) <= 0) {
+					continue;
+				}
+
+				mthz::Vec3 a_perp = a1.cross(a2);
+				mthz::Vec3 b_perp = b1.cross(b2);
+				//check arc b1b2 crosses plane defined by a1a2 and vice verca
+				if (a_perp.dot(b1) * a_perp.dot(b2) > 0 || b_perp.dot(a1) * b_perp.dot(a2) > 0) {
+					continue;
+				}
+
+				mthz::Vec3 n = a_perp.cross(b_perp);
+				if (n.magSqrd() == 0) {
+					continue;
+				}
+
+				n = n.normalize();
+				if (a_avg.dot(n) < 0) {
+					n *= -1;
+				}
+
+				CheckNormResults x = sat_checknorm(findExtrema(a, n), getCylinderExtrema(b, n), n);
+				if (x.seprAxisExists()) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+				else if (x.pen_depth < min_pen.pen_depth) {
+					min_pen = x;
+				}
+			}
+		}
+
+		out.normal = min_pen.norm;
+		mthz::Vec3 norm = min_pen.norm;
+		mthz::Vec3 a_maxP = a.getPoints()[min_pen.a_maxPID];
+
+		mthz::Vec3 u, w;
+		norm.getPerpendicularBasis(&u, &w);
+		ContactArea a_contact = findContactArea(a, norm, a_maxP, min_pen.a_maxPID, u, w);
+		ContactArea b_contact = findCylinderContactArea(b, -norm, u, w);
+
+		std::vector<ProjP> man_pool;
+		std::vector<uint64_t> man_pool_magics;
+
+		if (b_contact.origin == EDGE) {
+			man_pool = b_contact.ps;
+			man_pool_magics = { 0x0 };
+		}
+		else {
+			for (int i = 0; i < a_contact.ps.size(); i++) {
+				ProjP p = a_contact.ps[i];
+				if (pInside(b_contact.ps, p)) {
+					man_pool.push_back(p);
+					uint64_t m = 0;
+					m |= 0x00000000FFFFFFFF & a_contact.p_IDs[i];
+					m |= 0xFFFFFFFF00000000 & (uint64_t(b_contact.surfaceID) << 32);
+					man_pool_magics.push_back(m);
+				}
+			}
+			for (int i = 0; i < b_contact.ps.size(); i++) {
+				ProjP p = b_contact.ps[i];
+				if (pInside(a_contact.ps, p)) {
+					man_pool.push_back(p);
+					uint64_t m = 0;
+					m |= 0x00000000FFFFFFFF & a_contact.surfaceID;
+					m |= 0xFFFFFFFF00000000 & (uint64_t(b_contact.p_IDs[i]) << 32);
+					man_pool_magics.push_back(m);
+				}
+			}
+			if (a_contact.ps.size() >= 2 && b_contact.ps.size() >= 2) {
+				int itr_max_a = (a_contact.ps.size() == 2) ? 1 : a_contact.ps.size();
+				int itr_max_b = (b_contact.ps.size() == 2) ? 1 : b_contact.ps.size();
+				for (int i = 0; i < itr_max_a; i++) {
+					int a2_indx = (i + 1) % a_contact.ps.size();
+					ProjP a1 = a_contact.ps[i];
+					ProjP a2 = a_contact.ps[a2_indx];
+					int a1_ID = a_contact.p_IDs[i];
+					int a2_ID = a_contact.p_IDs[a2_indx];
+
+					for (int j = 0; j < itr_max_b; j++) {
+						int b2_indx = (j + 1) % b_contact.ps.size();
+						ProjP b1 = b_contact.ps[j];
+						ProjP b2 = b_contact.ps[b2_indx];
+						int b1_ID = b_contact.p_IDs[j];
+						int b2_ID = b_contact.p_IDs[b2_indx];
+
+						ProjP out;
+						if (findIntersection(a1, a2, b1, b2, &out)) {
+							man_pool.push_back(out);
+							uint64_t m = 0;
+							m |= 0x00000000FFFFFFFF & getEdgeID(a1_ID, a2_ID);
+							m |= 0xFFFFFFFF00000000 & (uint64_t(getEdgeID(b1_ID, b2_ID)) << 32);
+							man_pool_magics.push_back(m);
+						}
+					}
+				}
+			}
+		}
+
+		double a_pen = min_pen.pen_depth;
+		double a_dot_val = a_maxP.dot(norm);
+		mthz::Vec3 n_offset = norm * a_dot_val;
+
+		uint64_t cID = 0;
+		cID |= 0x00000000FFFFFFFF & a_id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b_id) << 32);
+
+		out.points.reserve(man_pool.size());
+		for (int i = 0; i < man_pool.size(); i++) {
+			ProjP p = man_pool[i];
+			ContactP cp;
+			cp.pos = u * p.u + w * p.w + n_offset;
+			cp.pen_depth = cp.pos.dot(norm) - a_dot_val + a_pen;
+			cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
+			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
+			cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+			cp.magicID = MagicID{ cID, man_pool_magics[i] };
+			out.points.push_back(cp);
+		}
+		out.max_pen_depth = min_pen.pen_depth;
+
+		return out;
+	}
 
 	//still some room from optomization
-	Manifold detectSphereCylinder(const Sphere& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat) {
+	static Manifold detectSphereCylinder(const Sphere& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat) {
 		Manifold out;
 		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
@@ -643,7 +1128,7 @@ namespace phyz {
 		mthz::Vec3 topdisk_center = b.getCenter() + height_axis * 0.5 * b.getHeight();
 		mthz::Vec3 topdisk_close_point = Cylinder::getExtremaOfDisk(topdisk_center, height_axis, b.getRadius(), -diff.normalize());
 		{
-			mthz::Vec3 edge_axis = topdisk_close_point - a.getCenter();
+			mthz::Vec3 edge_axis = (topdisk_close_point - a.getCenter()).normalize();
 			CheckNormResults x = sat_checknorm(getSphereExtrema(a, edge_axis), getCylinderExtrema(b, edge_axis), edge_axis);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
@@ -656,7 +1141,7 @@ namespace phyz {
 		mthz::Vec3 botdisk_center = b.getCenter() + height_axis * 0.5 * b.getHeight();
 		mthz::Vec3 botdisk_close_point = Cylinder::getExtremaOfDisk(botdisk_center, height_axis, b.getRadius(), -diff.normalize());
 		{
-			mthz::Vec3 edge_axis = botdisk_close_point - a.getCenter();
+			mthz::Vec3 edge_axis = (botdisk_close_point - a.getCenter()).normalize();
 			CheckNormResults x = sat_checknorm(getSphereExtrema(a, edge_axis), getCylinderExtrema(b, edge_axis), edge_axis);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
@@ -669,10 +1154,8 @@ namespace phyz {
 
 		out.normal = min_pen.norm;
 
-		mthz::Vec3 botdisk_center = b.getCenter() - height_axis * 0.5 * b.getHeight();
-
 		ContactP cp;
-		cp.pos = b.getCenter() - out.normal * b.getRadius(); //sat_checknorm ensures normals always point away from a. to get normal pointing away from b - sign added
+		cp.pos = a.getCenter() + out.normal * a.getRadius();
 		cp.pen_depth = min_pen.pen_depth;
 		cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
 		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
@@ -682,7 +1165,7 @@ namespace phyz {
 		cID |= 0x00000000FFFFFFFF & a_id;
 		cID |= 0xFFFFFFFF00000000 & (uint64_t(b_id) << 32);
 
-		cp.magicID = MagicID{ cID, a_feature_id }; //not bothering with featureid
+		cp.magicID = MagicID{ cID, 0 }; //not bothering with featureid
 
 		out.points.push_back(cp);
 
@@ -717,57 +1200,6 @@ namespace phyz {
 		}
 
 		return extrema;
-	}
-
-	static inline ContactArea projectTriangleFace(const StaticMeshFace& s, mthz::Vec3 u, mthz::Vec3 w) {
-		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1 };
-
-		out.ps = std::vector<ProjP>(3);
-		out.p_IDs = std::vector<int>(3);
-		for (int i = 0; i < 3; i++) {
-			mthz::Vec3 v = s.vertices[i].p;
-			out.ps[i] = ProjP{ v.dot(u), v.dot(w) };
-			out.p_IDs[i] = i;
-		}
-		out.surfaceID = s.id;
-
-		return out;
-	}
-
-	static inline ContactArea projectTriangleEdge(const StaticMeshEdge& e, mthz::Vec3 n, mthz::Vec3 p, mthz::Vec3 u, mthz::Vec3 w) {
-		ContactArea out = { std::vector<ProjP>(), std::vector<int>(), -1 };
-
-		out.ps = { ProjP{ e.p1.dot(u), e.p1.dot(w) }, ProjP{ e.p2.dot(u), e.p2.dot(w) } };
-		out.p_IDs = { e.id, e.id };
-
-		return out;
-	}
-
-	static ContactArea findTriangleContactArea(const StaticMeshFace& t, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
-
-		double cos_ang = t.normal.dot(n);
-		if (1 - cos_ang <= COS_TOL) {
-			return projectTriangleFace(t, u, w);
-		}		
-
-		for (int i = 0; i < 3; i++) {
-			if (i != p_ID && (i + 1) % 3 != p_ID) {
-				continue;
-			}
-
-			StaticMeshEdge e = t.edges[i];
-			double sin_ang = abs((e.p2 - e.p1).normalize().dot(n));
-			if (sin_ang <= SIN_TOL) {
-				return projectTriangleEdge(e, n, p, u, w);
-			}
-		}
-
-		return ContactArea{
-			{ ProjP{ p.dot(u), p.dot(w) } },
-			{ p_ID },
-			-1
-		};
-
 	}
 
 	//consider neighboring triangles when picking the axis of least penetration

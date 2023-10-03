@@ -40,6 +40,10 @@ namespace rndr {
 		glUniform1i(getUniformLocation(name), i);
 	}
 
+	void Shader::setUniform1iv(const std::string& name, std::vector<int> is) {
+		glUniform1iv(getUniformLocation(name), is.size(), is.data());
+	}
+
 	void Shader::setUniform3f(const std::string& name, float v0, float v1, float v2) {
 		glUniform3f(getUniformLocation(name), v0, v1, v2);
 	}
@@ -50,6 +54,14 @@ namespace rndr {
 
 	void Shader::setUniformMat4f(const std::string& name, const Mat4& m) {
 		glUniformMatrix4fv(getUniformLocation(name), 1, true, (const GLfloat*)m.v);
+	}
+
+	void Shader::setTextureArrayUniform(const std::string& name, int n_textures) {
+		std::vector<int> ns(n_textures);
+		for (int i = 0; i < n_textures; i++) {
+			ns[i] = i;
+		}
+		setUniform1iv(name, ns);
 	}
 
 	int Shader::getUniformLocation(const std::string& name) {

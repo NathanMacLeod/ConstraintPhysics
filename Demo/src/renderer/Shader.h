@@ -28,9 +28,11 @@ namespace rndr {
 		void unbind() const;
 
 		void setUniform1i(const std::string& name, int i);
+		void setUniform1iv(const std::string& name, std::vector<int> is);
 		void setUniform3f(const std::string& name, float v0, float v1, float v2);
 		void setUniform4f(const std::string& name, float v0, float v1, float v2, float v3);
 		void setUniformMat4f(const std::string& name, const Mat4& m);
+		void setTextureArrayUniform(const std::string& name, int n_textures);
 
 	private:
 		std::string filePath;

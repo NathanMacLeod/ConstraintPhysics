@@ -209,30 +209,29 @@ public:
 		double rear_wheel_attach_dist = 0.5;
 		double front_wheel_attach_dist = chasis_base_length - 0.5;
 		double wheel_attach_gap = 0.1;
-		int wheel_detail = 60;
 
 		double suspension_block_size = 1.0;
 
 		mthz::Vec3 front_wheel1_position = chasis_base_pos + mthz::Vec3(-wheel_attach_gap, front_wheel_attach_height, front_wheel_attach_dist);
-		phyz::ConvexUnionGeometry front_wheel1 = phyz::ConvexUnionGeometry::cylinder(front_wheel1_position, front_wheel_radius, wheel_width, wheel_detail, phyz::Material::super_friction())
+		phyz::ConvexUnionGeometry front_wheel1 = phyz::ConvexUnionGeometry::cylinder(front_wheel1_position, front_wheel_radius, wheel_width, phyz::Material::super_friction())
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), front_wheel1_position);
 
 		phyz::ConvexUnionGeometry suspension_block1 = phyz::ConvexUnionGeometry::box(front_wheel1_position + mthz::Vec3(0, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
 
 		mthz::Vec3 front_wheel2_position = chasis_base_pos + mthz::Vec3(chasis_base_width + wheel_attach_gap, front_wheel_attach_height, front_wheel_attach_dist);
-		phyz::ConvexUnionGeometry front_wheel2 = phyz::ConvexUnionGeometry::cylinder(front_wheel2_position, front_wheel_radius, wheel_width, wheel_detail, phyz::Material::super_friction())
+		phyz::ConvexUnionGeometry front_wheel2 = phyz::ConvexUnionGeometry::cylinder(front_wheel2_position, front_wheel_radius, wheel_width, phyz::Material::super_friction())
 			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), front_wheel2_position);
 
 		phyz::ConvexUnionGeometry suspension_block2 = phyz::ConvexUnionGeometry::box(front_wheel2_position + mthz::Vec3(-suspension_block_size, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
 		
 		mthz::Vec3 rear_wheel1_position = chasis_base_pos + mthz::Vec3(-wheel_attach_gap, rear_wheel_attach_height, rear_wheel_attach_dist);
-		phyz::ConvexUnionGeometry rear_wheel1 = phyz::ConvexUnionGeometry::cylinder(rear_wheel1_position, rear_wheel_radius, wheel_width, wheel_detail, phyz::Material::high_friction())
+		phyz::ConvexUnionGeometry rear_wheel1 = phyz::ConvexUnionGeometry::cylinder(rear_wheel1_position, rear_wheel_radius, wheel_width, phyz::Material::high_friction())
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), rear_wheel1_position);
 
 		phyz::ConvexUnionGeometry steering_block1 = phyz::ConvexUnionGeometry::box(rear_wheel1_position + mthz::Vec3(0, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
 
 		mthz::Vec3 rear_wheel2_position = chasis_base_pos + mthz::Vec3(chasis_base_width + wheel_attach_gap, rear_wheel_attach_height, rear_wheel_attach_dist);
-		phyz::ConvexUnionGeometry rear_wheel2 = phyz::ConvexUnionGeometry::cylinder(rear_wheel2_position, rear_wheel_radius, wheel_width, wheel_detail, phyz::Material::high_friction())
+		phyz::ConvexUnionGeometry rear_wheel2 = phyz::ConvexUnionGeometry::cylinder(rear_wheel2_position, rear_wheel_radius, wheel_width, phyz::Material::high_friction())
 			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1)), rear_wheel2_position);
 
 		phyz::ConvexUnionGeometry steering_block2 = phyz::ConvexUnionGeometry::box(rear_wheel2_position + mthz::Vec3(-suspension_block_size, -suspension_block_size / 2.0, -suspension_block_size / 2.0), suspension_block_size, suspension_block_size, suspension_block_size);
@@ -554,7 +553,7 @@ public:
 
 			double aspect_ratio = (double)properties.window_height / properties.window_width;
 			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 550.0, 2.0, 2.0 * aspect_ratio, 120.0));
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 550.0, 2.0, 2.0 * aspect_ratio, 60.0));
 			shader.setUniform3f("u_ambient_light", 0.4, 0.4, 0.4);
 			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
 			shader.setUniform3f("u_pointlight_col", 0.6, 0.6, 0.6);
@@ -564,7 +563,7 @@ public:
 
 				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, b.r->getAsleep(), color{ 1.0f, 0.0f, 0.0f });
 
-				if (batch_array.remainingCapacity() <= transformed_mesh.vertices.size()) {
+				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}

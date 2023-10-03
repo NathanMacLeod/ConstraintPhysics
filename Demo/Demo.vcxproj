@@ -76,7 +76,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)ConstraintPhysics\src;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\GLFW\include;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\GLEW\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)ConstraintPhysics\src;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\GLFW\include;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\GLEW\include;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\stb_image\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -119,7 +119,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)ConstraintPhysics\src;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\GLFW\include;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\GLEW\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)ConstraintPhysics\src;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\GLFW\include;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\GLEW\include;$(SolutionDir)ConstraintPhysics\Demo\Dependencies\stb_image\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);NDEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -132,6 +132,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Dependencies\stb_image\stb_image.cpp" />
     <ClCompile Include="src\Demos\DemoScene.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\main_old.cpp" />
@@ -140,6 +141,7 @@
     <ClCompile Include="src\renderer\IndexBuffer.cpp" />
     <ClCompile Include="src\renderer\Renderer.cpp" />
     <ClCompile Include="src\renderer\Shader.cpp" />
+    <ClCompile Include="src\renderer\Texture.cpp" />
     <ClCompile Include="src\renderer\VertexArray.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -170,6 +172,7 @@
     <ClInclude Include="src\renderer\Mat4.h" />
     <ClInclude Include="src\renderer\Renderer.h" />
     <ClInclude Include="src\renderer\Shader.h" />
+    <ClInclude Include="src\renderer\Texture.h" />
     <ClInclude Include="src\renderer\VertexArray.h" />
   </ItemGroup>
   <ItemGroup>

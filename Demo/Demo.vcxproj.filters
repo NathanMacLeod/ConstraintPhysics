@@ -45,6 +45,12 @@
     <ClCompile Include="src\ProgressBar.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\renderer\Texture.cpp">
+      <Filter>src\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\stb_image\stb_image.cpp">
+      <Filter>src\renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\renderer\Renderer.h">
@@ -106,6 +112,9 @@
     </ClInclude>
     <ClInclude Include="src\ProgressBar.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderer\Texture.h">
+      <Filter>src\renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

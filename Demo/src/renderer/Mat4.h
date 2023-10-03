@@ -60,11 +60,24 @@ namespace rndr {
 		}
 
 		static Mat4 proj(double near, double far, double w, double h, double FOV) {
+			double f = tan(FOV * PI / 360);
+			
 			Mat4 out;
-			out.v[0][0] = h * tan(FOV * 3.1415926535 / 360) / w;
-			out.v[1][1] = tan(FOV * 3.1415926535 / 360);
-			out.v[2][2] = -far / (far - near); out.v[2][3] = -near * far / (far - near);
+			out.v[0][0] = h / (f * w);
+			out.v[1][1] = 1.0 / f;
+			out.v[2][2] = -(far + near) / (far - near); out.v[2][3] = -2 * far * near / (far - near);
 			out.v[3][2] = -1.0;
+
+			return out;
+		}
+
+		static Mat4 window2DTransform(double window_width, double window_height) {
+			Mat4 out;
+
+			out.v[0][0] = 2.0 / window_width; out.v[0][3] = -1;
+			out.v[1][1] = 2.0 / window_height; out.v[1][3] = -1;
+			out.v[2][2] = 1.0;
+			out.v[3][3] = 1.0;
 
 			return out;
 		}

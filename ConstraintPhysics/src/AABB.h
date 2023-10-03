@@ -65,6 +65,8 @@ namespace phyz{
 				out.max.y = std::max<double>(out.max.y, p.y);
 				out.max.z = std::max<double>(out.max.z, p.z);
 			}
+
+			return out;
 		}
 
 		static AABB conformNewBasis(AABB a, mthz::Vec3 u, mthz::Vec3 v, mthz::Vec3 w, mthz::Vec3 xyz_origin) {

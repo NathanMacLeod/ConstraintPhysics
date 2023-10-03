@@ -524,6 +524,35 @@ namespace phyz {
 
 				*tensor += sphere_tensor;
 			}
+			case CYLINDER:
+			{
+				const Cylinder& c = (const Cylinder&)*primitive.getGeometry();
+				double h = c.getHeight();
+				double r = c.getRadius();
+				double cylinder_mass = PI * r * r * h * primitive.material.density;
+
+				*mass += cylinder_mass;
+				if (!override_center_of_mass) *com += cylinder_mass * c.getCenter();
+				mthz::Mat3 cylinder_tensor = mthz::Mat3::zero();
+				cylinder_tensor.v[0][0] = cylinder_mass * (h * h / 12 + r * r / 4);
+				cylinder_tensor.v[1][1] = cylinder_mass * r * r / 2;
+				cylinder_tensor.v[2][2] = cylinder_tensor.v[0][0];
+
+				double dp = c.getHeightAxis().dot(mthz::Vec3(0, 1, 0));
+				//rotate tensor to cylinders orientation
+				if (abs(dp) < 0.999999999) {
+					double rotation_angle = acos(dp);
+					mthz::Vec3 rotation_axis = mthz::Vec3(0, 1, 0).cross(c.getHeightAxis()).normalize();
+					mthz::Quaternion q(rotation_angle, rotation_axis);
+
+					mthz::Mat3 rot = q.getRotMatrix();
+					mthz::Mat3 rot_invert = q.conjugate().getRotMatrix();
+					cylinder_tensor = rot * cylinder_tensor * rot_invert;
+				}
+
+				cylinder_tensor = recenterTensor(cylinder_mass, cylinder_tensor, mthz::Vec3(0, 0, 0), c.getCenter());
+				*tensor += cylinder_tensor;
+			}
 			break;
 			}
 			

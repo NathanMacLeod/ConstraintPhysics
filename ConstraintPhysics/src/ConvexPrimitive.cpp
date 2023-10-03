@@ -19,6 +19,9 @@ namespace phyz {
 		case SPHERE:
 			geometry = (ConvexGeometry*)new Sphere((const Sphere&)*c.geometry);
 			break;
+		case CYLINDER:
+			geometry = (ConvexGeometry*)new Cylinder((const Cylinder &) * c.geometry);
+			break;
 		}
 	}
 
@@ -32,6 +35,9 @@ namespace phyz {
 		case SPHERE:
 			geometry = (ConvexGeometry*)new Sphere((const Sphere&)geometry_primitive);
 			break;
+		case CYLINDER:
+			geometry = (ConvexGeometry*)new Cylinder((const Cylinder&)geometry_primitive);
+			break;
 		}
 	}
 
@@ -43,6 +49,9 @@ namespace phyz {
 			break;
 		case SPHERE:
 			*(Sphere*)copy.geometry = ((Sphere*)geometry)->getRotated(q, pivot_point);
+			break;
+		case CYLINDER:
+			*(Cylinder*)copy.geometry = ((Cylinder*)geometry)->getRotated(q, pivot_point);
 			break;
 		}
 		
@@ -58,6 +67,9 @@ namespace phyz {
 		case SPHERE:
 			*(Sphere*)copy.geometry = ((Sphere*)geometry)->getTranslated(t);
 			break;
+		case CYLINDER:
+			*(Cylinder*)copy.geometry = ((Cylinder*)geometry)->getTranslated(t);
+			break;
 		}
 
 		return copy;
@@ -72,6 +84,9 @@ namespace phyz {
 		case SPHERE:
 			*(Sphere*)copy.geometry = ((Sphere*)geometry)->getScaled(d, center_of_dialtion);
 			break;
+		case CYLINDER:
+			*(Cylinder*)copy.geometry = ((Cylinder*)geometry)->getScaled(d, center_of_dialtion);
+			break;
 		}
 
 		return copy;
@@ -81,15 +96,18 @@ namespace phyz {
 		switch (type) {
 		case POLYHEDRON:	return ((Polyhedron*)geometry)->testRayIntersection(ray_origin, ray_dir);
 		case SPHERE:		return ((Sphere*)geometry)->testRayIntersection(ray_origin, ray_dir);
+		case CYLINDER:		return ((Cylinder*)geometry)->testRayIntersection(ray_origin, ray_dir);
 		}
 	}
 
 	Cylinder::Cylinder(const Cylinder& c) 
-		: center(c.center), height_axis(c.height_axis), radius(c.radius), height(c.height), gauss_verts(c.gauss_verts), gauss_arcs(c.gauss_arcs)
+		: center(c.center), height_axis(c.height_axis), radius(c.radius), height(c.height), gauss_verts(c.gauss_verts), gauss_arcs(c.gauss_arcs),
+		top_face_approximation(c.top_face_approximation), bot_face_approximation(c.bot_face_approximation)
 	{}
 
-	Cylinder::Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis, int edge_approximation_detail) 
-		: center(center), height_axis(height_axis), radius(radius), height(height), gauss_verts(2 + edge_approximation_detail), gauss_arcs(2 * edge_approximation_detail)
+	Cylinder::Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis, int edge_approximation_detail, int face_approximation_detail)
+		: center(center), height_axis(height_axis), radius(radius), height(height), gauss_verts(2 + edge_approximation_detail), gauss_arcs(2 * edge_approximation_detail),
+		top_face_approximation(face_approximation_detail), bot_face_approximation(face_approximation_detail)
 	{
 		mthz::Mat3 rot;
 		mthz::Vec3 unrotated_height_axis = mthz::Vec3(0, 1, 0);
@@ -103,12 +121,23 @@ namespace phyz {
 		gauss_verts[0] = rot * mthz::Vec3(0, 1, 0);
 		gauss_verts[1] = rot * mthz::Vec3(0, -1, 0);
 
-		double dTheta = 2 * PI / edge_approximation_detail;
-		for (unsigned int i = 0; i < edge_approximation_detail; i++) {
-			double theta = i * dTheta;
-			gauss_verts[i + 2] = rot * mthz::Vec3(sin(theta), 0, cos(theta));
-			gauss_arcs[2 * i] = { 0, i }; //arc connecting top to side
-			gauss_arcs[2 * i + 1] = { 1, i }; //arc connecting side to bottom.
+		{
+			double dTheta = 2 * PI / edge_approximation_detail;
+			for (unsigned int i = 0; i < edge_approximation_detail; i++) {
+				double theta = i * dTheta;
+				gauss_verts[i + 2] = rot * mthz::Vec3(sin(theta), 0, cos(theta));
+				gauss_arcs[2 * i] = { 0, i }; //arc connecting top to side
+				gauss_arcs[2 * i + 1] = { 1, i }; //arc connecting side to bottom.
+			}
+		}
+		{
+			double dTheta = 2 * PI / face_approximation_detail;
+			double encapsulate_radius = radius / cos(PI / face_approximation_detail);
+			for (unsigned int i = 0; i < face_approximation_detail; i++) {
+				double theta = i * dTheta;
+				top_face_approximation[i] = center + rot *  mthz::Vec3(encapsulate_radius * sin(theta), height/2.0, encapsulate_radius * cos(theta));
+				bot_face_approximation[i] = center + rot * mthz::Vec3(encapsulate_radius * sin(theta),-height/2.0, encapsulate_radius * cos(theta));
+			}
 		}
 	}
 
@@ -136,32 +165,22 @@ namespace phyz {
 		for (int i = 0; i < gauss_verts.size(); i++) {
 			gauss_verts[i] = rot * reference.gauss_verts[i];
 		}
+		for (int i = 0; i < top_face_approximation.size(); i++) {
+			top_face_approximation[i] = rot * reference.top_face_approximation[i] + trans;
+			bot_face_approximation[i] = top_face_approximation[i] - height * height_axis;
+		}
 		
 	}
 
 	AABB Cylinder::gen_AABB() const {
-		mthz::Vec3 topdisk_center = center + 0.5 * height * height_axis;
-		mthz::Vec3 botdisk_center = center - 0.5 * height * height_axis;
+		std::vector<mthz::Vec3> point_cloud;
+		point_cloud.reserve(2 * top_face_approximation.size());
+		for (int i = 0; i < top_face_approximation.size(); i++) {
+			point_cloud.push_back(top_face_approximation[i]);
+			point_cloud.push_back(bot_face_approximation[i]);
+		}
 
-		mthz::Vec3 top_posx = getExtremaOfDisk(topdisk_center, height_axis, radius, mthz::Vec3(1, 0, 0));
-		mthz::Vec3 top_negx = 2 * topdisk_center - top_posx;
-		mthz::Vec3 top_posy = getExtremaOfDisk(topdisk_center, height_axis, radius, mthz::Vec3(0, 1, 0));
-		mthz::Vec3 top_negy = 2 * topdisk_center - top_posy;
-		mthz::Vec3 top_posz = getExtremaOfDisk(topdisk_center, height_axis, radius, mthz::Vec3(0, 0, 1));
-		mthz::Vec3 top_negz = 2 * topdisk_center - top_posz;
-
-		mthz::Vec3 bot_posx = getExtremaOfDisk(botdisk_center, height_axis, radius, mthz::Vec3(1, 0, 0));
-		mthz::Vec3 bot_negx = 2 * botdisk_center - bot_posx;
-		mthz::Vec3 bot_posy = getExtremaOfDisk(botdisk_center, height_axis, radius, mthz::Vec3(0, 1, 0));
-		mthz::Vec3 bot_negy = 2 * botdisk_center - bot_posy;
-		mthz::Vec3 bot_posz = getExtremaOfDisk(botdisk_center, height_axis, radius, mthz::Vec3(0, 0, 1));
-		mthz::Vec3 bot_negz = 2 * botdisk_center - bot_posz;
-
-		return AABB::encapsulatePointCloud({
-			top_posx, top_negx, bot_posx, bot_negx,
-			top_posy, top_negy, bot_posy, bot_negy,
-			top_posz, top_negz, bot_posz, bot_negz
-		});
+		return AABB::encapsulatePointCloud(point_cloud);
 	}
 
 	RayQueryReturn checkDiskIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir, mthz::Vec3 disk_center, mthz::Vec3 disk_normal, double radius) {
