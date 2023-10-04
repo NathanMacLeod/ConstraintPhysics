@@ -97,8 +97,6 @@ public:
 
 		spinner_r->setAngVel(mthz::Vec3(0, 60, 0));
 
-		//body_r->setAngVel(mthz::Vec3(0, 50, 0));
-
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
