@@ -30,15 +30,13 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setSleepingEnabled(true);
 		p.setPGSIterations(45, 35);
-		p.setPrintPerformanceData(true);
 
 		bool lock_cam = true;
-		
+
 		std::vector<PhysBod> bodies;
-		
-		mthz::Vec3 center = mthz::Vec3(0, -2, -10);
+
+		mthz::Vec3 center = mthz::Vec3(0, -2, 0);
 		int grid_count = 360;
 		double grid_size = 0.5;
 		phyz::Mesh dragon = phyz::readOBJ("resources/mesh/xyzrgb_dragon.obj", 0.2);
@@ -49,15 +47,33 @@ public:
 		for (mthz::Vec3& v : grid.points) {
 			//v.y += 5 * 2 * (0.5 - frand()) - 10;
 			//v.y += 0.0055 * (v - center).magSqrd();
-			//v.y += 3 -0.5 * (v - center).mag() + 0.02 * (v - center).magSqrd();
+			//v.y += 3 - 0.5 * (v - center).mag() + 0.02 * (v - center).magSqrd();
 			v.y += cos((v - center).mag() / 2.33);
 		}
 		for (phyz::TriIndices& t : grid.triangle_indices) {
 			//t.material = phyz::Material::ice();
 		}
 
+		Mesh contact_ball_mesh = fromGeometry(phyz::ConvexUnionGeometry::merge(phyz::ConvexUnionGeometry::sphere(mthz::Vec3(), 0.03), phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.02, 0.1)), {1.0, 0, 0});
+
+		struct Contact {
+			mthz::Vec3 p;
+			mthz::Vec3 n;
+		};
+		std::vector<Contact> all_contact_points;
+
+		p.registerCollisionAction(phyz::CollisionTarget::all(), phyz::CollisionTarget::all(), [&](phyz::RigidBody* b1, phyz::RigidBody* b2,
+			const std::vector<phyz::Manifold>& manifold) {
+				for (const phyz::Manifold& m : manifold) {
+					for (phyz::ContactP p : m.points) {
+						all_contact_points.push_back({ p.pos, m.normal });
+					}
+				}
+			}
+		);
+
 		phyz::RigidBody* gr = p.createRigidBody(grid);
-		bodies.push_back({ fromStaticMeshInput(grid, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
+		bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
 
 		phyz::RigidBody* r = p.createRigidBody(dragon_input, false);
 		bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
@@ -82,6 +98,12 @@ public:
 		bool single_step_mode = false;
 
 		while (rndr::render_loop(&fElapsedTime)) {
+
+			/*for (phyz::RigidBody* r : p.getBodies()) {
+				if (r->getMovementType() == phyz::RigidBody::DYNAMIC) {
+					printf("position: (%f, %f, %f); orietnation: (%f, %f, %f, %f); velocity: (%f, %f, %f), angular velocity: (%f, %f, %f)\n", r->getCOM().x, r->getCOM().y, r->getCOM().z, r->getOrientation().r, r->getOrientation().i, r->getOrientation().j, r->getOrientation().k, r->getVel().x, r->getVel().y, r->getVel().z, r->getAngVel().x, r->getAngVel().y, r->getAngVel().z);
+				}
+			}*/
 
 			if (rndr::getKeyDown(GLFW_KEY_W)) {
 				pos += orient.applyRotation(mthz::Vec3(0, 0, -1) * fElapsedTime * mv_speed);
@@ -113,6 +135,7 @@ public:
 				single_step_mode = !single_step_mode;
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				all_contact_points.clear();
 				p.timeStep();
 			}
 
@@ -121,7 +144,7 @@ public:
 				double block_speed = 15;
 
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
-				phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::cylinder(pos, 1, 1);// .getRotated(mthz::Quaternion(PI / 4, mthz::Vec3(1, 0, 0)), pos);
+				phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::cylinder(pos, 0.3, 3);// .getRotated(mthz::Quaternion(PI / 4, mthz::Vec3(1, 0, 0)), pos);
 				//phyz::ConvexUnionGeometry poly = phyz::ConvexUnionGeometry::polyCylinder(pos + mthz::Vec3(0, -0.5, 0), 1, 1);
 				phyz::RigidBody* block_r = p.createRigidBody(block);
 
@@ -144,6 +167,21 @@ public:
 				bodies.push_back({ fromGeometry(block), block_r });
 			}
 
+			if (rndr::getKeyPressed(GLFW_KEY_R)) {
+				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(pos, camera_dir);
+
+				if (hit_info.did_hit) {
+					for (int i = 0; i < bodies.size(); i++) {
+						if (bodies[i].r == hit_info.hit_object) {
+							bodies.erase(bodies.begin() + i);
+							break;
+						}
+					}
+					p.removeRigidBody(hit_info.hit_object);
+				}
+			}
+
 			t += fElapsedTime;
 
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
@@ -154,6 +192,7 @@ public:
 			phyz_time += fElapsedTime;
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
 			while (!single_step_mode && phyz_time > timestep) {
+				all_contact_points.clear();
 				phyz_time -= timestep;
 				p.timeStep();
 			}
@@ -178,6 +217,27 @@ public:
 			for (const PhysBod& b : bodies) {
 
 				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, b.r->getAsleep(), color{ 1.0f, 0.0f, 0.0f });
+
+				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
+					rndr::draw(batch_array, shader);
+					batch_array.flush();
+				}
+				batch_array.push(transformed_mesh.vertices.data(), transformed_mesh.vertices.size(), transformed_mesh.indices);
+			}
+
+			for (Contact c : all_contact_points) {
+				mthz::Quaternion rot;
+				double d = mthz::Vec3(0, 1, 0).dot(c.n);
+				if (d < -0.99999) {
+					rot = mthz::Quaternion(PI, mthz::Vec3(0, 0, 1));
+				}
+				else if (d < 0.99999) {
+					mthz::Vec3 axis = mthz::Vec3(0, 1, 0).cross(c.n).normalize();
+					double ang = acos(d);
+					rot = mthz::Quaternion(ang, axis);
+				}
+
+				Mesh transformed_mesh = getTransformed(contact_ball_mesh, c.p, rot, cam_pos, cam_orient, false, color{1.0f, 0.0f, 0.0f});
 
 				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);

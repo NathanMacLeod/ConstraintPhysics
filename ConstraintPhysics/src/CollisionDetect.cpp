@@ -31,8 +31,8 @@ namespace phyz {
 		uint64_t c2_bID = (0xFFFFFFFF00000000 & m.bID) >> 32;
 
 		MagicID out;
-		out.cID = (0x00000000FFFFFFFF | c2_cID) + (0xFFFFFFFF00000000 & (c1_cID << 32));
-		out.bID = (0x00000000FFFFFFFF | c2_bID) + (0xFFFFFFFF00000000 & (c1_bID << 32));
+		out.cID = (0x00000000FFFFFFFF & c2_cID) + (0xFFFFFFFF00000000 & (c1_cID << 32));
+		out.bID = (0x00000000FFFFFFFF & c2_bID) + (0xFFFFFFFF00000000 & (c1_bID << 32));
 
 		return out;
 	}
@@ -271,13 +271,13 @@ namespace phyz {
 
 	}
 
-	static inline ContactArea projectCylinderFace(const std::vector<mthz::Vec3> face_verts, mthz::Vec3 u, mthz::Vec3 w, int face_id) {
+	static inline ContactArea projectCylinderFace(const std::vector<mthz::Vec3> face_verts, mthz::Vec3 u, mthz::Vec3 w, int face_id, int point_id_offset) {
 		int n_points = face_verts.size();
 		ContactArea out = { std::vector<ProjP>(n_points), std::vector<int>(n_points), face_id, FACE };
 
 		for (int i = 0; i < n_points; i++) {
 			out.ps[i] = { face_verts[i].dot(u), face_verts[i].dot(w) };
-			out.p_IDs[i] = i;
+			out.p_IDs[i] = i + point_id_offset;
 		}
 
 		return out;
@@ -286,25 +286,25 @@ namespace phyz {
 	static ContactArea findCylinderContactArea(const Cylinder& c, mthz::Vec3 n, mthz::Vec3 u, mthz::Vec3 w) {
 		mthz::Vec3 height_axis = c.getHeightAxis();
 		if (1 - abs(height_axis.dot(n)) <= COS_TOL && n.dot(height_axis) > 0) {
-			return projectCylinderFace(c.getTopFaceApprox(), u, w, c.getTopSurfaceID());
+			return projectCylinderFace(c.getTopFaceApprox(), u, w, c.getTopSurfaceID(), c.getTopApproxPointIDOffset());
 		}
 		else if (1 - abs(height_axis.dot(n)) <= COS_TOL) {
-			return projectCylinderFace(c.getBotFaceApprox(), u, w, c.getTopSurfaceID());
+			return projectCylinderFace(c.getBotFaceApprox(), u, w, c.getBotSurfaceID(), c.getBotApproxPointIDOffset());
 		}
-		else if (height_axis.cross(n).mag() <= SIN_TOL) {
+		else if (abs(height_axis.dot(n)) <= SIN_TOL) {
 			mthz::Vec3 barrel_axis = (n - height_axis * height_axis.dot(n)).normalize();
 			mthz::Vec3 p1 = c.getCenter() + barrel_axis * c.getRadius() + 0.5 * c.getHeight() * height_axis;
-			mthz::Vec3 p2 = p1 = c.getHeight() * height_axis;
+			mthz::Vec3 p2 = p1 - c.getHeight() * height_axis;
 
-			return ContactArea{ {{p1.dot(u), p1.dot(w)}, {p2.dot(u), p2.dot(w)}}, {0, 1}, -1, CYLINDER_BARREL };
+			return ContactArea{ {{p1.dot(u), p1.dot(w)}, {p2.dot(u), p2.dot(w)}}, {c.getTopEdgeID(), c.getBotEdgeID()}, -1, CYLINDER_BARREL};
 		}
 		else if (n.dot(height_axis) > 0) {
 			mthz::Vec3 p = Cylinder::getExtremaOfDisk(c.getTopDiskCenter(), height_axis, c.getRadius(), n);
-			return ContactArea{ {{p.dot(u), p.dot(w)}}, {0}, -1, EDGE };
+			return ContactArea{ {{p.dot(u), p.dot(w)}}, {c.getTopEdgeID()}, -1, EDGE};
 		}
 		else {
 			mthz::Vec3 p = Cylinder::getExtremaOfDisk(c.getBotDiskCenter(), height_axis, c.getRadius(), n);
-			return ContactArea{ {{p.dot(u), p.dot(w)}}, {0}, -1, EDGE };
+			return ContactArea{ {{p.dot(u), p.dot(w)}}, {c.getBotEdgeID()}, -1, EDGE};
 		}
 	}
 
@@ -961,7 +961,18 @@ namespace phyz {
 				min_pen = x;
 			}
 		}
-
+		for (mthz::Vec3 p : a.getPoints()) {
+			mthz::Vec3 diff = p - b.getCenter();
+			mthz::Vec3 n = (diff - b_height_axis * b_height_axis.dot(diff)).normalize();
+			CheckNormResults x = sat_checknorm(findExtrema(a, n), getCylinderExtrema(b, n), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			else if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+		}
 		for (GaussArc arc1 : ag.arcs) {
 			for (GaussArc arc2 : b.getGuassArcs()) {
 
@@ -1217,7 +1228,7 @@ namespace phyz {
 			assert(s.gauss_region.size() == 3);
 			for (int i = 0; i < s.gauss_region.size(); i++) {
 				mthz::Vec3 inner_region_direction = s.gauss_region[i].cross(s.gauss_region[(i + 1) % s.gauss_region.size()]);
-				if (normal.dot(inner_region_direction) < 0) return false;
+				if (normal.dot(inner_region_direction) < -EPS) return false;
 			}
 			break;
 		case 2:
@@ -1230,9 +1241,9 @@ namespace phyz {
 			mthz::Vec3 v0_up = arc_normal.cross(s.gauss_region[0]);
 
 			//check vector doesnt lie outside the arc within the plane
-			if (normal.dot(v0_up) < 0) return false;
+			if (normal.dot(v0_up) < -EPS) return false;
 			mthz::Vec3 v1_down = s.gauss_region[1].cross(arc_normal);
-			if (normal.dot(v1_down) < 0) return false;
+			if (normal.dot(v1_down) < -EPS) return false;
 			break;
 		}
 		case 3:
@@ -1536,8 +1547,23 @@ namespace phyz {
 				min_gauss_valid_pen = x;
 			}
 		}
+
+		ExtremaInfo poly_info = getCylinderExtrema(a, b.normal);
+		CheckNormResults b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, false), b.normal);
+		if (b_norm_x.seprAxisExists()) {
+			out.max_pen_depth = -1;
+			return out;
+		}
+		b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, true), b.normal);
+		if (b_norm_x.pen_depth < min_pen.pen_depth) {
+			min_pen = b_norm_x;
+		}
+		if (b_norm_x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -b_norm_x.norm)) {
+			min_gauss_valid_pen = b_norm_x;
+		}
+
 		//check edge collisions against the round body of the cylinder
-		for (StaticMeshEdge e : b.edges) {
+		for (const StaticMeshEdge& e : b.edges) {
 			mthz::Vec3 edge_dir = e.p2 - e.p1;
 			mthz::Vec3 dir = edge_dir.cross(a_height_axis);
 			if (dir.mag() < 0.00000000001) continue;
@@ -1558,18 +1584,24 @@ namespace phyz {
 			}
 		}
 
-		ExtremaInfo poly_info = getCylinderExtrema(a, b.normal);
-		CheckNormResults b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, false), b.normal);
-		if (b_norm_x.seprAxisExists()) {
-			out.max_pen_depth = -1;
-			return out;
-		}
-		b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, true), b.normal);
-		if (b_norm_x.pen_depth < min_pen.pen_depth) { //no normalDirectionValid check needed for this direction
-			min_pen = b_norm_x;
-		}
-		if (b_norm_x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -b_norm_x.norm)) {
-			min_gauss_valid_pen = b_norm_x;
+		//check vertex collisions against the body of the cylinder
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p = b.vertices[i].p;
+			mthz::Vec3 diff = p - a.getCenter();
+			mthz::Vec3 n = (diff - a_height_axis * a_height_axis.dot(diff)).normalize();
+			ExtremaInfo cyl_extrema = getCylinderExtrema(a, n);
+			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, n, false), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, n, true), n);
+			if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+				min_gauss_valid_pen = x;
+			}
 		}
 
 		struct SimpleArc {
@@ -1643,12 +1675,12 @@ namespace phyz {
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
 		ContactArea a_contact = findCylinderContactArea(a, nongauss_min_pen.norm, u, w);
-		ContactArea b_contact = findTriangleContactArea(b, (-1) * nongauss_min_pen.norm, b_maxP, nongauss_min_pen.b_maxPID, u, w);
+		ContactArea b_contact = findTriangleContactArea(b, -nongauss_min_pen.norm, b_maxP, nongauss_min_pen.b_maxPID, u, w);
 
 		std::vector<ProjP> man_pool;
 		std::vector<uint64_t> man_pool_magics;
-		if (b_contact.origin == EDGE) {
-			man_pool = b_contact.ps;
+		if (a_contact.origin == EDGE) {
+			man_pool = a_contact.ps;
 			man_pool_magics = { 0x0 };
 		}
 		else {
@@ -1781,8 +1813,8 @@ namespace phyz {
 		std::vector<Manifold> manifolds_out;
 
 		for (unsigned int i : tri_candidates) {
-			const StaticMeshFace& tri = b.getTriangles()[i];
-			double non_gauss_valid_normal_penalty = 0.4 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
+			const StaticMeshFace& tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
+			double non_gauss_valid_normal_penalty = 0.1 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
 			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
@@ -1814,8 +1846,8 @@ namespace phyz {
 		std::vector<Manifold> manifolds_out;
 
 		for (unsigned int i : tri_candidates) {
-			const StaticMeshFace& tri = b.getTriangles()[i];
-			double non_gauss_valid_normal_penalty = 0.4 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
+			const StaticMeshFace& tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
+			double non_gauss_valid_normal_penalty = 0.1 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
 			Manifold m = SAT_CylinderTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {

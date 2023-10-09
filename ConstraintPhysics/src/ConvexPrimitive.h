@@ -133,8 +133,12 @@ namespace phyz {
 
 		inline double getRadius() const { return radius; }
 		inline double getHeight() const { return height; }
-		inline int getTopSurfaceID() const { return 0; }
-		inline int getBotSurfaceID() const { return 1; }
+		inline int getTopApproxPointIDOffset() const { return 0; }
+		inline int getBotApproxPointIDOffset() const { return top_face_approximation.size(); }
+		inline int getTopSurfaceID() const { return 2 * top_face_approximation.size(); }
+		inline int getBotSurfaceID() const { return 2 * top_face_approximation.size() + 1; }
+		inline int getTopEdgeID() const { return 2 * top_face_approximation.size() + 2; }
+		inline int getBotEdgeID() const { return 2 * top_face_approximation.size() + 3; }
 		inline mthz::Vec3 getHeightAxis() const { return height_axis; }
 		inline mthz::Vec3 getCenter() const { return center; }
 		inline mthz::Vec3 getTopDiskCenter() const { return center + 0.5 * height * height_axis; }

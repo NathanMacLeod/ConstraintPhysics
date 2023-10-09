@@ -997,7 +997,7 @@ namespace phyz {
 
 		for (Contact* c : e->contactConstraints) {
 			if (c->magic == magic) {
-				double friction = (c->friction.getStaticReady()) ? static_friction : kinetic_friction;
+				double friction = c->friction.getStaticReady() ? static_friction : kinetic_friction;
 				NVec<1> contact_impulse = warm_start_disabled ? NVec<1>{ 0.0 } : c->contact.impulse;
 				NVec<2> friction_impulse = warm_start_disabled ? NVec<2> { 0.0 } : c->friction.impulse;
 				//In niche circumstances two pairs of friction and contact constraints can oppose each other, and if friction is greater than one this can cause a loop of increasing impulses.
@@ -1604,6 +1604,10 @@ namespace phyz {
 
 	CollisionTarget CollisionTarget::with(RigidBody* r) {
 		return CollisionTarget(false, r->getID());
+	}
+
+	CollisionTarget CollisionTarget::all() {
+		return CollisionTarget(true, -1);
 	}
 
 	ColActionID PhysicsEngine::registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action) {

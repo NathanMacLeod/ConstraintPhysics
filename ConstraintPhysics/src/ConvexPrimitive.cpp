@@ -144,15 +144,15 @@ namespace phyz {
 	Cylinder Cylinder::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
 		mthz::Vec3 new_center = pivot_point + q.applyRotation(center - pivot_point);
 		mthz::Vec3 new_height_axis = q.applyRotation(height_axis);
-		return Cylinder(new_center, radius, height, new_height_axis, gauss_verts.size() - 2);
+		return Cylinder(new_center, radius, height, new_height_axis, gauss_verts.size() - 2, top_face_approximation.size());
 	}
 
 	Cylinder Cylinder::getTranslated(mthz::Vec3 t) const {
-		return Cylinder(center + t, radius, height, height_axis, gauss_verts.size() - 2);
+		return Cylinder(center + t, radius, height, height_axis, gauss_verts.size() - 2, top_face_approximation.size());
 	}
 
 	Cylinder Cylinder::getScaled(double d, mthz::Vec3 center_of_dialtion) const {
-		return Cylinder(d * (center - center_of_dialtion) + center_of_dialtion, radius * d, height * d, height_axis, gauss_verts.size() - 2);
+		return Cylinder(d * (center - center_of_dialtion) + center_of_dialtion, radius * d, height * d, height_axis, gauss_verts.size() - 2, top_face_approximation.size());
 	}
 
 	void Cylinder::recomputeFromReference(const ConvexGeometry& reference_geometry, const mthz::Mat3& rot, mthz::Vec3 trans) {
