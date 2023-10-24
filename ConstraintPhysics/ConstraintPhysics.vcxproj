@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\CFM.cpp" />
     <ClCompile Include="src\CollisionDetect.cpp" />
     <ClCompile Include="src\ConstraintSolver.cpp" />
     <ClCompile Include="src\ConvexPrimitive.cpp" />
@@ -32,6 +33,7 @@
     <ClInclude Include="src\AABB.h" />
     <ClInclude Include="src\AABB_Tree.h" />
     <ClInclude Include="src\BroadphaseOutput.h" />
+    <ClInclude Include="src\CFM.h" />
     <ClInclude Include="src\CollisionDetect.h" />
     <ClInclude Include="src\ConstraintSolver.h" />
     <ClInclude Include="src\ConvexPrimitive.h" />

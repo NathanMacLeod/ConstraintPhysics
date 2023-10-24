@@ -60,7 +60,7 @@ public:
 		double box_size = 10;
 		double wall_width = 0.25;
 
-		phyz::Material bouncy{ 1.0, 1.0, 0.0, 0.0 };
+		phyz::Material bouncy{ phyz::CFM{phyz::USE_GLOBAL}, 1.0, 1.0, 0.0, 0.0 };
 
 		phyz::ConvexUnionGeometry wall1 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-box_size / 2.0, -box_size/2.0 - wall_width, -box_size / 2.0), box_size, wall_width, box_size, bouncy);
 		phyz::ConvexUnionGeometry wall2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-box_size / 2.0, box_size/2.0, -box_size / 2.0), box_size, wall_width, box_size, bouncy);

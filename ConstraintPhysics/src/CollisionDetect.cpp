@@ -604,6 +604,8 @@ namespace phyz {
 			cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
 			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
 			cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+			cp.s1_cfm = a_mat.cfm;
+			cp.s2_cfm = b_mat.cfm;
 			cp.magicID = MagicID{ cID, man_pool_magics[i] };
 			out.points.push_back(cp);
 		}
@@ -635,6 +637,8 @@ namespace phyz {
 		cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
 		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
 		cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+		cp.s1_cfm = a_mat.cfm;
+		cp.s2_cfm = b_mat.cfm;
 		cp.magicID = MagicID{ cID, 0x0 }; //second term is used to identify different points or faces on polyhedron. just using flat 0 for spheres.
 
 		out.points.push_back(cp);
@@ -830,6 +834,8 @@ namespace phyz {
 			cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
 			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
 			cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+			cp.s1_cfm = a_mat.cfm;
+			cp.s2_cfm = b_mat.cfm;
 			cp.magicID = MagicID{ cID, man_pool_magics[i] };
 			out.points.push_back(cp);
 		}
@@ -899,6 +905,8 @@ namespace phyz {
 		cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
 		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
 		cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+		cp.s1_cfm = a_mat.cfm;
+		cp.s2_cfm = b_mat.cfm;
 
 		uint64_t cID = 0;
 		cID |= 0x00000000FFFFFFFF & a_id;
@@ -1099,6 +1107,8 @@ namespace phyz {
 			cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
 			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
 			cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+			cp.s1_cfm = a_mat.cfm;
+			cp.s2_cfm = b_mat.cfm;
 			cp.magicID = MagicID{ cID, man_pool_magics[i] };
 			out.points.push_back(cp);
 		}
@@ -1174,6 +1184,8 @@ namespace phyz {
 		cp.restitution = std::max<double>(a_mat.restitution, b_mat.restitution);
 		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b_mat.kinetic_friction_coeff) / 2.0;
 		cp.static_friction_coeff = (a_mat.static_friction_coeff + b_mat.static_friction_coeff) / 2.0;
+		cp.s1_cfm = a_mat.cfm;
+		cp.s2_cfm = b_mat.cfm;
 
 		uint64_t cID = 0;
 		cID |= 0x00000000FFFFFFFF & a_id;
@@ -1433,6 +1445,8 @@ namespace phyz {
 			cp.restitution = std::max<double>(a_mat.restitution, b.material.restitution);
 			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b.material.kinetic_friction_coeff) / 2.0;
 			cp.static_friction_coeff = (a_mat.static_friction_coeff + b.material.static_friction_coeff) / 2.0;
+			cp.s1_cfm = a_mat.cfm;
+			cp.s2_cfm = b.material.cfm;
 			cp.magicID = MagicID{ cID, man_pool_magics[i] };
 			out.points.push_back(cp);
 		}
@@ -1510,6 +1524,8 @@ namespace phyz {
 		cp.restitution = std::max<double>(a_mat.restitution, b.material.restitution);
 		cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b.material.kinetic_friction_coeff) / 2.0;
 		cp.static_friction_coeff = (a_mat.static_friction_coeff + b.material.static_friction_coeff) / 2.0;
+		cp.s1_cfm = a_mat.cfm;
+		cp.s2_cfm = b.material.cfm;
 
 		uint64_t cID = 0;
 		cID |= 0x00000000FFFFFFFF & a_id;
@@ -1751,6 +1767,8 @@ namespace phyz {
 			cp.restitution = std::max<double>(a_mat.restitution, b.material.restitution);
 			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b.material.kinetic_friction_coeff) / 2.0;
 			cp.static_friction_coeff = (a_mat.static_friction_coeff + b.material.static_friction_coeff) / 2.0;
+			cp.s1_cfm = a_mat.cfm;
+			cp.s2_cfm = b.material.cfm;
 			cp.magicID = MagicID{ cID, man_pool_magics[i] };
 			out.points.push_back(cp);
 		}

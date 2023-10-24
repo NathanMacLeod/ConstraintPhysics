@@ -14,6 +14,9 @@ namespace phyz {
 	static NVec<3> Vec3toNVec3(const mthz::Vec3& v);
 	static mthz::Vec3 NVec3toVec3(const NVec<3>& v);
 
+	template<int n>
+	static NMat<n, n> applyCFM(const NMat<n, n>& mat, double cfm);
+
 	static NVec<12> VelVectoNVec(const phyz::Constraint::VelVec& vel_a, const phyz::Constraint::VelVec& vel_b);
 
 	template<int n, typename ProjectFunc, typename AddVelFunc>
@@ -93,7 +96,7 @@ namespace phyz {
 	//******************************
 	//*****CONTACT CONSTRAINT*******
 	//******************************
-	ContactConstraint::ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, NVec<1> warm_start_impulse, double cutoff_vel)
+	ContactConstraint::ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double constraint_force_mixing, NVec<1> warm_start_impulse, double cutoff_vel)
 		: Constraint(a, b), norm(norm), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<1>{0.0})
 	{
 		rotDirA = a->getInvTensor() * norm.cross(rA);
@@ -108,7 +111,7 @@ namespace phyz {
 			jacobian.copyInto(-n_dot, 0, 6);
 			jacobian.copyInto(n_dot * rB_skew, 0, 9);
 		}
-		inverse_inertia = NMat<1,1>{ {1.0 / (a->getInvMass() + b->getInvMass() + rA.cross(rotDirA).dot(norm) + rB.cross(rotDirB).dot(norm))} };
+		inverse_inertia = NMat<1,1>{ {1.0 / ((1 + constraint_force_mixing) * (a->getInvMass() + b->getInvMass() + rA.cross(rotDirA).dot(norm) + rB.cross(rotDirB).dot(norm)))} };
 		double current_val = getConstraintValue({ a->getVel(), a->getAngVel()}, {b->getVel(), b->getAngVel()}).v[0];
 		target_val = NVec<1>{ (current_val < -cutoff_vel) ? -(1 + bounce) * current_val : -current_val };
 		psuedo_target_val = NVec<1>{ pen_depth * pos_correct_hardness };
@@ -150,7 +153,7 @@ namespace phyz {
 	//******************************
 	//*****FRICTION CONSTRAINT******
 	//******************************
-	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w, double normal_impulse_limit)
+	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, double constraint_force_mixing, NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w, double normal_impulse_limit)
 		: Constraint(a, b), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()), impulse(warm_start_impulse),
 		coeff_friction(coeff_friction), normal_impulse(&normal->impulse), static_ready(false), normal_impulse_limit(normal_impulse_limit)
 	{
@@ -202,7 +205,7 @@ namespace phyz {
 		inverse_inertia.v[1][0] = -rA.cross(Ia_inv * rAxU).dot(w) - rB.cross(Ib_inv * rBxU).dot(w);
 		inverse_inertia.v[1][1] = a->getInvMass() + b->getInvMass() - rA.cross(Ia_inv * rAxW).dot(w) - rB.cross(Ib_inv * rBxW).dot(w);
 
-		inverse_inertia = inverse_inertia.inverse();
+		inverse_inertia = applyCFM(inverse_inertia, constraint_force_mixing).inverse();
 
 		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
 	}
@@ -249,12 +252,12 @@ namespace phyz {
 	//******************************
 	//****BALL SOCKET CONSTRAINT****
 	//******************************
-	BallSocketConstraint::BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, NVec<3> warm_start_impulse)
+	BallSocketConstraint::BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, NVec<3> warm_start_impulse)
 		: Constraint(a, b), rA(socket_pos_a - a->getCOM()), rB(socket_pos_a - b->getCOM()), rotDirA(a->getInvTensor() * mthz::Mat3::cross_mat(rA)), rotDirB(b->getInvTensor() * mthz::Mat3::cross_mat(rB)),
 		impulse(warm_start_impulse), psuedo_impulse(NVec<3>{ 0.0, 0.0, 0.0 })
 	{
-		mthz::Mat3 inverse_inertia_mat3 = (mthz::Mat3::iden()*a->getInvMass() + mthz::Mat3::iden()*b->getInvMass() - mthz::Mat3::cross_mat(rA)*rotDirA - mthz::Mat3::cross_mat(rB)*rotDirB).inverse();
-		inverse_inertia = Mat3toNMat33(inverse_inertia_mat3);
+		mthz::Mat3 inverse_inertia_mat3 = (mthz::Mat3::iden()*a->getInvMass() + mthz::Mat3::iden()*b->getInvMass() - mthz::Mat3::cross_mat(rA)*rotDirA - mthz::Mat3::cross_mat(rB)*rotDirB);
+		inverse_inertia = applyCFM(Mat3toNMat33(inverse_inertia_mat3), constraint_force_mixing).inverse();
 		
 		NMat<3, 3> rA_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rA));
 		NMat<3, 3> rB_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rB));
@@ -306,7 +309,7 @@ namespace phyz {
 	//******************************
 	//*****HINGE CONSTRAINT*********
 	//******************************
-	HingeConstraint::HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	HingeConstraint::HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: Constraint(a, b), rA(hinge_pos_a - a->getCOM()), rB(hinge_pos_a - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 })
 	{
 		rot_axis_a.getPerpendicularBasis(&u, &w);
@@ -380,7 +383,7 @@ namespace phyz {
 			inverse_inertia.copyInto(m, 3, 0);
 			inverse_inertia.copyInto(b, 4, 0);
 
-			inverse_inertia = inverse_inertia.inverse();
+			inverse_inertia = applyCFM(inverse_inertia, constraint_force_mixing).inverse();
 		}
 
 		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
@@ -429,7 +432,7 @@ namespace phyz {
 	//******************************
 	//*****MOTOR CONSTRAINT*********
 	//******************************
-	MotorConstraint::MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, NVec<1> warm_start_impulse)
+	MotorConstraint::MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, NVec<1> warm_start_impulse)
 		: Constraint(a, b), motor_axis(motor_axis), impulse(warm_start_impulse), max_torque_impulse(max_torque_impulse)
 	{
 		double real_target_velocity;
@@ -452,7 +455,7 @@ namespace phyz {
 
 		rotDirA = a->getInvTensor() * motor_axis;
 		rotDirB = b->getInvTensor() * motor_axis;
-		inverse_inertia = NMat<1, 1>{ {1.0 / (motor_axis.dot(rotDirA) + motor_axis.dot(rotDirB))} };
+		inverse_inertia = NMat<1, 1>{ {1.0 / ((1 + constraint_force_mixing) * (motor_axis.dot(rotDirA) + motor_axis.dot(rotDirB)))} };
 		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
 		target_val = NVec<1>{ real_target_velocity - current_val };
 	}
@@ -506,7 +509,7 @@ namespace phyz {
 	////******************************
 	////*****SLIDER CONSTRAINT********
 	////******************************
-	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: Constraint(a, b), rA(slider_point_a - a->getCOM()), rB(slider_point_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 })
 	{
 		slider_axis_a = slider_axis_a.normalize();
@@ -595,7 +598,7 @@ namespace phyz {
 			inverse_inertia.v[4][0] = ll.z; inverse_inertia.v[4][1] = lm.z;
 			inverse_inertia.copyInto(lr, 2, 2);
 
-			inverse_inertia = inverse_inertia.inverse();
+			inverse_inertia = applyCFM(inverse_inertia, constraint_force_mixing).inverse();
 			
 		}
 
@@ -651,7 +654,7 @@ namespace phyz {
 	//******************************
 	//******PISTON CONSTRAINT*******
 	//******************************
-	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, NVec<1> warm_start_impulse)
+	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, double constraint_force_mixing, NVec<1> warm_start_impulse)
 		: Constraint(a, b), slide_axis(slide_axis_a), impulse(warm_start_impulse), max_impulse(max_impulse)
 	{
 		
@@ -660,7 +663,7 @@ namespace phyz {
 		pos_diff = b->getCOM() - a->getCOM();
 		rot_dir = Ia_inv * (pos_diff.cross(slide_axis_a));
 
-		inverse_inertia = NMat<1, 1>{ 1.0 / (a->getInvMass() + b->getInvMass() + pos_diff.dot(slide_axis_a.cross(rot_dir))) };
+		inverse_inertia = NMat<1, 1>{ 1.0 / ((1 + constraint_force_mixing) * (a->getInvMass() + b->getInvMass() + pos_diff.dot(slide_axis_a.cross(rot_dir)))) };
 
 		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
 		target_val = NVec<1>{ target_velocity - current_val };
@@ -697,7 +700,7 @@ namespace phyz {
 	//******************************
 	//****Slide Limit Constraint****
 	//******************************
-	SlideLimitConstraint::SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse)
+	SlideLimitConstraint::SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, double constraint_force_mixing, NVec<1> warm_start_impulse)
 		: Constraint(a, b), slide_axis(slide_axis_a), impulse(warm_start_impulse)
 	{
 
@@ -715,7 +718,7 @@ namespace phyz {
 		pos_diff = b->getCOM() - a->getCOM();
 		rot_dir = Ia_inv * (pos_diff.cross(slide_axis_a));
 
-		inverse_inertia = NMat<1, 1>{ 1.0 / (a->getInvMass() + b->getInvMass() + pos_diff.dot(slide_axis_a.cross(rot_dir))) };
+		inverse_inertia = NMat<1, 1>{ 1.0 / ((1 + constraint_force_mixing) * (a->getInvMass() + b->getInvMass() + pos_diff.dot(slide_axis_a.cross(rot_dir)))) };
 
 		double current_val = getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() }).v[0];
 		target_val = NVec<1>{ -current_val };
@@ -765,7 +768,7 @@ namespace phyz {
 	//******************************
 	//***SLIDING HINGE CONSTRAINT***
 	//******************************
-	SlidingHingeConstraint::SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_pos_a, mthz::Vec3 slide_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<4> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	SlidingHingeConstraint::SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_pos_a, mthz::Vec3 slide_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<4> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: Constraint(a, b), rA(slide_pos_a - a->getCOM()), rB(slide_pos_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<4>{ 0.0, 0.0, 0.0, 0.0 })
 	{
 		rot_axis_b.getPerpendicularBasis(&u, &w);
@@ -845,7 +848,7 @@ namespace phyz {
 
 			imp_to_vel.copyInto(rotDirB, 9, 0);
 
-			inverse_inertia = (jacobian * imp_to_vel).inverse(); //not effient, could expand out eventually
+			inverse_inertia = applyCFM((jacobian * imp_to_vel), constraint_force_mixing).inverse(); //not effient, could expand out eventually
 		}
 
 		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
@@ -894,7 +897,7 @@ namespace phyz {
 	////******************************
 	////*******WELD CONSTRAINT********
 	////******************************
-	WeldConstraint::WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 pos_a, mthz::Vec3 pos_b, double pos_correct_hardness, double rot_correct_hardness, NVec<6> warm_start_impulse)
+	WeldConstraint::WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 pos_a, mthz::Vec3 pos_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<6> warm_start_impulse)
 		: Constraint(a, b), rA(pos_a - a->getCOM()), rB(pos_b - b->getCOM()), impulse(warm_start_impulse), psuedo_impulse(NVec<6>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 })
 	{
 
@@ -915,7 +918,7 @@ namespace phyz {
 		inverse_inertia.copyInto(Ia_inv_mat * rA_skew + Ib_inv_mat * rB_skew, 3, 0);
 		inverse_inertia.copyInto(Ia_inv_mat + Ib_inv_mat, 3, 3);
 
-		inverse_inertia = inverse_inertia.inverse();
+		inverse_inertia = applyCFM(inverse_inertia, constraint_force_mixing).inverse();
 
 		target_val = -getConstraintValue({ a->getVel(), a->getAngVel() }, { b->getVel(), b->getAngVel() });
 		{
@@ -1124,5 +1127,14 @@ namespace phyz {
 			vel_b.lin.x, vel_b.lin.y, vel_b.lin.z,
 			vel_b.ang.x, vel_b.ang.y, vel_b.ang.z,
 		};
+	}
+
+	template<int n>
+	static NMat<n, n> applyCFM(const NMat<n, n>& mat, double cfm) {
+		NMat<n, n> copy(mat);
+		for (int i = 0; i < n; i++) {
+			copy.v[i][i] *= (1 + cfm);
+		}
+		return copy;
 	}
 };

@@ -304,7 +304,7 @@ public:
 					switch (geometry_type) {
 					case BALLS:
 						//low friction to ease issues
-						g = phyz::ConvexUnionGeometry::sphere(pos, cube_size / 2.0, phyz::Material{1.0, 0.3, 0.5, 0.8});
+						g = phyz::ConvexUnionGeometry::sphere(pos, cube_size / 2.0, phyz::Material{ phyz::CFM{phyz::USE_GLOBAL}, 1.0, 0.3, 0.5, 0.8 });
 						break;
 					case CUBES:
 						g = phyz::ConvexUnionGeometry::box(pos - 0.5 * mthz::Vec3(cube_size, cube_size, cube_size), cube_size, cube_size, cube_size);

@@ -97,6 +97,7 @@ namespace phyz {
 		void setInternalGyroscopicForcesDisabled(bool b);
 		void setWarmStartDisabled(bool b);
 		void setSleepParameters(double vel_sensitivity, double ang_vel_sensitivity, double aceleration_sensitivity, double sleep_assesment_time, int non_sleepy_tick_threshold);
+		void setGlobalConstraintForceMixing(double cfm);
 
 		//really only exists for debugging
 		void deleteWarmstartData(RigidBody* r);
@@ -136,6 +137,8 @@ namespace phyz {
 		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strength = 350, double rot_correct_strength = 350);
 
 		void setConstraintPosCorrectMethod(ConstraintID id, PosErrorResolutionMode error_correct_method, bool b1_master = true);
+		void setConstraintUseCustomCFM(ConstraintID id, double custom_cfm);
+		void setConstraintUseGlobalCFM(ConstraintID id);
 		void removeConstraint(ConstraintID id, bool reenable_collision=true);
 
 		void setMotorOff(ConstraintID id);
@@ -174,7 +177,7 @@ namespace phyz {
 		bool friction_impulse_limit_enabled = false;
 
 		struct ConstraintGraphNode; 
-		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
+		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness, CFM cfm);
 		void maintainConstraintGraphApplyPoweredConstraints();
 		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
@@ -195,7 +198,7 @@ namespace phyz {
 		bool sleeping_enabled = true;
 		double sleep_delay = 0.5;
 		int non_sleepy_tick_threshold = 3;
-
+		
 		double vel_sleep_coeff = 0.1;
 		double ang_vel_eps = 0.1;
 		double accel_sleep_coeff = 0.044;
@@ -206,11 +209,15 @@ namespace phyz {
 		std::unordered_map<unsigned int, ConstraintGraphNode*> constraint_graph_nodes;
 		std::mutex constraint_graph_lock;
 
+		//constraint force mixing - softens constraints and makes more stable
+		double global_cfm = 0.025;
+		
 		struct Contact {
 			RigidBody* b1;
 			RigidBody* b2;
 			ContactConstraint contact;
 			FrictionConstraint friction;
+			CFM cfm;
 			MagicID magic;
 			int memory_life; //how many frames can be referenced for warm starting before is deleted
 			bool is_live_contact;
@@ -222,6 +229,7 @@ namespace phyz {
 			BallSocketConstraint constraint;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
+			CFM cfm;
 			double pos_correct_hardness;
 			PosErrorResolutionMode pos_error_mode;
 			bool b1_master;
@@ -262,6 +270,7 @@ namespace phyz {
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_rot_axis_body_space;
 			mthz::Vec3 b2_rot_axis_body_space;
+			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
 			PosErrorResolutionMode pos_error_mode;
@@ -281,6 +290,7 @@ namespace phyz {
 			mthz::Vec3 b2_slide_axis_body_space;
 			double max_piston_force;
 			double target_velocity;
+			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
 			double positive_slide_limit;
@@ -304,6 +314,7 @@ namespace phyz {
 			mthz::Vec3 b2_slide_axis_body_space;
 			double max_piston_force;
 			double target_velocity;
+			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
 			double positive_slide_limit;
@@ -320,6 +331,7 @@ namespace phyz {
 			WeldConstraint constraint;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
+			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
 			PosErrorResolutionMode pos_error_mode;

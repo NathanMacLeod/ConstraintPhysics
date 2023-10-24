@@ -95,7 +95,7 @@ namespace phyz {
 	class ContactConstraint : public Constraint {
 	public:
 		ContactConstraint() : impulse(NVec<1>{0.0}) {}
-		ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, NVec<1> warm_start_impulse=NVec<1>{ 0.0 }, double cutoff_vel=0);
+		ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double constraint_force_mixing, NVec<1> warm_start_impulse=NVec<1>{ 0.0 }, double cutoff_vel=0);
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -123,7 +123,7 @@ namespace phyz {
 	class FrictionConstraint : public Constraint {
 	public:
 		FrictionConstraint() : normal_impulse(nullptr), impulse(NVec<2>{0.0}) {}
-		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, NVec<2> warm_start_impulse = NVec<2>{ 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3(), double normal_impulse_limit = std::numeric_limits<double>::infinity());
+		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, double constraint_force_mixing, NVec<2> warm_start_impulse = NVec<2>{ 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3(), double normal_impulse_limit = std::numeric_limits<double>::infinity());
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -154,7 +154,7 @@ namespace phyz {
 	class BallSocketConstraint : public Constraint {
 	public:
 		BallSocketConstraint() : impulse(NVec<3>{0.0, 0.0, 0.0}) {}
-		BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, NVec<3> warm_start_impulse=NVec<3>{ 0.0 });
+		BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, NVec<3> warm_start_impulse=NVec<3>{ 0.0 });
 		
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -181,7 +181,7 @@ namespace phyz {
 	class HingeConstraint : public Constraint {
 	public:
 		HingeConstraint() : impulse(NVec<5>{0.0, 0.0, 0.0, 0.0, 0.0}) {}
-		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse=NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u=mthz::Vec3(), mthz::Vec3 source_w=mthz::Vec3());
+		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<5> warm_start_impulse=NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u=mthz::Vec3(), mthz::Vec3 source_w=mthz::Vec3());
 
 		inline inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -210,7 +210,7 @@ namespace phyz {
 	class MotorConstraint : public Constraint {
 	public:
 		MotorConstraint() : impulse(NVec<1>{0.0}) {}
-		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -238,7 +238,7 @@ namespace phyz {
 	class SliderConstraint : public Constraint {
 	public:
 		SliderConstraint() : impulse(NVec<5>{0.0, 0.0, 0.0, 0.0, 0.0}) {}
-		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, NVec<5> warm_start_impulse = NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
+		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<5> warm_start_impulse = NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -269,7 +269,7 @@ namespace phyz {
 	class PistonConstraint : public Constraint {
 	public:
 		PistonConstraint() : impulse(NVec<1>{0.0}) {}
-		PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_impulse, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+		PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_impulse, double constraint_force_mixing, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -293,7 +293,7 @@ namespace phyz {
 	class SlideLimitConstraint : public Constraint {
 	public:
 		SlideLimitConstraint() : impulse(NVec<1>{0.0}) {}
-		SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
+		SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, double constraint_force_mixing, NVec<1> warm_start_impulse = NVec<1>{ 0.0 });
 
 		inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -320,7 +320,7 @@ namespace phyz {
 	class SlidingHingeConstraint : public Constraint {
 	public:
 		SlidingHingeConstraint() : impulse(NVec<4>{0.0, 0.0, 0.0, 0.0}) {}
-		SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, NVec<4> warm_start_impulse = NVec<4>{ 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
+		SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<4> warm_start_impulse = NVec<4>{ 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
 		inline inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;
@@ -349,7 +349,7 @@ namespace phyz {
 	class WeldConstraint : public Constraint {
 	public:
 		WeldConstraint() : impulse(NVec<6>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}) {}
-		WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 a_attach_point, mthz::Vec3 b_attach_point, double pos_correct_hardness, double rot_correct_hardness, NVec<6> warm_start_impulse = NVec<6>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 });
+		WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 a_attach_point, mthz::Vec3 b_attach_point, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<6> warm_start_impulse = NVec<6>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 });
 
 		inline inline bool constraintWarmStarted() override { return !impulse.isZero(); }
 		inline void warmStartVelocityChange(VelVec* va, VelVec* vb) override;

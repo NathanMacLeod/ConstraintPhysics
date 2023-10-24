@@ -3,6 +3,7 @@
 #include "../../Math/src/Vec3.h"
 #include "../../Math/src/Quaternion.h"
 #include "../../Math/src/Mat3.h"
+#include "CFM.h"
 #include "AABB.h"
 #include "CollisionDetect.h"
 #include "AABB_Tree.h"
@@ -14,17 +15,18 @@ namespace phyz {
 	class RigidBody;
 
 	struct Material {
-		const static Material default_material() { return {1.0, 0.3, 0.6, 1.1}; }
-		static Material ice() { return { 0.6, 0.3, 0.01, 0.2 }; }
-		static Material rubber() { return { 0.8, 0.6, 1.0, 1.4 }; }
-		static Material high_friction()  { return {0.7, 0.3, 1.0, 2.0}; }
-		static Material super_friction() { return { 0.8, 0.6, 40.0, 100.0 }; }
-		const static Material modified_density(double d) {
+		static Material default_material() { return { CFM{USE_GLOBAL}, 1.0, 0.3, 0.6, 1.1 }; }
+		static Material ice() { return { CFM{USE_GLOBAL}, 0.6, 0.3, 0.01, 0.2 }; }
+		static Material rubber() { return { CFM{USE_GLOBAL}, 0.8, 0.6, 1.0, 1.4 }; }
+		static Material high_friction()  { return { CFM{USE_GLOBAL}, 0.7, 0.3, 1.0, 2.0}; }
+		static Material super_friction() { return { CFM{USE_GLOBAL}, 0.8, 0.6, 40.0, 100.0 }; }
+		static Material modified_density(double d) {
 			Material m = default_material();
 			m.density = d;
 			return m;
 		}
 
+		CFM cfm;
 		double density;
 		double restitution;
 		double kinetic_friction_coeff;

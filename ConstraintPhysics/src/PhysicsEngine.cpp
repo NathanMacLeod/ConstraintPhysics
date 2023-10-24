@@ -269,7 +269,7 @@ namespace phyz {
 						lock_second->mutex.lock();
 						for (int i = 0; i < man.points.size(); i++) {
 							const ContactP& p = man.points[i];
-							addContact(lock_first, lock_second, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(contact_pos_correct_hardness, step_time));
+							addContact(lock_first, lock_second, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(contact_pos_correct_hardness, step_time), averageCFM(global_cfm, p.s1_cfm, p.s2_cfm));
 						}
 						lock_first->mutex.unlock();
 						lock_second->mutex.unlock();
@@ -674,6 +674,7 @@ namespace phyz {
 			BallSocketConstraint(),
 			b1->trackPoint(b1_attach_pos_local),
 			b2->trackPoint(b2_attach_pos_local),
+			CFM{USE_GLOBAL},
 			pos_correct_strength,
 			PSUEDO_VELOCITY,
 			true,
@@ -707,6 +708,7 @@ namespace phyz {
 			b2->trackPoint(b2_attach_pos_local),
 			b1_rot_axis_local.normalize(),
 			b2_rot_axis_local.normalize(),
+			CFM{USE_GLOBAL},
 			pos_correct_strength,
 			rot_correct_strength,
 			PSUEDO_VELOCITY,
@@ -743,6 +745,7 @@ namespace phyz {
 			b1_slider_axis_local.normalize(),
 			b2_slider_axis_local.normalize(),
 			0, 0,
+			CFM{USE_GLOBAL},
 			pos_correct_strength,
 			rot_correct_strength,
 			positive_slide_limit,
@@ -782,6 +785,7 @@ namespace phyz {
 			b1_slider_axis_local.normalize(),
 			b2_slider_axis_local.normalize(),
 			0, 0,
+			CFM{USE_GLOBAL},
 			pos_correct_strength,
 			rot_correct_strength,
 			positive_slide_limit,
@@ -814,6 +818,7 @@ namespace phyz {
 			WeldConstraint(),
 			b1->trackPoint(b1_attach_point_local),
 			b2->trackPoint(b2_attach_point_local),
+			CFM{USE_GLOBAL},
 			pos_correct_strength,
 			rot_correct_strength,
 			PSUEDO_VELOCITY,
@@ -913,6 +918,106 @@ namespace phyz {
 		}
 	}
 
+	void PhysicsEngine::setConstraintUseCustomCFM(ConstraintID id, double custom_cfm) {
+		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
+
+		SharedConstraintsEdge* e = constraint_map[id.uniqueID];
+		switch (id.type) {
+		case ConstraintID::BALL:
+			for (int i = 0; i < e->ballSocketConstraints.size(); i++) {
+				BallSocket* b = e->ballSocketConstraints[i];
+				if (b->uniqueID == id.uniqueID) {
+					b->cfm = CFM{ USE_CUSTOM, custom_cfm };
+				}
+			}
+			break;
+		case ConstraintID::HINGE:
+			for (int i = 0; i < e->hingeConstraints.size(); i++) {
+				Hinge* h = e->hingeConstraints[i];
+				if (h->uniqueID == id.uniqueID) {
+					h->cfm = CFM{ USE_CUSTOM, custom_cfm };
+				}
+			}
+			break;
+		case ConstraintID::SLIDER:
+			for (int i = 0; i < e->sliderConstraints.size(); i++) {
+				Slider* s = e->sliderConstraints[i];
+				if (s->uniqueID == id.uniqueID) {
+					s->cfm = CFM{ USE_CUSTOM, custom_cfm };
+				}
+			}
+			break;
+		case ConstraintID::SLIDING_HINGE:
+			for (int i = 0; i < e->slidingHingeConstraints.size(); i++) {
+				SlidingHinge* s = e->slidingHingeConstraints[i];
+				if (s->uniqueID == id.uniqueID) {
+					s->cfm = CFM{ USE_CUSTOM, custom_cfm };
+
+				}
+
+			}
+			break;
+		case ConstraintID::WELD:
+			for (int i = 0; i < e->weldConstraints.size(); i++) {
+				Weld* w = e->weldConstraints[i];
+				if (w->uniqueID == id.uniqueID) {
+					w->cfm = CFM{ USE_CUSTOM, custom_cfm };
+				}
+			}
+			break;
+		}
+	}
+
+	void PhysicsEngine::setConstraintUseGlobalCFM(ConstraintID id) {
+		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
+
+		SharedConstraintsEdge* e = constraint_map[id.uniqueID];
+		switch (id.type) {
+		case ConstraintID::BALL:
+			for (int i = 0; i < e->ballSocketConstraints.size(); i++) {
+				BallSocket* b = e->ballSocketConstraints[i];
+				if (b->uniqueID == id.uniqueID) {
+					b->cfm = CFM{ USE_GLOBAL, 0.0 };
+				}
+			}
+			break;
+		case ConstraintID::HINGE:
+			for (int i = 0; i < e->hingeConstraints.size(); i++) {
+				Hinge* h = e->hingeConstraints[i];
+				if (h->uniqueID == id.uniqueID) {
+					h->cfm = CFM{ USE_GLOBAL, 0.0 };
+				}
+			}
+			break;
+		case ConstraintID::SLIDER:
+			for (int i = 0; i < e->sliderConstraints.size(); i++) {
+				Slider* s = e->sliderConstraints[i];
+				if (s->uniqueID == id.uniqueID) {
+					s->cfm = CFM{ USE_GLOBAL, 0.0 };
+				}
+			}
+			break;
+		case ConstraintID::SLIDING_HINGE:
+			for (int i = 0; i < e->slidingHingeConstraints.size(); i++) {
+				SlidingHinge* s = e->slidingHingeConstraints[i];
+				if (s->uniqueID == id.uniqueID) {
+					s->cfm = CFM{ USE_GLOBAL, 0.0 };
+
+				}
+
+			}
+			break;
+		case ConstraintID::WELD:
+			for (int i = 0; i < e->weldConstraints.size(); i++) {
+				Weld* w = e->weldConstraints[i];
+				if (w->uniqueID == id.uniqueID) {
+					w->cfm = CFM{ USE_GLOBAL, 0.0 };
+				}
+			}
+			break;
+		}
+	}
+
 	void PhysicsEngine::removeConstraint(ConstraintID id, bool reenable_collision) {
 		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
 
@@ -990,7 +1095,7 @@ namespace phyz {
 
 	}
 
-	void PhysicsEngine::addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness) {
+	void PhysicsEngine::addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness, CFM cfm) {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 		RigidBody* b1 = n1->b;
 		RigidBody* b2 = n2->b;
@@ -1004,10 +1109,11 @@ namespace phyz {
 				//Limiting the friction the the normal impulse from the last update helps mitigate this. Still not great if friction is high though.
 				double normal_impulse_limit = (warm_start_disabled || !friction_impulse_limit_enabled) ? std::numeric_limits<double>::infinity() : c->contact.impulse.v[0];
 
-				c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, contact_impulse, cutoff_vel);
-				c->friction = FrictionConstraint(b1, b2, norm, p, friction, &c->contact, friction_impulse, c->friction.u, c->friction.w, normal_impulse_limit);
+				c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, cfm.getCFMValue(global_cfm), contact_impulse, cutoff_vel);
+				c->friction = FrictionConstraint(b1, b2, norm, p, friction, &c->contact, cfm.getCFMValue(global_cfm), friction_impulse, c->friction.u, c->friction.w, normal_impulse_limit);
 				c->memory_life = contact_life;
 				c->is_live_contact = true;
+				c->cfm = cfm;
 				return;
 			}
 		}
@@ -1016,11 +1122,12 @@ namespace phyz {
 		Contact* c = new Contact();
 		c->b1 = b1;
 		c->b2 = b2;
-		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, NVec<1>{0.0}, cutoff_vel);
-		c->friction = FrictionConstraint(b1, b2, norm, p, kinetic_friction, &c->contact);
+		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, cfm.getCFMValue(global_cfm), NVec<1>{0.0}, cutoff_vel);
+		c->friction = FrictionConstraint(b1, b2, norm, p, kinetic_friction, &c->contact, cfm.getCFMValue(global_cfm));
 		c->magic = magic;
 		c->memory_life = contact_life;
 		c->is_live_contact = true;
+		c->cfm = cfm;
 
 		e->contactConstraints.push_back(c);
 	}
@@ -1103,6 +1210,10 @@ namespace phyz {
 		ang_vel_eps = ang_vel_sensitivity;
 		accel_sleep_coeff = aceleration_sensitivity;
 		this->non_sleepy_tick_threshold = non_sleepy_tick_threshold;
+	}
+
+	void PhysicsEngine::setGlobalConstraintForceMixing(double cfm) {
+		global_cfm = cfm;
 	}
 
 	void PhysicsEngine::deleteWarmstartData(RigidBody* r) {
@@ -1400,7 +1511,7 @@ namespace phyz {
 					mthz::Vec3 b2_pos = bs->b2->getTrackedP(bs->b2_point_key);
 					NVec<3> starting_impulse = warm_start_disabled ? NVec<3>{ 0.0} : bs->constraint.impulse;
 					double pos_correct_coeff = bs->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(bs->pos_correct_hardness, step_time) : 0;
-					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, pos_correct_coeff, starting_impulse);
+					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, pos_correct_coeff, bs->cfm.getCFMValue(global_cfm), starting_impulse);
 				}
 				for (Hinge* h : e->hingeConstraints) {
 					mthz::Vec3 b1_pos = h->b1->getTrackedP(h->b1_point_key);
@@ -1412,7 +1523,7 @@ namespace phyz {
 					NVec<1> motor_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : h->motor.motor_constraint.impulse;
 					if (h->motor.constraintIsActive()) {
 						h->motor.motor_constraint = MotorConstraint(h->b1, h->b2, b1_hinge_axis, h->motor.getConstraintTargetVelocityValue(b1_hinge_axis, h->b1->getAngVel(), h->b2->getAngVel(),
-							step_time), abs(h->motor.max_torque * step_time), h->motor.motor_angular_position, h->motor.min_motor_position, h->motor.max_motor_position, posCorrectCoeff(h->rot_correct_hardness, step_time), motor_starting_impulse);
+							step_time), abs(h->motor.max_torque * step_time), h->motor.motor_angular_position, h->motor.min_motor_position, h->motor.max_motor_position, posCorrectCoeff(h->rot_correct_hardness, step_time), h->cfm.getCFMValue(global_cfm), motor_starting_impulse);
 					}
 					h->motor.writePrevVel(b1_hinge_axis, h->b1->getAngVel(), h->b2->getAngVel());
 
@@ -1420,7 +1531,7 @@ namespace phyz {
 					double rot_correct_coeff = h->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(h->rot_correct_hardness, step_time) : 0;
 
 					NVec<5> starting_impulse = warm_start_disabled ? NVec<5>{ 0.0} : h->constraint.impulse;
-					h->constraint = HingeConstraint(h->b1, h->b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, pos_correct_coeff, rot_correct_coeff, starting_impulse, h->constraint.u, h->constraint.w);
+					h->constraint = HingeConstraint(h->b1, h->b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, pos_correct_coeff, rot_correct_coeff, h->cfm.getCFMValue(global_cfm), starting_impulse, h->constraint.u, h->constraint.w);
 				}
 				for (Slider* s : e->sliderConstraints) {
 					mthz::Vec3 b1_pos = s->b1->getTrackedP(s->b1_point_key);
@@ -1433,19 +1544,19 @@ namespace phyz {
 
 					if (s->slide_limit_exceeded) {
 						NVec<1> limit_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->slide_limit.impulse;
-						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), limit_starting_impulse);
+						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->cfm.getCFMValue(global_cfm), limit_starting_impulse);
 					}
 
 					if (s->max_piston_force != 0) {
 						NVec<1> piston_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->piston_force.impulse;
-						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, piston_starting_impulse);
+						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, s->cfm.getCFMValue(global_cfm),  piston_starting_impulse);
 					}
 
 					double pos_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->pos_correct_hardness, step_time) : 0;
 					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
 
 					NVec<5> starting_impulse = warm_start_disabled ? NVec<5>{ 0.0} : s->constraint.impulse;
-					s->constraint = SliderConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, pos_correct_coeff, pos_correct_coeff, starting_impulse, s->constraint.u, s->constraint.w);
+					s->constraint = SliderConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, pos_correct_coeff, pos_correct_coeff, s->cfm.getCFMValue(global_cfm), starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (SlidingHinge* s : e->slidingHingeConstraints) {
 					mthz::Vec3 b1_pos = s->b1->getTrackedP(s->b1_point_key);
@@ -1458,18 +1569,18 @@ namespace phyz {
 
 					if (s->slide_limit_exceeded) {
 						NVec<1> limit_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->slide_limit.impulse;
-						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), limit_starting_impulse);
+						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->cfm.getCFMValue(global_cfm), limit_starting_impulse);
 					}
 
 					if (s->max_piston_force != 0) {
 						NVec<1> piston_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->piston_force.impulse;
-						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, piston_starting_impulse);
+						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, s->cfm.getCFMValue(global_cfm), piston_starting_impulse);
 					}
 
 					s->motor.motor_angular_position = s->motor.calculatePosition(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel(), step_time);
 					if (s->motor.constraintIsActive()) {
 						NVec<1> motor_starting_impulse = warm_start_disabled ? NVec<1>{ 0.0} : s->motor.motor_constraint.impulse;
-						s->motor.motor_constraint = MotorConstraint(s->b1, s->b2, b1_slide_axis, s->motor.getConstraintTargetVelocityValue(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel(), step_time), abs(s->motor.max_torque * step_time), s->motor.motor_angular_position, s->motor.min_motor_position, s->motor.max_motor_position, posCorrectCoeff(s->rot_correct_hardness, step_time), motor_starting_impulse);
+						s->motor.motor_constraint = MotorConstraint(s->b1, s->b2, b1_slide_axis, s->motor.getConstraintTargetVelocityValue(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel(), step_time), abs(s->motor.max_torque * step_time), s->motor.motor_angular_position, s->motor.min_motor_position, s->motor.max_motor_position, posCorrectCoeff(s->rot_correct_hardness, step_time), s->cfm.getCFMValue(global_cfm), motor_starting_impulse);
 					}
 					s->motor.writePrevVel(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel());
 
@@ -1477,7 +1588,7 @@ namespace phyz {
 					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
 
 					NVec<4> starting_impulse = warm_start_disabled ? NVec<4>{ 0.0} : s->constraint.impulse;
-					s->constraint = SlidingHingeConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, pos_correct_coeff, rot_correct_coeff, starting_impulse, s->constraint.u, s->constraint.w);
+					s->constraint = SlidingHingeConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, pos_correct_coeff, rot_correct_coeff, s->cfm.getCFMValue(global_cfm), starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (Weld* w : e->weldConstraints) {
 					mthz::Vec3 b1_pos = w->b1->getTrackedP(w->b1_point_key);
@@ -1486,7 +1597,7 @@ namespace phyz {
 					double pos_correct_coeff = w->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(w->pos_correct_hardness, step_time) : 0;
 					double rot_correct_coeff = w->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(w->rot_correct_hardness, step_time) : 0;
 
-					w->constraint = WeldConstraint(w->b1, w->b2, b1_pos, b2_pos, pos_correct_coeff, rot_correct_coeff, w->constraint.impulse);
+					w->constraint = WeldConstraint(w->b1, w->b2, b1_pos, b2_pos, pos_correct_coeff, rot_correct_coeff, w->cfm.getCFMValue(global_cfm), w->constraint.impulse);
 				}
 
 				if (e->noConstraintsLeft()) {

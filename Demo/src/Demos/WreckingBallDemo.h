@@ -32,6 +32,7 @@ public:
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(true);
 		p.setPGSIterations(45, 35);
+		p.setGlobalConstraintForceMixing(0.1);
 
 		bool lock_cam = true;
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "../../Math/src/Vec3.h"
 #include "../../Math/src/Quaternion.h"
+#include "CFM.h"
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -37,6 +38,7 @@ namespace phyz {
 		double restitution;
 		double kinetic_friction_coeff;
 		double static_friction_coeff;
+		CFM s1_cfm, s2_cfm;
 		MagicID magicID;
 	};
 
