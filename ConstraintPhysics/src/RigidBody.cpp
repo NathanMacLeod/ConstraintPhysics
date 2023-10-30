@@ -524,6 +524,7 @@ namespace phyz {
 
 				*tensor += sphere_tensor;
 			}
+			break;
 			case CYLINDER:
 			{
 				const Cylinder& c = (const Cylinder&)*primitive.getGeometry();

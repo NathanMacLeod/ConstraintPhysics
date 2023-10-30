@@ -74,5 +74,8 @@
     <ClInclude Include="src\CFM.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\HolonomicBlockSolver.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

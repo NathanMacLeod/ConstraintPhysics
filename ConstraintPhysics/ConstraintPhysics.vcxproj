@@ -39,6 +39,7 @@
     <ClInclude Include="src\ConvexPrimitive.h" />
     <ClInclude Include="src\Geometry.h" />
     <ClInclude Include="src\HACD.h" />
+    <ClInclude Include="src\HolonomicBlockSolver.h" />
     <ClInclude Include="src\Octree.h" />
     <ClInclude Include="src\PhysicsEngine.h" />
     <ClInclude Include="src\RigidBody.h" />
