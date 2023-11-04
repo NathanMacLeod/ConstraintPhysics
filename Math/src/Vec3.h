@@ -2,6 +2,8 @@
 #include <cmath>
 #include <cassert>
 
+#include "NVec.h"
+
 namespace mthz {
 
 	class Vec3 {
@@ -18,6 +20,11 @@ namespace mthz {
 			this->x = x;
 			this->y = y;
 			this->z = z;
+		}
+
+		NVec<3> toNVec() {
+			NVec<3> out = {x, y, z};
+			return out;
 		}
 
 		inline double magSqrd() const {

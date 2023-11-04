@@ -25,6 +25,7 @@
     <ClCompile Include="src\ConvexPrimitive.cpp" />
     <ClCompile Include="src\Geometry.cpp" />
     <ClCompile Include="src\HACD.cpp" />
+    <ClCompile Include="src\HolonomicBlockSolver.cpp" />
     <ClCompile Include="src\Octree.cpp" />
     <ClCompile Include="src\PhysicsEngine.cpp" />
     <ClCompile Include="src\RigidBody.cpp" />

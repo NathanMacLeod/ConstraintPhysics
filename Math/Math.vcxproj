@@ -128,10 +128,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Mat3.cpp" />
+    <ClCompile Include="src\NMat.cpp" />
     <ClCompile Include="src\Vec3.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Mat3.h" />
+    <ClInclude Include="src\NMat.h" />
+    <ClInclude Include="src\NVec.h" />
     <ClInclude Include="src\Quaternion.h" />
     <ClInclude Include="src\Vec3.h" />
   </ItemGroup>

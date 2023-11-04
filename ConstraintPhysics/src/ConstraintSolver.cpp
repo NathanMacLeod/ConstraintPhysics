@@ -6,26 +6,19 @@
 #define NDEBUG
 
 #include <chrono>
-static int CUTOFF = 0.00000001;
 
 namespace phyz {
-	
-	template<int n>
-	static NMat<n, n> idenMat();
-	static NMat<3, 3> Mat3toNMat33(const mthz::Mat3& m);
-	static NVec<3> Vec3toNVec3(mthz::Vec3 v);
-	static mthz::Vec3 NVec3toVec3(NVec<3> v);
 
 	template<int n>
-	static NMat<n, n> applyCFM(const NMat<n, n>& mat, double cfm);
+	static mthz::NMat<n, n> applyCFM(const mthz::NMat<n, n>& mat, double cfm);
 
-	static NVec<6> velAngToNVec(mthz::Vec3 vel, mthz::Vec3 ang_vel);
+	static mthz::NVec<6> velAngToNVec(mthz::Vec3 vel, mthz::Vec3 ang_vel);
 
 	template<int n>
 	static void PGSConstraintStep(DegreedConstraint<n>* constraint, bool use_psuedo_values) {
-		NVec<6>* vel_a_change, *vel_b_change;
-		NVec<n>* accumulated_impulse;
-		NVec<n> target_val;
+		mthz::NVec<6>* vel_a_change, *vel_b_change;
+		mthz::NVec<n>* accumulated_impulse;
+		mthz::NVec<n> target_val;
 		if (use_psuedo_values) {
 			vel_a_change = constraint->a_psuedo_velocity_change;
 			vel_b_change = constraint->b_psuedo_velocity_change;
@@ -39,11 +32,11 @@ namespace phyz {
 			target_val = constraint->target_val;
 		}
 
-		NVec<n> current_val = constraint->getConstraintValue(*vel_a_change, *vel_b_change);
-		NVec<n> delta = target_val - current_val;
+		mthz::NVec<n> current_val = constraint->getConstraintValue(*vel_a_change, *vel_b_change);
+		mthz::NVec<n> delta = target_val - current_val;
 		//Apply projection on the accumulation, not the delta, to allow reversing overcorrection.
-		NVec<n> impulse_new = (*accumulated_impulse) + constraint->impulse_to_value_inverse * delta;
-		NVec<n> impulse_diff = constraint->isInequalityConstraint()? constraint->projectValidImpulse(impulse_new) - *accumulated_impulse
+		mthz::NVec<n> impulse_new = (*accumulated_impulse) + constraint->impulse_to_value_inverse * delta;
+		mthz::NVec<n> impulse_diff = constraint->isInequalityConstraint()? constraint->projectValidImpulse(impulse_new) - *accumulated_impulse
 																   : impulse_new - *accumulated_impulse;
 		if (!impulse_diff.isZero()) {
 			constraint->computeAndApplyVelocityChange(impulse_diff, vel_a_change, vel_b_change);
@@ -57,8 +50,8 @@ namespace phyz {
 	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel, int n_itr_pos) {
 		struct VelPair {
 			VelPair() : velocity_change({0.0}), psuedo_vel_change({0.0}) {} //initialize zeroed out
-			NVec<6> velocity_change;
-			NVec<6> psuedo_vel_change;
+			mthz::NVec<6> velocity_change;
+			mthz::NVec<6> psuedo_vel_change;
 		};
 
 		std::unordered_map<RigidBody*, VelPair*> velocity_changes;
@@ -135,20 +128,20 @@ namespace phyz {
 	}
 	
 	
-	NMat<6, 6> Constraint::aInvMass() {
-		NMat<6, 6> out;
-		NMat<3, 3> force_inv = idenMat<3>() * a->getInvMass();
-		NMat<3, 3> torque_inv = Mat3toNMat33(a->getInvTensor());
+	mthz::NMat<6, 6> Constraint::aInvMass() {
+		mthz::NMat<6, 6> out;
+		mthz::NMat<3, 3> force_inv = mthz::idenMat<3>() * a->getInvMass();
+		mthz::NMat<3, 3> torque_inv = a->getInvTensor().toNMat();
 
 		out.copyInto(force_inv, 0, 0);
 		out.copyInto(torque_inv, 3, 3);
 
 		return out;
 	}
-	NMat<6, 6> Constraint::bInvMass() {
-		NMat<6, 6> out;
-		NMat<3, 3> force_inv = idenMat<3>() * b->getInvMass();
-		NMat<3, 3> torque_inv = Mat3toNMat33(b->getInvTensor());
+	mthz::NMat<6, 6> Constraint::bInvMass() {
+		mthz::NMat<6, 6> out;
+		mthz::NMat<3, 3> force_inv = mthz::idenMat<3>() * b->getInvMass();
+		mthz::NMat<3, 3> torque_inv = b->getInvTensor().toNMat();
 
 		out.copyInto(force_inv, 0, 0);
 		out.copyInto(torque_inv, 3, 3);
@@ -159,15 +152,15 @@ namespace phyz {
 	//******************************
 	//*****CONTACT CONSTRAINT*******
 	//******************************
-	ContactConstraint::ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double constraint_force_mixing, NVec<1> warm_start_impulse, double cutoff_vel)
+	ContactConstraint::ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse, double cutoff_vel)
 		: DegreedConstraint<1>(a, b, warm_start_impulse), norm(norm), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM())
 	{
 		rotDirA = a->getInvTensor() * norm.cross(rA);
 		rotDirB = b->getInvTensor() * norm.cross(rB);
 		{
-			NMat<3, 3> rA_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rA));
-			NMat<3, 3> rB_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rB));
-			NMat<1, 3> n_dot = NMat<1, 3>{ {norm.x, norm.y, norm.z} };
+			mthz::NMat<3, 3> rA_skew = mthz::crossMat(rA);
+			mthz::NMat<3, 3> rB_skew = mthz::crossMat(rB);
+			mthz::NMat<1, 3> n_dot = mthz::NMat<1, 3>{ {norm.x, norm.y, norm.z} };
 
 			a_jacobian.copyInto(-n_dot, 0, 0);
 			a_jacobian.copyInto(n_dot * rA_skew, 0, 3);
@@ -181,18 +174,18 @@ namespace phyz {
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 
 		double current_val = getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())).v[0];
-		target_val = NVec<1>{ (current_val < -cutoff_vel) ? -(1 + bounce) * current_val : -current_val };
-		psuedo_target_val = NVec<1>{ pen_depth * pos_correct_hardness };
+		target_val = mthz::NVec<1>{ (current_val < -cutoff_vel) ? -(1 + bounce) * current_val : -current_val };
+		psuedo_target_val = mthz::NVec<1>{ pen_depth * pos_correct_hardness };
 	}
 
-	NVec<1> ContactConstraint::projectValidImpulse(NVec<1> impulse) {
-		return NVec<1>{ std::max<double>(impulse.v[0], 0) };
+	mthz::NVec<1> ContactConstraint::projectValidImpulse(mthz::NVec<1> impulse) {
+		return mthz::NVec<1>{ std::max<double>(impulse.v[0], 0) };
 	}
 
 	//******************************
 	//*****FRICTION CONSTRAINT******
 	//******************************
-	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, double constraint_force_mixing, NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w, double normal_impulse_limit)
+	FrictionConstraint::FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, double constraint_force_mixing, mthz::NVec<2> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w, double normal_impulse_limit)
 		: DegreedConstraint<2>(a, b, warm_start_impulse), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()),
 		coeff_friction(coeff_friction), normal_impulse(&normal->impulse), static_ready(false), normal_impulse_limit(normal_impulse_limit)
 	{
@@ -223,10 +216,10 @@ namespace phyz {
 			rotDirB.v[2][0] = l.z; rotDirB.v[2][1] = r.z;
 		}
 		{
-			NMat<1, 3> u_dot = { {u.x, u.y, u.z} };
-			NMat<1, 3> w_dot = { {w.x, w.y, w.z} };
-			NMat<3, 3> rA_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rA));
-			NMat<3, 3> rB_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rB));
+			mthz::NMat<1, 3> u_dot = { {u.x, u.y, u.z} };
+			mthz::NMat<1, 3> w_dot = { {w.x, w.y, w.z} };
+			mthz::NMat<3, 3> rA_skew = mthz::crossMat(rA);
+			mthz::NMat<3, 3> rB_skew = mthz::crossMat(rB);
 
 			a_jacobian.copyInto(u_dot, 0, 0);
 			a_jacobian.copyInto(-u_dot * rA_skew, 0, 3);
@@ -248,13 +241,13 @@ namespace phyz {
 		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 	}
 
-	NVec<2> FrictionConstraint::projectValidImpulse(NVec<2> impulse) {
+	mthz::NVec<2> FrictionConstraint::projectValidImpulse(mthz::NVec<2> impulse) {
 		double max_impulse_mag = coeff_friction * std::min<double>(normal_impulse_limit, normal_impulse->v[0]);
 		double current_impulse_mag = sqrt(impulse.v[0] * impulse.v[0] + impulse.v[1] * impulse.v[1]);
 		if (current_impulse_mag > max_impulse_mag) {
 			static_ready = false;
 			double r = max_impulse_mag / current_impulse_mag;
-			return NVec<2>{ impulse.v[0] * r, impulse.v[1] * r };
+			return mthz::NVec<2>{ impulse.v[0] * r, impulse.v[1] * r };
 		}
 		else {
 			static_ready = true;
@@ -266,18 +259,18 @@ namespace phyz {
 	//******************************
 	//****BALL SOCKET CONSTRAINT****
 	//******************************
-	BallSocketConstraint::BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, NVec<3> warm_start_impulse)
+	BallSocketConstraint::BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<3> warm_start_impulse)
 		: DegreedConstraint<3>(a, b, warm_start_impulse), rA(socket_pos_a - a->getCOM()), rB(socket_pos_a - b->getCOM()), rotDirA(a->getInvTensor() * mthz::Mat3::cross_mat(rA)), rotDirB(b->getInvTensor() * mthz::Mat3::cross_mat(rB))
 	{
 		//mthz::Mat3 inverse_inertia_mat3 = (mthz::Mat3::iden()*a->getInvMass() + mthz::Mat3::iden()*b->getInvMass() - mthz::Mat3::cross_mat(rA)*rotDirA - mthz::Mat3::cross_mat(rB)*rotDirB);
-		//inverse_inertia = applyCFM(Mat3toNMat33(inverse_inertia_mat3), constraint_force_mixing).inverse();
+		//inverse_inertia = applyCFM(Mat3tomthz::NMat33(inverse_inertia_mat3), constraint_force_mixing).inverse();
 		
-		NMat<3, 3> rA_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rA));
-		NMat<3, 3> rB_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rB));
+		mthz::NMat<3, 3> rA_skew = mthz::crossMat(rA);
+		mthz::NMat<3, 3> rB_skew = mthz::crossMat(rB);
 
-		a_jacobian.copyInto(idenMat<3>(), 0, 0);
+		a_jacobian.copyInto(mthz::idenMat<3>(), 0, 0);
 		a_jacobian.copyInto(-rA_skew, 0, 3);
-		b_jacobian.copyInto(-idenMat<3>(), 0, 0);
+		b_jacobian.copyInto(-mthz::idenMat<3>(), 0, 0);
 		b_jacobian.copyInto(rB_skew, 0, 3);
 		
 		impulse_to_a_velocity = aInvMass() * a_jacobian.transpose();
@@ -289,7 +282,7 @@ namespace phyz {
 
 		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 		mthz::Vec3 error = socket_pos_b - socket_pos_a;
-		psuedo_target_val = NVec<3>{ pos_correct_hardness * error.x, pos_correct_hardness * error.y, pos_correct_hardness * error.z };
+		psuedo_target_val = mthz::NVec<3>{ pos_correct_hardness * error.x, pos_correct_hardness * error.y, pos_correct_hardness * error.z };
 	}
 
 	
@@ -297,7 +290,7 @@ namespace phyz {
 	//******************************
 	//*****HINGE CONSTRAINT*********
 	//******************************
-	HingeConstraint::HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	HingeConstraint::HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: DegreedConstraint<5>(a, b, warm_start_impulse), rA(hinge_pos_a - a->getCOM()), rB(hinge_pos_a - b->getCOM())
 	{
 		rot_axis_a.getPerpendicularBasis(&u, &w);
@@ -314,7 +307,7 @@ namespace phyz {
 
 		//IMPULSE TO ROTATION MATRICES
 		{
-			NMat<3, 3> l = Mat3toNMat33(Ia_inv * rA_skew); //left block
+			mthz::NMat<3, 3> l = (Ia_inv * rA_skew).toNMat(); //left block
 			mthz::Vec3 m = Ia_inv * (n.cross(u));          //middle block
 			mthz::Vec3 r = Ia_inv * (n.cross(w));          //right block
 
@@ -323,7 +316,7 @@ namespace phyz {
 			rotDirA.v[0][4] = r.x; rotDirA.v[1][4] = r.y; rotDirA.v[2][4] = r.z;
 		}
 		{
-			NMat<3, 3> l = Mat3toNMat33(Ib_inv * rB_skew); //left block
+			mthz::NMat<3, 3> l = (Ib_inv * rB_skew).toNMat(); //left block
 			mthz::Vec3 m = Ib_inv * (n.cross(u));          //middle block
 			mthz::Vec3 r = Ib_inv * (n.cross(w));          //right block
 
@@ -334,26 +327,26 @@ namespace phyz {
 		
 		//INVERSE INERTIA MATRIX
 		{
-			NMat<3, 3> ul = Mat3toNMat33(mthz::Mat3::iden() * a->getInvMass() + mthz::Mat3::iden() * b->getInvMass() - rA_skew * Ia_inv * rA_skew - rB_skew * Ib_inv * rB_skew); //upper left
+			mthz::NMat<3, 3> ul = (mthz::Mat3::iden() * a->getInvMass() + mthz::Mat3::iden() * b->getInvMass() - rA_skew * Ia_inv * rA_skew - rB_skew * Ib_inv * rB_skew).toNMat(); //upper left
 			mthz::Vec3 um = -(rA_skew * Ia_inv + rB_skew * Ib_inv) * (n.cross(u)); //upper middle
 			mthz::Vec3 ur = -(rA_skew * Ia_inv + rB_skew * Ib_inv) * (n.cross(w)); //upper right
 
-			NMat<3, 3> rA_skew_mat = Mat3toNMat33(rA_skew);
-			NMat<3, 3> rB_skew_mat = Mat3toNMat33(rB_skew);
-			NMat<3, 3> u_skew = Mat3toNMat33(mthz::Mat3::cross_mat(u));
-			NMat<3, 3> w_skew = Mat3toNMat33(mthz::Mat3::cross_mat(w));
-			NMat<3, 3> n_skew = Mat3toNMat33(mthz::Mat3::cross_mat(n));
-			NMat<1, 3> u_dot = NMat<1, 3>{ {u.x, u.y, u.z} };
-			NMat<1, 3> w_dot = NMat<1, 3>{ {w.x, w.y, w.z} };
-			NMat<1, 3> n_dot = NMat<1, 3>{ {n.x, n.y, n.z} };
-			NMat<1, 3> zero = NMat<1, 3>{ {0, 0, 0} };
+			mthz::NMat<3, 3> rA_skew_mat = rA_skew.toNMat();
+			mthz::NMat<3, 3> rB_skew_mat = rB_skew.toNMat();
+			mthz::NMat<3, 3> u_skew = mthz::crossMat(u);
+			mthz::NMat<3, 3> w_skew = mthz::crossMat(w);
+			mthz::NMat<3, 3> n_skew = mthz::crossMat(n);
+			mthz::NMat<1, 3> u_dot = mthz::NMat<1, 3>{ {u.x, u.y, u.z} };
+			mthz::NMat<1, 3> w_dot = mthz::NMat<1, 3>{ {w.x, w.y, w.z} };
+			mthz::NMat<1, 3> n_dot = mthz::NMat<1, 3>{ {n.x, n.y, n.z} };
+			mthz::NMat<1, 3> zero = mthz::NMat<1, 3>{ {0, 0, 0} };
 
-			NMat<1, 5> m = n_dot * u_skew * rotDirA - u_dot * n_skew * rotDirB; //middle row
-			NMat<1, 5> b = n_dot * w_skew * rotDirA - w_dot * n_skew * rotDirB; //bottom row
+			mthz::NMat<1, 5> m = n_dot * u_skew * rotDirA - u_dot * n_skew * rotDirB; //middle row
+			mthz::NMat<1, 5> b = n_dot * w_skew * rotDirA - w_dot * n_skew * rotDirB; //bottom row
 
-			a_jacobian.copyInto(idenMat<3>(), 0, 0);
+			a_jacobian.copyInto(mthz::idenMat<3>(), 0, 0);
 			a_jacobian.copyInto(-rA_skew_mat, 0, 3);
-			b_jacobian.copyInto(-idenMat<3>(), 0, 0);
+			b_jacobian.copyInto(-mthz::idenMat<3>(), 0, 0);
 			b_jacobian.copyInto(rB_skew_mat, 0, 3);
 			
 			a_jacobian.copyInto(zero, 3, 0);
@@ -377,35 +370,35 @@ namespace phyz {
 			mthz::Vec3 pos_correct = (hinge_pos_b - hinge_pos_a) * pos_correct_hardness;
 			double u_correct = u.dot(n)* rot_correct_hardness;
 			double w_correct = w.dot(n)* rot_correct_hardness;
-			psuedo_target_val = NVec<5>{ pos_correct.x, pos_correct.y, pos_correct.z, u_correct, w_correct };
+			psuedo_target_val = mthz::NVec<5>{ pos_correct.x, pos_correct.y, pos_correct.z, u_correct, w_correct };
 		}
 	}
 
 	//******************************
 	//*****MOTOR CONSTRAINT*********
 	//******************************
-	MotorConstraint::MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, NVec<1> warm_start_impulse)
+	MotorConstraint::MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse)
 		: DegreedConstraint<1>(a, b, warm_start_impulse), motor_axis(motor_axis), max_torque_impulse(max_torque_impulse)
 	{
 		double real_target_velocity;
 
 		if (current_angle > max_angle) {
-			psuedo_target_val = NVec<1>{ (max_angle - current_angle) * rot_correct_hardness };
+			psuedo_target_val = mthz::NVec<1>{ (max_angle - current_angle) * rot_correct_hardness };
 			real_target_velocity = std::min<double>(0, target_velocity);
 			rot_limit_status = ABOVE_MAX;
 		}
 		else if (current_angle < min_angle) {
-			psuedo_target_val = NVec<1>{ (min_angle - current_angle) * rot_correct_hardness };
+			psuedo_target_val = mthz::NVec<1>{ (min_angle - current_angle) * rot_correct_hardness };
 			real_target_velocity = std::max<double>(0, target_velocity);
 			rot_limit_status = BELOW_MIN;
 		}
 		else {
-			psuedo_target_val = NVec<1>{ 0 };
+			psuedo_target_val = mthz::NVec<1>{ 0 };
 			real_target_velocity = target_velocity;
 			rot_limit_status = NOT_EXCEEDED;
 		}
 
-		NMat<1, 3> motor_axis_dot = { motor_axis.x, motor_axis.y, motor_axis.z };
+		mthz::NMat<1, 3> motor_axis_dot = { motor_axis.x, motor_axis.y, motor_axis.z };
 
 		a_jacobian.copyInto(motor_axis_dot, 0, 3);
 		b_jacobian.copyInto(-motor_axis_dot, 0, 3);
@@ -418,27 +411,27 @@ namespace phyz {
 
 		double current_val = getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())).v[0];
 
-		target_val = NVec<1>{ real_target_velocity - current_val };
+		target_val = mthz::NVec<1>{ real_target_velocity - current_val };
 	}
 
-	NVec<1> MotorConstraint::projectValidImpulse(NVec<1> impulse) {
+	mthz::NVec<1> MotorConstraint::projectValidImpulse(mthz::NVec<1> impulse) {
 		switch (rot_limit_status) {
 		case NOT_EXCEEDED:
 			if (impulse.v[0] > 0)
-				return NVec<1>{ std::min<double>(impulse.v[0], max_torque_impulse) };
+				return mthz::NVec<1>{ std::min<double>(impulse.v[0], max_torque_impulse) };
 			else
-				return NVec<1>{ std::max<double>(impulse.v[0], -max_torque_impulse) };
+				return mthz::NVec<1>{ std::max<double>(impulse.v[0], -max_torque_impulse) };
 		case ABOVE_MAX:
-			return NVec<1>{ std::min<double>(impulse.v[0], 0) };
+			return mthz::NVec<1>{ std::min<double>(impulse.v[0], 0) };
 		case BELOW_MIN:
-			return NVec<1>{ std::max<double>(impulse.v[0], 0) };
+			return mthz::NVec<1>{ std::max<double>(impulse.v[0], 0) };
 		}
 	}
 
 	////******************************
 	////*****SLIDER CONSTRAINT********
 	////******************************
-	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: DegreedConstraint<5>(a, b, warm_start_impulse), rA(slider_point_a - a->getCOM()), rB(slider_point_b - b->getCOM())
 	{
 		slider_axis_a = slider_axis_a.normalize();
@@ -449,8 +442,8 @@ namespace phyz {
 
 		mthz::Mat3 Ia_inv = a->getInvTensor();
 		mthz::Mat3 Ib_inv = b->getInvTensor();
-		NMat<3, 3> Ia_inv_mat = Mat3toNMat33(Ia_inv);
-		NMat<3, 3> Ib_inv_mat = Mat3toNMat33(Ib_inv);
+		mthz::NMat<3, 3> Ia_inv_mat = Ia_inv.toNMat();
+		mthz::NMat<3, 3> Ib_inv_mat = Ib_inv.toNMat();
 
 		mthz::Vec3 pos_error = slider_point_a - slider_point_b;
 		mthz::Vec3 rAxU = rA.cross(u);
@@ -482,14 +475,13 @@ namespace phyz {
 
 		//INVERSE INERTIA MATRIX
 		{
-			NMat<1, 3> u_dot = { u.x, u.y, u.z };
-			NMat<1, 3> w_dot = { w.x, w.y, w.z };
-			NMat<1, 3> Pe_dot = { pos_error.x, pos_error.y, pos_error.z };
-			NMat<3, 3> rA_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rA));
-			NMat<3, 3> rB_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rB));
-			NMat<3, 3> u_skew = Mat3toNMat33(mthz::Mat3::cross_mat(u));
-			NMat<3, 3> w_skew = Mat3toNMat33(mthz::Mat3::cross_mat(w));
-			NMat<3, 3> zero = Mat3toNMat33(mthz::Mat3::zero());
+			mthz::NMat<1, 3> u_dot = { u.x, u.y, u.z };
+			mthz::NMat<1, 3> w_dot = { w.x, w.y, w.z };
+			mthz::NMat<1, 3> Pe_dot = { pos_error.x, pos_error.y, pos_error.z };
+			mthz::NMat<3, 3> rA_skew = mthz::crossMat(rA);
+			mthz::NMat<3, 3> rB_skew = mthz::crossMat(rB);
+			mthz::NMat<3, 3> u_skew = mthz::crossMat(u);
+			mthz::NMat<3, 3> w_skew = mthz::crossMat(w);
 
 			a_jacobian.copyInto(u_dot, 0, 0);
 			a_jacobian.copyInto(-u_dot * rA_skew - Pe_dot * u_skew, 0, 3);
@@ -501,10 +493,8 @@ namespace phyz {
 			b_jacobian.copyInto(-w_dot, 1, 0);
 			b_jacobian.copyInto(w_dot * rB_skew, 1, 3);
 
-			a_jacobian.copyInto(zero, 2, 0);
-			a_jacobian.copyInto(idenMat<3>(), 2, 3);
-			b_jacobian.copyInto(zero, 2, 0);
-			b_jacobian.copyInto(-idenMat<3>(), 2, 3);
+			a_jacobian.copyInto(mthz::idenMat<3>(), 2, 3);
+			b_jacobian.copyInto(-mthz::idenMat<3>(), 2, 3);
 
 			impulse_to_a_velocity = aInvMass() * a_jacobian.transpose();
 			impulse_to_b_velocity = bInvMass() * b_jacobian.transpose();
@@ -524,14 +514,14 @@ namespace phyz {
 			double angle = a_orient.angleTo(b_orient);
 			mthz::Vec3 axis = angle == 0 ? mthz::Vec3() : orientation_diff.getRotAxis() * rot_correct_hardness;
 			mthz::Vec3 rot_correct = angle * axis;
-			psuedo_target_val = NVec<5>{ u_correct, w_correct, rot_correct.x, rot_correct.y, rot_correct.z };
+			psuedo_target_val = mthz::NVec<5>{ u_correct, w_correct, rot_correct.x, rot_correct.y, rot_correct.z };
 		}
 	}
 
 	//******************************
 	//******PISTON CONSTRAINT*******
 	//******************************
-	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, double constraint_force_mixing, NVec<1> warm_start_impulse)
+	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse)
 		: DegreedConstraint<1>(a, b, warm_start_impulse), slide_axis(slide_axis_a), max_impulse(max_impulse)
 	{
 		mthz::Mat3 Ia_inv = a->getInvTensor();
@@ -539,8 +529,8 @@ namespace phyz {
 		pos_diff = b->getCOM() - a->getCOM();
 		rot_dir = Ia_inv * (pos_diff.cross(slide_axis_a));
 
-		NMat<1, 3> slide_axis_dot = { slide_axis.x, slide_axis.y, slide_axis.z };
-		NMat<3, 3> slide_axis_cross = Mat3toNMat33(mthz::Mat3::cross_mat(slide_axis));
+		mthz::NMat<1, 3> slide_axis_dot = { slide_axis.x, slide_axis.y, slide_axis.z };
+		mthz::NMat<3, 3> slide_axis_cross = mthz::crossMat(slide_axis);
 
 		a_jacobian.copyInto(-slide_axis_dot, 0, 0);
 		a_jacobian.copyInto(-slide_axis_dot * slide_axis_cross, 0, 3);
@@ -553,27 +543,27 @@ namespace phyz {
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 
 		double current_val = getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())).v[0];
-		target_val = NVec<1>{ target_velocity - current_val };
+		target_val = mthz::NVec<1>{ target_velocity - current_val };
 	}
 
-	NVec<1> PistonConstraint::projectValidImpulse(NVec<1> impulse) {
-		if (impulse.v[0] > 0)	return NVec<1>{ std::min<double>(impulse.v[0], max_impulse) };
-		else					return NVec<1>{ std::max<double>(impulse.v[0], -max_impulse) };
+	mthz::NVec<1> PistonConstraint::projectValidImpulse(mthz::NVec<1> impulse) {
+		if (impulse.v[0] > 0)	return mthz::NVec<1>{ std::min<double>(impulse.v[0], max_impulse) };
+		else					return mthz::NVec<1>{ std::max<double>(impulse.v[0], -max_impulse) };
 	}
 
 	//******************************
 	//****Slide Limit Constraint****
 	//******************************
-	SlideLimitConstraint::SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, double constraint_force_mixing, NVec<1> warm_start_impulse)
+	SlideLimitConstraint::SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse)
 		: DegreedConstraint<1>(a, b, warm_start_impulse), slide_axis(slide_axis_a)
 	{
 
 		if (slide_position > positive_slide_limit) {
-			psuedo_target_val = NVec<1>{ (positive_slide_limit - slide_position) * pos_correct_hardness };
+			psuedo_target_val = mthz::NVec<1>{ (positive_slide_limit - slide_position) * pos_correct_hardness };
 			slide_limit_status = ABOVE_MAX;
 		}
 		else if (slide_position < negative_slide_limit) {
-			psuedo_target_val = NVec<1>{ (negative_slide_limit - slide_position) * pos_correct_hardness };
+			psuedo_target_val = mthz::NVec<1>{ (negative_slide_limit - slide_position) * pos_correct_hardness };
 			slide_limit_status = BELOW_MIN;
 		}
 
@@ -582,8 +572,8 @@ namespace phyz {
 		pos_diff = b->getCOM() - a->getCOM();
 		rot_dir = Ia_inv * (pos_diff.cross(slide_axis_a));
 
-		NMat<1, 3> slide_axis_dot = { slide_axis.x, slide_axis.y, slide_axis.z };
-		NMat<3, 3> slide_axis_cross = Mat3toNMat33(mthz::Mat3::cross_mat(slide_axis));
+		mthz::NMat<1, 3> slide_axis_dot = { slide_axis.x, slide_axis.y, slide_axis.z };
+		mthz::NMat<3, 3> slide_axis_cross = mthz::crossMat(slide_axis);
 
 		a_jacobian.copyInto(-slide_axis_dot, 0, 0);
 		a_jacobian.copyInto(-slide_axis_dot * slide_axis_cross, 0, 3);
@@ -596,20 +586,20 @@ namespace phyz {
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 
 		double current_val = getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())).v[0];
-		target_val = NVec<1>{ -current_val };
+		target_val = mthz::NVec<1>{ -current_val };
 	}
 
-	NVec<1> SlideLimitConstraint::projectValidImpulse(NVec<1> impulse) {
+	mthz::NVec<1> SlideLimitConstraint::projectValidImpulse(mthz::NVec<1> impulse) {
 		switch (slide_limit_status) {
-		case ABOVE_MAX: return NVec<1>{ std::min<double>(impulse.v[0], 0)};
-		case BELOW_MIN: return NVec<1>{ std::max<double>(impulse.v[0], 0)};
+		case ABOVE_MAX: return mthz::NVec<1>{ std::min<double>(impulse.v[0], 0)};
+		case BELOW_MIN: return mthz::NVec<1>{ std::max<double>(impulse.v[0], 0)};
 		}
 	}
 
 	//******************************
 	//***SLIDING HINGE CONSTRAINT***
 	//******************************
-	SlidingHingeConstraint::SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_pos_a, mthz::Vec3 slide_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<4> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	SlidingHingeConstraint::SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_pos_a, mthz::Vec3 slide_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<4> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: DegreedConstraint<4>(a, b, warm_start_impulse), rA(slide_pos_a - a->getCOM()), rB(slide_pos_b - b->getCOM())
 	{
 		rot_axis_b.getPerpendicularBasis(&u, &w);
@@ -650,19 +640,19 @@ namespace phyz {
 
 		//INVERSE INERTIA MATRIX
 		{
-			NMat<3, 3> ul = Mat3toNMat33(mthz::Mat3::iden() * a->getInvMass() + mthz::Mat3::iden() * b->getInvMass() - rA_skew * Ia_inv * rA_skew - rB_skew * Ib_inv * rB_skew); //upper left
+			mthz::NMat<3, 3> ul = (mthz::Mat3::iden() * a->getInvMass() + mthz::Mat3::iden() * b->getInvMass() - rA_skew * Ia_inv * rA_skew - rB_skew * Ib_inv * rB_skew).toNMat(); //upper left
 			mthz::Vec3 um = -(rA_skew * Ia_inv + rB_skew * Ib_inv) * (n.cross(u)); //upper middle
 			mthz::Vec3 ur = -(rA_skew * Ia_inv + rB_skew * Ib_inv) * (n.cross(w)); //upper right
 
-			NMat<3, 3> rA_skew_mat = Mat3toNMat33(rA_skew);
-			NMat<3, 3> rB_skew_mat = Mat3toNMat33(rB_skew);
-			NMat<3, 3> u_skew = Mat3toNMat33(mthz::Mat3::cross_mat(u));
-			NMat<3, 3> w_skew = Mat3toNMat33(mthz::Mat3::cross_mat(w));
-			NMat<3, 3> n_skew = Mat3toNMat33(mthz::Mat3::cross_mat(n));
-			NMat<1, 3> u_dot = NMat<1, 3>{ {u.x, u.y, u.z} };
-			NMat<1, 3> w_dot = NMat<1, 3>{ {w.x, w.y, w.z} };
-			NMat<1, 3> n_dot = NMat<1, 3>{ {n.x, n.y, n.z} };
-			NMat<1, 3> pd_dot = NMat<1, 3>{ {pos_diff.x, pos_diff.y, pos_diff.z} };
+			mthz::NMat<3, 3> rA_skew_mat = rA_skew.toNMat();
+			mthz::NMat<3, 3> rB_skew_mat = rB_skew.toNMat();
+			mthz::NMat<3, 3> u_skew = mthz::crossMat(u);
+			mthz::NMat<3, 3> w_skew = mthz::crossMat(w);
+			mthz::NMat<3, 3> n_skew = mthz::crossMat(n);
+			mthz::NMat<1, 3> u_dot = mthz::NMat<1, 3>{ {u.x, u.y, u.z} };
+			mthz::NMat<1, 3> w_dot = mthz::NMat<1, 3>{ {w.x, w.y, w.z} };
+			mthz::NMat<1, 3> n_dot = mthz::NMat<1, 3>{ {n.x, n.y, n.z} };
+			mthz::NMat<1, 3> pd_dot = mthz::NMat<1, 3>{ {pos_diff.x, pos_diff.y, pos_diff.z} };
 
 			a_jacobian.copyInto(u_dot, 0, 0); a_jacobian.copyInto(-u_dot * rA_skew_mat, 0, 3); b_jacobian.copyInto(-u_dot, 0, 0); b_jacobian.copyInto(u_dot * rB_skew_mat - pd_dot * u_skew, 0, 3);
 			a_jacobian.copyInto(w_dot, 1, 0); a_jacobian.copyInto(-w_dot * rA_skew_mat, 1, 3); b_jacobian.copyInto(-w_dot, 1, 0); b_jacobian.copyInto(w_dot * rB_skew_mat - pd_dot * w_skew, 1, 3);
@@ -682,33 +672,33 @@ namespace phyz {
 			double w_correct = -w.dot(pos_diff) * pos_correct_hardness;
 			double u_rot_correct = -u.dot(n) * rot_correct_hardness;
 			double w_rot_correct = -w.dot(n) * rot_correct_hardness;
-			psuedo_target_val = NVec<4>{ u_correct, w_correct, u_rot_correct, w_rot_correct };
+			psuedo_target_val = mthz::NVec<4>{ u_correct, w_correct, u_rot_correct, w_rot_correct };
 		}
 	}
 
 	////******************************
 	////*******WELD CONSTRAINT********
 	////******************************
-	WeldConstraint::WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 pos_a, mthz::Vec3 pos_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, NVec<6> warm_start_impulse)
+	WeldConstraint::WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 pos_a, mthz::Vec3 pos_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<6> warm_start_impulse)
 		: DegreedConstraint<6>(a, b, warm_start_impulse), rA(pos_a - a->getCOM()), rB(pos_b - b->getCOM())
 	{
 
 		mthz::Mat3 Ia_inv = a->getInvTensor();
 		mthz::Mat3 Ib_inv = b->getInvTensor();
-		NMat<3, 3> Ia_inv_mat = Mat3toNMat33(Ia_inv);
-		NMat<3, 3> Ib_inv_mat = Mat3toNMat33(Ib_inv);
-		NMat<3, 3> rA_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rA));
-		NMat<3, 3> rB_skew = Mat3toNMat33(mthz::Mat3::cross_mat(rB));
-		NMat<3, 3> iden_mat = idenMat<3>();
+		mthz::NMat<3, 3> Ia_inv_mat = Ia_inv.toNMat();
+		mthz::NMat<3, 3> Ib_inv_mat = Ib_inv.toNMat();
+		mthz::NMat<3, 3> rA_skew = mthz::crossMat(rA);
+		mthz::NMat<3, 3> rB_skew = mthz::crossMat(rB);
+		mthz::NMat<3, 3> iden_mat = mthz::idenMat<3>();
 
 		rotDirA.copyInto(Ia_inv_mat * rA_skew, 0, 0); rotDirA.copyInto(Ia_inv_mat, 0, 3);
 
 		rotDirB.copyInto(Ib_inv_mat * rB_skew, 0, 0); rotDirB.copyInto(Ib_inv_mat, 0, 3);
 
-		a_jacobian.copyInto(idenMat<3>(), 0, 0); a_jacobian.copyInto(-rA_skew, 0, 3);
-												 a_jacobian.copyInto(idenMat<3>(), 3, 3);
-		b_jacobian.copyInto(-idenMat<3>(), 0, 0); b_jacobian.copyInto(rB_skew, 0, 3);
-												  b_jacobian.copyInto(-idenMat<3>(), 3, 3);
+		a_jacobian.copyInto(mthz::idenMat<3>(), 0, 0); a_jacobian.copyInto(-rA_skew, 0, 3);
+												 a_jacobian.copyInto(mthz::idenMat<3>(), 3, 3);
+		b_jacobian.copyInto(-mthz::idenMat<3>(), 0, 0); b_jacobian.copyInto(rB_skew, 0, 3);
+												  b_jacobian.copyInto(-mthz::idenMat<3>(), 3, 3);
 
 		impulse_to_a_velocity = aInvMass() * a_jacobian.transpose();
 		impulse_to_b_velocity = bInvMass() * b_jacobian.transpose();
@@ -726,215 +716,17 @@ namespace phyz {
 			double angle = a_orient.angleTo(b_orient);
 			mthz::Vec3 axis = angle == 0 ? mthz::Vec3() : orientation_diff.getRotAxis() * rot_correct_hardness;
 			mthz::Vec3 rot_correct = angle * axis;
-			psuedo_target_val = NVec<6>{ pos_correct.x, pos_correct.y, pos_correct.z, rot_correct.x, rot_correct.y, rot_correct.z };
+			psuedo_target_val = mthz::NVec<6>{ pos_correct.x, pos_correct.y, pos_correct.z, rot_correct.x, rot_correct.y, rot_correct.z };
 		}
 	}
 
-	//******************************
-	//******** NVEC / NMAT *********
-	//******************************
-	template<int n>
-	bool NVec<n>::isZero() {
-		for (int i = 0; i < n; i++) {
-			if (abs(v[i]) > CUTOFF) {
-				return false;
-			}
-		}
-		return true;
+	mthz::NVec<6> velAngToNVec(mthz::Vec3 vel, mthz::Vec3 ang_vel) {
+		return mthz::NVec<6> { vel.x, vel.y, vel.z, ang_vel.x, ang_vel.y, ang_vel.z };
 	}
 
 	template<int n>
-	NVec<n> NVec<n>::operator+(const NVec& r) const {
-		NVec<n> out;
-		for (int i = 0; i < n; i++) {
-			out.v[i] = this->v[i] + r.v[i];
-		}
-		return out;
-	}
-
-	template<int n>
-	NVec<n> NVec<n>::operator-(const NVec& r) const {
-		NVec<n> out;
-		for (int i = 0; i < n; i++) {
-			out.v[i] = this->v[i] - r.v[i];
-		}
-		return out;
-	}
-
-	template<int n>
-	NVec<n> NVec<n>::operator-() const {
-		NVec<n> out;
-		for (int i = 0; i < n; i++) {
-			out.v[i] = -this->v[i];
-		}
-		return out;
-	};
-
-	template<int n>
-	void NVec<n>::operator+=(const NVec<n>& r) {
-		for (int i = 0; i < n; i++) {
-			v[i] += r.v[i];
-		}
-	}
-
-	template <int n_row, int n_col>
-	NVec<n_row> NMat<n_row, n_col>::operator*(const NVec<n_col>& n_vec) const {
-		NVec<n_row> out;
-		for (int i = 0; i < n_row; i++) {
-			out.v[i] = 0;
-			for (int j = 0; j < n_col; j++) {
-				out.v[i] += n_vec.v[j] * this->v[i][j];
-			}
-		}
-		return out;
-	}
-
-	template <int n_row, int n_col>
-	NMat<n_row, n_col> NMat<n_row, n_col>::operator+(const NMat<n_row, n_col>& r) const {
-		NMat<n_row, n_col> out;
-		for (int i = 0; i < n_row; i++) {
-			for (int j = 0; j < n_col; j++) {
-				out.v[i][j] = this->v[i][j] + r.v[i][j];
-			}
-		}
-		return out;
-	}
-
-	template <int n_row, int n_col>
-	NMat<n_row, n_col> NMat<n_row, n_col>::operator-(const NMat<n_row, n_col>& r) const {
-		NMat<n_row, n_col> out;
-		for (int i = 0; i < n_row; i++) {
-			for (int j = 0; j < n_col; j++) {
-				out.v[i][j] = this->v[i][j] - r.v[i][j];
-			}
-		}
-		return out;
-	}
-
-	template <int n_row, int n_col>
-	NMat<n_row, n_col> NMat<n_row, n_col>::operator-() const {
-		NMat<n_row, n_col> out;
-		for (int i = 0; i < n_row; i++) {
-			for (int j = 0; j < n_col; j++) {
-				out.v[i][j] = -this->v[i][j];
-			}
-		}
-		return out;
-	}
-
-	template<int n>
-	static NMat<n, n> idenMat() {
-		NMat<n, n> out;
-		for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				out.v[i][j] = 0;
-			}
-			out.v[i][i] = 1;
-		}
-		return out;
-	}
-
-	static NMat<3, 3> Mat3toNMat33(const mthz::Mat3& m) {
-		NMat<3, 3> out;
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j < 3; j++) {
-				out.v[i][j] = m.v[i][j];
-			}
-		}
-		return out;
-	}
-
-	static NVec<3> Vec3toNVec3(mthz::Vec3 v) {
-		return NVec<3> {v.x, v.y, v.z};
-	}
-
-	static mthz::Vec3 NVec3toVec3(NVec<3> v) {
-		return mthz::Vec3(v.v[0], v.v[1], v.v[2]);
-	}
-
-	NVec<6> velAngToNVec(mthz::Vec3 vel, mthz::Vec3 ang_vel) {
-		return NVec<6> { vel.x, vel.y, vel.z, ang_vel.x, ang_vel.y, ang_vel.z };
-	}
-
-	template <>
-	NMat<1, 1> NMat<1, 1>::inverse() const {
-		return  NMat<1, 1>{ { 1.0 / v[0][0] } };
-	}
-
-	template <>
-	NMat<2, 2> NMat<2, 2>::inverse() const {
-		NMat<2, 2> out;
-		double a = v[0][0]; double b = v[0][1]; double c = v[1][0]; double d = v[1][1];
-		double determinant = a * d - b * c;
-		assert(abs(determinant) > 0.000000001);
-		double di = 1.0 / determinant;
-		
-		out.v[0][0] =  d * di; out.v[0][1] = -b * di;
-		out.v[1][0] = -c * di; out.v[1][1] =  a * di;
-
-		return out;
-	}
-
-	template <>
-	NMat<3, 3> NMat<3, 3>::inverse() const {
-		NMat<3, 3> out;
-		double a = v[0][0], b = v[0][1], c = v[0][2], d = v[1][0], e = v[1][1], f = v[1][2], g = v[2][0], h = v[2][1], i = v[2][2];
-		double determinant = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
-		assert(abs(determinant) > 0.000000001);
-		double di = 1.0 / determinant;
-
-		out.v[0][0] = (e * i - f * h) * di; out.v[0][1] = (c * h - b * i) * di; out.v[0][2] = (b * f - c * e) * di;
-		out.v[1][0] = (f * g - d * i) * di; out.v[1][1] = (a * i - c * g) * di; out.v[1][2] = (c * d - a * f) * di;
-		out.v[2][0] = (d * h - e * g) * di; out.v[2][1] = (b * g - a * h) * di; out.v[2][2] = (a * e - b * d) * di;
-
-		return out;
-	}
-
-	//gaussian elimination
-	template <int n_row, int n_col>
-	NMat<n_row, n_col> NMat<n_row, n_col>::inverse() const {
-		assert(n_row == n_col);
-
-		NMat<n_row, n_row> copy = *this;
-		NMat<n_row, n_row> out = idenMat<n_row>();
-
-		for (int piv = 0; piv < n_row; piv++) {
-			for (int target_row = 0; target_row < n_row; target_row++) {
-				if (piv == target_row) continue;
-
-				double ratio = copy.v[target_row][piv] / copy.v[piv][piv];
-				for (int target_col = 0; target_col < n_row; target_col++) {
-					copy.v[target_row][target_col] -= ratio * copy.v[piv][target_col];
-					out.v[target_row][target_col] -= ratio * out.v[piv][target_col];
-				}
-
-			}
-		}
-		for (int piv = 0; piv < n_row; piv++) {
-			for (int col = 0; col < n_row; col++) {
-				out.v[piv][col] /= copy.v[piv][piv];
-			}
-		}
-
-		return out;
-	}
-
-	template <int n_row, int n_col>
-	NMat<n_col, n_row> NMat<n_row, n_col>::transpose() const {
-		NMat<n_col, n_row> out;
-
-		for (int i = 0; i < n_row; i++) {
-			for (int j = 0; j < n_col; j++) {
-				out.v[j][i] = v[i][j];
-			}
-		}
-		
-		return out;
-	}
-
-	template<int n>
-	static NMat<n, n> applyCFM(const NMat<n, n>& mat, double cfm) {
-		NMat<n, n> copy(mat);
+	static mthz::NMat<n, n> applyCFM(const mthz::NMat<n, n>& mat, double cfm) {
+		mthz::NMat<n, n> copy(mat);
 		for (int i = 0; i < n; i++) {
 			copy.v[i][i] *= (1 + cfm);
 		}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Vec3.h"
+#include "NMat.h"
 
 namespace mthz {
 
@@ -15,6 +16,16 @@ namespace mthz {
 					v[i][j] = m.v[i][j];
 				}
 			}
+		}
+
+		NMat<3, 3> toNMat() {
+			NMat<3, 3> out;
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					out.v[i][j] = v[i][j];
+				}
+			}
+			return out;
 		}
 
 		static Mat3 zero() {
