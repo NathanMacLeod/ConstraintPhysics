@@ -255,4 +255,14 @@ namespace phyz {
 		mthz::NMat<3, 6> rotDirA;
 		mthz::NMat<3, 6> rotDirB;
 	};
+
+	class TestConstraint : public DegreedConstraint<6> {
+	public:
+		TestConstraint() {}
+		TestConstraint(RigidBody* a, RigidBody* b);
+
+		inline int getDegree() override { return 6; }
+		inline bool isInequalityConstraint() override { return false; }
+		inline bool needsPosCorrect() override { return false; }
+	};
 }

@@ -2,6 +2,7 @@
 #include "RigidBody.h"
 #include "CollisionDetect.h"
 #include "ConstraintSolver.h"
+#include "HolonomicBlockSolver.h"
 #include "ThreadManager.h"
 #include "Octree.h"
 #include "AABB_Tree.h"

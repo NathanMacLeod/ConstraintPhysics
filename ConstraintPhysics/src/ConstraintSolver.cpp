@@ -720,6 +720,19 @@ namespace phyz {
 		}
 	}
 
+	TestConstraint::TestConstraint(RigidBody* a, RigidBody* b)
+		: DegreedConstraint(a, b, mthz::NVec<6>())
+	{
+		a_jacobian = mthz::idenMat<6>();
+		b_jacobian = mthz::idenMat<6>();
+
+		impulse_to_a_velocity = mthz::idenMat<6>();
+		impulse_to_b_velocity = mthz::idenMat<6>();
+
+		impulse_to_value = 2 * mthz::idenMat<6>();
+		impulse_to_value_inverse = 0.5 * mthz::idenMat<6>();
+	}
+
 	mthz::NVec<6> velAngToNVec(mthz::Vec3 vel, mthz::Vec3 ang_vel) {
 		return mthz::NVec<6> { vel.x, vel.y, vel.z, ang_vel.x, ang_vel.y, ang_vel.z };
 	}

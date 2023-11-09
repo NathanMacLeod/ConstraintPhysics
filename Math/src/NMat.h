@@ -144,6 +144,11 @@ namespace mthz {
 		}
 	}
 
+	template<int n_row, int n_col>
+	NMat<n_row, n_col> operator*(double d, const NMat<n_row, n_col> mat) {
+		return mat * d;
+	}
+
 	template<>
 	void rowMajorOrderInverse<1>(double* target, double* source);
 

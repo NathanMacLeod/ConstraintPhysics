@@ -24,6 +24,20 @@ public:
 
 	void run() override {
 
+		phyz::RigidBody* fake0 = (phyz::RigidBody *)0;
+		phyz::RigidBody* fake1 = (phyz::RigidBody*)1;
+		phyz::RigidBody* fake2 = (phyz::RigidBody*)2;
+		phyz::RigidBody* fake3 = (phyz::RigidBody*)3;
+
+		std::vector<phyz::Constraint*> constraints = {
+			new phyz::TestConstraint(fake0, fake1),
+			new phyz::TestConstraint(fake1, fake2),
+			new phyz::TestConstraint(fake2, fake3)
+		};
+
+		phyz::HolonomicSystem h(constraints);
+		h.computeInverse(0);
+
 		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
