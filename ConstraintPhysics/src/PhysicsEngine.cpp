@@ -344,13 +344,13 @@ namespace phyz {
 		if (use_multithread) {
 			thread_manager.do_all<std::vector<Constraint*>>(n_threads, active_data.island_systems,
 				[&](const std::vector<Constraint*>& island_system) {
-					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations);
+					PGS_solve(this, island_system, holonomic_systems, pgsVelIterations,  pgsPosIterations);
 				}
 			);
 		}
 		else {
 			for (const std::vector<Constraint*>& island_system : active_data.island_systems) {
-				PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations);
+				PGS_solve(this, island_system, holonomic_systems, pgsVelIterations,  pgsPosIterations);
 			}
 		}
 
@@ -672,6 +672,7 @@ namespace phyz {
 		BallSocket* bs = new BallSocket{
 			b1, b2,
 			BallSocketConstraint(),
+			false,
 			b1->trackPoint(b1_attach_pos_local),
 			b2->trackPoint(b2_attach_pos_local),
 			CFM{USE_GLOBAL},
@@ -704,6 +705,7 @@ namespace phyz {
 			b1, b2,
 			HingeConstraint(),
 			Motor(b1, b2, b1_rot_axis_local, b2_rot_axis_local, min_angle, max_angle),
+			false,
 			b1->trackPoint(b1_attach_pos_local),
 			b2->trackPoint(b2_attach_pos_local),
 			b1_rot_axis_local.normalize(),
@@ -740,6 +742,7 @@ namespace phyz {
 			SliderConstraint(),
 			SlideLimitConstraint(),
 			PistonConstraint(),
+			false,
 			b1->trackPoint(b1_slider_pos_local),
 			b2->trackPoint(b2_slider_pos_local),
 			b1_slider_axis_local.normalize(),
@@ -780,6 +783,7 @@ namespace phyz {
 			SlideLimitConstraint(),
 			PistonConstraint(),
 			Motor(b1, b2, b1_slider_axis_local, b2_slider_axis_local, min_angle, max_angle),
+			false,
 			b1->trackPoint(b1_slider_pos_local),
 			b2->trackPoint(b2_slider_pos_local),
 			b1_slider_axis_local.normalize(),
@@ -816,6 +820,7 @@ namespace phyz {
 		Weld* w = new Weld{
 			b1, b2,
 			WeldConstraint(),
+			false,
 			b1->trackPoint(b1_attach_point_local),
 			b2->trackPoint(b2_attach_point_local),
 			CFM{USE_GLOBAL},
@@ -1247,6 +1252,40 @@ namespace phyz {
 		}
 	}
 
+	void PhysicsEngine::createDebugHolonomicSystem(mthz::Vec3 pos) {
+		std::vector<Constraint*> holonomic_constraints;
+
+		double width = 1;
+		double length = 2;
+		
+		ConvexUnionGeometry box1 = ConvexUnionGeometry::box(pos, length, width, width);
+		RigidBody* r1 = createRigidBody(box1);
+		ConvexUnionGeometry box2 = ConvexUnionGeometry::box(pos + mthz::Vec3(length, 0, 0), length, width, width);
+		RigidBody* r2 = createRigidBody(box2);
+		ConvexUnionGeometry box3 = ConvexUnionGeometry::box(pos + mthz::Vec3(2*length, 0, 0), length, width, width);
+		RigidBody* r3 = createRigidBody(box3);
+
+		ConstraintID id1 = addBallSocketConstraint(r1, r2, pos + mthz::Vec3(length, width / 2.0, width / 2.0));
+		SharedConstraintsEdge* g1 = constraint_graph_nodes[r1->getID()]->getOrCreateEdgeTo(constraint_graph_nodes[r2->getID()]);
+		for (BallSocket* b : g1->ballSocketConstraints) {
+			if (b->uniqueID == id1.uniqueID) {
+				holonomic_constraints.push_back(&b->constraint);
+				b->is_in_holonomic_system = true;
+			}
+		}
+
+		ConstraintID id2 = addBallSocketConstraint(r2, r3, pos + mthz::Vec3(2 * length, width / 2.0, width / 2.0));
+		SharedConstraintsEdge* g2 = constraint_graph_nodes[r2->getID()]->getOrCreateEdgeTo(constraint_graph_nodes[r3->getID()]);
+		for (BallSocket* b : g2->ballSocketConstraints) {
+			if (b->uniqueID == id2.uniqueID) {
+				holonomic_constraints.push_back(&b->constraint);
+				b->is_in_holonomic_system = true;
+			}
+		}
+
+		holonomic_systems.push_back(HolonomicSystem(holonomic_constraints));
+	}
+
 	void PhysicsEngine::forceAABBTreeUpdate() {
 		if (broadphase == AABB_TREE || broadphase == TEST_COMPARE) {
 			for (RigidBody* b : bodies) {
@@ -1511,7 +1550,7 @@ namespace phyz {
 					mthz::Vec3 b2_pos = bs->b2->getTrackedP(bs->b2_point_key);
 					mthz::NVec<3> starting_impulse = warm_start_disabled ? mthz::NVec<3>{ 0.0} : bs->constraint.impulse;
 					double pos_correct_coeff = bs->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(bs->pos_correct_hardness, step_time) : 0;
-					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, pos_correct_coeff, bs->cfm.getCFMValue(global_cfm), starting_impulse);
+					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, pos_correct_coeff, bs->cfm.getCFMValue(global_cfm), bs->is_in_holonomic_system, starting_impulse);
 				}
 				for (Hinge* h : e->hingeConstraints) {
 					mthz::Vec3 b1_pos = h->b1->getTrackedP(h->b1_point_key);
@@ -1531,7 +1570,7 @@ namespace phyz {
 					double rot_correct_coeff = h->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(h->rot_correct_hardness, step_time) : 0;
 
 					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : h->constraint.impulse;
-					h->constraint = HingeConstraint(h->b1, h->b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, pos_correct_coeff, rot_correct_coeff, h->cfm.getCFMValue(global_cfm), starting_impulse, h->constraint.u, h->constraint.w);
+					h->constraint = HingeConstraint(h->b1, h->b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, pos_correct_coeff, rot_correct_coeff, h->cfm.getCFMValue(global_cfm), h->is_in_holonomic_system, starting_impulse, h->constraint.u, h->constraint.w);
 				}
 				for (Slider* s : e->sliderConstraints) {
 					mthz::Vec3 b1_pos = s->b1->getTrackedP(s->b1_point_key);
@@ -1556,7 +1595,7 @@ namespace phyz {
 					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
 
 					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : s->constraint.impulse;
-					s->constraint = SliderConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, pos_correct_coeff, pos_correct_coeff, s->cfm.getCFMValue(global_cfm), starting_impulse, s->constraint.u, s->constraint.w);
+					s->constraint = SliderConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, pos_correct_coeff, pos_correct_coeff, s->cfm.getCFMValue(global_cfm), s->is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (SlidingHinge* s : e->slidingHingeConstraints) {
 					mthz::Vec3 b1_pos = s->b1->getTrackedP(s->b1_point_key);
@@ -1588,7 +1627,7 @@ namespace phyz {
 					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
 
 					mthz::NVec<4> starting_impulse = warm_start_disabled ? mthz::NVec<4>{ 0.0} : s->constraint.impulse;
-					s->constraint = SlidingHingeConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, pos_correct_coeff, rot_correct_coeff, s->cfm.getCFMValue(global_cfm), starting_impulse, s->constraint.u, s->constraint.w);
+					s->constraint = SlidingHingeConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, pos_correct_coeff, rot_correct_coeff, s->cfm.getCFMValue(global_cfm), s->is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (Weld* w : e->weldConstraints) {
 					mthz::Vec3 b1_pos = w->b1->getTrackedP(w->b1_point_key);
@@ -1597,7 +1636,7 @@ namespace phyz {
 					double pos_correct_coeff = w->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(w->pos_correct_hardness, step_time) : 0;
 					double rot_correct_coeff = w->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(w->rot_correct_hardness, step_time) : 0;
 
-					w->constraint = WeldConstraint(w->b1, w->b2, b1_pos, b2_pos, pos_correct_coeff, rot_correct_coeff, w->cfm.getCFMValue(global_cfm), w->constraint.impulse);
+					w->constraint = WeldConstraint(w->b1, w->b2, b1_pos, b2_pos, pos_correct_coeff, rot_correct_coeff, w->cfm.getCFMValue(global_cfm), w->is_in_holonomic_system, w->constraint.impulse);
 				}
 
 				if (e->noConstraintsLeft()) {

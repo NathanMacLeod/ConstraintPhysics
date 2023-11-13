@@ -102,6 +102,7 @@ namespace phyz {
 
 		//really only exists for debugging
 		void deleteWarmstartData(RigidBody* r);
+		void createDebugHolonomicSystem(mthz::Vec3 pos);
 
 		//should probably be placed with a different scheme eventually. This is for when position/orientation is changed for a rigid body, but AABB needs to be updated before next physics tick for use by querying raycasts.
 		void forceAABBTreeUpdate();
@@ -191,6 +192,7 @@ namespace phyz {
 
 		std::vector<RigidBody*> bodies;
 		std::vector<RigidBody*> bodies_to_delete;
+		std::vector<HolonomicSystem> holonomic_systems;
 		mthz::Vec3 gravity;
 		double step_time = 1.0 / 90;
 		double cutoff_vel = 0;
@@ -228,6 +230,7 @@ namespace phyz {
 			RigidBody* b1;
 			RigidBody* b2;
 			BallSocketConstraint constraint;
+			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			CFM cfm;
@@ -267,6 +270,7 @@ namespace phyz {
 			RigidBody* b2;
 			HingeConstraint constraint;
 			Motor motor;
+			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_rot_axis_body_space;
@@ -285,6 +289,7 @@ namespace phyz {
 			SliderConstraint constraint;
 			SlideLimitConstraint slide_limit;
 			PistonConstraint piston_force;
+			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_slide_axis_body_space;
@@ -309,6 +314,7 @@ namespace phyz {
 			SlideLimitConstraint slide_limit;
 			PistonConstraint piston_force;
 			Motor motor;
+			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_slide_axis_body_space;
@@ -330,6 +336,7 @@ namespace phyz {
 			RigidBody* b1;
 			RigidBody* b2;
 			WeldConstraint constraint;
+			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			CFM cfm;

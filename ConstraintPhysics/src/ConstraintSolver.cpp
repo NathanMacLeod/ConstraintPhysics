@@ -47,7 +47,7 @@ namespace phyz {
 
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
 	//the first third of this video explains it pretty well: https://www.youtube.com/watch?v=P-WP1yMOkc4 (Improving an Iterative Physics Solver Using a Direct Method)
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel, int n_itr_pos) {
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, std::vector<HolonomicSystem>& holonomic_systems, int n_itr_vel, int n_itr_pos) {
 		struct VelPair {
 			VelPair() : velocity_change({0.0}), psuedo_vel_change({0.0}) {} //initialize zeroed out
 			mthz::NVec<6> velocity_change;
@@ -56,7 +56,11 @@ namespace phyz {
 
 		std::unordered_map<RigidBody*, VelPair*> velocity_changes;
 
+		bool contains_holonomic = false; //for debug, delete
+
 		for (Constraint* c : constraints) {
+			if (c->is_in_holonomic_system) contains_holonomic = true;
+
 			VelPair* vA = nullptr; VelPair* vB = nullptr;
 			if (velocity_changes.find(c->a) == velocity_changes.end()) {
 				vA = new VelPair();
@@ -87,6 +91,8 @@ namespace phyz {
 
 		for (int i = 0; i < n_itr_vel; i++) {
 			for (Constraint* c : constraints) {
+				if (c->is_in_holonomic_system) continue;
+
 				switch (c->getDegree()) {
 				case 1: PGSConstraintStep<1>((DegreedConstraint<1>*)c, false); break;
 				case 2: PGSConstraintStep<2>((DegreedConstraint<2>*)c, false); break;
@@ -96,6 +102,16 @@ namespace phyz {
 				case 6: PGSConstraintStep<6>((DegreedConstraint<6>*)c, false); break;
 				}
 			}
+		}
+
+		if (contains_holonomic) {
+
+			for (HolonomicSystem& h : holonomic_systems) {
+				h.computeInverse(0.0);
+				h.debugPrintBuffer();
+				h.computeAndApplyImpulses(false);
+			}
+
 		}
 
 		for (int i = 0; i < n_itr_pos; i++) {
@@ -111,6 +127,10 @@ namespace phyz {
 					}
 				}
 			}
+		}
+
+		for (HolonomicSystem& h : holonomic_systems) {
+		//	h.computeAndApplyImpulses(true);
 		}
 
 		for (const auto& kv_pair : velocity_changes) {
@@ -259,9 +279,10 @@ namespace phyz {
 	//******************************
 	//****BALL SOCKET CONSTRAINT****
 	//******************************
-	BallSocketConstraint::BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<3> warm_start_impulse)
+	BallSocketConstraint::BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<3> warm_start_impulse)
 		: DegreedConstraint<3>(a, b, warm_start_impulse), rA(socket_pos_a - a->getCOM()), rB(socket_pos_a - b->getCOM()), rotDirA(a->getInvTensor() * mthz::Mat3::cross_mat(rA)), rotDirB(b->getInvTensor() * mthz::Mat3::cross_mat(rB))
 	{
+		this->is_in_holonomic_system = is_in_holonomic_system;
 		//mthz::Mat3 inverse_inertia_mat3 = (mthz::Mat3::iden()*a->getInvMass() + mthz::Mat3::iden()*b->getInvMass() - mthz::Mat3::cross_mat(rA)*rotDirA - mthz::Mat3::cross_mat(rB)*rotDirB);
 		//inverse_inertia = applyCFM(Mat3tomthz::NMat33(inverse_inertia_mat3), constraint_force_mixing).inverse();
 		
@@ -290,9 +311,10 @@ namespace phyz {
 	//******************************
 	//*****HINGE CONSTRAINT*********
 	//******************************
-	HingeConstraint::HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	HingeConstraint::HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: DegreedConstraint<5>(a, b, warm_start_impulse), rA(hinge_pos_a - a->getCOM()), rB(hinge_pos_a - b->getCOM())
 	{
+		this->is_in_holonomic_system = is_in_holonomic_system;
 		rot_axis_a.getPerpendicularBasis(&u, &w);
 		n = rot_axis_b;
 
@@ -431,9 +453,10 @@ namespace phyz {
 	////******************************
 	////*****SLIDER CONSTRAINT********
 	////******************************
-	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	SliderConstraint::SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: DegreedConstraint<5>(a, b, warm_start_impulse), rA(slider_point_a - a->getCOM()), rB(slider_point_b - b->getCOM())
 	{
+		this->is_in_holonomic_system = is_in_holonomic_system;
 		slider_axis_a = slider_axis_a.normalize();
 		slider_axis_a.getPerpendicularBasis(&u, &w);
 
@@ -599,9 +622,10 @@ namespace phyz {
 	//******************************
 	//***SLIDING HINGE CONSTRAINT***
 	//******************************
-	SlidingHingeConstraint::SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_pos_a, mthz::Vec3 slide_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<4> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
+	SlidingHingeConstraint::SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_pos_a, mthz::Vec3 slide_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<4> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)
 		: DegreedConstraint<4>(a, b, warm_start_impulse), rA(slide_pos_a - a->getCOM()), rB(slide_pos_b - b->getCOM())
 	{
+		this->is_in_holonomic_system = is_in_holonomic_system;
 		rot_axis_b.getPerpendicularBasis(&u, &w);
 		n = rot_axis_a;
 
@@ -679,9 +703,10 @@ namespace phyz {
 	////******************************
 	////*******WELD CONSTRAINT********
 	////******************************
-	WeldConstraint::WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 pos_a, mthz::Vec3 pos_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<6> warm_start_impulse)
+	WeldConstraint::WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 pos_a, mthz::Vec3 pos_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<6> warm_start_impulse)
 		: DegreedConstraint<6>(a, b, warm_start_impulse), rA(pos_a - a->getCOM()), rB(pos_b - b->getCOM())
 	{
+		this->is_in_holonomic_system = is_in_holonomic_system;
 
 		mthz::Mat3 Ia_inv = a->getInvTensor();
 		mthz::Mat3 Ib_inv = b->getInvTensor();

@@ -1,7 +1,9 @@
 #pragma once
-#include "ConstraintSolver.h"
+#include <vector>
+#include <string>
 
 namespace phyz {
+	class Constraint;
 
 	class HolonomicSystem {
 	public:
@@ -9,6 +11,8 @@ namespace phyz {
 		class HolonomicSystem(std::vector<Constraint*> constraints);
 		void computeInverse(double cfm);
 		void computeAndApplyImpulses(bool use_psuedo_velocities);
+
+		void debugPrintBuffer(std::string message="BUFFER CONTENT");
 
 	private:
 		std::vector<Constraint*> constraints;

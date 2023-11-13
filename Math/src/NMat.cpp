@@ -9,7 +9,8 @@ namespace mthz {
 
 	template<>
 	void rowMajorOrderInverse<2>(double* target, double* source) {
-		double a = source[2*0 + 0]; double b = source[2*0 + 1]; double c = source[2*1 + 0]; double d = source[2*1 + 1];
+		double a = source[2*0 + 0]; double b = source[2*0 + 1]; 
+		double c = source[2*1 + 0]; double d = source[2*1 + 1];
 		double determinant = a * d - b * c;
 		assert(abs(determinant) > 0.000000001);
 		double di = 1.0 / determinant;
@@ -20,7 +21,9 @@ namespace mthz {
 
 	template<>
 	void rowMajorOrderInverse<3>(double* target, double* source) {
-		double a = source[3*0 + 0], b = source[3*0 + 1], c = source[3*0 + 2], d = source[3*1 + 0], e = source[3*1 + 1], f = source[3*1 + 2], g = source[3*2 + 0], h = source[3*2 + 1], i = source[3*2 + 2];
+		double a = source[3*0 + 0], b = source[3*0 + 1], c = source[3*0 + 2], 
+			   d = source[3*1 + 0], e = source[3*1 + 1], f = source[3*1 + 2], 
+			   g = source[3*2 + 0], h = source[3*2 + 1], i = source[3*2 + 2];
 		double determinant = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
 		assert(abs(determinant) > 0.000000001);
 		double di = 1.0 / determinant;

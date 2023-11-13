@@ -24,7 +24,7 @@ public:
 
 	void run() override {
 
-		phyz::RigidBody* fake0 = (phyz::RigidBody *)0;
+		/*phyz::RigidBody* fake0 = (phyz::RigidBody *)0;
 		phyz::RigidBody* fake1 = (phyz::RigidBody*)1;
 		phyz::RigidBody* fake2 = (phyz::RigidBody*)2;
 		phyz::RigidBody* fake3 = (phyz::RigidBody*)3;
@@ -36,7 +36,7 @@ public:
 		};
 
 		phyz::HolonomicSystem h(constraints);
-		h.computeInverse(0);
+		h.computeInverse(0);*/
 
 		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
 		if (properties.n_threads != 0) {
@@ -45,6 +45,8 @@ public:
 
 		phyz::PhysicsEngine p;
 		p.setPGSIterations(45, 35);
+		p.setGlobalConstraintForceMixing(0.0);
+		p.createDebugHolonomicSystem(mthz::Vec3(0, 10, 0));
 
 		bool lock_cam = true;
 
@@ -55,18 +57,28 @@ public:
 		double grid_size = 0.5;
 		phyz::Mesh dragon = phyz::readOBJ("resources/mesh/xyzrgb_dragon.obj", 0.2);
 		//phyz::Mesh cow = phyz::readOBJ("resources/mesh/cow.obj", 2.0);
-		phyz::MeshInput dragon_input = phyz::generateMeshInputFromMesh(dragon, center + mthz::Vec3(0, 7, 0));
-		phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, center + mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));//phyz::generateRadialMeshInput(center, 8, 100, 1);
+		//phyz::MeshInput dragon_input = phyz::generateMeshInputFromMesh(dragon, center + mthz::Vec3(0, 7, 0));
+		//phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, center + mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));//phyz::generateRadialMeshInput(center, 8, 100, 1);
 
-		for (mthz::Vec3& v : grid.points) {
+		//for (mthz::Vec3& v : grid.points) {
 			//v.y += 5 * 2 * (0.5 - frand()) - 10;
 			//v.y += 0.0055 * (v - center).magSqrd();
 			//v.y += 3 - 0.5 * (v - center).mag() + 0.02 * (v - center).magSqrd();
-			v.y += cos((v - center).mag() / 2.33);
-		}
-		for (phyz::TriIndices& t : grid.triangle_indices) {
+		//	v.y += cos((v - center).mag() / 2.33);
+		//}
+		//for (phyz::TriIndices& t : grid.triangle_indices) {
 			//t.material = phyz::Material::ice();
-		}
+		//}
+
+		//************************
+		//*******BASE PLATE*******
+		//************************
+		double s = 500;
+		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
+		Mesh m2 = fromGeometry(geom2);
+		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
+		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
+		bodies.push_back({ m2, r2 });
 
 		Mesh contact_ball_mesh = fromGeometry(phyz::ConvexUnionGeometry::merge(phyz::ConvexUnionGeometry::sphere(mthz::Vec3(), 0.03), phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.02, 0.1)), {1.0, 0, 0});
 
@@ -86,11 +98,11 @@ public:
 			}
 		);
 
-		phyz::RigidBody* gr = p.createRigidBody(grid);
-		bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
+		//phyz::RigidBody* gr = p.createRigidBody(grid);
+		//bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
 
-		phyz::RigidBody* r = p.createRigidBody(dragon_input, false);
-		bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
+		//phyz::RigidBody* r = p.createRigidBody(dragon_input, false);
+		//bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");

@@ -1,5 +1,6 @@
 #pragma once
 #include "RigidBody.h"
+#include "HolonomicBlockSolver.h"
 #include "../../Math/src/NVec.h"
 #include "../../Math/src/NMat.h"
 
@@ -7,16 +8,17 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, int n_itr_vel, int n_itr_pos);
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, std::vector<HolonomicSystem>& holonomic_systems, int n_itr_vel, int n_itr_pos);
 
 	class Constraint {
 	public:
-		Constraint() : a(nullptr), b(nullptr), a_velocity_change(nullptr), a_psuedo_velocity_change(nullptr), b_velocity_change(nullptr), b_psuedo_velocity_change(nullptr) {}
-		Constraint(RigidBody* a, RigidBody* b) : a(a), b(b), a_velocity_change(nullptr), a_psuedo_velocity_change(nullptr), b_velocity_change(nullptr), b_psuedo_velocity_change(nullptr) {}
+		Constraint() : a(nullptr), b(nullptr), a_velocity_change(nullptr), a_psuedo_velocity_change(nullptr), b_velocity_change(nullptr), b_psuedo_velocity_change(nullptr), is_in_holonomic_system(false) {}
+		Constraint(RigidBody* a, RigidBody* b) : a(a), b(b), a_velocity_change(nullptr), a_psuedo_velocity_change(nullptr), b_velocity_change(nullptr), b_psuedo_velocity_change(nullptr), is_in_holonomic_system(false) {}
 		virtual ~Constraint() {}
 
 		RigidBody* a;
 		RigidBody* b;
+		bool is_in_holonomic_system;
 		mthz::NVec<6>* a_velocity_change;
 		mthz::NVec<6>* a_psuedo_velocity_change;
 		mthz::NVec<6>* b_velocity_change;
@@ -113,7 +115,7 @@ namespace phyz {
 	class BallSocketConstraint : public DegreedConstraint<3> {
 	public:
 		BallSocketConstraint() {}
-		BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<3> warm_start_impulse=mthz::NVec<3>{ 0.0 });
+		BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<3> warm_start_impulse=mthz::NVec<3>{ 0.0 });
 		
 		inline int getDegree() override { return 3; }
 		inline bool isInequalityConstraint() override { return false; }
@@ -129,7 +131,7 @@ namespace phyz {
 	class HingeConstraint : public DegreedConstraint<5> {
 	public:
 		HingeConstraint() {}
-		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<5> warm_start_impulse=mthz::NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u=mthz::Vec3(), mthz::Vec3 source_w=mthz::Vec3());
+		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<5> warm_start_impulse=mthz::NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u=mthz::Vec3(), mthz::Vec3 source_w=mthz::Vec3());
 
 		inline int getDegree() override { return 5; }
 		inline bool isInequalityConstraint() override { return false; }
@@ -168,7 +170,7 @@ namespace phyz {
 	class SliderConstraint : public DegreedConstraint<5> {
 	public:
 		SliderConstraint() {}
-		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<5> warm_start_impulse = mthz::NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
+		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<5> warm_start_impulse = mthz::NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
 		inline int getDegree() override { return 5; }
 		inline bool isInequalityConstraint() override { return false; }
@@ -223,7 +225,7 @@ namespace phyz {
 	class SlidingHingeConstraint : public DegreedConstraint<4> {
 	public:
 		SlidingHingeConstraint() {}
-		SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<4> warm_start_impulse = mthz::NVec<4>{ 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
+		SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<4> warm_start_impulse = mthz::NVec<4>{ 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
 		inline int getDegree() override { return 4; }
 		inline bool isInequalityConstraint() override { return false; }
@@ -242,7 +244,7 @@ namespace phyz {
 	class WeldConstraint : public DegreedConstraint<6> {
 	public:
 		WeldConstraint() {}
-		WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 a_attach_point, mthz::Vec3 b_attach_point, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<6> warm_start_impulse = mthz::NVec<6>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 });
+		WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 a_attach_point, mthz::Vec3 b_attach_point, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<6> warm_start_impulse = mthz::NVec<6>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 });
 
 		inline int getDegree() override { return 6; }
 		inline bool isInequalityConstraint() override { return false; }
