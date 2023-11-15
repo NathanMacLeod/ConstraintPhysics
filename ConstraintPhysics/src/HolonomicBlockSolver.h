@@ -30,6 +30,8 @@ namespace phyz {
 		int getBlockDiagonalElemBufferLocation(int block_row, int block_column);
 		int getVectorPos(int constraint_row);
 
+		std::vector<double> debug_buffer;
+		std::vector<double> debug_diagonal_elem_buffer;
 	};
 
 };

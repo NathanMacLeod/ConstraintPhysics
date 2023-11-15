@@ -1265,7 +1265,7 @@ namespace phyz {
 		ConvexUnionGeometry box3 = ConvexUnionGeometry::box(pos + mthz::Vec3(2*length, 0, 0), length, width, width);
 		RigidBody* r3 = createRigidBody(box3);
 
-		ConstraintID id1 = addBallSocketConstraint(r1, r2, pos + mthz::Vec3(length, width / 2.0, width / 2.0));
+		ConstraintID id1 = addHingeConstraint(r1, r2, pos + mthz::Vec3(length, width / 2.0, width / 2.0), mthz::Vec3(0, 1, 0));
 		SharedConstraintsEdge* g1 = constraint_graph_nodes[r1->getID()]->getOrCreateEdgeTo(constraint_graph_nodes[r2->getID()]);
 		for (BallSocket* b : g1->ballSocketConstraints) {
 			if (b->uniqueID == id1.uniqueID) {
@@ -1274,7 +1274,7 @@ namespace phyz {
 			}
 		}
 
-		ConstraintID id2 = addBallSocketConstraint(r2, r3, pos + mthz::Vec3(2 * length, width / 2.0, width / 2.0));
+		ConstraintID id2 = addHingeConstraint(r2, r3, pos + mthz::Vec3(2 * length, width / 2.0, width / 2.0), mthz::Vec3(0, 1, 0));
 		SharedConstraintsEdge* g2 = constraint_graph_nodes[r2->getID()]->getOrCreateEdgeTo(constraint_graph_nodes[r3->getID()]);
 		for (BallSocket* b : g2->ballSocketConstraints) {
 			if (b->uniqueID == id2.uniqueID) {
@@ -1284,6 +1284,8 @@ namespace phyz {
 		}
 
 		holonomic_systems.push_back(HolonomicSystem(holonomic_constraints));
+
+		r2->setVel(mthz::Vec3(0, 0, 1));
 	}
 
 	void PhysicsEngine::forceAABBTreeUpdate() {

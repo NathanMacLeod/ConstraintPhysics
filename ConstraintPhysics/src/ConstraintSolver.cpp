@@ -107,8 +107,7 @@ namespace phyz {
 		if (contains_holonomic) {
 
 			for (HolonomicSystem& h : holonomic_systems) {
-				h.computeInverse(0.0);
-				h.debugPrintBuffer();
+				h.computeInverse(0.001);
 				h.computeAndApplyImpulses(false);
 			}
 
@@ -117,6 +116,8 @@ namespace phyz {
 		for (int i = 0; i < n_itr_pos; i++) {
 			for (Constraint* c : constraints) {
 				if (c->needsPosCorrect()) {
+					if (c->is_in_holonomic_system) continue;
+
 					switch (c->getDegree()) {
 					case 1: PGSConstraintStep<1>((DegreedConstraint<1>*)c, true); break;
 					case 2: PGSConstraintStep<2>((DegreedConstraint<2>*)c, true); break;
@@ -129,8 +130,12 @@ namespace phyz {
 			}
 		}
 
-		for (HolonomicSystem& h : holonomic_systems) {
-		//	h.computeAndApplyImpulses(true);
+		if (contains_holonomic) {
+
+			for (HolonomicSystem& h : holonomic_systems) {
+				h.computeAndApplyImpulses(true);
+			}
+
 		}
 
 		for (const auto& kv_pair : velocity_changes) {

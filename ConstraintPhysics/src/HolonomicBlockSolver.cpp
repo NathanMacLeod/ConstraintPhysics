@@ -25,8 +25,17 @@ namespace phyz {
 		int MAX_CONSTRAINT_DEGREE = 6;
 		diagonal_elem_buffer_capacity = MAX_CONSTRAINT_DEGREE * system_degree;
 
+#ifdef NDEBUG
 		buffer = (double*)calloc(buffer_capacity, sizeof(double));
 		diagonal_elem_buffer = (double*)calloc(diagonal_elem_buffer_capacity, sizeof(double));
+#else
+		//so that contents of buffer can be viewed in the debugger
+		debug_buffer = std::vector<double>(buffer_capacity, 0);
+		debug_diagonal_elem_buffer = std::vector<double>(diagonal_elem_buffer_capacity, 0);
+
+		buffer = debug_buffer.data();
+		diagonal_elem_buffer = debug_diagonal_elem_buffer.data();
+#endif
 
 	}
 
@@ -74,7 +83,7 @@ namespace phyz {
 
 		printf("\nDELTA:\n");
 		for (double d : delta) {
-			printf("%d ", d);
+			printf("%f ", d);
 		}
 		printf("\n");
 
@@ -102,21 +111,23 @@ namespace phyz {
 
 		printf("\nDELTA AFTER L^-1:\n");
 		for (double d : delta) {
-			printf("%d ", d);
+			printf("%f ", d);
 		}
 		printf("\n");
 
 		//Multiply by D inverse
+		std::vector<double> multByDOut(system_degree);
 		for (int col = 0; col < constraints.size(); col++) {
 			int block_degree = constraints[col]->getDegree();
 			double* block_pos = buffer + getBlockBufferLocation(col, col);
 			int vec_index = getVectorPos(col);
-			multMatWithVec(block_degree, block_degree, &delta, vec_index, delta, vec_index, block_pos);
+			multMatWithVec(block_degree, block_degree, &multByDOut, vec_index, delta, vec_index, block_pos);
 		}
+		delta = multByDOut;
 
 		printf("\nDELTA AFTER D^-1:\n");
 		for (double d : delta) {
-			printf("%d ", d);
+			printf("%f ", d);
 		}
 		printf("\n");
 
@@ -129,7 +140,7 @@ namespace phyz {
 				int block_width = constraints[col]->getDegree();
 				int block_height = constraints[row]->getDegree();
 				double* block_pos = buffer + getBlockBufferLocation(row, col);
-				int source_index = getVectorPos(col);
+				int source_index = getVectorPos(row);
 
 				multMatTransposedWithVec(block_width, block_height, &multByLTEffect, 0, delta, source_index, block_pos);
 			}
@@ -142,7 +153,7 @@ namespace phyz {
 
 		printf("\nDELTA AFTER L^-t:\n");
 		for (double d : delta) {
-			printf("%d ", d);
+			printf("%f ", d);
 		}
 		printf("\n");
 
@@ -158,6 +169,24 @@ namespace phyz {
 			case 6: applyImpulseChange<6>((DegreedConstraint<6>*)constraints[i], delta, pos, use_psuedo_values); break;
 			}
 		}
+
+		for (int i = 0; i < constraints.size(); i++) {
+			int pos = getVectorPos(i);
+			switch (constraints[i]->getDegree()) {
+			case 1: writeTargetDelta<1>((DegreedConstraint<1>*)constraints[i], &delta, pos, use_psuedo_values); break;
+			case 2: writeTargetDelta<2>((DegreedConstraint<2>*)constraints[i], &delta, pos, use_psuedo_values); break;
+			case 3: writeTargetDelta<3>((DegreedConstraint<3>*)constraints[i], &delta, pos, use_psuedo_values); break;
+			case 4: writeTargetDelta<4>((DegreedConstraint<4>*)constraints[i], &delta, pos, use_psuedo_values); break;
+			case 5: writeTargetDelta<5>((DegreedConstraint<5>*)constraints[i], &delta, pos, use_psuedo_values); break;
+			case 6: writeTargetDelta<6>((DegreedConstraint<6>*)constraints[i], &delta, pos, use_psuedo_values); break;
+			}
+		}
+
+		printf("\nTARGET DELTA AFTER APPLY:\n");
+		for (double d : delta) {
+			printf("%f ", d);
+		}
+		printf("\n");
 	}
 
 
@@ -172,6 +201,7 @@ namespace phyz {
 			int row = i / c2_degree;
 			int col = i % c2_degree;
 
+			target[i] = 0;
 			for (int j = 0; j < 6; j++) {
 				target[i] += c1_mat.v[row][j] * c2_mat.v[j][col];
 			}
@@ -184,15 +214,15 @@ namespace phyz {
 		mthz::NMat<6, c2_degree>* b_c2interaction = nullptr;
 		if      (c1->a == c2->a) a_c2interaction = &c2->impulse_to_a_velocity;
 		else if (c1->a == c2->b) a_c2interaction = &c2->impulse_to_b_velocity;
-		if      (c1->b == c2->a) b_c2interaction = &c2->impulse_to_a_velocity;
+		else if (c1->b == c2->a) b_c2interaction = &c2->impulse_to_a_velocity; //else because c1 == c2 case handeled elsewhere
 		else if (c1->b == c2->b) b_c2interaction = &c2->impulse_to_b_velocity;
 		
 
 		if (a_c2interaction != nullptr) matMult(target, c1->a_jacobian, *a_c2interaction);
-		if (b_c2interaction != nullptr) matMult(target, c1->b_jacobian, *b_c2interaction);
+		else if (b_c2interaction != nullptr) matMult(target, c1->b_jacobian, *b_c2interaction);
 	}
 
-	static void computeBlockInitialValue(double* target, Constraint* c1, Constraint* c2);
+	static void computeBlockInitialValue(double* target, Constraint* c1, Constraint* c2, double cfm);
 
 	//note this method computes the dot of a row on the left matrix and a row on the right matrix,
 	//NOT a row on the left and a col on the right like you do in normal matrix multiplication.
@@ -203,7 +233,9 @@ namespace phyz {
 	double dotProd(double* left_mat_row_start, double* right_mat_row_start) {
 		double out = 0;
 		for (int i = 0; i < n; i++) {
-			out += left_mat_row_start[i] * right_mat_row_start[i];
+			double d1 = left_mat_row_start[i];
+			double d2 = right_mat_row_start[i];
+			out += d1 * d2;
 		}
 		return out;
 	}
@@ -222,7 +254,7 @@ namespace phyz {
 				Constraint* c2 = constraints[col];
 
 				double* block_pos = buffer + getBlockBufferLocation(row, col);
-				computeBlockInitialValue(block_pos, c1, c2);
+				computeBlockInitialValue(block_pos, c1, c2, cfm);
 			}
 		}
 
@@ -251,7 +283,7 @@ namespace phyz {
 				int block_height = constraints[row]->getDegree();
 				int block_width = constraints[col]->getDegree();
 
-				calculateLowerTriangleBlock(block_width, block_height, diagonal_elem_target, diagonal_elem_buffer + block_buffer_pos, diagonal_block);
+				calculateLowerTriangleBlock(block_width, block_height, diagonal_elem_target, buffer + block_buffer_pos, diagonal_block);
 			}
 
 			//calculate subtraction in the lower diagonal block
@@ -275,7 +307,7 @@ namespace phyz {
 
 			//copy diagonal elem buffer back
 			double* target = buffer + getBlockBufferLocation(col+1, col);
-			double blocks_total_size = getBlockBufferLocation(col + 1, col + 1) - getBlockBufferLocation(col + 1, col); //total size in memory of all blocks in the col beneath the diagonal.
+			int blocks_total_size = (getBlockBufferLocation(col + 1, col + 1) - getBlockBufferLocation(col + 1, col)) * sizeof(double); //total size in memory of all blocks in the col beneath the diagonal.
 			memcpy(target, diagonal_elem_buffer, blocks_total_size);
 		}
 
@@ -297,9 +329,9 @@ namespace phyz {
 
 	int HolonomicSystem::getBlockDiagonalElemBufferLocation(int block_row, int block_column) {
 		assert(block_row >= 0 && block_row <= constraints.size());
-		assert(block_column <= block_row);
+		assert(block_column < block_row);
 
-		return getBlockBufferLocation(block_row, block_column) - getBlockBufferLocation(block_column, block_column);
+		return getBlockBufferLocation(block_row, block_column) - getBlockBufferLocation(block_column+1, block_column);
 	}
 
 	template<int n>
@@ -393,9 +425,11 @@ namespace phyz {
 	static void multMatTransposedWithVecDegreed(std::vector<double>* target, int write_index, std::vector<double>& source_vector, int source_index, double* matrix_source) {
 		double* vec_source = source_vector.data() + source_index;
 		for (int i = 0; i < block_width; i++) {
-			int dotprod = 0;
+			double dotprod = 0;
 			for (int j = 0; j < block_height; j++) {
-				dotprod += source_vector[source_index + j] * matrix_source[i + block_width * j];
+				double d1 = source_vector[source_index + j];
+				double d2 = matrix_source[j + block_width * i];
+				dotprod += d1 * d2;
 			}
 			target->at(write_index + i) += dotprod;
 		}
@@ -466,10 +500,11 @@ namespace phyz {
 		}
 	}
 
-	static void computeBlockInitialValue(double* block_pos, Constraint* c1, Constraint* c2) {
+	static void computeBlockInitialValue(double* block_pos, Constraint* c1, Constraint* c2, double cfm) {
 		if (c1 == c2) {
 			double* source = nullptr;
-			switch (c1->getDegree()) {
+			int n = c1->getDegree();
+			switch (n) {
 			case 1: source = (double*)((DegreedConstraint<1>*)c1)->impulse_to_value.v; break;
 			case 2: source = (double*)((DegreedConstraint<2>*)c1)->impulse_to_value.v; break;
 			case 3: source = (double*)((DegreedConstraint<3>*)c1)->impulse_to_value.v; break;
@@ -478,6 +513,11 @@ namespace phyz {
 			case 6: source = (double*)((DegreedConstraint<6>*)c1)->impulse_to_value.v; break;
 			}
 			memcpy(block_pos, source, c1->getDegree() * c1->getDegree() * sizeof(double));
+
+			
+			for (int i = 0; i < n; i++) {
+				block_pos[i + n * i] *= (1 + cfm); //add cfm along the diagonal
+			}
 			return;
 		}
 
@@ -723,14 +763,14 @@ namespace phyz {
 					for (int sub_col = 0; sub_col < constraints[col]->getDegree(); sub_col++) {
 
 						if (col > row) {
-							printf("%8c", 'U');
+							printf("%15c", 'U');
 						}
 						else if (getBlockBufferLocation(row, col) == BLOCK_EMPTY) {
-							printf("%8c", 'X');
+							printf("%15c", 'X');
 						}
 						else {
 							int indx = getBlockBufferLocation(row, col) + sub_col + constraints[col]->getDegree() * sub_row;
-							printf("%8.2f", buffer[indx]);
+							printf("%15.5f", buffer[indx]);
 						}
 
 					}

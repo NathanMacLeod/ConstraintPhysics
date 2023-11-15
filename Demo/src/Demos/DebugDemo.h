@@ -45,7 +45,7 @@ public:
 
 		phyz::PhysicsEngine p;
 		p.setPGSIterations(45, 35);
-		p.setGlobalConstraintForceMixing(0.0);
+		p.setGlobalConstraintForceMixing(0.01);
 		p.createDebugHolonomicSystem(mthz::Vec3(0, 10, 0));
 
 		bool lock_cam = true;
