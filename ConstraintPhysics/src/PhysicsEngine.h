@@ -353,8 +353,13 @@ namespace phyz {
 			int uniqueID;
 		};
 
+		struct IslandConstraints {
+			std::vector<Constraint*> constraints;
+			std::set<HolonomicSystem*> systems;
+		};
+
 		struct ActiveConstraintData {
-			std::vector<std::vector<Constraint*>> island_systems;
+			std::vector<IslandConstraints> island_systems;
 			std::vector<BallSocket*> mast_slav_bss;
 			std::vector<Hinge*> mast_slav_hs;
 			std::vector<Slider*> mast_slav_ss;

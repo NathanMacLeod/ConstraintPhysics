@@ -12,6 +12,7 @@ namespace phyz {
 		~HolonomicSystem();
 		void computeInverse(double cfm);
 		void computeAndApplyImpulses(bool use_psuedo_velocities);
+		inline int getDegree() { return system_degree; }
 
 		void debugPrintBuffer(std::string message="BUFFER CONTENT");
 
@@ -26,7 +27,7 @@ namespace phyz {
 
 		std::vector<int> block_location_table;
 		std::vector<int> vector_location_lookup;
-		const int BLOCK_EMPTY = -1;
+		const static int BLOCK_EMPTY = -1;
 		int getBlockBufferLocation(int block_row, int block_column);
 		int getBlockDiagonalElemBufferLocation(int block_row, int block_column);
 		int getVectorPos(int constraint_row);

@@ -8,7 +8,7 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, std::vector<HolonomicSystem>& holonomic_systems, int n_itr_vel, int n_itr_pos);
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::set<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos);
 
 	class Constraint {
 	public:

@@ -342,15 +342,15 @@ namespace phyz {
 		auto t5 = std::chrono::system_clock::now();
 
 		if (use_multithread) {
-			thread_manager.do_all<std::vector<Constraint*>>(n_threads, active_data.island_systems,
-				[&](const std::vector<Constraint*>& island_system) {
-					PGS_solve(this, island_system, holonomic_systems, pgsVelIterations,  pgsPosIterations);
+			thread_manager.do_all<IslandConstraints>(n_threads, active_data.island_systems,
+				[&](IslandConstraints island_system) {
+					PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations,  pgsPosIterations);
 				}
 			);
 		}
 		else {
-			for (const std::vector<Constraint*>& island_system : active_data.island_systems) {
-				PGS_solve(this, island_system, holonomic_systems, pgsVelIterations,  pgsPosIterations);
+			for (IslandConstraints island_system : active_data.island_systems) {
+				PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations,  pgsPosIterations);
 			}
 		}
 
@@ -1706,9 +1706,10 @@ namespace phyz {
 
 			std::set<HolonomicSystemNodes*> encountered_systems;
 			for (SharedConstraintsEdge* edge : holonomically_connected) {
-				if (edge->h != nullptr) encountered_systems.insert(edge->h);
+				encountered_systems.insert(edge->h);
 			}
  
+			assert(!encountered_systems.empty());
 			if (encountered_systems.size() == 1 && *encountered_systems.begin() != nullptr) {} // e was already in a system and nothing changed, no new nodes
 			else if (encountered_systems.size() == 1 && *encountered_systems.begin() == nullptr) {
 				//new system of nodes not belonging to any system
@@ -1757,11 +1758,12 @@ namespace phyz {
 			}
 
 			bool all_ready_to_sleep = true; //assumed true until its false
-			std::vector<Constraint*> island_constraints;
+			IslandConstraints island_constraints;
 			std::vector<RigidBody*> island_bodies;
 
 			struct InStruct {
 				bool* all_ready_to_sleep;
+				std::set<HolonomicSystem*>* island_systems;
 				std::vector<Constraint*>* island_constraints;
 				std::vector<RigidBody*>* island_bodies;
 				std::vector<BallSocket*>* mast_slav_bss;
@@ -1771,7 +1773,7 @@ namespace phyz {
 				std::vector<Weld*>* mast_slav_ws;
 			};
 			
-			InStruct in = { &all_ready_to_sleep, &island_constraints, &island_bodies, &out.mast_slav_bss, &out.mast_slav_hs, &out.mast_slav_ss, &out.mast_slav_shs, &out.mast_slav_ws };
+			InStruct in = { &all_ready_to_sleep, &island_constraints.systems, &island_constraints.constraints, &island_bodies, &out.mast_slav_bss, &out.mast_slav_hs, &out.mast_slav_ss, &out.mast_slav_shs, &out.mast_slav_ws };
 			int new_contact_life = this->contact_life;
 			bfsVisitAll(n, &visited, (void*)&in, [&visited, new_contact_life, this](ConstraintGraphNode* curr, void* in) {
 				InStruct* output = (InStruct*)in;
@@ -1784,6 +1786,8 @@ namespace phyz {
 
 					if (n->b->getMovementType() == RigidBody::KINEMATIC) interacting_with_kinematic = true;
 					if (curr->b->getAsleep() && (n->b->getAsleep() || n->b->getMovementType() == RigidBody::FIXED) || visited.find(n) != visited.end()) continue;
+
+					if (e->h != nullptr) output->island_systems->insert(&e->h->system);
 
 					for (Contact* c: e->contactConstraints) {
 						if (c->is_live_contact) {
@@ -1841,7 +1845,11 @@ namespace phyz {
 					b->sleep();
 				}
 			}
-			else if (island_constraints.size() > 0) {
+			else if (island_constraints.constraints.size() > 0) {
+				printf("\nIsland Contains %d holonomic systems, %d constraints:\n", island_constraints.systems.size(), island_constraints.constraints.size());
+				for (HolonomicSystem* h : island_constraints.systems) {
+					printf("\tSystem of degree: %d\n", h->getDegree());
+				}
 				out.island_systems.push_back(island_constraints);
 			}
 		}
@@ -1931,7 +1939,7 @@ namespace phyz {
 			SharedConstraintsEdge* visiting_edge = to_visit.back();
 			to_visit.pop_back();
 
-			if (visited.find(e) != visited.end()) continue;
+			if (visited.find(visiting_edge) != visited.end()) continue;
 
 			visited.insert(visiting_edge);
 
@@ -1990,6 +1998,9 @@ namespace phyz {
 				continue;
 			}
 		}
+
+		//todo: determine optimal ordering
+		system = HolonomicSystem(constraints);
 	}
 
 	void PhysicsEngine::setMotorOff(ConstraintID id) {
