@@ -8,7 +8,7 @@ namespace phyz {
 	public:
 		Pair(T t1, int t1_id, T t2, int t2_id) {
 			//keep ordering consistent to avoid {x, y}; {y, x} duplicates
-			if ((int)t1 < (int)t2) {
+			if (t1_id < t2_id) {
 				this->t1 = t1;
 				this->t2 = t2;
 			}

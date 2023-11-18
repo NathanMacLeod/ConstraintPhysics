@@ -230,7 +230,6 @@ namespace phyz {
 			RigidBody* b1;
 			RigidBody* b2;
 			BallSocketConstraint constraint;
-			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			CFM cfm;
@@ -270,7 +269,6 @@ namespace phyz {
 			RigidBody* b2;
 			HingeConstraint constraint;
 			Motor motor;
-			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_rot_axis_body_space;
@@ -289,7 +287,6 @@ namespace phyz {
 			SliderConstraint constraint;
 			SlideLimitConstraint slide_limit;
 			PistonConstraint piston_force;
-			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_slide_axis_body_space;
@@ -314,7 +311,6 @@ namespace phyz {
 			SlideLimitConstraint slide_limit;
 			PistonConstraint piston_force;
 			Motor motor;
-			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_slide_axis_body_space;
@@ -336,7 +332,6 @@ namespace phyz {
 			RigidBody* b1;
 			RigidBody* b2;
 			WeldConstraint constraint;
-			bool is_in_holonomic_system;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			CFM cfm;
@@ -370,12 +365,16 @@ namespace phyz {
 		ActiveConstraintData sleepOrSolveIslands();
 		void applyMasterSlavePosCorrect(const ActiveConstraintData& a);
 
+		struct HolonomicSystemNodes;
+
 		struct SharedConstraintsEdge {
 			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contactConstraints(std::vector<Contact*>()) {}
 			~SharedConstraintsEdge();
 
 			ConstraintGraphNode* n1;
 			ConstraintGraphNode* n2;
+			HolonomicSystemNodes* h = nullptr;
+			bool holonomic_system_scan_needed = false;
 			std::vector<Contact*> contactConstraints;
 			std::vector<BallSocket*> ballSocketConstraints;
 			std::vector<Hinge*> hingeConstraints;
@@ -396,7 +395,29 @@ namespace phyz {
 					&& weldConstraints.empty()
 					&& springs.empty();
 			}
+
+			bool hasHolonomicConstraint() {
+				return !(ballSocketConstraints.empty()
+					  && hingeConstraints.empty()
+					  && sliderConstraints.empty()
+					  && slidingHingeConstraints.empty()
+					  && weldConstraints.empty());
+			}
 		};
+
+		struct HolonomicSystemNodes {
+			HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges);
+			void recalculateSystem();
+
+			bool constraints_changed_flag;
+			bool edge_removed_flag;
+			std::vector<SharedConstraintsEdge*> member_edges;
+			HolonomicSystem system;
+		};
+
+		std::vector<SharedConstraintsEdge*> getAllEdgesConnectedHolonomically(SharedConstraintsEdge* e);
+		void shatterFracturedHolonomicSystems();
+		void maintainAllHolonomicSystemStuffRelatedToThisEdge(SharedConstraintsEdge* e);
 
 		struct ConstraintGraphNode {
 			ConstraintGraphNode(RigidBody* b) : b(b), constraints(std::vector<SharedConstraintsEdge*>()) {}

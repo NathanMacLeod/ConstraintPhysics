@@ -672,7 +672,6 @@ namespace phyz {
 		BallSocket* bs = new BallSocket{
 			b1, b2,
 			BallSocketConstraint(),
-			false,
 			b1->trackPoint(b1_attach_pos_local),
 			b2->trackPoint(b2_attach_pos_local),
 			CFM{USE_GLOBAL},
@@ -685,6 +684,10 @@ namespace phyz {
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		bool already_holonomic = e->hasHolonomicConstraint();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
+		else				   e->holonomic_system_scan_needed = true;
 
 		e->ballSocketConstraints.push_back(bs);
 
@@ -705,7 +708,6 @@ namespace phyz {
 			b1, b2,
 			HingeConstraint(),
 			Motor(b1, b2, b1_rot_axis_local, b2_rot_axis_local, min_angle, max_angle),
-			false,
 			b1->trackPoint(b1_attach_pos_local),
 			b2->trackPoint(b2_attach_pos_local),
 			b1_rot_axis_local.normalize(),
@@ -721,6 +723,10 @@ namespace phyz {
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		bool already_holonomic = e->hasHolonomicConstraint();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
+		else				   e->holonomic_system_scan_needed = true;
 
 		e->hingeConstraints.push_back(h);
 
@@ -742,7 +748,6 @@ namespace phyz {
 			SliderConstraint(),
 			SlideLimitConstraint(),
 			PistonConstraint(),
-			false,
 			b1->trackPoint(b1_slider_pos_local),
 			b2->trackPoint(b2_slider_pos_local),
 			b1_slider_axis_local.normalize(),
@@ -762,6 +767,10 @@ namespace phyz {
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		bool already_holonomic = e->hasHolonomicConstraint();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
+		else				   e->holonomic_system_scan_needed = true;
 
 		e->sliderConstraints.push_back(s);
 		constraint_map[uniqueID] = e;
@@ -783,7 +792,6 @@ namespace phyz {
 			SlideLimitConstraint(),
 			PistonConstraint(),
 			Motor(b1, b2, b1_slider_axis_local, b2_slider_axis_local, min_angle, max_angle),
-			false,
 			b1->trackPoint(b1_slider_pos_local),
 			b2->trackPoint(b2_slider_pos_local),
 			b1_slider_axis_local.normalize(),
@@ -804,6 +812,10 @@ namespace phyz {
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
+		bool already_holonomic = e->hasHolonomicConstraint();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
+		else				   e->holonomic_system_scan_needed = true;
+
 		e->slidingHingeConstraints.push_back(s);
 		constraint_map[uniqueID] = e;
 		return ConstraintID{ ConstraintID::SLIDING_HINGE, uniqueID };
@@ -820,7 +832,6 @@ namespace phyz {
 		Weld* w = new Weld{
 			b1, b2,
 			WeldConstraint(),
-			false,
 			b1->trackPoint(b1_attach_point_local),
 			b2->trackPoint(b2_attach_point_local),
 			CFM{USE_GLOBAL},
@@ -834,6 +845,10 @@ namespace phyz {
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		bool already_holonomic = e->hasHolonomicConstraint();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
+		else				   e->holonomic_system_scan_needed = true;
 
 		e->weldConstraints.push_back(w);
 		constraint_map[uniqueID] = e;
@@ -1027,11 +1042,13 @@ namespace phyz {
 		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
 
 		SharedConstraintsEdge* e = constraint_map[id.uniqueID];
+		bool e_was_in_holonomic_system = e->h != nullptr;
+
 		e->n1->b->alertWakingAction();
 		e->n2->b->alertWakingAction();
 		if (reenable_collision) {
 			reallowCollision(e->n1->b, e->n2->b);
-		}
+		} 
 
 		switch (id.type) {
 		case ConstraintID::BALL:
@@ -1098,6 +1115,15 @@ namespace phyz {
 
 		constraint_map.erase(id.uniqueID);
 
+		//deleting this constraint severed link in holonomic system, need to reevaluate
+		if (e_was_in_holonomic_system && !e->hasHolonomicConstraint()) {
+			e->h->member_edges.erase(std::remove(e->h->member_edges.begin(), e->h->member_edges.end(), e));
+			e->h->edge_removed_flag = true;
+			if (e->h->member_edges.size() <= 1) {
+				if (e->h->member_edges.size() == 1) e->h->member_edges[0]->h = nullptr;
+				delete e->h;
+			}
+		}
 	}
 
 	void PhysicsEngine::addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness, CFM cfm) {
@@ -1270,7 +1296,6 @@ namespace phyz {
 		for (BallSocket* b : g1->ballSocketConstraints) {
 			if (b->uniqueID == id1.uniqueID) {
 				holonomic_constraints.push_back(&b->constraint);
-				b->is_in_holonomic_system = true;
 			}
 		}
 
@@ -1279,7 +1304,6 @@ namespace phyz {
 		for (BallSocket* b : g2->ballSocketConstraints) {
 			if (b->uniqueID == id2.uniqueID) {
 				holonomic_constraints.push_back(&b->constraint);
-				b->is_in_holonomic_system = true;
 			}
 		}
 
@@ -1343,7 +1367,7 @@ namespace phyz {
 	}
 
 	//Fixed bodies need to be treated a little weird. They should not bridge islands together (two seperate piles on the same floor should be different islands).
-	//Thus fixed bodies exist only as leaves, and can't be 'curr' in initial call to dfs
+	//Thus fixed bodies exist only as leaves, and can't be 'curr' in initial call to bfs
 	//Exception being where the very first node is fixed to propogate changes, such as translating a fixed object requires waking bodies around it
 	void PhysicsEngine::bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action) {
 		std::vector<ConstraintGraphNode*> to_visit = { curr };
@@ -1477,6 +1501,8 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints() {
+		shatterFracturedHolonomicSystems();
+
 		static int current_visit_tag_value = 0;
 		current_visit_tag_value++; //used to avoid visiting same constraint twice
 
@@ -1485,6 +1511,7 @@ namespace phyz {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
+				maintainAllHolonomicSystemStuffRelatedToThisEdge(e);
 
 				if (e->visited_tag == current_visit_tag_value)
 					continue; //skip
@@ -1524,12 +1551,12 @@ namespace phyz {
 			}
 		}
 
-
 		current_visit_tag_value++; //need to update this value again
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
+				bool is_in_holonomic_system = e->h != nullptr;
 
 				if (e->visited_tag == current_visit_tag_value) 
 					continue; //skip
@@ -1552,7 +1579,7 @@ namespace phyz {
 					mthz::Vec3 b2_pos = bs->b2->getTrackedP(bs->b2_point_key);
 					mthz::NVec<3> starting_impulse = warm_start_disabled ? mthz::NVec<3>{ 0.0} : bs->constraint.impulse;
 					double pos_correct_coeff = bs->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(bs->pos_correct_hardness, step_time) : 0;
-					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, pos_correct_coeff, bs->cfm.getCFMValue(global_cfm), bs->is_in_holonomic_system, starting_impulse);
+					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, pos_correct_coeff, bs->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse);
 				}
 				for (Hinge* h : e->hingeConstraints) {
 					mthz::Vec3 b1_pos = h->b1->getTrackedP(h->b1_point_key);
@@ -1572,7 +1599,7 @@ namespace phyz {
 					double rot_correct_coeff = h->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(h->rot_correct_hardness, step_time) : 0;
 
 					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : h->constraint.impulse;
-					h->constraint = HingeConstraint(h->b1, h->b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, pos_correct_coeff, rot_correct_coeff, h->cfm.getCFMValue(global_cfm), h->is_in_holonomic_system, starting_impulse, h->constraint.u, h->constraint.w);
+					h->constraint = HingeConstraint(h->b1, h->b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, pos_correct_coeff, rot_correct_coeff, h->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse, h->constraint.u, h->constraint.w);
 				}
 				for (Slider* s : e->sliderConstraints) {
 					mthz::Vec3 b1_pos = s->b1->getTrackedP(s->b1_point_key);
@@ -1597,7 +1624,7 @@ namespace phyz {
 					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
 
 					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : s->constraint.impulse;
-					s->constraint = SliderConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, pos_correct_coeff, pos_correct_coeff, s->cfm.getCFMValue(global_cfm), s->is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
+					s->constraint = SliderConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, pos_correct_coeff, pos_correct_coeff, s->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (SlidingHinge* s : e->slidingHingeConstraints) {
 					mthz::Vec3 b1_pos = s->b1->getTrackedP(s->b1_point_key);
@@ -1629,7 +1656,7 @@ namespace phyz {
 					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
 
 					mthz::NVec<4> starting_impulse = warm_start_disabled ? mthz::NVec<4>{ 0.0} : s->constraint.impulse;
-					s->constraint = SlidingHingeConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, pos_correct_coeff, rot_correct_coeff, s->cfm.getCFMValue(global_cfm), s->is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
+					s->constraint = SlidingHingeConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, pos_correct_coeff, rot_correct_coeff, s->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (Weld* w : e->weldConstraints) {
 					mthz::Vec3 b1_pos = w->b1->getTrackedP(w->b1_point_key);
@@ -1638,7 +1665,7 @@ namespace phyz {
 					double pos_correct_coeff = w->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(w->pos_correct_hardness, step_time) : 0;
 					double rot_correct_coeff = w->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(w->rot_correct_hardness, step_time) : 0;
 
-					w->constraint = WeldConstraint(w->b1, w->b2, b1_pos, b2_pos, pos_correct_coeff, rot_correct_coeff, w->cfm.getCFMValue(global_cfm), w->is_in_holonomic_system, w->constraint.impulse);
+					w->constraint = WeldConstraint(w->b1, w->b2, b1_pos, b2_pos, pos_correct_coeff, rot_correct_coeff, w->cfm.getCFMValue(global_cfm), is_in_holonomic_system, w->constraint.impulse);
 				}
 
 				if (e->noConstraintsLeft()) {
@@ -1647,6 +1674,74 @@ namespace phyz {
 				}
 			}
 		}
+	}
+
+	void PhysicsEngine::shatterFracturedHolonomicSystems() {
+		for (const auto& kv_pair : constraint_graph_nodes) {
+			ConstraintGraphNode* n = kv_pair.second;
+			for (auto i = 0; i < n->constraints.size(); i++) {
+				SharedConstraintsEdge* e = n->constraints[i];
+				if (e->h != nullptr && e->h->edge_removed_flag) {
+					//simplest way to manage this, the system may be fractured into multiple sub systems.
+					HolonomicSystemNodes* h = e->h;
+					for (SharedConstraintsEdge* edge : h->member_edges) {
+						edge->h = nullptr;
+						edge->holonomic_system_scan_needed = true;
+					}
+					delete h;
+				}
+			}
+		}
+	}
+
+	void PhysicsEngine::maintainAllHolonomicSystemStuffRelatedToThisEdge(SharedConstraintsEdge* e) {
+		//when a new constraint is added, or is suddenly made able to connect systems together (e.g. was fixed, was just made dynamic)
+		//we need to check if we can either include this constraint in a new system, potentially merging multiple systems together.
+		if (e->holonomic_system_scan_needed) {
+			e->holonomic_system_scan_needed = false;
+
+			std::vector<SharedConstraintsEdge*> holonomically_connected = getAllEdgesConnectedHolonomically(e);
+
+			if (holonomically_connected.size() <= 1) return; //this edge is isolated, nothing to do
+
+			std::set<HolonomicSystemNodes*> encountered_systems;
+			for (SharedConstraintsEdge* edge : holonomically_connected) {
+				if (edge->h != nullptr) encountered_systems.insert(edge->h);
+			}
+ 
+			if (encountered_systems.size() == 1 && *encountered_systems.begin() != nullptr) {} // e was already in a system and nothing changed, no new nodes
+			else if (encountered_systems.size() == 1 && *encountered_systems.begin() == nullptr) {
+				//new system of nodes not belonging to any system
+				HolonomicSystemNodes* h = new HolonomicSystemNodes(holonomically_connected);
+				for (SharedConstraintsEdge* edge : holonomically_connected) {
+					edge->h = h;
+					edge->holonomic_system_scan_needed = false;
+				}
+			}
+			else {
+				//encountered_systems.size() > 1 case, need to merge all systems into one.
+				auto itr = encountered_systems.begin();
+				//nullptr cant appear twice in set
+				HolonomicSystemNodes* non_null_system = (*itr == nullptr) ? *std::next(itr) : *itr; 
+
+				for (SharedConstraintsEdge* edge : holonomically_connected) {
+					if (edge->h != non_null_system) non_null_system->member_edges.push_back(edge);
+					edge->holonomic_system_scan_needed = false;
+				}
+				//sufficient to just set flag, will trigger update with new constraints added
+				non_null_system->constraints_changed_flag = true;
+
+				for (HolonomicSystemNodes* system : encountered_systems) {
+					if (system != nullptr && system != non_null_system) delete system;
+				}
+			}
+		}
+
+		if (e->h != nullptr && e->h->constraints_changed_flag) {
+			e->h->constraints_changed_flag = false;
+			e->h->recalculateSystem();
+		}
+		
 	}
 
 	PhysicsEngine::ActiveConstraintData PhysicsEngine::sleepOrSolveIslands() {
@@ -1827,6 +1922,76 @@ namespace phyz {
 		}
 	}
 
+	std::vector<PhysicsEngine::SharedConstraintsEdge*> PhysicsEngine::getAllEdgesConnectedHolonomically(SharedConstraintsEdge* e) {
+		std::set<SharedConstraintsEdge*> visited;
+		std::vector<SharedConstraintsEdge*> to_visit = { e };
+		assert(e->hasHolonomicConstraint());
+
+		while (!to_visit.empty()) {
+			SharedConstraintsEdge* visiting_edge = to_visit.back();
+			to_visit.pop_back();
+
+			if (visited.find(e) != visited.end()) continue;
+
+			visited.insert(visiting_edge);
+
+			std::vector<SharedConstraintsEdge*> neighboring_edges;
+			if (e->n1->b->getMovementType() == RigidBody::DYNAMIC) 
+				neighboring_edges.insert(neighboring_edges.end(), e->n1->constraints.begin(), e->n1->constraints.end());
+			if (e->n2->b->getMovementType() == RigidBody::DYNAMIC)
+				neighboring_edges.insert(neighboring_edges.end(), e->n2->constraints.begin(), e->n2->constraints.end());
+
+
+			for (SharedConstraintsEdge* neighbor : neighboring_edges) {
+				
+				if (visited.find(neighbor) != visited.end()) continue;
+
+				if (neighbor->hasHolonomicConstraint()) {
+					to_visit.push_back(neighbor);
+				}
+			}
+		}
+
+		return std::vector<SharedConstraintsEdge*>(visited.begin(), visited.end());
+	}
+
+	PhysicsEngine::HolonomicSystemNodes::HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges) 
+		: member_edges(member_edges), constraints_changed_flag(false), edge_removed_flag(false)
+	{
+		recalculateSystem();
+	}
+
+	void PhysicsEngine::HolonomicSystemNodes::recalculateSystem() {
+		std::vector<Constraint*> constraints;
+		constraints.reserve(member_edges.size());
+
+		//capturing only one since multiple on the same body somewhat redundant
+		//doing in order of least degrees of freedom to most, since it is more likely to be subset in terms of what motion is constrained
+		for (SharedConstraintsEdge* e : member_edges) {
+			
+			if (!e->weldConstraints.empty()) {
+				constraints.push_back(&e->weldConstraints[0]->constraint);
+				continue;
+			}
+			if (!e->hingeConstraints.empty()) {
+				constraints.push_back(&e->hingeConstraints[0]->constraint);
+				continue;
+			}
+			if (!e->sliderConstraints.empty()) {
+				constraints.push_back(&e->sliderConstraints[0]->constraint);
+				continue;
+			}
+			if (!e->slidingHingeConstraints.empty()) {
+				constraints.push_back(&e->slidingHingeConstraints[0]->constraint);
+				continue;
+			}
+			if (!e->ballSocketConstraints.empty()) {
+				constraints.push_back(&e->ballSocketConstraints[0]->constraint);
+				continue;
+			}
+		}
+	}
+
 	void PhysicsEngine::setMotorOff(ConstraintID id) {
 		Motor* m = fetchMotor(id);
 
@@ -1934,6 +2099,11 @@ namespace phyz {
 	PhysicsEngine::SharedConstraintsEdge::~SharedConstraintsEdge() {
 		n1->constraints.erase(std::remove(n1->constraints.begin(), n1->constraints.end(), this));
 		n2->constraints.erase(std::remove(n2->constraints.begin(), n2->constraints.end(), this));
+		if (h != nullptr) {
+			h->member_edges.erase(std::remove(h->member_edges.begin(), h->member_edges.end(), this));
+			if (h->member_edges.size() == 1) h->member_edges[0]->h = nullptr; //clean up the straggler, if it exists
+			if (h->member_edges.size() <= 1) delete h;
+		}
 		for (Contact* c : contactConstraints) delete c;
 		for (BallSocket* b : ballSocketConstraints) delete b;
 		for (Hinge* h : hingeConstraints) delete h;

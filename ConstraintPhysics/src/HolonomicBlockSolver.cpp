@@ -6,6 +6,7 @@ namespace phyz {
 	HolonomicSystem::HolonomicSystem(std::vector<Constraint*> constraints) 
 		: constraints(constraints), system_degree(0), buffer_capacity(0)
 	{
+		if (constraints.size() == 0) return;
 		//todo: compute the proper ordering to have a sparse system, and exploit that.
 
 		//compute the required size of the buffer and fill in the block location table
@@ -37,6 +38,15 @@ namespace phyz {
 		diagonal_elem_buffer = debug_diagonal_elem_buffer.data();
 #endif
 
+	}
+
+	HolonomicSystem::~HolonomicSystem() {
+		if (constraints.size() > 0) {
+#ifdef NDEBUG
+			free(buffer);
+			free(diagonal_elem_buffer);
+#endif
+		}
 	}
 
 	template<int n>

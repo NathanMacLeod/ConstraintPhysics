@@ -7,8 +7,9 @@ namespace phyz {
 
 	class HolonomicSystem {
 	public:
-
-		class HolonomicSystem(std::vector<Constraint*> constraints);
+		HolonomicSystem() : buffer(nullptr), diagonal_elem_buffer(nullptr) {}
+		HolonomicSystem(std::vector<Constraint*> constraints);
+		~HolonomicSystem();
 		void computeInverse(double cfm);
 		void computeAndApplyImpulses(bool use_psuedo_velocities);
 
