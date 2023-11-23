@@ -2,6 +2,7 @@
 #include "NVec.h"
 #include "Vec3.h"
 #include <cstring>
+#include <vector>
 
 namespace mthz {
 
@@ -116,6 +117,8 @@ namespace mthz {
 		}
 		return out;
 	}
+
+	void rowMajorOrderInverse(int n, double* target, double* source);
 
 	template<int n>
 	void rowMajorOrderInverse(double* target, double* source) {

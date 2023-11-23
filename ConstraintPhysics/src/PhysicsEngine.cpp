@@ -1123,6 +1123,7 @@ namespace phyz {
 				if (e->h->member_edges.size() == 1) e->h->member_edges[0]->h = nullptr;
 				delete e->h;
 			}
+			e->h = nullptr;
 		}
 	}
 
@@ -1276,40 +1277,6 @@ namespace phyz {
 				w->constraint.impulse = mthz::NVec<6>{ 0.0 };
 			}
 		}
-	}
-
-	void PhysicsEngine::createDebugHolonomicSystem(mthz::Vec3 pos) {
-		std::vector<Constraint*> holonomic_constraints;
-
-		double width = 1;
-		double length = 2;
-		
-		ConvexUnionGeometry box1 = ConvexUnionGeometry::box(pos, length, width, width);
-		RigidBody* r1 = createRigidBody(box1);
-		ConvexUnionGeometry box2 = ConvexUnionGeometry::box(pos + mthz::Vec3(length, 0, 0), length, width, width);
-		RigidBody* r2 = createRigidBody(box2);
-		ConvexUnionGeometry box3 = ConvexUnionGeometry::box(pos + mthz::Vec3(2*length, 0, 0), length, width, width);
-		RigidBody* r3 = createRigidBody(box3);
-
-		ConstraintID id1 = addHingeConstraint(r1, r2, pos + mthz::Vec3(length, width / 2.0, width / 2.0), mthz::Vec3(0, 1, 0));
-		SharedConstraintsEdge* g1 = constraint_graph_nodes[r1->getID()]->getOrCreateEdgeTo(constraint_graph_nodes[r2->getID()]);
-		for (BallSocket* b : g1->ballSocketConstraints) {
-			if (b->uniqueID == id1.uniqueID) {
-				holonomic_constraints.push_back(&b->constraint);
-			}
-		}
-
-		ConstraintID id2 = addHingeConstraint(r2, r3, pos + mthz::Vec3(2 * length, width / 2.0, width / 2.0), mthz::Vec3(0, 1, 0));
-		SharedConstraintsEdge* g2 = constraint_graph_nodes[r2->getID()]->getOrCreateEdgeTo(constraint_graph_nodes[r3->getID()]);
-		for (BallSocket* b : g2->ballSocketConstraints) {
-			if (b->uniqueID == id2.uniqueID) {
-				holonomic_constraints.push_back(&b->constraint);
-			}
-		}
-
-		holonomic_systems.push_back(HolonomicSystem(holonomic_constraints));
-
-		r2->setVel(mthz::Vec3(0, 0, 1));
 	}
 
 	void PhysicsEngine::forceAABBTreeUpdate() {
@@ -1726,7 +1693,10 @@ namespace phyz {
 				HolonomicSystemNodes* non_null_system = (*itr == nullptr) ? *std::next(itr) : *itr; 
 
 				for (SharedConstraintsEdge* edge : holonomically_connected) {
-					if (edge->h != non_null_system) non_null_system->member_edges.push_back(edge);
+					if (edge->h != non_null_system) {
+						non_null_system->member_edges.push_back(edge);
+						edge->h = non_null_system;
+					}
 					edge->holonomic_system_scan_needed = false;
 				}
 				//sufficient to just set flag, will trigger update with new constraints added
@@ -1848,7 +1818,7 @@ namespace phyz {
 			else if (island_constraints.constraints.size() > 0) {
 				printf("\nIsland Contains %d holonomic systems, %d constraints:\n", island_constraints.systems.size(), island_constraints.constraints.size());
 				for (HolonomicSystem* h : island_constraints.systems) {
-					printf("\tSystem of degree: %d\n", h->getDegree());
+					printf("\tSystem of degree: %d composed of %d constraints\n", h->getDegree(), h->getNumConstraints());
 				}
 				out.island_systems.push_back(island_constraints);
 			}
@@ -1944,10 +1914,10 @@ namespace phyz {
 			visited.insert(visiting_edge);
 
 			std::vector<SharedConstraintsEdge*> neighboring_edges;
-			if (e->n1->b->getMovementType() == RigidBody::DYNAMIC) 
-				neighboring_edges.insert(neighboring_edges.end(), e->n1->constraints.begin(), e->n1->constraints.end());
-			if (e->n2->b->getMovementType() == RigidBody::DYNAMIC)
-				neighboring_edges.insert(neighboring_edges.end(), e->n2->constraints.begin(), e->n2->constraints.end());
+			if (visiting_edge->n1->b->getMovementType() == RigidBody::DYNAMIC)
+				neighboring_edges.insert(neighboring_edges.end(), visiting_edge->n1->constraints.begin(), visiting_edge->n1->constraints.end());
+			if (visiting_edge->n2->b->getMovementType() == RigidBody::DYNAMIC)
+				neighboring_edges.insert(neighboring_edges.end(), visiting_edge->n2->constraints.begin(), visiting_edge->n2->constraints.end());
 
 
 			for (SharedConstraintsEdge* neighbor : neighboring_edges) {
@@ -2000,7 +1970,7 @@ namespace phyz {
 		}
 
 		//todo: determine optimal ordering
-		system = HolonomicSystem(constraints);
+		system = std::move(HolonomicSystem(constraints));
 	}
 
 	void PhysicsEngine::setMotorOff(ConstraintID id) {

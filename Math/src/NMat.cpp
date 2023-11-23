@@ -33,6 +33,32 @@ namespace mthz {
 		target[3*2 + 0] = (d * h - e * g) * di; target[3*2 + 1] = (b * g - a * h) * di; target[3*2 + 2] = (a * e - b * d) * di;
 	}
 
+	void rowMajorOrderInverse(int n, double* target, double* source) {
+		std::vector<double> copy(n * n);
+		//initialize copy to source, target to identity matrix
+		memcpy(copy.data(), source, n * n * sizeof(double));
+		memset(target, 0x00, n * n * sizeof(double));
+		for (int i = 0; i < n; i++) target[i * (n + 1)] = 1.0;
+
+		for (int piv = 0; piv < n; piv++) {
+			for (int target_row = 0; target_row < n; target_row++) {
+				if (piv == target_row) continue;
+
+				double ratio = copy[n * target_row + piv] / copy[n * piv + piv];
+				for (int target_col = 0; target_col < n; target_col++) {
+					copy[n * target_row + target_col] -= ratio * copy[n * piv + target_col];
+					target[n * target_row + target_col] -= ratio * target[n * piv + target_col];
+				}
+
+			}
+		}
+		for (int piv = 0; piv < n; piv++) {
+			for (int col = 0; col < n; col++) {
+				target[n * piv + col] /= copy[n * piv + piv];
+			}
+		}
+	}
+
 	NMat<3, 3> crossMat(mthz::Vec3 v) {
 		NMat<3, 3> out;
 		out.v[0][1] = -v.z; out.v[0][2] = v.y;

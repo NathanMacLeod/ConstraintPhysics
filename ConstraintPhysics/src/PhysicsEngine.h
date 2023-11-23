@@ -102,7 +102,6 @@ namespace phyz {
 
 		//really only exists for debugging
 		void deleteWarmstartData(RigidBody* r);
-		void createDebugHolonomicSystem(mthz::Vec3 pos);
 
 		//should probably be placed with a different scheme eventually. This is for when position/orientation is changed for a rigid body, but AABB needs to be updated before next physics tick for use by querying raycasts.
 		void forceAABBTreeUpdate();

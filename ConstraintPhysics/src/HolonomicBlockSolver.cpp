@@ -1,13 +1,92 @@
 #include "HolonomicBlockSolver.h"
 #include "ConstraintSolver.h"
+#include <map>
 
 namespace phyz {
 
-	HolonomicSystem::HolonomicSystem(std::vector<Constraint*> constraints) 
-		: constraints(constraints), system_degree(0), buffer_capacity(0)
+	static int get_edge_map_index(int num_constraints, int c1_index, int c2_index) {
+		return c1_index + c2_index * num_constraints;
+	}
+
+	HolonomicSystem::HolonomicSystem(std::vector<Constraint*> constraints_og_order) 
+		: system_degree(0), buffer_capacity(0)
 	{
+		int n = constraints_og_order.size();
 		if (constraints.size() == 0) return;
-		//todo: compute the proper ordering to have a sparse system, and exploit that.
+		//compute the proper ordering to have the most sparse system possible. Track which blocks we can ignore due to sparsity.
+		std::vector<bool> edge_map(n * n, false); //false means no edge
+		std::map<Constraint*, std::map<Constraint*, bool>> block_stays_empty;
+		std::vector<int> remaining_elimination_candidates(n);
+		//initialize edge_map which we use for finding the correct elimination order, and 
+		//block_stays_empty, which tracks which blocks we wil be able to ignore given our elimination order
+		for (int i = 0; i < n; i++) {
+			remaining_elimination_candidates[i] = i;
+			for (int j = 0; j < n; j++) {
+				Constraint* c1 = constraints[i];
+				Constraint* c2 = constraints[j];
+					if (c1->a == c2->a || c1->a == c2->b || c1->b == c2->a || c1->b == c2->b) {
+					block_stays_empty[c1][c2] = false;
+					block_stays_empty[c2][c1] = false;
+					edge_map[get_edge_map_index(n, i, j)] = true;
+					edge_map[get_edge_map_index(n, j, i)] = true;
+				}
+				else {
+					//assume true, might be overwritten to false later.
+					block_stays_empty[c1][c2] = true;
+					block_stays_empty[c2][c1] = true; 
+				}
+			}
+		}
+
+		while (!remaining_elimination_candidates.empty()) {
+			//find the next node to remove that creates the least new edges
+			int least_unconnected_neighbors_index = -1;
+			int least_unconnected_neighbors_count = INT_MAX;
+			std::vector<int> least_unconnected_neighbors;
+			for (int i = 0; i < remaining_elimination_candidates.size(); i++) {
+				//get all neighbors to constraint_i
+				std::vector<int> neighbors;
+				for (int j = 0; j < n; j++) {
+					if (j != i && edge_map[get_edge_map_index(n, i, j)]) {
+						neighbors.push_back(j);
+					}
+				}
+
+				//count number of neighbors not connected to each other
+				int unconnected_neighbor_count = 0;
+				for (int ni = 0; ni < neighbors.size(); ni++) {
+					for (int nj = ni + 1; nj < neighbors.size(); nj++) {
+						if (!edge_map[get_edge_map_index(n, ni, nj)]) unconnected_neighbor_count++;
+					}
+				}
+
+				if (unconnected_neighbor_count < least_unconnected_neighbors_count) {
+					least_unconnected_neighbors_count = unconnected_neighbor_count;
+					least_unconnected_neighbors_index = i;
+					least_unconnected_neighbors = neighbors;
+					if (unconnected_neighbor_count == 0) break; //not going to get better than 0
+				}
+			}
+			
+			assert(least_unconnected_neighbors_index != -1);
+			//save ordering by pushing to constaints in the order of elimination
+			constraints.push_back(constraints_og_order[least_unconnected_neighbors_index]);
+			remaining_elimination_candidates.erase(remaining_elimination_candidates.begin() + least_unconnected_neighbors_index);
+			//remove node from graph
+			for (int j = 0; j < n; j++) {
+				edge_map[get_edge_map_index(n, least_unconnected_neighbors_index, j)] = false;
+				edge_map[get_edge_map_index(n, j, least_unconnected_neighbors_index)] = false;
+			}
+			//create edges among neighbors
+			for (int ni = 0; ni < least_unconnected_neighbors.size(); ni++) {
+				for (int nj = ni + 1; nj < least_unconnected_neighbors.size(); nj++) {
+					block_stays_empty[constraints_og_order[ni]][constraints_og_order[nj]] = false;
+					block_stays_empty[constraints_og_order[nj]][constraints_og_order[ni]] = false;
+					edge_map[get_edge_map_index(n, ni, nj)] = true;
+					edge_map[get_edge_map_index(n, nj, ni)] = true;
+				}
+			}
+		}
 
 		//compute the required size of the buffer and fill in the block location table
 		for (int col = 0; col < constraints.size(); col++) {
@@ -16,10 +95,13 @@ namespace phyz {
 			system_degree += constraints[col]->getDegree();
 
 			for (int row = col; row < constraints.size(); row++) {
-				//in final version we would check if this block actually needs to exist
-
-				block_location_table.push_back(buffer_capacity);
-				buffer_capacity += constraints[row]->getDegree() * constraints[col]->getDegree();
+				if (block_stays_empty[constraints[row]][constraints[col]]) {
+					block_location_table.push_back(BLOCK_EMPTY);
+				}
+				else {
+					block_location_table.push_back(buffer_capacity);
+					buffer_capacity += constraints[row]->getDegree() * constraints[col]->getDegree();
+				}
 			}
 		}
 
@@ -33,6 +115,7 @@ namespace phyz {
 		//so that contents of buffer can be viewed in the debugger
 		debug_buffer = std::vector<double>(buffer_capacity, 0);
 		debug_diagonal_elem_buffer = std::vector<double>(diagonal_elem_buffer_capacity, 0);
+		debug_inverse = std::vector<double>(system_degree * system_degree);
 
 		buffer = debug_buffer.data();
 		diagonal_elem_buffer = debug_diagonal_elem_buffer.data();
@@ -47,6 +130,37 @@ namespace phyz {
 			free(diagonal_elem_buffer);
 #endif
 		}
+	}
+
+	HolonomicSystem::HolonomicSystem(HolonomicSystem&& h)
+		: constraints(h.constraints), system_degree(h.system_degree), buffer(h.buffer), buffer_capacity(h.buffer_capacity), 
+		diagonal_elem_buffer(h.diagonal_elem_buffer), diagonal_elem_buffer_capacity(h.diagonal_elem_buffer_capacity), 
+
+		block_location_table(std::move(h.block_location_table)), vector_location_lookup(std::move(h.vector_location_lookup)),
+		debug_buffer(std::move(h.debug_buffer)), debug_diagonal_elem_buffer(std::move(h.debug_diagonal_elem_buffer)), debug_inverse(std::move(h.debug_inverse))
+	{
+		h.buffer = nullptr;
+		h.diagonal_elem_buffer = nullptr;
+	}
+
+	void HolonomicSystem::operator=(HolonomicSystem&& h) {
+		this->~HolonomicSystem();
+		
+		constraints = std::move(h.constraints);
+		system_degree = h.system_degree;
+		buffer = h.buffer;
+		buffer_capacity = h.buffer_capacity;
+		diagonal_elem_buffer = h.diagonal_elem_buffer;
+		diagonal_elem_buffer_capacity = h.diagonal_elem_buffer_capacity;
+		block_location_table = std::move(h.block_location_table);
+		vector_location_lookup = std::move(h.vector_location_lookup);
+		debug_buffer = h.debug_buffer;
+		debug_buffer = std::move(h.debug_buffer);
+		debug_diagonal_elem_buffer = std::move(h.debug_diagonal_elem_buffer);
+		debug_inverse = std::move(h.debug_inverse);
+
+		h.buffer = nullptr;
+		h.diagonal_elem_buffer = nullptr;
 	}
 
 	template<int n>
@@ -91,11 +205,29 @@ namespace phyz {
 			}
 		}
 
-		printf("\nDELTA:\n");
+		//printf("\nDELTA:\n");
 		for (double d : delta) {
-			printf("%f ", d);
+		//	printf("%f ", d);
 		}
-		printf("\n");
+		//printf("\n");
+
+#ifndef NDEBUG
+		if (false) {
+			std::vector<double> correct_impulse(system_degree, 0);
+
+			for (int i = 0; i < system_degree; i++) {
+				for (int j = 0; j < system_degree; j++) {
+					correct_impulse[i] += delta[j] * debug_inverse[j + system_degree * i];
+				}
+			}
+
+			printf("\nCALCULATED IMPULSE NEEDED:\n");
+			for (double d : correct_impulse) {
+				printf("%f ", d);
+			}
+			printf("\n");
+		}
+#endif
 
 		//A^-1 = (L^-t)(D^-1)(L^-1) 
 		
@@ -105,9 +237,12 @@ namespace phyz {
 			multByLEffect = std::vector<double>(system_degree, 0); //set to zero
 
 			for (int row = col + 1; row < constraints.size(); row++) {
+				int loc = getBlockBufferLocation(row, col);
+				if (loc == BLOCK_EMPTY) continue;
+
 				int block_width = constraints[col]->getDegree();
 				int block_height = constraints[row]->getDegree();
-				double* block_pos = buffer + getBlockBufferLocation(row, col);
+				double* block_pos = buffer + loc;
 				int source_index = getVectorPos(col);
 				int write_index = getVectorPos(row);
 
@@ -119,11 +254,11 @@ namespace phyz {
 			}
 		}
 
-		printf("\nDELTA AFTER L^-1:\n");
+		//printf("\nDELTA AFTER L^-1:\n");
 		for (double d : delta) {
-			printf("%f ", d);
+		//	printf("%f ", d);
 		}
-		printf("\n");
+		//printf("\n");
 
 		//Multiply by D inverse
 		std::vector<double> multByDOut(system_degree);
@@ -135,11 +270,11 @@ namespace phyz {
 		}
 		delta = multByDOut;
 
-		printf("\nDELTA AFTER D^-1:\n");
+		//printf("\nDELTA AFTER D^-1:\n");
 		for (double d : delta) {
-			printf("%f ", d);
+		//	printf("%f ", d);
 		}
-		printf("\n");
+		//printf("\n");
 
 		//Multiply by L^-t
 		std::vector<double> multByLTEffect(6);
@@ -147,9 +282,12 @@ namespace phyz {
 			multByLTEffect = std::vector<double>(6, 0);
 
 			for (int row = col + 1; row < constraints.size(); row++) {
+				int loc = getBlockBufferLocation(row, col);
+				if (loc == BLOCK_EMPTY) continue;
+
 				int block_width = constraints[col]->getDegree();
 				int block_height = constraints[row]->getDegree();
-				double* block_pos = buffer + getBlockBufferLocation(row, col);
+				double* block_pos = buffer + loc;
 				int source_index = getVectorPos(row);
 
 				multMatTransposedWithVec(block_width, block_height, &multByLTEffect, 0, delta, source_index, block_pos);
@@ -161,11 +299,11 @@ namespace phyz {
 			}
 		}
 
-		printf("\nDELTA AFTER L^-t:\n");
+		//printf("\nDELTA AFTER L^-t:\n");
 		for (double d : delta) {
-			printf("%f ", d);
+		//	printf("%f ", d);
 		}
-		printf("\n");
+		//printf("\n");
 
 		//delta now equal to A^-1(t - c) = d, just need to store impulse and velocity changes now
 		for (int i = 0; i < constraints.size(); i++) {
@@ -192,11 +330,11 @@ namespace phyz {
 			}
 		}
 
-		printf("\nTARGET DELTA AFTER APPLY:\n");
+		//printf("\nTARGET DELTA AFTER APPLY:\n");
 		for (double d : delta) {
-			printf("%f ", d);
+		//	printf("%f ", d);
 		}
-		printf("\n");
+		//printf("\n");
 	}
 
 
@@ -230,6 +368,9 @@ namespace phyz {
 
 		if (a_c2interaction != nullptr) matMult(target, c1->a_jacobian, *a_c2interaction);
 		else if (b_c2interaction != nullptr) matMult(target, c1->b_jacobian, *b_c2interaction);
+		else memset(target, 0x00, c1_degree * c2_degree * sizeof(double));
+		//last case occurs when c1 and c2 dont have a direct interaction, but because of gaussian elimination
+		//the block will end up having a non-zero value.
 	}
 
 	static void computeBlockInitialValue(double* target, Constraint* c1, Constraint* c2, double cfm);
@@ -256,19 +397,48 @@ namespace phyz {
 	static void computeLowerDiagonalBlock(int block_width, int block_height, double* target, double* ldtb_source, double* ldtb_buffer_source);
 
 	void HolonomicSystem::computeInverse(double cfm) {
+#ifndef NDEBUG
+		if (false) {
+			int row_offset = 0;
+			for (int row = 0; row < constraints.size(); row++) {
+				int col_offset = 0;
+				for (int col = 0; col < constraints.size(); col++) {
+
+					int block_width = constraints[col]->getDegree();
+					int block_height = constraints[row]->getDegree();
+					std::vector<double> block(block_width * block_height);
+					computeBlockInitialValue(block.data(), constraints[row], constraints[col], cfm);
+
+					for (int r = 0; r < block_height; r++) {
+						for (int c = 0; c < block_width; c++) {
+							debug_inverse[c + col_offset + (r + row_offset) * system_degree] = block[c + r * block_width];
+						}
+					}
+
+					col_offset += constraints[col]->getDegree();
+				}
+				row_offset += constraints[row]->getDegree();
+			}
+
+			mthz::rowMajorOrderInverse(system_degree, debug_inverse.data(), debug_inverse.data());
+		}
+#endif
+
 		//set initial values
 		for (int col = 0; col < constraints.size(); col++) {
 
 			for (int row = col; row < constraints.size(); row++) {
 				Constraint* c1 = constraints[row];
 				Constraint* c2 = constraints[col];
+				int loc = getBlockBufferLocation(row, col);
+				if (loc == BLOCK_EMPTY) continue;
 
 				double* block_pos = buffer + getBlockBufferLocation(row, col);
 				computeBlockInitialValue(block_pos, c1, c2, cfm);
 			}
 		}
 
-		debugPrintBuffer("COPIED VALUES");
+		//debugPrintBuffer("COPIED VALUES");
 
 		//compute LDL
 		for (int col = 0; col < constraints.size(); col++) {
@@ -288,8 +458,10 @@ namespace phyz {
 
 			//computing lower triagular element for this block
 			for (int row = col + 1; row < constraints.size(); row++) { //iterate per block in the column
-				double* diagonal_elem_target = diagonal_elem_buffer + getBlockDiagonalElemBufferLocation(row, col); //we still need the old value in the lower block, so we are writing to a temporary buffer
 				int block_buffer_pos = getBlockBufferLocation(row, col);
+				if (block_buffer_pos == BLOCK_EMPTY) continue;
+
+				double* diagonal_elem_target = diagonal_elem_buffer + getBlockDiagonalElemBufferLocation(row, col); //we still need the old value in the lower block, so we are writing to a temporary buffer
 				int block_height = constraints[row]->getDegree();
 				int block_width = constraints[col]->getDegree();
 
@@ -299,8 +471,10 @@ namespace phyz {
 			//calculate subtraction in the lower diagonal block
 			for (int ld_col = col + 1; ld_col < constraints.size(); ld_col++) {
 				for (int ld_row = ld_col; ld_row < constraints.size(); ld_row++) {
+					int loc = getBlockBufferLocation(ld_row, col);
+					if (loc == BLOCK_EMPTY || getBlockBufferLocation(ld_col, col) == BLOCK_EMPTY) continue;
 
-					double* ldtb_source = buffer + getBlockBufferLocation(ld_row, col);
+					double* ldtb_source = buffer + loc;
 					double* ldtb_buffer_source = diagonal_elem_buffer + getBlockDiagonalElemBufferLocation(ld_col, col);
 					double* target = buffer + getBlockBufferLocation(ld_row, ld_col);
 
@@ -316,12 +490,13 @@ namespace phyz {
 			}
 
 			//copy diagonal elem buffer back
-			double* target = buffer + getBlockBufferLocation(col+1, col);
-			int blocks_total_size = (getBlockBufferLocation(col + 1, col + 1) - getBlockBufferLocation(col + 1, col)) * sizeof(double); //total size in memory of all blocks in the col beneath the diagonal.
+			int first_non_empty_loc = getFirstNonEmptyBlockBelowDiagonal(col);
+			double* target = buffer + first_non_empty_loc;
+			int blocks_total_size = (getBlockBufferLocation(col + 1, col + 1) - first_non_empty_loc) * sizeof(double); //total size in memory of all blocks in the col beneath the diagonal.
 			memcpy(target, diagonal_elem_buffer, blocks_total_size);
 		}
 
-		debugPrintBuffer("DONE");
+		//debugPrintBuffer("DONE");
 	}
 
 	int HolonomicSystem::getBlockBufferLocation(int block_row, int block_column) {
@@ -337,11 +512,22 @@ namespace phyz {
 		return block_location_table[table_index];
 	}
 
+	int HolonomicSystem::getFirstNonEmptyBlockBelowDiagonal(int column) {
+		for (int row = column + 1; row < constraints.size(); row++) {
+			int loc = getBlockBufferLocation(row, column);
+			if (loc != BLOCK_EMPTY) return loc;
+		}
+		return BLOCK_EMPTY;
+	}
+
 	int HolonomicSystem::getBlockDiagonalElemBufferLocation(int block_row, int block_column) {
 		assert(block_row >= 0 && block_row <= constraints.size());
 		assert(block_column < block_row);
 
-		return getBlockBufferLocation(block_row, block_column) - getBlockBufferLocation(block_column+1, block_column);
+		int loc = getBlockBufferLocation(block_row, block_column);
+		if (loc == BLOCK_EMPTY) return BLOCK_EMPTY;
+
+		return loc - getFirstNonEmptyBlockBelowDiagonal(block_column);
 	}
 
 	template<int n>
@@ -438,7 +624,7 @@ namespace phyz {
 			double dotprod = 0;
 			for (int j = 0; j < block_height; j++) {
 				double d1 = source_vector[source_index + j];
-				double d2 = matrix_source[j + block_width * i];
+				double d2 = matrix_source[i + block_width * j];
 				dotprod += d1 * d2;
 			}
 			target->at(write_index + i) += dotprod;
@@ -773,14 +959,14 @@ namespace phyz {
 					for (int sub_col = 0; sub_col < constraints[col]->getDegree(); sub_col++) {
 
 						if (col > row) {
-							printf("%15c", 'U');
+							printf("%9c", 'U');
 						}
 						else if (getBlockBufferLocation(row, col) == BLOCK_EMPTY) {
-							printf("%15c", 'X');
+							printf("%9c", 'X');
 						}
 						else {
 							int indx = getBlockBufferLocation(row, col) + sub_col + constraints[col]->getDegree() * sub_row;
-							printf("%15.5f", buffer[indx]);
+							printf("%9.3f", buffer[indx]);
 						}
 
 					}

@@ -24,20 +24,6 @@ public:
 
 	void run() override {
 
-		/*phyz::RigidBody* fake0 = (phyz::RigidBody *)0;
-		phyz::RigidBody* fake1 = (phyz::RigidBody*)1;
-		phyz::RigidBody* fake2 = (phyz::RigidBody*)2;
-		phyz::RigidBody* fake3 = (phyz::RigidBody*)3;
-
-		std::vector<phyz::Constraint*> constraints = {
-			new phyz::TestConstraint(fake0, fake1),
-			new phyz::TestConstraint(fake1, fake2),
-			new phyz::TestConstraint(fake2, fake3)
-		};
-
-		phyz::HolonomicSystem h(constraints);
-		h.computeInverse(0);*/
-
 		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
@@ -46,7 +32,6 @@ public:
 		phyz::PhysicsEngine p;
 		p.setPGSIterations(45, 35);
 		p.setGlobalConstraintForceMixing(0.01);
-		p.createDebugHolonomicSystem(mthz::Vec3(0, 10, 0));
 
 		bool lock_cam = true;
 
@@ -80,6 +65,26 @@ public:
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		bodies.push_back({ m2, r2 });
 
+		{
+			mthz::Vec3 pos(0, 2, 0);
+			double width = 1;
+			double length = 2;
+
+			phyz::ConvexUnionGeometry box1 = phyz::ConvexUnionGeometry::box(pos, length, width, width);
+			phyz::RigidBody* r1 = p.createRigidBody(box1);
+			phyz::ConvexUnionGeometry box2 = phyz::ConvexUnionGeometry::box(pos + mthz::Vec3(length, 0, 0), length, width, width);
+			phyz::RigidBody* r2 = p.createRigidBody(box2);
+			phyz::ConvexUnionGeometry box3 = phyz::ConvexUnionGeometry::box(pos + mthz::Vec3(2 * length, 0, 0), length, width, width);
+			phyz::RigidBody* r3 = p.createRigidBody(box3);
+
+			p.addHingeConstraint(r1, r2, pos + mthz::Vec3(length, width / 2.0, width / 2.0), mthz::Vec3(0, 1, 0));
+			p.addHingeConstraint(r2, r3, pos + mthz::Vec3(2 * length, width / 2.0, width / 2.0), mthz::Vec3(0, 0, 1));
+
+			bodies.push_back({ fromGeometry(box1), r1 });
+			bodies.push_back({ fromGeometry(box2), r2 });
+			bodies.push_back({ fromGeometry(box3), r3 });
+		}
+
 		Mesh contact_ball_mesh = fromGeometry(phyz::ConvexUnionGeometry::merge(phyz::ConvexUnionGeometry::sphere(mthz::Vec3(), 0.03), phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.02, 0.1)), {1.0, 0, 0});
 
 		struct Contact {
@@ -111,7 +116,7 @@ public:
 		float t = 0;
 		float fElapsedTime;
 
-		mthz::Vec3 pos;
+		mthz::Vec3 pos(0, 3, -3);
 		mthz::Quaternion orient;
 		double mv_speed = 2;
 		double rot_speed = 1;
