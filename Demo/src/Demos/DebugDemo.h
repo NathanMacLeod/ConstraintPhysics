@@ -76,13 +76,17 @@ public:
 			phyz::RigidBody* r2 = p.createRigidBody(box2);
 			phyz::ConvexUnionGeometry box3 = phyz::ConvexUnionGeometry::box(pos + mthz::Vec3(2 * length, 0, 0), length, width, width);
 			phyz::RigidBody* r3 = p.createRigidBody(box3);
+			phyz::ConvexUnionGeometry box4 = phyz::ConvexUnionGeometry::box(pos + mthz::Vec3(3 * length, 0, 0), length, width, width);
+			phyz::RigidBody* r4 = p.createRigidBody(box4);
 
 			p.addHingeConstraint(r1, r2, pos + mthz::Vec3(length, width / 2.0, width / 2.0), mthz::Vec3(0, 1, 0));
 			p.addHingeConstraint(r2, r3, pos + mthz::Vec3(2 * length, width / 2.0, width / 2.0), mthz::Vec3(0, 0, 1));
+			p.addHingeConstraint(r3, r4, pos + mthz::Vec3(3 * length, width / 2.0, width / 2.0), mthz::Vec3(1, 0, 0));
 
 			bodies.push_back({ fromGeometry(box1), r1 });
 			bodies.push_back({ fromGeometry(box2), r2 });
 			bodies.push_back({ fromGeometry(box3), r3 });
+			bodies.push_back({ fromGeometry(box4), r4 });
 		}
 
 		Mesh contact_ball_mesh = fromGeometry(phyz::ConvexUnionGeometry::merge(phyz::ConvexUnionGeometry::sphere(mthz::Vec3(), 0.03), phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.02, 0.1)), {1.0, 0, 0});

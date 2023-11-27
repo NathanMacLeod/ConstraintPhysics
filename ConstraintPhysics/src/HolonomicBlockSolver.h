@@ -17,13 +17,15 @@ namespace phyz {
 		inline int getDegree() { return system_degree; }
 		inline int getNumConstraints() { return constraints.size(); }
 
-		void debugPrintBuffer(std::string message="BUFFER CONTENT");
+		void debugPrintBuffer(std::string message="BUFFER CONTENT", bool print_val=true);
 
+
+		double* buffer;
 	private:
 		std::vector<Constraint*> constraints;
 		int system_degree;
 
-		double* buffer;
+		
 		int buffer_capacity;
 		double* diagonal_elem_buffer;
 		int diagonal_elem_buffer_capacity;

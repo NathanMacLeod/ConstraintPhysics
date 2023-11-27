@@ -47,7 +47,7 @@ namespace phyz {
 
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
 	//the first third of this video explains it pretty well: https://www.youtube.com/watch?v=P-WP1yMOkc4 (Improving an Iterative Physics Solver Using a Direct Method)
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::set<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos) {
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos) {
 		struct VelPair {
 			VelPair() : velocity_change({0.0}), psuedo_vel_change({0.0}) {} //initialize zeroed out
 			mthz::NVec<6> velocity_change;

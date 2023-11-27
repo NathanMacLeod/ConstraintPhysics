@@ -354,7 +354,7 @@ namespace phyz {
 
 		struct IslandConstraints {
 			std::vector<Constraint*> constraints;
-			std::set<HolonomicSystem*> systems;
+			std::vector<HolonomicSystem*> systems;
 		};
 
 		struct ActiveConstraintData {

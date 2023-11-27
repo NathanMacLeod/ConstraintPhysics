@@ -1733,7 +1733,7 @@ namespace phyz {
 
 			struct InStruct {
 				bool* all_ready_to_sleep;
-				std::set<HolonomicSystem*>* island_systems;
+				std::vector<HolonomicSystem*>* island_systems;
 				std::vector<Constraint*>* island_constraints;
 				std::vector<RigidBody*>* island_bodies;
 				std::vector<BallSocket*>* mast_slav_bss;
@@ -1757,7 +1757,9 @@ namespace phyz {
 					if (n->b->getMovementType() == RigidBody::KINEMATIC) interacting_with_kinematic = true;
 					if (curr->b->getAsleep() && (n->b->getAsleep() || n->b->getMovementType() == RigidBody::FIXED) || visited.find(n) != visited.end()) continue;
 
-					if (e->h != nullptr) output->island_systems->insert(&e->h->system);
+					if (e->h != nullptr && std::find(output->island_systems->begin(), output->island_systems->end(), &e->h->system) == output->island_systems->end()) {
+						output->island_systems->push_back(&e->h->system);
+					}
 
 					for (Contact* c: e->contactConstraints) {
 						if (c->is_live_contact) {
@@ -1816,10 +1818,10 @@ namespace phyz {
 				}
 			}
 			else if (island_constraints.constraints.size() > 0) {
-				printf("\nIsland Contains %d holonomic systems, %d constraints:\n", island_constraints.systems.size(), island_constraints.constraints.size());
+				/*printf("\nIsland Contains %d holonomic systems, %d constraints:\n", island_constraints.systems.size(), island_constraints.constraints.size());
 				for (HolonomicSystem* h : island_constraints.systems) {
 					printf("\tSystem of degree: %d composed of %d constraints\n", h->getDegree(), h->getNumConstraints());
-				}
+				}*/
 				out.island_systems.push_back(island_constraints);
 			}
 		}
@@ -1903,6 +1905,7 @@ namespace phyz {
 	std::vector<PhysicsEngine::SharedConstraintsEdge*> PhysicsEngine::getAllEdgesConnectedHolonomically(SharedConstraintsEdge* e) {
 		std::set<SharedConstraintsEdge*> visited;
 		std::vector<SharedConstraintsEdge*> to_visit = { e };
+		std::vector<SharedConstraintsEdge*> out;
 		assert(e->hasHolonomicConstraint());
 
 		while (!to_visit.empty()) {
@@ -1912,6 +1915,7 @@ namespace phyz {
 			if (visited.find(visiting_edge) != visited.end()) continue;
 
 			visited.insert(visiting_edge);
+			out.push_back(visiting_edge);
 
 			std::vector<SharedConstraintsEdge*> neighboring_edges;
 			if (visiting_edge->n1->b->getMovementType() == RigidBody::DYNAMIC)
@@ -1930,7 +1934,7 @@ namespace phyz {
 			}
 		}
 
-		return std::vector<SharedConstraintsEdge*>(visited.begin(), visited.end());
+		return out;
 	}
 
 	PhysicsEngine::HolonomicSystemNodes::HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges) 
@@ -1946,31 +1950,45 @@ namespace phyz {
 		//capturing only one since multiple on the same body somewhat redundant
 		//doing in order of least degrees of freedom to most, since it is more likely to be subset in terms of what motion is constrained
 		for (SharedConstraintsEdge* e : member_edges) {
-			
+			//b1 and b2 values need to be passed in. Other values are not yet initialized.
 			if (!e->weldConstraints.empty()) {
-				constraints.push_back(&e->weldConstraints[0]->constraint);
+				Weld* c = e->weldConstraints[0];
+				c->constraint.a = c->b1;
+				c->constraint.b = c->b2;
+				constraints.push_back(&c->constraint);
 				continue;
 			}
 			if (!e->hingeConstraints.empty()) {
-				constraints.push_back(&e->hingeConstraints[0]->constraint);
+				Hinge* c = e->hingeConstraints[0];
+				c->constraint.a = c->b1;
+				c->constraint.b = c->b2;
+				constraints.push_back(&c->constraint);
 				continue;
 			}
 			if (!e->sliderConstraints.empty()) {
-				constraints.push_back(&e->sliderConstraints[0]->constraint);
+				Slider* c = e->sliderConstraints[0];
+				c->constraint.a = c->b1;
+				c->constraint.b = c->b2;
+				constraints.push_back(&c->constraint);
 				continue;
 			}
 			if (!e->slidingHingeConstraints.empty()) {
-				constraints.push_back(&e->slidingHingeConstraints[0]->constraint);
+				SlidingHinge* c = e->slidingHingeConstraints[0];
+				c->constraint.a = c->b1;
+				c->constraint.b = c->b2;
+				constraints.push_back(&c->constraint);
 				continue;
 			}
 			if (!e->ballSocketConstraints.empty()) {
-				constraints.push_back(&e->ballSocketConstraints[0]->constraint);
+				BallSocket* c = e->ballSocketConstraints[0];
+				c->constraint.a = c->b1;
+				c->constraint.b = c->b2;
+				constraints.push_back(&c->constraint);
 				continue;
 			}
 		}
 
-		//todo: determine optimal ordering
-		system = std::move(HolonomicSystem(constraints));
+		system = HolonomicSystem(constraints);
 	}
 
 	void PhysicsEngine::setMotorOff(ConstraintID id) {
