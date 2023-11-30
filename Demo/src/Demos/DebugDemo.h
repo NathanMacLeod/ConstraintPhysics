@@ -23,7 +23,6 @@ public:
 	}
 
 	void run() override {
-
 		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);

@@ -30,9 +30,10 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setSleepingEnabled(false);
+		p.setSleepingEnabled(true);
 		p.setPGSIterations(45, 35);
 		p.setGlobalConstraintForceMixing(0.01);
+		p.setPrintPerformanceData(true);
 		//p.setWarmStartDisabled(true);
 
 		bool lock_cam = true;
@@ -87,7 +88,7 @@ public:
 		double chain_width = crane_width;
 		double chain_height = chain_width * 4;
 		phyz::ConvexUnionGeometry chain = phyz::ConvexUnionGeometry::box(mthz::Vec3(-chain_width / 2.0, 0, -chain_width / 2.0), chain_width, -chain_height, chain_width, phyz::Material::modified_density(2));
-		int n_chain = 6;
+		int n_chain = 4;
 		mthz::Vec3 chain_start_pos = crane_pos + mthz::Vec3(crane_length, -crane_height / 2.0, 0);
 		phyz::RigidBody* previous_chain = nullptr;
 

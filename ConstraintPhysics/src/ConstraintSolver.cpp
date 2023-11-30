@@ -88,7 +88,7 @@ namespace phyz {
 
 		for (int i = 0; i < n_itr_vel; i++) {
 			for (Constraint* c : constraints) {
-				if (c->is_in_holonomic_system) continue;
+				//if (c->is_in_holonomic_system) continue;
 
 				switch (c->getDegree()) {
 				case 1: PGSConstraintStep<1>((DegreedConstraint<1>*)c, false); break;
@@ -102,14 +102,14 @@ namespace phyz {
 		}
 
 		for (HolonomicSystem* h : holonomic_systems) {
-			h->computeInverse(0.001);
-			h->computeAndApplyImpulses(false);
+			//h->computeInverse(0.001);
+			//h->computeAndApplyImpulses(false);
 		}
 
 		for (int i = 0; i < n_itr_pos; i++) {
 			for (Constraint* c : constraints) {
 				if (c->needsPosCorrect()) {
-					if (c->is_in_holonomic_system) continue;
+					//if (c->is_in_holonomic_system) continue;
 
 					switch (c->getDegree()) {
 					case 1: PGSConstraintStep<1>((DegreedConstraint<1>*)c, true); break;
@@ -124,7 +124,7 @@ namespace phyz {
 		}
 
 		for (HolonomicSystem* h : holonomic_systems) {
-			h->computeAndApplyImpulses(true);
+			//h->computeAndApplyImpulses(true);
 		}
 
 		for (const auto& kv_pair : velocity_changes) {
