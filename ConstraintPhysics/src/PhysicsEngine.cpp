@@ -341,15 +341,37 @@ namespace phyz {
 
 		auto t5 = std::chrono::system_clock::now();
 
-		if (use_multithread) {
+		if (use_multithread && compute_holonomic_inverse_in_parallel && use_holonomic_system_solver) {
+			std::vector<ThreadManager::JobStatus> compute_holonomic_inverses_status(active_data.island_systems.size());
+
+			thread_manager.enqueue_do_all_tasks<IslandConstraints>(n_threads, &active_data.island_systems,
+				[&](IslandConstraints island_system, int index) {
+					PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations, pgsPosIterations, &compute_holonomic_inverses_status[index]);
+				}
+			);
+			for (int i = 0; i < active_data.island_systems.size(); i++) {
+				IslandConstraints& island_system = active_data.island_systems[i];
+				if (island_system.systems.empty()) continue;
+
+				int size = island_system.systems.size();
+				thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
+					[&, size, i](HolonomicSystem* h, int index) {
+						h->computeInverse(0.0001);
+					}, &compute_holonomic_inverses_status[i]
+				);
+			}
+		
+			thread_manager.execute_jobs();
+		}
+		else if (use_multithread) {
 			thread_manager.do_all<IslandConstraints>(n_threads, active_data.island_systems,
 				[&](IslandConstraints island_system) {
-					PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations,  pgsPosIterations);
+					PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations, pgsPosIterations);
 				}
 			);
 		}
 		else {
-			for (IslandConstraints island_system : active_data.island_systems) {
+			for (IslandConstraints& island_system : active_data.island_systems) {
 				PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations,  pgsPosIterations);
 			}
 		}
@@ -743,7 +765,7 @@ namespace phyz {
 		disallowCollision(b1, b2);
 		int uniqueID = nextConstraintID++;
 
-		Slider* s = new Slider{
+		Slider* s = new Slider {
 			b1, b2,
 			SliderConstraint(),
 			SlideLimitConstraint(),
@@ -1468,7 +1490,7 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints() {
-		shatterFracturedHolonomicSystems();
+		if (use_holonomic_system_solver) shatterFracturedHolonomicSystems();
 
 		static int current_visit_tag_value = 0;
 		current_visit_tag_value++; //used to avoid visiting same constraint twice
@@ -1478,7 +1500,7 @@ namespace phyz {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
-				maintainAllHolonomicSystemStuffRelatedToThisEdge(e);
+				if (use_holonomic_system_solver) maintainAllHolonomicSystemStuffRelatedToThisEdge(e);
 
 				if (e->visited_tag == current_visit_tag_value)
 					continue; //skip
@@ -1757,7 +1779,7 @@ namespace phyz {
 					if (n->b->getMovementType() == RigidBody::KINEMATIC) interacting_with_kinematic = true;
 					if (curr->b->getAsleep() && (n->b->getAsleep() || n->b->getMovementType() == RigidBody::FIXED) || visited.find(n) != visited.end()) continue;
 
-					if (e->h != nullptr && std::find(output->island_systems->begin(), output->island_systems->end(), &e->h->system) == output->island_systems->end()) {
+					if (use_holonomic_system_solver && e->h != nullptr && std::find(output->island_systems->begin(), output->island_systems->end(), &e->h->system) == output->island_systems->end()) {
 						output->island_systems->push_back(&e->h->system);
 					}
 

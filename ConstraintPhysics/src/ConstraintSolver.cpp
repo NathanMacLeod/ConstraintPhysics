@@ -45,9 +45,20 @@ namespace phyz {
 		
 	}
 
+	static void constraintStep(Constraint* c, bool pos_correct) {
+		switch (c->getDegree()) {
+		case 1: PGSConstraintStep<1>((DegreedConstraint<1>*)c, pos_correct); break;
+		case 2: PGSConstraintStep<2>((DegreedConstraint<2>*)c, pos_correct); break;
+		case 3: PGSConstraintStep<3>((DegreedConstraint<3>*)c, pos_correct); break;
+		case 4: PGSConstraintStep<4>((DegreedConstraint<4>*)c, pos_correct); break;
+		case 5: PGSConstraintStep<5>((DegreedConstraint<5>*)c, pos_correct); break;
+		case 6: PGSConstraintStep<6>((DegreedConstraint<6>*)c, pos_correct); break;
+		}
+	}
+
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
 	//the first third of this video explains it pretty well: https://www.youtube.com/watch?v=P-WP1yMOkc4 (Improving an Iterative Physics Solver Using a Direct Method)
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos) {
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos, ThreadManager::JobStatus* compute_inverse_status) {
 		struct VelPair {
 			VelPair() : velocity_change({0.0}), psuedo_vel_change({0.0}) {} //initialize zeroed out
 			mthz::NVec<6> velocity_change;
@@ -79,6 +90,13 @@ namespace phyz {
 			c->b_psuedo_velocity_change = &vB->psuedo_vel_change;
 		}
 
+		bool holonomic_inverse_computed_in_parallel = compute_inverse_status != nullptr;
+		if (!holonomic_inverse_computed_in_parallel) {
+			for (HolonomicSystem* h : holonomic_systems) {
+				h->computeInverse(0.1);
+			}
+		}
+
 		//apply warm starting
 		for (Constraint* c : constraints) {
 			if (c->constraintWarmStarted()) {
@@ -88,43 +106,30 @@ namespace phyz {
 
 		for (int i = 0; i < n_itr_vel; i++) {
 			for (Constraint* c : constraints) {
-				//if (c->is_in_holonomic_system) continue;
-
-				switch (c->getDegree()) {
-				case 1: PGSConstraintStep<1>((DegreedConstraint<1>*)c, false); break;
-				case 2: PGSConstraintStep<2>((DegreedConstraint<2>*)c, false); break;
-				case 3: PGSConstraintStep<3>((DegreedConstraint<3>*)c, false); break;
-				case 4: PGSConstraintStep<4>((DegreedConstraint<4>*)c, false); break;
-				case 5: PGSConstraintStep<5>((DegreedConstraint<5>*)c, false); break;
-				case 6: PGSConstraintStep<6>((DegreedConstraint<6>*)c, false); break;
-				}
+				constraintStep(c, false);
 			}
-		}
-
-		for (HolonomicSystem* h : holonomic_systems) {
-			//h->computeInverse(0.001);
-			//h->computeAndApplyImpulses(false);
 		}
 
 		for (int i = 0; i < n_itr_pos; i++) {
 			for (Constraint* c : constraints) {
-				if (c->needsPosCorrect()) {
-					//if (c->is_in_holonomic_system) continue;
-
-					switch (c->getDegree()) {
-					case 1: PGSConstraintStep<1>((DegreedConstraint<1>*)c, true); break;
-					case 2: PGSConstraintStep<2>((DegreedConstraint<2>*)c, true); break;
-					case 3: PGSConstraintStep<3>((DegreedConstraint<3>*)c, true); break;
-					case 4: PGSConstraintStep<4>((DegreedConstraint<4>*)c, true); break;
-					case 5: PGSConstraintStep<5>((DegreedConstraint<5>*)c, true); break;
-					case 6: PGSConstraintStep<6>((DegreedConstraint<6>*)c, true); break;
-					}
-				}
+				if (c->needsPosCorrect()) constraintStep(c, true);
 			}
 		}
 
-		for (HolonomicSystem* h : holonomic_systems) {
-			//h->computeAndApplyImpulses(true);
+		if (holonomic_inverse_computed_in_parallel && holonomic_systems.size() > 0) compute_inverse_status->waitUntilDone();
+
+		int num_holonomic_system_steps = 3;
+		for (int i = 0; i < num_holonomic_system_steps; i++) {
+			for (HolonomicSystem* h : holonomic_systems) {
+				h->computeAndApplyImpulses(true);
+				h->computeAndApplyImpulses(false);
+			}
+			for (Constraint* c : constraints) {
+				if (c->is_in_holonomic_system) continue;
+
+				if (c->needsPosCorrect()) constraintStep(c, true);
+				constraintStep(c, false);
+			}
 		}
 
 		for (const auto& kv_pair : velocity_changes) {

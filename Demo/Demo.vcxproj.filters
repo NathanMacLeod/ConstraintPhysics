@@ -116,6 +116,9 @@
     <ClInclude Include="src\renderer\Texture.h">
       <Filter>src\renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Demos\ScissorLiftDemo.h">
+      <Filter>src\Demos</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\shaders\Basic.shader">

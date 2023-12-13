@@ -1,4 +1,5 @@
 #pragma once
+#include "ThreadManager.h"
 #include "RigidBody.h"
 #include "HolonomicBlockSolver.h"
 #include "../../Math/src/NVec.h"
@@ -8,7 +9,7 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos);
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos, ThreadManager::JobStatus* compute_inverse_status=nullptr);
 
 	class Constraint {
 	public:

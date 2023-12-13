@@ -164,7 +164,6 @@ namespace phyz {
 		int pgsVelIterations = 20;
 		int pgsPosIterations = 15;
 
-
 		BroadPhaseStructure broadphase = AABB_TREE;
 		double aabbtree_margin_size = 0.1;
 		AABBTree<RigidBody*> aabb_tree = AABBTree<RigidBody*>(aabbtree_margin_size);
@@ -172,6 +171,8 @@ namespace phyz {
 		double octree_size = 2000;
 		double octree_minsize = 1;
 	
+		bool compute_holonomic_inverse_in_parallel = true;
+		bool use_holonomic_system_solver = true;
 
 		int angle_velocity_update_tick_count = 4;
 		bool is_internal_gyro_forces_disabled = false;

@@ -13,6 +13,7 @@
 #include "Demos/GyroscopeDemo.h"
 #include "Demos/DebugDemo.h"
 #include "Demos/VideoDemo.h"
+#include "Demos/ScissorLiftDemo.h"
 
 int main() {
 
@@ -23,6 +24,7 @@ int main() {
 	manager.registerScene("Simulated Car", "Drive a simulated car, featuring a working steering wheel and differential.", [](DemoManager* m, DemoProperties p) { return new CarDemo(m, p); });
 	manager.registerScene("Dzhanibekov Effect", "Demonstration of dzhanibekov effect simulated in engine.", [](DemoManager* m, DemoProperties p) { return new DzhanibekovDemo(m, p); });
 	manager.registerScene("Forklift", "Pick up and move pallets of boxes around with a simulated forklift.", [](DemoManager* m, DemoProperties p) { return new ForkliftDemo(m, p); });
+	manager.registerScene("Scissorlift", "Simulated scissor-lift to demonstrate capabilities of direct-holonomic solving.", [](DemoManager* m, DemoProperties p) { return new ScissorLiftDemo(m, p); });
 	manager.registerScene("Trebuchet", "Launch projectiles with a simulated floating-arm trebuchet.", [](DemoManager* m, DemoProperties p) { return new TrebuchetDemo(m, p); });
 	manager.registerScene("Angular Momentum Demo", "A common demonstration of the conservation of angular momentom, recreated in the engine", [](DemoManager* m, DemoProperties p) { return new AngularMomentumDemo(m, p); });
 	manager.registerScene("Gyroscope", "A simulated gyroscope", [](DemoManager* m, DemoProperties p) { return new GyroscopeDemo(m, p); });

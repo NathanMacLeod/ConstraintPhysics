@@ -85,7 +85,7 @@ public:
 
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(true);
-		p.setPGSIterations(55, 55);
+		p.setPGSIterations(15, 5);
 		double timestep = 1 / 220.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -6.0, 0));

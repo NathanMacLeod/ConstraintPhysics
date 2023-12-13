@@ -49,7 +49,7 @@ namespace phyz {
 				//get all neighbors to constraint_i
 				std::vector<int> neighbors;
 				for (int j = 0; j < n; j++) {
-					if (j != i && edge_map[get_edge_map_index(n, remaining_elimination_candidates[i], j)]) {
+					if (j != remaining_elimination_candidates[i] && edge_map[get_edge_map_index(n, remaining_elimination_candidates[i], j)]) {
 						neighbors.push_back(j);
 					}
 				}
@@ -83,10 +83,13 @@ namespace phyz {
 			//create edges among neighbors
 			for (int ni = 0; ni < least_unconnected_neighbors.size(); ni++) {
 				for (int nj = ni + 1; nj < least_unconnected_neighbors.size(); nj++) {
-					block_stays_empty[constraints_og_order[ni]][constraints_og_order[nj]] = false;
-					block_stays_empty[constraints_og_order[nj]][constraints_og_order[ni]] = false;
-					edge_map[get_edge_map_index(n, least_unconnected_neighbors[ni], least_unconnected_neighbors[nj])] = true;
-					edge_map[get_edge_map_index(n, least_unconnected_neighbors[nj], least_unconnected_neighbors[ni])] = true;
+					int ni_indx = least_unconnected_neighbors[ni];
+					int nj_indx = least_unconnected_neighbors[nj];
+
+					block_stays_empty[constraints_og_order[ni_indx]][constraints_og_order[nj_indx]] = false;
+					block_stays_empty[constraints_og_order[nj_indx]][constraints_og_order[ni_indx]] = false;
+					edge_map[get_edge_map_index(n, ni_indx, nj_indx)] = true;
+					edge_map[get_edge_map_index(n, nj_indx, ni_indx)] = true;
 				}
 			}
 		}
@@ -209,12 +212,12 @@ namespace phyz {
 
 		//printf("\nDELTA:\n");
 		for (double d : delta) {
-		//	printf("%f ", d);
+			//printf("%f ", d);
 		}
 		//printf("\n");
 
 #ifndef NDEBUG
-		if (false) {
+		//if (false) {
 			std::vector<double> correct_impulse(system_degree, 0);
 
 			for (int i = 0; i < system_degree; i++) {
@@ -225,10 +228,10 @@ namespace phyz {
 
 			//printf("\nCALCULATED IMPULSE NEEDED:\n");
 			for (double d : correct_impulse) {
-			//	printf("%f ", d);
+				//printf("%f ", d);
 			}
 			//printf("\n");
-		}
+		//}
 #endif
 
 		//A^-1 = (L^-t)(D^-1)(L^-1) 
@@ -274,7 +277,7 @@ namespace phyz {
 
 		//printf("\nDELTA AFTER D^-1:\n");
 		for (double d : delta) {
-		//	printf("%f ", d);
+			//printf("%f ", d);
 		}
 		//printf("\n");
 
@@ -303,7 +306,10 @@ namespace phyz {
 
 		//printf("\nDELTA AFTER L^-t:\n");
 		for (double d : delta) {
-		//	printf("%f ", d);
+			//printf("%f ", d);
+			if (d != d) {
+				int a = 1 + 2;
+			}
 		}
 		//printf("\n");
 
@@ -400,7 +406,7 @@ namespace phyz {
 
 	void HolonomicSystem::computeInverse(double cfm) {
 #ifndef NDEBUG
-		if (false) {
+		//if (false) {
 			int row_offset = 0;
 			for (int row = 0; row < constraints.size(); row++) {
 				int col_offset = 0;
@@ -422,16 +428,16 @@ namespace phyz {
 				row_offset += constraints[row]->getDegree();
 			}
 
-			printf("\n======TRUEEEEE======\n");
+			/*printf("\n======TRUEEEEE======\n");
 			for (int r = 0; r < system_degree; r++) {
 				for (int c = 0; c < system_degree; c++) {
 					printf("%8.3f", debug_inverse[r * system_degree + c]);
 				}
 				printf("\n");
-			}
+			}*/
 
 			mthz::rowMajorOrderInverse(system_degree, debug_inverse.data(), debug_inverse.data());
-		}
+		//}
 #endif
 
 		//set initial values
@@ -455,7 +461,9 @@ namespace phyz {
 		for (int col = 0; col < constraints.size(); col++) {
 
 			//computing inverse of diagonal block
-			double* diagonal_block = buffer + getBlockBufferLocation(col, col);
+			int block_loc = getBlockBufferLocation(col, col);
+			assert(block_loc != BLOCK_EMPTY);
+			double* diagonal_block = buffer + block_loc;
 			switch (constraints[col]->getDegree()) {
 			case 1: mthz::rowMajorOrderInverse<1>(diagonal_block, diagonal_block); break;
 			case 2: mthz::rowMajorOrderInverse<2>(diagonal_block, diagonal_block); break;
@@ -472,10 +480,12 @@ namespace phyz {
 				int block_buffer_pos = getBlockBufferLocation(row, col);
 				if (block_buffer_pos == BLOCK_EMPTY) continue;
 
-				double* diagonal_elem_target = diagonal_elem_buffer + getBlockDiagonalElemBufferLocation(row, col); //we still need the old value in the lower block, so we are writing to a temporary buffer
+				int target_loc = getBlockDiagonalElemBufferLocation(row, col);
+				double* diagonal_elem_target = diagonal_elem_buffer + target_loc; //we still need the old value in the lower block, so we are writing to a temporary buffer
 				int block_height = constraints[row]->getDegree();
 				int block_width = constraints[col]->getDegree();
 
+				assert(target_loc >= 0 && target_loc + block_width * block_height <= diagonal_elem_buffer_capacity);
 				calculateLowerTriangleBlock(block_width, block_height, diagonal_elem_target, buffer + block_buffer_pos, diagonal_block);
 			}
 
@@ -487,7 +497,9 @@ namespace phyz {
 
 					double* ldtb_source = buffer + loc;
 					double* ldtb_buffer_source = diagonal_elem_buffer + getBlockDiagonalElemBufferLocation(ld_col, col);
-					double* target = buffer + getBlockBufferLocation(ld_row, ld_col);
+					int target_loc = getBlockBufferLocation(ld_row, ld_col);
+					double* target = buffer + target_loc;
+					assert(target_loc != BLOCK_EMPTY);
 
 					switch (constraints[col]->getDegree()) {
 					case 1: computeLowerDiagonalBlock<1>(constraints[ld_col]->getDegree(), constraints[ld_row]->getDegree(), target, ldtb_source, ldtb_buffer_source); break;
@@ -980,7 +992,7 @@ namespace phyz {
 								printf("%8c", 'U');
 							}
 							else if (getBlockBufferLocation(row, col) == BLOCK_EMPTY) {
-								printf("%8c", 'X');
+								printf("%8c", '.');
 							}
 							else {
 								int indx = getBlockBufferLocation(row, col) + sub_col + constraints[col]->getDegree() * sub_row;
@@ -1000,7 +1012,7 @@ namespace phyz {
 						printf("U  ");
 					}
 					else if (getBlockBufferLocation(row, col) == BLOCK_EMPTY) {
-						printf("X  ");
+						printf(".  ");
 					}
 					else {
 						printf("R  ");
