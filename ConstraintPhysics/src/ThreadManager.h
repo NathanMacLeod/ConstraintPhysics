@@ -36,14 +36,15 @@ namespace phyz {
 	private:
 		struct TastSetManagement {
 			TastSetManagement(int n_threads, int num_tasks, JobStatus* status_update)
-				: next_index(0), jobs_for_task_set(std::min<int>(n_threads, num_tasks)), status_update(status_update)
+				: next_index(0), jobs_for_task_set(std::min<int>(n_threads, num_tasks)), status_update(status_update), index_completed_count(0)
 			{}
 
 			TastSetManagement(const TastSetManagement& t)
-				: next_index(t.next_index.load()), jobs_for_task_set(t.jobs_for_task_set), status_update(t.status_update)
+				: next_index(t.next_index.load()), jobs_for_task_set(t.jobs_for_task_set), status_update(t.status_update), index_completed_count(t.index_completed_count.load())
 			{}
 
 			std::atomic_int next_index;
+			std::atomic_int index_completed_count;
 			int jobs_for_task_set;
 			JobStatus* status_update;
 		};
@@ -116,7 +117,9 @@ namespace phyz {
 					while ((my_index = std::atomic_fetch_add(&task_sets[task_index].next_index, 1)) < in_vector->size()) {
 						action(in_vector->at(my_index), my_index);
 
-						if (task_sets[task_index].status_update != nullptr && my_index + 1 == in_vector->size()) {
+
+						int completed_count = 1 + std::atomic_fetch_add(&task_sets[task_index].index_completed_count, 1);// +1 to get value after adding
+						if (task_sets[task_index].status_update != nullptr && completed_count == in_vector->size()) {
 							task_sets[task_index].status_update->markDone();
 						}
 					}

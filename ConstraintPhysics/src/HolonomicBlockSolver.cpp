@@ -210,11 +210,13 @@ namespace phyz {
 			}
 		}
 
-		//printf("\nDELTA:\n");
+		std::vector<double> initial_val = delta;
+
+		/*printf("\nDELTA:\n");
 		for (double d : delta) {
-			//printf("%f ", d);
+			printf("%f ", d);
 		}
-		//printf("\n");
+		printf("\n");*/
 
 #ifndef NDEBUG
 		//if (false) {
@@ -307,26 +309,26 @@ namespace phyz {
 		//printf("\nDELTA AFTER L^-t:\n");
 		for (double d : delta) {
 			//printf("%f ", d);
-			if (d != d) {
-				int a = 1 + 2;
-			}
 		}
 		//printf("\n");
+
+		
+		std::vector<double> applied_impulse = delta;
 
 		//delta now equal to A^-1(t - c) = d, just need to store impulse and velocity changes now
 		for (int i = 0; i < constraints.size(); i++) {
 			int pos = getVectorPos(i);
 			switch (constraints[i]->getDegree()) {
-			case 1: applyImpulseChange<1>((DegreedConstraint<1>*)constraints[i], delta, pos, use_psuedo_values); break;
-			case 2: applyImpulseChange<2>((DegreedConstraint<2>*)constraints[i], delta, pos, use_psuedo_values); break;
-			case 3: applyImpulseChange<3>((DegreedConstraint<3>*)constraints[i], delta, pos, use_psuedo_values); break;
-			case 4: applyImpulseChange<4>((DegreedConstraint<4>*)constraints[i], delta, pos, use_psuedo_values); break;
-			case 5: applyImpulseChange<5>((DegreedConstraint<5>*)constraints[i], delta, pos, use_psuedo_values); break;
-			case 6: applyImpulseChange<6>((DegreedConstraint<6>*)constraints[i], delta, pos, use_psuedo_values); break;
+			case 1: applyImpulseChange<1>((DegreedConstraint<1>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
+			case 2: applyImpulseChange<2>((DegreedConstraint<2>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
+			case 3: applyImpulseChange<3>((DegreedConstraint<3>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
+			case 4: applyImpulseChange<4>((DegreedConstraint<4>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
+			case 5: applyImpulseChange<5>((DegreedConstraint<5>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
+			case 6: applyImpulseChange<6>((DegreedConstraint<6>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
 			}
 		}
 
-		/*for (int i = 0; i < constraints.size(); i++) {
+		for (int i = 0; i < constraints.size(); i++) {
 			int pos = getVectorPos(i);
 			switch (constraints[i]->getDegree()) {
 			case 1: writeTargetDelta<1>((DegreedConstraint<1>*)constraints[i], &delta, pos, use_psuedo_values); break;
@@ -338,11 +340,31 @@ namespace phyz {
 			}
 		}
 
-		printf("\nTARGET DELTA AFTER APPLY:\n");
+		/*printf("\nTARGET DELTA AFTER APPLY:\n");
 		for (double d : delta) {
 			printf("%f ", d);
 		}
 		printf("\n");*/
+
+		double mag = 0;
+		for (double d : applied_impulse) mag += d * d;
+		mag = sqrt(mag);
+		if (mag >= 0.75) {
+			/*printf("mag is: %f\n", mag);
+
+			printf("\nDELTA:\n");
+			for (double d : initial_val) {
+				printf("%f ", d);
+			}
+			printf("\n");
+
+			printf("\nTARGET DELTA AFTER APPLY:\n");
+			for (double d : delta) {
+				printf("%f ", d);
+			}
+			printf("\n");*/
+			int a = 1 + 2;
+		}
 	}
 
 

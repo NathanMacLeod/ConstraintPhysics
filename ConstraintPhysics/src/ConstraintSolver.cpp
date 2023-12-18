@@ -56,6 +56,27 @@ namespace phyz {
 		}
 	}
 
+	template<int n>
+	static void add_impulses(std::vector<double>* add_to, DegreedConstraint<n>* c) {
+		for (int i = 0; i < n; i++) add_to->push_back(c->impulse.v[i]);
+	}
+
+	static std::vector<double> get_all_impulses(const std::vector<Constraint*>& constraints) {
+		std::vector<double> out;
+		for (Constraint* c : constraints) {
+			switch (c->getDegree()) {
+			case 1: add_impulses(&out, (DegreedConstraint<1>*)c); break;
+			case 2: add_impulses(&out, (DegreedConstraint<2>*)c); break;
+			case 3: add_impulses(&out, (DegreedConstraint<3>*)c); break;
+			case 4: add_impulses(&out, (DegreedConstraint<4>*)c); break;
+			case 5: add_impulses(&out, (DegreedConstraint<5>*)c); break;
+			case 6: add_impulses(&out, (DegreedConstraint<6>*)c); break;
+			}
+		}
+
+		return out;
+	}
+
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
 	//the first third of this video explains it pretty well: https://www.youtube.com/watch?v=P-WP1yMOkc4 (Improving an Iterative Physics Solver Using a Direct Method)
 	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos, ThreadManager::JobStatus* compute_inverse_status) {
@@ -93,7 +114,7 @@ namespace phyz {
 		bool holonomic_inverse_computed_in_parallel = compute_inverse_status != nullptr;
 		if (!holonomic_inverse_computed_in_parallel) {
 			for (HolonomicSystem* h : holonomic_systems) {
-				h->computeInverse(0.1);
+				h->computeInverse(0.0001);
 			}
 		}
 
@@ -104,9 +125,30 @@ namespace phyz {
 			}
 		}
 
+		static bool print_enabled = false;
+		bool to_disable_print = false;
+		if (print_enabled) printf("\n=========FIRST==========\n");
+
+		std::vector<double> old_impulses = get_all_impulses(constraints);
+
 		for (int i = 0; i < n_itr_vel; i++) {
 			for (Constraint* c : constraints) {
 				constraintStep(c, false);
+			}
+
+			std::vector<double> new_impulses = get_all_impulses(constraints);
+			double total_delta = 0;
+			for (int i = 0; i < old_impulses.size(); i++) {
+				double di = new_impulses[i] - old_impulses[i];
+				total_delta += di * di;
+			}
+			total_delta = sqrt(total_delta);
+			if (print_enabled)printf("delta for step %d/%d: %e; ", i, n_itr_vel, total_delta);
+
+			old_impulses = new_impulses;
+			if (total_delta == 0) {
+				if (print_enabled)printf("reached equalibrium at step %d / %d\n", i, n_itr_vel);
+				//break;
 			}
 		}
 
@@ -118,19 +160,47 @@ namespace phyz {
 
 		if (holonomic_inverse_computed_in_parallel && holonomic_systems.size() > 0) compute_inverse_status->waitUntilDone();
 
-		int num_holonomic_system_steps = 3;
+		if (print_enabled)printf("\n=========HOLONOMIC==========\n");
+
+		int num_holonomic_system_steps = 4;
 		for (int i = 0; i < num_holonomic_system_steps; i++) {
-			for (HolonomicSystem* h : holonomic_systems) {
-				h->computeAndApplyImpulses(true);
-				h->computeAndApplyImpulses(false);
+			/*for (Constraint* c : constraints) {
+				if (!c->is_in_holonomic_system) continue;
+
+				if (c->needsPosCorrect()) constraintStep(c, true);
+				constraintStep(c, false);
 			}
 			for (Constraint* c : constraints) {
 				if (c->is_in_holonomic_system) continue;
 
 				if (c->needsPosCorrect()) constraintStep(c, true);
 				constraintStep(c, false);
+			}*/
+
+			/*for (HolonomicSystem* h : holonomic_systems) {
+				h->computeAndApplyImpulses(true);
+				h->computeAndApplyImpulses(false);
+			}*/
+			
+
+			std::vector<double> new_impulses = get_all_impulses(constraints);
+			double total_delta = 0;
+			for (int i = 0; i < old_impulses.size(); i++) {
+				double di = new_impulses[i] - old_impulses[i];
+				total_delta += di * di;
+			}
+			total_delta = sqrt(total_delta);
+			if (total_delta > 0.33) to_disable_print = true;
+			if (print_enabled)printf("delta for step %d/%d: %e; ", i, num_holonomic_system_steps, total_delta);
+
+			old_impulses = new_impulses;
+			if (total_delta == 0) {
+				if (print_enabled)printf("reached equalibrium at step %d / %d\n", i, n_itr_vel);
+				//break;
 			}
 		}
+
+		if (to_disable_print) print_enabled = false;
 
 		for (const auto& kv_pair : velocity_changes) {
 			RigidBody* b = kv_pair.first;

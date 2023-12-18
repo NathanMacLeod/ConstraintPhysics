@@ -344,6 +344,8 @@ namespace phyz {
 		if (use_multithread && compute_holonomic_inverse_in_parallel && use_holonomic_system_solver) {
 			std::vector<ThreadManager::JobStatus> compute_holonomic_inverses_status(active_data.island_systems.size());
 
+			int islands_with_holonomic_systems_count = 0;
+
 			thread_manager.enqueue_do_all_tasks<IslandConstraints>(n_threads, &active_data.island_systems,
 				[&](IslandConstraints island_system, int index) {
 					PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations, pgsPosIterations, &compute_holonomic_inverses_status[index]);
@@ -353,6 +355,8 @@ namespace phyz {
 				IslandConstraints& island_system = active_data.island_systems[i];
 				if (island_system.systems.empty()) continue;
 
+				islands_with_holonomic_systems_count++;
+
 				int size = island_system.systems.size();
 				thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
 					[&, size, i](HolonomicSystem* h, int index) {
@@ -360,7 +364,7 @@ namespace phyz {
 					}, &compute_holonomic_inverses_status[i]
 				);
 			}
-		
+
 			thread_manager.execute_jobs();
 		}
 		else if (use_multithread) {
