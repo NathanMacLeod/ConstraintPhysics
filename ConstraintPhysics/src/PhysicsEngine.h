@@ -207,6 +207,7 @@ namespace phyz {
 		double accel_sleep_coeff = 0.044;
 
 		bool warm_start_disabled = false;
+		double warm_start_coefficient = 1.0;
 
 		//Constraint Graph
 		std::unordered_map<unsigned int, ConstraintGraphNode*> constraint_graph_nodes;

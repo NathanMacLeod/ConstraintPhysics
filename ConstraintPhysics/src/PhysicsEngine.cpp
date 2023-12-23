@@ -1161,8 +1161,8 @@ namespace phyz {
 		for (Contact* c : e->contactConstraints) {
 			if (c->magic == magic) {
 				double friction = c->friction.getStaticReady() ? static_friction : kinetic_friction;
-				mthz::NVec<1> contact_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0 } : c->contact.impulse;
-				mthz::NVec<2> friction_impulse = warm_start_disabled ? mthz::NVec<2> { 0.0 } : c->friction.impulse;
+				mthz::NVec<1> contact_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0 } : warm_start_coefficient * c->contact.impulse;
+				mthz::NVec<2> friction_impulse = warm_start_disabled ? mthz::NVec<2> { 0.0 } : warm_start_coefficient * c->friction.impulse;
 				//In niche circumstances two pairs of friction and contact constraints can oppose each other, and if friction is greater than one this can cause a loop of increasing impulses.
 				//Limiting the friction the the normal impulse from the last update helps mitigate this. Still not great if friction is high though.
 				double normal_impulse_limit = (warm_start_disabled || !friction_impulse_limit_enabled) ? std::numeric_limits<double>::infinity() : c->contact.impulse.v[0];
@@ -1570,7 +1570,7 @@ namespace phyz {
 					//update constraint for new positions
 					mthz::Vec3 b1_pos = bs->b1->getTrackedP(bs->b1_point_key);
 					mthz::Vec3 b2_pos = bs->b2->getTrackedP(bs->b2_point_key);
-					mthz::NVec<3> starting_impulse = warm_start_disabled ? mthz::NVec<3>{ 0.0} : bs->constraint.impulse;
+					mthz::NVec<3> starting_impulse = warm_start_disabled ? mthz::NVec<3>{ 0.0} : warm_start_coefficient * bs->constraint.impulse;
 					double pos_correct_coeff = bs->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(bs->pos_correct_hardness, step_time) : 0;
 					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, pos_correct_coeff, bs->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse);
 				}
@@ -1581,7 +1581,7 @@ namespace phyz {
 					mthz::Vec3 b2_hinge_axis = h->b2->orientation.applyRotation(h->b2_rot_axis_body_space);
 
 					h->motor.motor_angular_position = h->motor.calculatePosition(b1_hinge_axis, h->b1->getAngVel(), h->b2->getAngVel(), step_time);
-					mthz::NVec<1> motor_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : h->motor.motor_constraint.impulse;
+					mthz::NVec<1> motor_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : warm_start_coefficient * h->motor.motor_constraint.impulse;
 					if (h->motor.constraintIsActive()) {
 						h->motor.motor_constraint = MotorConstraint(h->b1, h->b2, b1_hinge_axis, h->motor.getConstraintTargetVelocityValue(b1_hinge_axis, h->b1->getAngVel(), h->b2->getAngVel(),
 							step_time), abs(h->motor.max_torque * step_time), h->motor.motor_angular_position, h->motor.min_motor_position, h->motor.max_motor_position, posCorrectCoeff(h->rot_correct_hardness, step_time), h->cfm.getCFMValue(global_cfm), motor_starting_impulse);
@@ -1591,7 +1591,7 @@ namespace phyz {
 					double pos_correct_coeff = h->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(h->pos_correct_hardness, step_time) : 0;
 					double rot_correct_coeff = h->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(h->rot_correct_hardness, step_time) : 0;
 
-					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : h->constraint.impulse;
+					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : warm_start_coefficient * h->constraint.impulse;
 					h->constraint = HingeConstraint(h->b1, h->b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, pos_correct_coeff, rot_correct_coeff, h->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse, h->constraint.u, h->constraint.w);
 				}
 				for (Slider* s : e->sliderConstraints) {
@@ -1604,19 +1604,19 @@ namespace phyz {
 					s->slide_limit_exceeded = slider_value < s->negative_slide_limit || slider_value > s->positive_slide_limit;
 
 					if (s->slide_limit_exceeded) {
-						mthz::NVec<1> limit_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : s->slide_limit.impulse;
+						mthz::NVec<1> limit_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : warm_start_coefficient * s->slide_limit.impulse;
 						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->cfm.getCFMValue(global_cfm), limit_starting_impulse);
 					}
 
 					if (s->max_piston_force != 0) {
-						mthz::NVec<1> piston_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : s->piston_force.impulse;
+						mthz::NVec<1> piston_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : warm_start_coefficient * s->piston_force.impulse;
 						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, s->cfm.getCFMValue(global_cfm),  piston_starting_impulse);
 					}
 
 					double pos_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->pos_correct_hardness, step_time) : 0;
 					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
 
-					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : s->constraint.impulse;
+					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : warm_start_coefficient * s->constraint.impulse;
 					s->constraint = SliderConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, pos_correct_coeff, pos_correct_coeff, s->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (SlidingHinge* s : e->slidingHingeConstraints) {
@@ -1629,18 +1629,18 @@ namespace phyz {
 					s->slide_limit_exceeded = slider_value < s->negative_slide_limit || slider_value > s->positive_slide_limit;
 
 					if (s->slide_limit_exceeded) {
-						mthz::NVec<1> limit_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : s->slide_limit.impulse;
+						mthz::NVec<1> limit_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : warm_start_coefficient * s->slide_limit.impulse;
 						s->slide_limit = SlideLimitConstraint(s->b1, s->b2, b1_slide_axis, slider_value, s->positive_slide_limit, s->negative_slide_limit, posCorrectCoeff(s->pos_correct_hardness, step_time), s->cfm.getCFMValue(global_cfm), limit_starting_impulse);
 					}
 
 					if (s->max_piston_force != 0) {
-						mthz::NVec<1> piston_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : s->piston_force.impulse;
+						mthz::NVec<1> piston_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : warm_start_coefficient * s->piston_force.impulse;
 						s->piston_force = PistonConstraint(s->b1, s->b2, b1_slide_axis, s->target_velocity, s->max_piston_force * step_time, s->cfm.getCFMValue(global_cfm), piston_starting_impulse);
 					}
 
 					s->motor.motor_angular_position = s->motor.calculatePosition(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel(), step_time);
 					if (s->motor.constraintIsActive()) {
-						mthz::NVec<1> motor_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : s->motor.motor_constraint.impulse;
+						mthz::NVec<1> motor_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : warm_start_coefficient * s->motor.motor_constraint.impulse;
 						s->motor.motor_constraint = MotorConstraint(s->b1, s->b2, b1_slide_axis, s->motor.getConstraintTargetVelocityValue(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel(), step_time), abs(s->motor.max_torque * step_time), s->motor.motor_angular_position, s->motor.min_motor_position, s->motor.max_motor_position, posCorrectCoeff(s->rot_correct_hardness, step_time), s->cfm.getCFMValue(global_cfm), motor_starting_impulse);
 					}
 					s->motor.writePrevVel(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel());
@@ -1648,7 +1648,7 @@ namespace phyz {
 					double pos_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->pos_correct_hardness, step_time) : 0;
 					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
 
-					mthz::NVec<4> starting_impulse = warm_start_disabled ? mthz::NVec<4>{ 0.0} : s->constraint.impulse;
+					mthz::NVec<4> starting_impulse = warm_start_disabled ? mthz::NVec<4>{ 0.0} : warm_start_coefficient * s->constraint.impulse;
 					s->constraint = SlidingHingeConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, pos_correct_coeff, rot_correct_coeff, s->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
 				}
 				for (Weld* w : e->weldConstraints) {

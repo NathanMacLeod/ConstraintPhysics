@@ -53,6 +53,7 @@ public:
 		p.setPGSIterations(20, 20);
 		p.setGlobalConstraintForceMixing(0.0001);
 		//p.setOctreeParams(100, 0.5);
+		//p.setWarmStartDisabled(true);
 
 		bool lock_cam = true;
 		bool nuked = false;
@@ -711,19 +712,16 @@ public:
 			}
 			if (rndr::getKeyDown(GLFW_KEY_J)) {
 				if (!nuked) {
-					p.setPiston(slider, 15, 0.3);
 					p.setMotorTargetVelocity(steering, steering_torque, steering_velocity);
 				}
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_L)) {
 				if (!nuked) {
-					p.setPiston(slider, 15, -0.3);
 					p.setMotorTargetVelocity(steering, steering_torque, -steering_velocity);
 				}
 			}
 			else {
 				if (!nuked) {
-					p.setPiston(slider, 0, 0);
 					p.setMotorTargetVelocity(steering, steering_torque, 0);
 				}
 			}
@@ -763,6 +761,10 @@ public:
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
 				manager->deselectCurrentScene();
 				return;
+			}
+
+			if (rndr::getKeyDown(GLFW_KEY_T)) {
+				p.disallowCollision(pinion_r, steering_wheel_rod3_r);
 			}
 
 			/*if (rndr::getKeyPressed(GLFW_KEY_T)) {

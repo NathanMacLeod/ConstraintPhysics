@@ -57,4 +57,18 @@ namespace mthz {
 		}
 	};
 
+	template<int n>
+	NVec<n> operator*(NVec<n> v, double d) {
+		NVec<n> out;
+		for (int i = 0; i < n; i++) out.v[i] = v.v[i] * d;
+		return out;
+	}
+
+	template<int n>
+	NVec<n> operator*(double d, NVec<n> v) {
+		NVec<n> out;
+		for (int i = 0; i < n; i++) out.v[i] = v.v[i] * d;
+		return out;
+	}
+
 }

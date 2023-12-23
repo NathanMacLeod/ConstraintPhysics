@@ -39,7 +39,7 @@ public:
 		mthz::Vec3 center = mthz::Vec3(0, -2, 0);
 		int grid_count = 360;
 		double grid_size = 0.5;
-		phyz::Mesh dragon = phyz::readOBJ("resources/mesh/xyzrgb_dragon.obj", 0.2);
+		//phyz::Mesh dragon = phyz::readOBJ("resources/mesh/xyzrgb_dragon.obj", 0.2);
 		//phyz::Mesh cow = phyz::readOBJ("resources/mesh/cow.obj", 2.0);
 		//phyz::MeshInput dragon_input = phyz::generateMeshInputFromMesh(dragon, center + mthz::Vec3(0, 7, 0));
 		//phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, center + mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));//phyz::generateRadialMeshInput(center, 8, 100, 1);
@@ -64,7 +64,7 @@ public:
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		bodies.push_back({ m2, r2 });
 
-		{
+		/*{
 			mthz::Vec3 pos(0, 2, 0);
 			double width = 1;
 			double length = 2;
@@ -86,7 +86,33 @@ public:
 			bodies.push_back({ fromGeometry(box2), r2 });
 			bodies.push_back({ fromGeometry(box3), r3 });
 			bodies.push_back({ fromGeometry(box4), r4 });
-		}
+		}*/
+
+		mthz::Vec3 mech_pos(0, 3, -10);
+		double plate_thickness = 0.33;
+		double length = 3;
+		double width = 1;
+
+		phyz::ConvexUnionGeometry plate = phyz::ConvexUnionGeometry::box(mech_pos, length + width, plate_thickness, width);
+		mthz::Vec3 hinge_pos1 = mech_pos + mthz::Vec3(width / 2.0, plate_thickness, width / 2.0);
+		mthz::Vec3 hinge_pos2 = mech_pos + mthz::Vec3(length + width / 2.0, plate_thickness, width / 2.0);
+
+		double sweeper_length = length / 2.0;
+		double sweeper_thickness = 0.2;
+		phyz::ConvexUnionGeometry sweeper1 = phyz::ConvexUnionGeometry::box(hinge_pos1, sweeper_length, sweeper_thickness, sweeper_thickness);
+		phyz::ConvexUnionGeometry sweeper2 = phyz::ConvexUnionGeometry::box(hinge_pos2 + mthz::Vec3(-sweeper_length, 0, 0), sweeper_length, sweeper_thickness, sweeper_thickness);
+
+		phyz::RigidBody* plate_r = p.createRigidBody(plate);
+		phyz::RigidBody* sweeper1_r = p.createRigidBody(sweeper1);
+		phyz::RigidBody* sweeper2_r = p.createRigidBody(sweeper2);
+
+		bodies.push_back({ fromGeometry(plate), plate_r });
+		bodies.push_back({ fromGeometry(sweeper1), sweeper1_r});
+		bodies.push_back({ fromGeometry(sweeper2), sweeper2_r });
+
+		p.addHingeConstraint(plate_r, sweeper1_r, hinge_pos1, mthz::Vec3(0, 1, 0));
+		phyz::ConstraintID motor = p.addHingeConstraint(plate_r, sweeper2_r, hinge_pos2, mthz::Vec3(0, 1, 0));
+		p.addHingeConstraint(sweeper1_r, sweeper2_r, hinge_pos1 + mthz::Vec3(sweeper_length, 0, 0), mthz::Vec3(0, 1, 0));
 
 		Mesh contact_ball_mesh = fromGeometry(phyz::ConvexUnionGeometry::merge(phyz::ConvexUnionGeometry::sphere(mthz::Vec3(), 0.03), phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.02, 0.1)), {1.0, 0, 0});
 
@@ -127,7 +153,7 @@ public:
 		double phyz_time = 0;
 		double timestep = 1 / 60.0;
 		p.setStep_time(timestep);
-		p.setGravity(mthz::Vec3(0, -6.0, 0));
+		p.setGravity(mthz::Vec3(0, 0.0, 0));
 
 		bool single_step_mode = false;
 
@@ -171,6 +197,13 @@ public:
 			if (rndr::getKeyPressed(GLFW_KEY_T)) {
 				all_contact_points.clear();
 				p.timeStep();
+			}
+
+			if (rndr::getKeyDown(GLFW_KEY_P)) {
+				p.setMotorConstantTorque(motor, -100);
+			}
+			else {
+				p.setMotorOff(motor);
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_G)) {

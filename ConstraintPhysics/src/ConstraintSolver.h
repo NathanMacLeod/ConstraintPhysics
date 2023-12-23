@@ -25,6 +25,8 @@ namespace phyz {
 		mthz::NVec<6>* b_velocity_change;
 		mthz::NVec<6>* b_psuedo_velocity_change;
 
+		virtual double getImpulseMag() = 0;
+		virtual double getPsuedoImpulseMag() = 0;
 		virtual int getDegree() = 0;
 		virtual bool isInequalityConstraint() = 0;
 		virtual bool needsPosCorrect() = 0;
@@ -55,6 +57,18 @@ namespace phyz {
 
 		mthz::NVec<n> getConstraintValue(const mthz::NVec<6>& va, const mthz::NVec<6>& vb) {
 			return a_jacobian * va + b_jacobian * vb;
+		}
+
+		double getImpulseMag() override {
+			double mag = 0;
+			for (int i = 0; i < n; i++) mag += impulse.v[i] * impulse.v[i];
+			return sqrt(mag);
+		}
+
+		double getPsuedoImpulseMag() override {
+			double mag = 0;
+			for (int i = 0; i < n; i++) mag += psuedo_impulse.v[i] * psuedo_impulse.v[i];
+			return sqrt(mag);
 		}
 
 		mthz::NVec<n> impulse;

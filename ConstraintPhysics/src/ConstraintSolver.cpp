@@ -56,25 +56,46 @@ namespace phyz {
 		}
 	}
 
-	template<int n>
-	static void add_impulses(std::vector<double>* add_to, DegreedConstraint<n>* c) {
-		for (int i = 0; i < n; i++) add_to->push_back(c->impulse.v[i]);
+	static int get_total_island_degree(const std::vector<Constraint*>& constraints) {
+		int sum = 0;
+		for (Constraint* c : constraints) sum += c->getDegree();
+		return sum;
 	}
 
-	static std::vector<double> get_all_impulses(const std::vector<Constraint*>& constraints) {
-		std::vector<double> out;
+	template<int n>
+	static void add_impulses(std::vector<double>* add_to, DegreedConstraint<n>* c, int indx, bool psuedo_velocity) {
+		for (int i = 0; i < n; i++) {
+			if (psuedo_velocity) add_to->at(indx + i) = c->psuedo_impulse.v[i];
+			else				 add_to->at(indx + i) = c->impulse.v[i];
+		}
+	}
+
+	static void write_all_impulses(const std::vector<Constraint*>& constraints, std::vector<double>* out, bool psuedo_velocity) {
+		assert(out->size() == get_total_island_degree(constraints));
+		int indx = 0;
+
 		for (Constraint* c : constraints) {
 			switch (c->getDegree()) {
-			case 1: add_impulses(&out, (DegreedConstraint<1>*)c); break;
-			case 2: add_impulses(&out, (DegreedConstraint<2>*)c); break;
-			case 3: add_impulses(&out, (DegreedConstraint<3>*)c); break;
-			case 4: add_impulses(&out, (DegreedConstraint<4>*)c); break;
-			case 5: add_impulses(&out, (DegreedConstraint<5>*)c); break;
-			case 6: add_impulses(&out, (DegreedConstraint<6>*)c); break;
+			case 1: add_impulses(out, (DegreedConstraint<1>*)c, indx, psuedo_velocity); indx += 1; break;
+			case 2: add_impulses(out, (DegreedConstraint<2>*)c, indx, psuedo_velocity); indx += 2; break;
+			case 3: add_impulses(out, (DegreedConstraint<3>*)c, indx, psuedo_velocity); indx += 3; break;
+			case 4: add_impulses(out, (DegreedConstraint<4>*)c, indx, psuedo_velocity); indx += 4; break;
+			case 5: add_impulses(out, (DegreedConstraint<5>*)c, indx, psuedo_velocity); indx += 5; break;
+			case 6: add_impulses(out, (DegreedConstraint<6>*)c, indx, psuedo_velocity); indx += 6; break;
 			}
 		}
+	}
 
-		return out;
+	static bool checkIfConverged(const std::vector<Constraint*>& constraints, const std::vector<double>& old_impulses, std::vector<double>* new_impulses, bool psuedo_velocity) {
+		write_all_impulses(constraints, new_impulses, psuedo_velocity);
+
+		double total_delta = 0;
+		for (int i = 0; i < old_impulses.size(); i++) {
+			double di = new_impulses->at(i) - old_impulses[i];
+			total_delta += di * di;
+		}
+		total_delta = sqrt(total_delta);
+		return total_delta == 0;
 	}
 
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
@@ -125,82 +146,65 @@ namespace phyz {
 			}
 		}
 
-		static bool print_enabled = false;
-		bool to_disable_print = false;
-		if (print_enabled) printf("\n=========FIRST==========\n");
+		int system_degree = get_total_island_degree(constraints);
+		std::vector<double> impulse_val_buff1(system_degree);
+		std::vector<double> impulse_val_buff2(system_degree);
+		std::vector<double> psuedo_impulse_val_buff1(system_degree);
+		std::vector<double> psuedo_impulse_val_buff2(system_degree);
 
-		std::vector<double> old_impulses = get_all_impulses(constraints);
+		std::vector<double>* old_impulse_val_buff = &impulse_val_buff1;
+		std::vector<double>* new_impulse_val_buff = &impulse_val_buff2;
+		std::vector<double>* old_psuedo_impulse_val_buff = &psuedo_impulse_val_buff1;
+		std::vector<double>* new_psuedo_impulse_val_buff = &psuedo_impulse_val_buff2;
+
+		write_all_impulses(constraints, old_impulse_val_buff, false);
+		write_all_impulses(constraints, old_psuedo_impulse_val_buff, true);
+
 
 		for (int i = 0; i < n_itr_vel; i++) {
 			for (Constraint* c : constraints) {
 				constraintStep(c, false);
 			}
 
-			std::vector<double> new_impulses = get_all_impulses(constraints);
-			double total_delta = 0;
-			for (int i = 0; i < old_impulses.size(); i++) {
-				double di = new_impulses[i] - old_impulses[i];
-				total_delta += di * di;
-			}
-			total_delta = sqrt(total_delta);
-			if (print_enabled)printf("delta for step %d/%d: %e; ", i, n_itr_vel, total_delta);
+			bool converged = checkIfConverged(constraints, *old_impulse_val_buff, new_impulse_val_buff, false);
+			std::vector<double>* tmp = old_impulse_val_buff;
+			old_impulse_val_buff = new_impulse_val_buff;
+			new_impulse_val_buff = tmp;
 
-			old_impulses = new_impulses;
-			if (total_delta == 0) {
-				if (print_enabled)printf("reached equalibrium at step %d / %d\n", i, n_itr_vel);
-				//break;
-			}
+			if (converged) break;
 		}
 
 		for (int i = 0; i < n_itr_pos; i++) {
 			for (Constraint* c : constraints) {
 				if (c->needsPosCorrect()) constraintStep(c, true);
 			}
+
+			bool converged = checkIfConverged(constraints, *old_psuedo_impulse_val_buff, new_psuedo_impulse_val_buff, true);
+			std::vector<double>* tmp = old_psuedo_impulse_val_buff;
+			old_psuedo_impulse_val_buff = new_psuedo_impulse_val_buff;
+			new_psuedo_impulse_val_buff = tmp;
+
+			if (converged) break;
 		}
+
+		//write_all_impulses(constraints, old_impulse_val_buff, false);
 
 		if (holonomic_inverse_computed_in_parallel && holonomic_systems.size() > 0) compute_inverse_status->waitUntilDone();
 
-		if (print_enabled)printf("\n=========HOLONOMIC==========\n");
-
-		int num_holonomic_system_steps = 4;
+		int num_holonomic_system_steps = 15;
 		for (int i = 0; i < num_holonomic_system_steps; i++) {
-			/*for (Constraint* c : constraints) {
-				if (!c->is_in_holonomic_system) continue;
-
-				if (c->needsPosCorrect()) constraintStep(c, true);
-				constraintStep(c, false);
-			}
-			for (Constraint* c : constraints) {
-				if (c->is_in_holonomic_system) continue;
-
-				if (c->needsPosCorrect()) constraintStep(c, true);
-				constraintStep(c, false);
-			}*/
-
-			/*for (HolonomicSystem* h : holonomic_systems) {
+			for (HolonomicSystem* h : holonomic_systems) {
 				h->computeAndApplyImpulses(true);
 				h->computeAndApplyImpulses(false);
-			}*/
-			
-
-			std::vector<double> new_impulses = get_all_impulses(constraints);
-			double total_delta = 0;
-			for (int i = 0; i < old_impulses.size(); i++) {
-				double di = new_impulses[i] - old_impulses[i];
-				total_delta += di * di;
 			}
-			total_delta = sqrt(total_delta);
-			if (total_delta > 0.33) to_disable_print = true;
-			if (print_enabled)printf("delta for step %d/%d: %e; ", i, num_holonomic_system_steps, total_delta);
 
-			old_impulses = new_impulses;
-			if (total_delta == 0) {
-				if (print_enabled)printf("reached equalibrium at step %d / %d\n", i, n_itr_vel);
-				//break;
+			for (Constraint* c : constraints) {
+				//if (c->is_in_holonomic_system) continue;
+
+				if (c->needsPosCorrect()) constraintStep(c, true);
+				constraintStep(c, false);
 			}
 		}
-
-		if (to_disable_print) print_enabled = false;
 
 		for (const auto& kv_pair : velocity_changes) {
 			RigidBody* b = kv_pair.first;
