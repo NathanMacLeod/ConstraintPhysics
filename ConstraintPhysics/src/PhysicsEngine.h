@@ -40,7 +40,7 @@ namespace phyz {
 
 	struct ConstraintID {
 		ConstraintID() : uniqueID(-1) {}
-		enum Type { BALL, HINGE, SLIDER, SPRING, SLIDING_HINGE, WELD };
+		enum Type { DISTANCE, BALL, HINGE, SLIDER, SPRING, SLIDING_HINGE, WELD };
 		inline Type getType() { return type; }
 
 		friend class PhysicsEngine;
@@ -74,7 +74,9 @@ namespace phyz {
 		void removeRigidBody(RigidBody* r);
 		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel=mthz::Vec3(), const mthz::Vec3&delta_psuedo_ang_vel=mthz::Vec3());
 		void disallowCollisionSet(const std::initializer_list<RigidBody*>& bodies);
+		void disallowCollisionSet(const std::vector<RigidBody*>& bodies);
 		void reallowCollisionSet(const std::initializer_list<RigidBody*>& bodies);
+		void reallowCollisionSet(const std::vector<RigidBody*>& bodies);
 		void disallowCollision(RigidBody* b1, RigidBody* b2);
 		bool collisionAllowed(RigidBody* b1, RigidBody* b2);
 		void reallowCollision(RigidBody* b1, RigidBody* b2);
@@ -87,7 +89,7 @@ namespace phyz {
 		std::vector<RigidBody*> getBodies();
 		unsigned int getNextBodyID();
 
-		void setPGSIterations(int n_vel, int n_pos) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; }
+		void setPGSIterations(int n_vel, int n_pos, int n_holonomic = 3) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; pgsHolonomicIterations = n_holonomic; }
 		void setSleepingEnabled(bool sleeping);
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
@@ -109,7 +111,8 @@ namespace phyz {
 		ColActionID registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action);
 		void removeCollisionAction(ColActionID action_key);
 
-		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength=350);
+		ConstraintID addDistanceConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double target_distance=-1, double pos_correct_strength=350);
+		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength = 350);
 		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local,
 			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity(), double pos_correct_strength = 350, double rot_correct_strength = 350);
 
@@ -147,8 +150,17 @@ namespace phyz {
 		void setMotorTargetVelocity(ConstraintID id, double max_torque, double target_velocity);
 		void setMotorTargetPosition(ConstraintID id, double max_torque, double target_position);
 
+		void setPistonOff(ConstraintID id);
+		void setPistonConstantForce(ConstraintID id, double force);
+		void setPistonTargetVelocity(ConstraintID id, double max_force, double target_velocity);
+		void setPistonTargetPosition(ConstraintID id, double max_force, double target_position);
+
 		void setPiston(ConstraintID id, double max_force, double target_velocity);
 		double getMotorAngularPosition(ConstraintID id);
+		double getPistonPosition(ConstraintID id);
+
+		void setDistanceConstraintTargetDistance(ConstraintID id, double target_distance);
+		double getDistanceConstraintTargetDistance(ConstraintID id);
 
 		//just makes debugging easier
 		friend class DebugDemo;
@@ -163,6 +175,7 @@ namespace phyz {
 
 		int pgsVelIterations = 20;
 		int pgsPosIterations = 15;
+		int pgsHolonomicIterations = 3; //only matters if use_holonomic_system_solver is enabled
 
 		BroadPhaseStructure broadphase = AABB_TREE;
 		double aabbtree_margin_size = 0.1;
@@ -207,7 +220,7 @@ namespace phyz {
 		double accel_sleep_coeff = 0.044;
 
 		bool warm_start_disabled = false;
-		double warm_start_coefficient = 1.0;
+		double warm_start_coefficient = 0.975;
 
 		//Constraint Graph
 		std::unordered_map<unsigned int, ConstraintGraphNode*> constraint_graph_nodes;
@@ -227,6 +240,20 @@ namespace phyz {
 			bool is_live_contact;
 		};
 
+		struct Distance {
+			RigidBody* b1;
+			RigidBody* b2;
+			DistanceConstraint constraint;
+			double target_distance;
+			RigidBody::PKey b1_point_key;
+			RigidBody::PKey b2_point_key;
+			CFM cfm;
+			double pos_correct_hardness;
+			PosErrorResolutionMode pos_error_mode;
+			bool b1_master;
+			int uniqueID;
+		};
+
 		struct BallSocket {
 			RigidBody* b1;
 			RigidBody* b2;
@@ -240,7 +267,30 @@ namespace phyz {
 			int uniqueID;
 		};
 
-		enum MotorMode { OFF, CONST_TORQUE, TARGET_VELOCITY, TARGET_POSITION };
+		enum PoweredConstraitMode { OFF, CONST_TORQUE, CONST_FORCE, TARGET_VELOCITY, TARGET_POSITION };
+
+		struct Piston {
+			Piston(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_pos, mthz::Vec3 b2_pos, mthz::Vec3 slide_axis, double min_pos, double max_pos);
+			double calculatePosition(mthz::Vec3 b1_pos, mthz::Vec3 b2_pos, mthz::Vec3 slide_axis);
+			double getPistonTargetVelocityValue(double piston_pos, mthz::Vec3 slide_axis, double step_time);
+			void writePrevVel(mthz::Vec3 slide_axis);
+			bool slideLimitExceeded(double piston_pos);
+			bool pistonIsActive();
+
+			RigidBody* b1;
+			RigidBody* b2;
+			SlideLimitConstraint slide_limit;
+			PistonConstraint piston_constraint;
+			PoweredConstraitMode mode;
+			double piston_position;
+			bool slide_limit_exceeded;
+			double min_slide_limit;
+			double max_slide_limit;
+			double max_force;
+			double target_velocity;
+			double target_position;
+			double prev_velocity;
+		};
 
 		struct Motor {
 			Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle);
@@ -255,7 +305,7 @@ namespace phyz {
 			mthz::Vec3 b1_u_axis_reference;
 			mthz::Vec3 b1_w_axis_reference;
 			mthz::Vec3 b2_rot_comparison_axis;
-			MotorMode mode;
+			PoweredConstraitMode mode;
 			double motor_angular_position;
 			double min_motor_position;
 			double max_motor_position;
@@ -286,20 +336,14 @@ namespace phyz {
 			RigidBody* b1;
 			RigidBody* b2;
 			SliderConstraint constraint;
-			SlideLimitConstraint slide_limit;
-			PistonConstraint piston_force;
+			Piston piston;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_slide_axis_body_space;
 			mthz::Vec3 b2_slide_axis_body_space;
-			double max_piston_force;
-			double target_velocity;
 			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
-			double positive_slide_limit;
-			double negative_slide_limit;
-			bool slide_limit_exceeded;
 			PosErrorResolutionMode pos_error_mode;
 			bool b1_master;
 			int uniqueID;
@@ -309,21 +353,15 @@ namespace phyz {
 			RigidBody* b1;
 			RigidBody* b2;
 			SlidingHingeConstraint constraint;
-			SlideLimitConstraint slide_limit;
-			PistonConstraint piston_force;
+			Piston piston;
 			Motor motor;
 			RigidBody::PKey b1_point_key;
 			RigidBody::PKey b2_point_key;
 			mthz::Vec3 b1_slide_axis_body_space;
 			mthz::Vec3 b2_slide_axis_body_space;
-			double max_piston_force;
-			double target_velocity;
 			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
-			double positive_slide_limit;
-			double negative_slide_limit;
-			bool slide_limit_exceeded;
 			PosErrorResolutionMode pos_error_mode;
 			bool b1_master;
 			int uniqueID;
@@ -362,6 +400,7 @@ namespace phyz {
 		struct ActiveConstraintData {
 			std::vector<IslandConstraints> island_systems;
 			std::vector<BallSocket*> mast_slav_bss;
+			std::vector<Distance*> mast_slav_ds;
 			std::vector<Hinge*> mast_slav_hs;
 			std::vector<Slider*> mast_slav_ss;
 			std::vector<SlidingHinge*> mast_slav_shs;
@@ -374,40 +413,43 @@ namespace phyz {
 		struct HolonomicSystemNodes;
 
 		struct SharedConstraintsEdge {
-			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contactConstraints(std::vector<Contact*>()) {}
+			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contact_constraints(std::vector<Contact*>()) {}
 			~SharedConstraintsEdge();
 
 			ConstraintGraphNode* n1;
 			ConstraintGraphNode* n2;
 			HolonomicSystemNodes* h = nullptr;
 			bool holonomic_system_scan_needed = false;
-			std::vector<Contact*> contactConstraints;
-			std::vector<BallSocket*> ballSocketConstraints;
-			std::vector<Hinge*> hingeConstraints;
-			std::vector<Slider*> sliderConstraints;
-			std::vector<SlidingHinge*> slidingHingeConstraints;
-			std::vector<Weld*> weldConstraints;
+			std::vector<Contact*> contact_constraints;
+			std::vector<Distance*> distance_constraints;
+			std::vector<BallSocket*> ball_socket_constraints;
+			std::vector<Hinge*> hinge_constraints;
+			std::vector<Slider*> slider_constraints;
+			std::vector<SlidingHinge*> sliding_hinge_constraints;
+			std::vector<Weld*> weld_constraints;
 			std::vector<Spring*> springs;
 
 			int visited_tag = 0;
 
 			inline ConstraintGraphNode* other(ConstraintGraphNode* c) { return (c->b == n1->b ? n2 : n1); }
 			bool noConstraintsLeft() { 
-				return contactConstraints.empty()
-					&& ballSocketConstraints.empty()
-					&& hingeConstraints.empty()
-					&& sliderConstraints.empty()
-					&& slidingHingeConstraints.empty()
-					&& weldConstraints.empty()
+				return contact_constraints.empty()
+					&& ball_socket_constraints.empty()
+					&& distance_constraints.empty()
+					&& hinge_constraints.empty()
+					&& slider_constraints.empty()
+					&& sliding_hinge_constraints.empty()
+					&& weld_constraints.empty()
 					&& springs.empty();
 			}
 
 			bool hasHolonomicConstraint() {
-				return !(ballSocketConstraints.empty()
-					  && hingeConstraints.empty()
-					  && sliderConstraints.empty()
-					  && slidingHingeConstraints.empty()
-					  && weldConstraints.empty());
+				return !(ball_socket_constraints.empty()
+					  && distance_constraints.empty()
+					  && hinge_constraints.empty()
+					  && slider_constraints.empty()
+					  && sliding_hinge_constraints.empty()
+					  && weld_constraints.empty());
 			}
 		};
 
@@ -439,6 +481,7 @@ namespace phyz {
 		};
 
 		Motor* fetchMotor(ConstraintID id);
+		Piston* fetchPiston(ConstraintID id);
 
 		int nextConstraintID = 0;
 		std::unordered_map<int, SharedConstraintsEdge*> constraint_map;

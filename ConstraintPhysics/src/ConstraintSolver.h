@@ -9,7 +9,13 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos, ThreadManager::JobStatus* compute_inverse_status=nullptr);
+	void PGS_solve(
+		PhysicsEngine* pEngine, 
+		const std::vector<Constraint*>& constraints, 
+		const std::vector<HolonomicSystem*>& holonomic_systems, 
+		int n_itr_vel, int n_itr_pos, int n_itr_holonomic, 
+		ThreadManager::JobStatus* compute_inverse_status=nullptr
+	);
 
 	class Constraint {
 	public:
@@ -127,6 +133,22 @@ namespace phyz {
 		bool static_ready;
 	};
 
+	class DistanceConstraint : public DegreedConstraint<1> {
+	public:
+		DistanceConstraint() {}
+		DistanceConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 attach_pos_a, mthz::Vec3 attach_pos_b, double target_distance, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
+
+		inline int getDegree() override { return 1; }
+		inline bool isInequalityConstraint() override { return false; }
+		inline bool needsPosCorrect() override { return true; }
+
+	private:
+		mthz::Vec3 rA;
+		mthz::Vec3 rB;
+		mthz::Mat3 rotDirA;
+		mthz::Mat3 rotDirB;
+	};
+
 	class BallSocketConstraint : public DegreedConstraint<3> {
 	public:
 		BallSocketConstraint() {}
@@ -141,6 +163,25 @@ namespace phyz {
 		mthz::Vec3 rB;
 		mthz::Mat3 rotDirA;
 		mthz::Mat3 rotDirB;
+	};
+
+	class SlidingHingeConstraint : public DegreedConstraint<4> {
+	public:
+		SlidingHingeConstraint() {}
+		SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<4> warm_start_impulse = mthz::NVec<4>{ 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
+
+		inline int getDegree() override { return 4; }
+		inline bool isInequalityConstraint() override { return false; }
+		inline bool needsPosCorrect() override { return true; }
+
+		mthz::Vec3 u;
+		mthz::Vec3 w;
+	private:
+		mthz::Vec3 rA;
+		mthz::Vec3 rB;
+		mthz::Vec3 n;
+		mthz::NMat<3, 4> rotDirA;
+		mthz::NMat<3, 4> rotDirB;
 	};
 
 	class HingeConstraint : public DegreedConstraint<5> {
@@ -235,25 +276,6 @@ namespace phyz {
 		mthz::Vec3 rot_dir;
 		mthz::Vec3 pos_diff;
 		mthz::Vec3 slide_axis;
-	};
-
-	class SlidingHingeConstraint : public DegreedConstraint<4> {
-	public:
-		SlidingHingeConstraint() {}
-		SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<4> warm_start_impulse = mthz::NVec<4>{ 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
-
-		inline int getDegree() override { return 4; }
-		inline bool isInequalityConstraint() override { return false; }
-		inline bool needsPosCorrect() override { return true; }
-
-		mthz::Vec3 u;
-		mthz::Vec3 w;
-	private:
-		mthz::Vec3 rA;
-		mthz::Vec3 rB;
-		mthz::Vec3 n;
-		mthz::NMat<3, 4> rotDirA;
-		mthz::NMat<3, 4> rotDirB;
 	};
 
 	class WeldConstraint : public DegreedConstraint<6> {

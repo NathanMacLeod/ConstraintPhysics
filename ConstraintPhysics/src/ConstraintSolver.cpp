@@ -100,7 +100,7 @@ namespace phyz {
 
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
 	//the first third of this video explains it pretty well: https://www.youtube.com/watch?v=P-WP1yMOkc4 (Improving an Iterative Physics Solver Using a Direct Method)
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos, ThreadManager::JobStatus* compute_inverse_status) {
+	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, int n_itr_vel, int n_itr_pos, int n_itr_holonomic, ThreadManager::JobStatus* compute_inverse_status) {
 		struct VelPair {
 			VelPair() : velocity_change({0.0}), psuedo_vel_change({0.0}) {} //initialize zeroed out
 			mthz::NVec<6> velocity_change;
@@ -189,17 +189,18 @@ namespace phyz {
 
 		//write_all_impulses(constraints, old_impulse_val_buff, false);
 
+		//If holonomic inverse is being computed in another thread, don't continue until it has finished
 		if (holonomic_inverse_computed_in_parallel && holonomic_systems.size() > 0) compute_inverse_status->waitUntilDone();
-
-		int num_holonomic_system_steps = 15;
-		for (int i = 0; i < num_holonomic_system_steps; i++) {
+		
+		//apply block solver solutions for holonomic systems
+		for (int i = 0; i < n_itr_holonomic; i++) {
 			for (HolonomicSystem* h : holonomic_systems) {
 				h->computeAndApplyImpulses(true);
 				h->computeAndApplyImpulses(false);
 			}
 
 			for (Constraint* c : constraints) {
-				//if (c->is_in_holonomic_system) continue;
+				if (c->is_in_holonomic_system) continue;
 
 				if (c->needsPosCorrect()) constraintStep(c, true);
 				constraintStep(c, false);
@@ -348,6 +349,37 @@ namespace phyz {
 		}
 	}
 
+	//******************************
+	//*****DISTANCE CONSTRAINT*****
+	//******************************
+	DistanceConstraint::DistanceConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 attach_pos_a, mthz::Vec3 attach_pos_b, double target_distance, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<1> warm_start_impulse)
+		: DegreedConstraint<1>(a, b, warm_start_impulse), rA(attach_pos_a - a->getCOM()), rB(attach_pos_b - b->getCOM())
+	{
+		this->is_in_holonomic_system = is_in_holonomic_system;
+		//mthz::Mat3 inverse_inertia_mat3 = (mthz::Mat3::iden()*a->getInvMass() + mthz::Mat3::iden()*b->getInvMass() - mthz::Mat3::cross_mat(rA)*rotDirA - mthz::Mat3::cross_mat(rB)*rotDirB);
+		//inverse_inertia = applyCFM(Mat3tomthz::NMat33(inverse_inertia_mat3), constraint_force_mixing).inverse();
+
+		mthz::Vec3 diff = attach_pos_a - attach_pos_b;
+		mthz::NMat<1, 3> diff_dot = { diff.x, diff.y, diff.z };
+		mthz::NMat<3, 3> rA_skew = mthz::crossMat(rA);
+		mthz::NMat<3, 3> rB_skew = mthz::crossMat(rB);
+
+		a_jacobian.copyInto(diff_dot, 0, 0);
+		a_jacobian.copyInto(-diff_dot * rA_skew, 0, 3);
+		b_jacobian.copyInto(-diff_dot, 0, 0);
+		b_jacobian.copyInto(diff_dot * rB_skew, 0, 3);
+
+		impulse_to_a_velocity = aInvMass() * a_jacobian.transpose();
+		impulse_to_b_velocity = bInvMass() * b_jacobian.transpose();
+
+		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
+		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
+		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
+
+		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
+		double error = diff.magSqrd() < 0.00001? target_distance : target_distance - diff.normalize().dot(diff);
+		psuedo_target_val = mthz::NVec<1>{ pos_correct_hardness * error };
+	}
 
 	//******************************
 	//****BALL SOCKET CONSTRAINT****
