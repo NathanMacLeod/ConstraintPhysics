@@ -63,6 +63,7 @@ void DemoManager::selectDemoScene() {
 	SceneLauncher scene = scene_suite[selected_index];
 	current_scene = scene.createInstance(this, properties);
 	current_scene_name = scene.name;
+	current_scene->parameters = current_scene->askParameters();
 }
 
 void DemoManager::displaySceneControls() {
@@ -93,4 +94,42 @@ DemoScene::DemoScene(DemoManager* manager, DemoProperties properties) : manager(
 DemoScene::~DemoScene() {
 	rndr::terminate();
 	phyz::PhysicsEngine::disableMultithreading();
+}
+
+bool DemoScene::caseIndefferentStringEquals(const std::string& s1, const std::string& s2) {
+	if (s1.size() != s2.size()) return false;
+
+	for (int i = 0; i < s1.size(); i++) {
+		if (toupper(s1[i]) != toupper(s2[i])) return false;
+	}
+
+	return true;
+}
+
+std::string DemoScene::pickParameterFromOptions(const std::string& prompt, const std::vector<std::string>& options) {
+	auto response_valid = [=](std::string userin) -> bool {
+		for (std::string opt : options) {
+			if (caseIndefferentStringEquals(opt, userin)) return true;
+		}
+		return false;
+	};
+
+	std::string error_message = "Incorrect options. Valid options are: ";
+	for (int i = 0; i < options.size(); i++) {
+		if (i + 1 < options.size()) error_message += std::format("{}, ", options[i]);
+		else						error_message += std::format("{}: ", options[i]);
+	}
+
+	return askCustomParameterValue(prompt, response_valid, error_message);
+}
+
+std::string DemoScene::askCustomParameterValue(const std::string& prompt, std::function<bool(std::string)> response_valid, const std::string& incorrect_response_message) {
+	printf("%s", prompt.c_str());
+
+	std::string in;
+	while (1) {
+		std::getline(std::cin, in);
+		if (response_valid(in)) return in;
+		printf("%s", incorrect_response_message.c_str());
+	}
 }

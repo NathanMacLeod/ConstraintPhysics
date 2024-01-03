@@ -42,27 +42,29 @@ public:
 		//phyz::Mesh dragon = phyz::readOBJ("resources/mesh/xyzrgb_dragon.obj", 0.2);
 		//phyz::Mesh cow = phyz::readOBJ("resources/mesh/cow.obj", 2.0);
 		//phyz::MeshInput dragon_input = phyz::generateMeshInputFromMesh(dragon, center + mthz::Vec3(0, 7, 0));
-		//phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, center + mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));//phyz::generateRadialMeshInput(center, 8, 100, 1);
+		phyz::Mesh house = phyz::readOBJ("resources/mesh/watch_tower.obj", 10);
+		phyz::MeshInput house_input = phyz::generateMeshInputFromMesh(house, center);
+		phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, center + mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));//phyz::generateRadialMeshInput(center, 8, 100, 1);
 
-		//for (mthz::Vec3& v : grid.points) {
+		for (mthz::Vec3& v : grid.points) {
 			//v.y += 5 * 2 * (0.5 - frand()) - 10;
 			//v.y += 0.0055 * (v - center).magSqrd();
 			//v.y += 3 - 0.5 * (v - center).mag() + 0.02 * (v - center).magSqrd();
-		//	v.y += cos((v - center).mag() / 2.33);
-		//}
-		//for (phyz::TriIndices& t : grid.triangle_indices) {
-			//t.material = phyz::Material::ice();
-		//}
+			v.y += cos((v - center).mag() / 2.33);
+		}
+		for (phyz::TriIndices& t : grid.triangle_indices) {
+			t.material = phyz::Material::ice();
+		}
 
 		//************************
 		//*******BASE PLATE*******
 		//************************
-		double s = 500;
+		/*double s = 500;
 		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
-		bodies.push_back({ m2, r2 });
+		bodies.push_back({ m2, r2 });*/
 
 		/*{
 			mthz::Vec3 pos(0, 2, 0);
@@ -88,32 +90,6 @@ public:
 			bodies.push_back({ fromGeometry(box4), r4 });
 		}*/
 
-		mthz::Vec3 mech_pos(0, 3, -10);
-		double plate_thickness = 0.33;
-		double length = 3;
-		double width = 1;
-
-		phyz::ConvexUnionGeometry plate = phyz::ConvexUnionGeometry::box(mech_pos, length + width, plate_thickness, width);
-		mthz::Vec3 hinge_pos1 = mech_pos + mthz::Vec3(width / 2.0, plate_thickness, width / 2.0);
-		mthz::Vec3 hinge_pos2 = mech_pos + mthz::Vec3(length + width / 2.0, plate_thickness, width / 2.0);
-
-		double sweeper_length = length / 2.0;
-		double sweeper_thickness = 0.2;
-		phyz::ConvexUnionGeometry sweeper1 = phyz::ConvexUnionGeometry::box(hinge_pos1, sweeper_length, sweeper_thickness, sweeper_thickness);
-		phyz::ConvexUnionGeometry sweeper2 = phyz::ConvexUnionGeometry::box(hinge_pos2 + mthz::Vec3(-sweeper_length, 0, 0), sweeper_length, sweeper_thickness, sweeper_thickness);
-
-		phyz::RigidBody* plate_r = p.createRigidBody(plate);
-		phyz::RigidBody* sweeper1_r = p.createRigidBody(sweeper1);
-		phyz::RigidBody* sweeper2_r = p.createRigidBody(sweeper2);
-
-		bodies.push_back({ fromGeometry(plate), plate_r });
-		bodies.push_back({ fromGeometry(sweeper1), sweeper1_r});
-		bodies.push_back({ fromGeometry(sweeper2), sweeper2_r });
-
-		p.addHingeConstraint(plate_r, sweeper1_r, hinge_pos1, mthz::Vec3(0, 1, 0));
-		phyz::ConstraintID motor = p.addHingeConstraint(plate_r, sweeper2_r, hinge_pos2, mthz::Vec3(0, 1, 0));
-		p.addHingeConstraint(sweeper1_r, sweeper2_r, hinge_pos1 + mthz::Vec3(sweeper_length, 0, 0), mthz::Vec3(0, 1, 0));
-
 		Mesh contact_ball_mesh = fromGeometry(phyz::ConvexUnionGeometry::merge(phyz::ConvexUnionGeometry::sphere(mthz::Vec3(), 0.03), phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.02, 0.1)), {1.0, 0, 0});
 
 		struct Contact {
@@ -132,11 +108,28 @@ public:
 			}
 		);
 
-		//phyz::RigidBody* gr = p.createRigidBody(grid);
-		//bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
+		phyz::ConvexUnionGeometry cylinder = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.3, 3);
+		
+		phyz::RigidBody* cyl1 = p.createRigidBody(cylinder);
+		bodies.push_back({ fromGeometry(cylinder), cyl1 });
+		phyz::RigidBody* cyl2 = p.createRigidBody(cylinder);
+		bodies.push_back({ fromGeometry(cylinder), cyl2 });
+
+		cyl1->setCOMtoPosition(mthz::Vec3(-9.628901, -2.605327, -19.371537));
+		cyl1->setOrientation(mthz::Quaternion(0.307029, -0.698758, 0.623813, 0.168306));
+		cyl1->setVel(mthz::Vec3(0.289363, -0.173346, -1.067847));
+		cyl1->setAngVel(mthz::Vec3(-1.872519, 0.381602, -0.567012));
+		cyl2->setCOMtoPosition(mthz::Vec3(-8.699826, 4.114212, -13.887250));
+		cyl2->setVel(mthz::Vec3(1.146926, -2.103220, -0.714860));
+
+		phyz::RigidBody* gr = p.createRigidBody(grid);
+		bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
 
 		//phyz::RigidBody* r = p.createRigidBody(dragon_input, false);
 		//bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
+
+		phyz::RigidBody* r = p.createRigidBody(house_input, false);
+		bodies.push_back({ fromStaticMeshInput(house_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
@@ -153,7 +146,7 @@ public:
 		double phyz_time = 0;
 		double timestep = 1 / 60.0;
 		p.setStep_time(timestep);
-		p.setGravity(mthz::Vec3(0, 0.0, 0));
+		p.setGravity(mthz::Vec3(0, -6.0, 0));
 
 		bool single_step_mode = false;
 
@@ -199,30 +192,33 @@ public:
 				p.timeStep();
 			}
 
-			if (rndr::getKeyDown(GLFW_KEY_P)) {
-				p.setMotorConstantTorque(motor, -100);
-			}
-			else {
-				p.setMotorOff(motor);
-			}
-
 			if (rndr::getKeyPressed(GLFW_KEY_G)) {
 				double block_size = 1.0;
-				double block_speed = 15;
+				double block_speed = 2.5;
 
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
 				phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::cylinder(pos, 0.3, 3);// .getRotated(mthz::Quaternion(PI / 4, mthz::Vec3(1, 0, 0)), pos);
 				//phyz::ConvexUnionGeometry poly = phyz::ConvexUnionGeometry::polyCylinder(pos + mthz::Vec3(0, -0.5, 0), 1, 1);
+				//phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::box(pos, 1, 1, );
 				phyz::RigidBody* block_r = p.createRigidBody(block);
 
 				block_r->setVel(camera_dir * block_speed);
-
 				bodies.push_back({ fromGeometry(block), block_r });
+
+				/*printf("\n============\n");
+				for (PhysBod p : bodies) {
+					phyz::RigidBody* r = p.r;
+					mthz::Vec3 com = r->getCOM();
+					mthz::Quaternion ort = r->getOrientation();
+					mthz::Vec3 vel = r->getVel();
+					mthz::Vec3 ang_vel = r->getAngVel();
+					printf("com: (%f, %f, %f) orient: (%f, %f, %f, %f) vel: (%f, %f, %f), ang_vel: (%f, %f, %f)\n", com.x, com.y, com.z, ort.r, ort.i, ort.j, ort.k, vel.x, vel.y, vel.z, ang_vel.x, ang_vel.y, ang_vel.z);
+				}*/
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_H)) {
 				double block_size = 1.0;
-				double block_speed = 15;
+				double block_speed = 1;
 
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
 				phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::box(pos, 1, 1, 1);// .getRotated(mthz::Quaternion(PI / 4, mthz::Vec3(1, 0, 0)), pos);
@@ -238,15 +234,7 @@ public:
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
 				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(pos, camera_dir);
 
-				if (hit_info.did_hit) {
-					for (int i = 0; i < bodies.size(); i++) {
-						if (bodies[i].r == hit_info.hit_object) {
-							bodies.erase(bodies.begin() + i);
-							break;
-						}
-					}
-					p.removeRigidBody(hit_info.hit_object);
-				}
+				if (hit_info.did_hit) hit_info.hit_object->applyImpulse(camera_dir * 1, hit_info.hit_position);
 			}
 
 			t += fElapsedTime;

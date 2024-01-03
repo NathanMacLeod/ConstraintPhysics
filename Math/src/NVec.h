@@ -49,6 +49,18 @@ namespace mthz {
 			}
 			return sqrt(sum);
 		}
+		
+		NVec<n> norm() const {
+			return *this * (1.0 / sqrt(mag()));
+		}
+
+		double dot(const NVec<n> nv) const {
+			double sum = 0;
+			for (int i = 0; i < n; i++) {
+				sum += v[i] * nv.v[i];
+			}
+			return sum;
+		}
 
 		void operator+=(const NVec<n>& r) {
 			for (int i = 0; i < n; i++) {

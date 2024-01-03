@@ -287,7 +287,7 @@ namespace phyz {
 	{}
 
 	Sphere Sphere::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
-		return Sphere(pivot_point + q.applyRotation(pivot_point - pivot_point), radius);
+		return Sphere(pivot_point + q.applyRotation(center - pivot_point), radius);
 	}
 
 	Sphere Sphere::getTranslated(mthz::Vec3 t) const {

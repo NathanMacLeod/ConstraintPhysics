@@ -281,8 +281,8 @@ public:
 		phyz::ConstraintID scissor_heght_right = p.addDistanceConstraint(scissor_out.bot_rear_right_rung_r, scissor_out.top_rear_right_rung_r, scissor_out.bot_right_middle_pos, scissor_out.top_right_middle_pos);
 		phyz::ConstraintID scissor_heght_left = p.addDistanceConstraint(scissor_out.bot_rear_left_rung_r, scissor_out.top_rear_left_rung_r, scissor_out.bot_left_middle_pos, scissor_out.top_left_middle_pos);
 
-		double height_max = 5.45;
-		double height_min = 0.8;
+		double height_max = 4.45;
+		double height_min = 1;
 		double height_delta_vel = 1.5;
 
 		std::vector<phyz::RigidBody*> all_bodies = scissor_out.all_bodies;

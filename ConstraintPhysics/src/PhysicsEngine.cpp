@@ -2099,7 +2099,7 @@ namespace phyz {
 				break;
 			}
 		}
-		assert(slider != nullptr);
+		assert(dist != nullptr);
 
 		dist->target_distance = target_distance;
 		dist->b1->alertWakingAction();
@@ -2107,7 +2107,6 @@ namespace phyz {
 	}
 
 	double PhysicsEngine::getDistanceConstraintTargetDistance(ConstraintID id) {
-		assert(target_distance > 0);
 		Distance* dist = nullptr;
 		for (Distance* d : constraint_map[id.uniqueID]->distance_constraints) {
 			if (d->uniqueID == id.uniqueID) {
@@ -2115,7 +2114,7 @@ namespace phyz {
 				break;
 			}
 		}
-		assert(slider != nullptr);
+		assert(dist != nullptr);
 
 		return dist->target_distance;
 
@@ -2269,7 +2268,7 @@ namespace phyz {
 					break;
 				}
 			}
-			assert(hinge != nullptr);
+			assert(slider != nullptr);
 
 			return &slider->piston;
 		}

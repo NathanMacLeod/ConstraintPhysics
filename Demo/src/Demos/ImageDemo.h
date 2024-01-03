@@ -36,16 +36,7 @@ private:
 	}
 
 	enum GeometryType { BALLS, CUBES, TETRAS, DODECS,  STEL_DODS};
-	char GeomTypeChar(GeometryType t) {
-		switch (t) {
-		case BALLS: return 'B';
-		case CUBES: return 'C';
-		case TETRAS: return 'T';
-		case DODECS: return 'D';
-		case STEL_DODS: return 'S';
-		default: assert(false);
-		}
-	}
+	enum ColorScheme { RAINBOW, IMG_SQR_AVG, IMG_RAYCAST };
 
 	int GeomTypeStackHeight(GeometryType t) {
 		switch (t) {
@@ -147,6 +138,32 @@ public:
 
 	}
 
+	std::map<std::string, std::string> askParameters() override {
+		std::map<std::string, std::string> out;
+		
+		out["color_pattern"] = pickParameterFromOptions(
+			"Select coloring pattern. D (Default rainbow), A (Image file, averging color of a square around object), R (Image file, painting objects using raycast): ",
+			{"D", "A", "R"}
+		);
+
+		if (caseIndefferentStringEquals(out["color_pattern"], "A") || caseIndefferentStringEquals(out["color_pattern"], "R")) {
+			out["filepath"] = askCustomParameterValue(
+				"Give filepath of the image to draw: ", [=](std::string s) -> bool { return fileExists(s); }, "File not found, enter again: "
+			);
+		}
+
+		out["level_of_detail"] = pickParameterFromOptions(
+			"Select level of detail. Note computation time scales massively. Options are 1, 2, 3: ", { "1", "2", "3" }
+		);
+
+		out["shape"] = pickParameterFromOptions(
+			"Select the shapes to use in the simulation. Options are B (Balls), C (Cubes), T (Tetrahedrons!), D (Dodecahedrons!), S (Stellated Dodecahedrons!!) (! = expensive): ",
+			{"B", "C", "T", "D", "S"}
+		);
+
+		return out;
+	}
+
 	std::vector<ControlDescription> controls() override {
 		return {
 			ControlDescription{"W, A, S, D", "Move the camera around when the simulation starts"},
@@ -158,8 +175,8 @@ public:
 
 	void run() override {
 
-		enum ColorScheme { RAINBOW, IMG_SQR_AVG, IMG_RAYCAST};
-		ColorScheme color_scheme;
+		
+		/*ColorScheme color_scheme;
 		std::string color_input;
 		printf("Select coloring pattern. D (Default rainbow), A (Image file, averging color of a square around object), R (Image file, painting objects using raycast): ");
 		do {
@@ -221,7 +238,22 @@ public:
 				else if (c == GeomTypeChar(STEL_DODS)) geometry_type = STEL_DODS;
 				break;
 			}
-		} while (1);
+		} while (1);*/
+		GeometryType geometry_type;
+		if      (caseIndefferentStringEquals(parameters["shape"], "B")) geometry_type = BALLS;
+		else if (caseIndefferentStringEquals(parameters["shape"], "C")) geometry_type = CUBES;
+		else if (caseIndefferentStringEquals(parameters["shape"], "T")) geometry_type = TETRAS;
+		else if (caseIndefferentStringEquals(parameters["shape"], "D")) geometry_type = DODECS;
+		else if (caseIndefferentStringEquals(parameters["shape"], "S")) geometry_type = STEL_DODS;
+		else assert(false);
+
+		ColorScheme color_scheme;
+		if      (caseIndefferentStringEquals(parameters["color_pattern"], "D")) color_scheme = RAINBOW;
+		else if (caseIndefferentStringEquals(parameters["color_pattern"], "A")) color_scheme = IMG_SQR_AVG;
+		else if (caseIndefferentStringEquals(parameters["color_pattern"], "R")) color_scheme = IMG_RAYCAST;
+		else assert(false);
+
+		int level_of_detail = atoi(parameters["level_of_detail"].c_str());
 
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
@@ -376,7 +408,7 @@ public:
 
 		printf("Checking for existing precomputation...\n");
 		char precompute_file[256];
-		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d_%c.txt", level_of_detail, GeomTypeChar(geometry_type));
+		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d_%c.txt", level_of_detail, parameters["shape"]);
 		if (fileExists(precompute_file)) {
 			printf("File found. Loading...\n");
 			readComputation(precompute_file, &pre_bodies, n_frames);
@@ -450,7 +482,7 @@ public:
 		break;
 		case IMG_SQR_AVG:
 		{
-			olc::Sprite image(image_file);
+			olc::Sprite image(parameters["filepath"]);
 			for (int indx : recolor_body_indexes) {
 				phyz::RigidBody* r = pre_bodies[indx].r;
 
@@ -467,7 +499,7 @@ public:
 				body_map[pre_bodies[indx].r] = &pre_bodies[indx];
 			}
 
-			olc::Sprite image(image_file);
+			olc::Sprite image(parameters["filepath"]);
 
 			printf("Computing Raycasts...\n");
 
