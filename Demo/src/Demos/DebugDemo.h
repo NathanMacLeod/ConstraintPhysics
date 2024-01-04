@@ -59,12 +59,12 @@ public:
 		//************************
 		//*******BASE PLATE*******
 		//************************
-		/*double s = 500;
+		double s = 500;
 		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
-		bodies.push_back({ m2, r2 });*/
+		bodies.push_back({ m2, r2 });
 
 		/*{
 			mthz::Vec3 pos(0, 2, 0);
@@ -108,7 +108,7 @@ public:
 			}
 		);
 
-		phyz::ConvexUnionGeometry cylinder = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.3, 3);
+		/*phyz::ConvexUnionGeometry cylinder = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.3, 3);
 		
 		phyz::RigidBody* cyl1 = p.createRigidBody(cylinder);
 		bodies.push_back({ fromGeometry(cylinder), cyl1 });
@@ -120,16 +120,16 @@ public:
 		cyl1->setVel(mthz::Vec3(0.289363, -0.173346, -1.067847));
 		cyl1->setAngVel(mthz::Vec3(-1.872519, 0.381602, -0.567012));
 		cyl2->setCOMtoPosition(mthz::Vec3(-8.699826, 4.114212, -13.887250));
-		cyl2->setVel(mthz::Vec3(1.146926, -2.103220, -0.714860));
+		cyl2->setVel(mthz::Vec3(1.146926, -2.103220, -0.714860));*/
 
-		phyz::RigidBody* gr = p.createRigidBody(grid);
-		bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
+		//phyz::RigidBody* gr = p.createRigidBody(grid);
+		//bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
 
 		//phyz::RigidBody* r = p.createRigidBody(dragon_input, false);
 		//bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
 
-		phyz::RigidBody* r = p.createRigidBody(house_input, false);
-		bodies.push_back({ fromStaticMeshInput(house_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
+		//phyz::RigidBody* r = p.createRigidBody(house_input, false);
+		//bodies.push_back({ fromStaticMeshInput(house_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");

@@ -322,7 +322,7 @@ namespace phyz {
 	static bool isWindingCounterClockwise(const ContactArea& c) {
 		mthz::NVec<2> in_dir_if_counter_clockwise = getInDirOfEdge(c.ps[0], c.ps[1]);
 		for (int i = 2; i < c.ps.size(); i++) {
-			double d = c.ps[i].dot(in_dir_if_counter_clockwise);
+			double d = (c.ps[i] - c.ps[0]).dot(in_dir_if_counter_clockwise);
 			if      (d > 0.0000000001) return true;
 			else if (d < -0.0000000001) return false;
 		}
@@ -367,7 +367,7 @@ namespace phyz {
 	
 	ClipEvaluationPoint getEdgeIntersectionWithClippingEdge(ClipEvaluationPoint edge1, ClipEvaluationPoint edge2, mthz::NVec<2> clip_edge_norm, mthz::NVec<2> clipping_edge_sample_point, int32_t clipping_edge_id, bool flip_magics) {
 		mthz::NVec<2> d = edge2.pos - edge1.pos;
-		mthz::NVec<2> intersection_pos = edge1.pos - d * (edge1.pos.dot(clip_edge_norm) / d.dot(clip_edge_norm));
+		mthz::NVec<2> intersection_pos = edge1.pos + d * (clip_edge_norm.dot(clipping_edge_sample_point - edge1.pos) / clip_edge_norm.dot(d));
 
 		//we want to perserve the id of the vertex that will be eliminated, which is the one behind the clipping edge.
 		//the eliminated point will have a lower value when dotted with clip_edge_norm, so we can use d to figure out which one it is.
@@ -431,6 +431,7 @@ namespace phyz {
 			ClipEvaluationPoint e2 = c2[(i + 1) % c2.size()];
 			mthz::NVec<2> clip_dir = getInDirOfEdge(e1.pos, e2.pos);
 			int32_t edge_id = getEdgeID(e1.source_id, e2.source_id);
+			std::vector<ClipEvaluationPoint> a = getClipEvaluatinPolyAfterClippingEdge(c1, clip_dir, e1.pos, edge_id, flip_magics);
 			c1 = getClipEvaluatinPolyAfterClippingEdge(c1, clip_dir, e1.pos, edge_id, flip_magics);
 		}
 		return c1;
@@ -438,7 +439,7 @@ namespace phyz {
 
 	static std::vector<ProjectedContactPoint> clipContacts(const ContactArea& c1, const ContactArea& c2) {
 		std::vector<ClipEvaluationPoint> poly1 = createClipEvaluationPoly(c1, c2.surfaceID, false);
-		std::vector<ClipEvaluationPoint> poly2 = createClipEvaluationPoly(c1, c2.surfaceID, true);
+		std::vector<ClipEvaluationPoint> poly2 = createClipEvaluationPoly(c2, c1.surfaceID, true);
 		std::vector<ClipEvaluationPoint> out_poly;
 
 		//trivial single point cases
@@ -475,6 +476,8 @@ namespace phyz {
 		for (ClipEvaluationPoint p : out_poly) {
 			out.push_back(ProjectedContactPoint{ p.pos, p.magic_id });
 		}
+
+		assert(out.size() > 0);
 		return out;
 	}
 
