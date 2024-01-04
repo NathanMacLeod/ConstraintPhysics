@@ -39,9 +39,9 @@ public:
 		mthz::Vec3 center = mthz::Vec3(0, -2, 0);
 		int grid_count = 360;
 		double grid_size = 0.5;
-		//phyz::Mesh dragon = phyz::readOBJ("resources/mesh/xyzrgb_dragon.obj", 0.2);
+		phyz::Mesh dragon = phyz::readOBJ("resources/mesh/xyzrgb_dragon.obj", 0.2);
 		//phyz::Mesh cow = phyz::readOBJ("resources/mesh/cow.obj", 2.0);
-		//phyz::MeshInput dragon_input = phyz::generateMeshInputFromMesh(dragon, center + mthz::Vec3(0, 7, 0));
+		phyz::MeshInput dragon_input = phyz::generateMeshInputFromMesh(dragon, center + mthz::Vec3(0, 7, 0));
 		phyz::Mesh house = phyz::readOBJ("resources/mesh/watch_tower.obj", 10);
 		phyz::MeshInput house_input = phyz::generateMeshInputFromMesh(house, center);
 		phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, center + mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));//phyz::generateRadialMeshInput(center, 8, 100, 1);
@@ -59,12 +59,12 @@ public:
 		//************************
 		//*******BASE PLATE*******
 		//************************
-		double s = 500;
+		/*double s = 500;
 		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
-		bodies.push_back({ m2, r2 });
+		bodies.push_back({ m2, r2 });*/
 
 		/*{
 			mthz::Vec3 pos(0, 2, 0);
@@ -122,11 +122,11 @@ public:
 		cyl2->setCOMtoPosition(mthz::Vec3(-8.699826, 4.114212, -13.887250));
 		cyl2->setVel(mthz::Vec3(1.146926, -2.103220, -0.714860));*/
 
-		//phyz::RigidBody* gr = p.createRigidBody(grid);
-		//bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
+		phyz::RigidBody* gr = p.createRigidBody(grid);
+		bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
 
-		//phyz::RigidBody* r = p.createRigidBody(dragon_input, false);
-		//bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
+		phyz::RigidBody* r = p.createRigidBody(dragon_input, false);
+		bodies.push_back({ fromStaticMeshInput(dragon_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
 
 		//phyz::RigidBody* r = p.createRigidBody(house_input, false);
 		//bodies.push_back({ fromStaticMeshInput(house_input, color{ 1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), r });
@@ -214,6 +214,18 @@ public:
 					mthz::Vec3 ang_vel = r->getAngVel();
 					printf("com: (%f, %f, %f) orient: (%f, %f, %f, %f) vel: (%f, %f, %f), ang_vel: (%f, %f, %f)\n", com.x, com.y, com.z, ort.r, ort.i, ort.j, ort.k, vel.x, vel.y, vel.z, ang_vel.x, ang_vel.y, ang_vel.z);
 				}*/
+			}
+
+			if (rndr::getKeyPressed(GLFW_KEY_K)) {
+				double block_size = 1.0;
+				double block_speed = 2.5;
+
+				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+				phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::sphere(pos, 0.5);// .getRotated(mthz::Quaternion(PI / 4, mthz::Vec3(1, 0, 0)), pos);
+				phyz::RigidBody* block_r = p.createRigidBody(block);
+
+				block_r->setVel(camera_dir * block_speed);
+				bodies.push_back({ fromGeometry(block), block_r });
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_H)) {
