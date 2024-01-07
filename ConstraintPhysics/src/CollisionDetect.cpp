@@ -1208,17 +1208,8 @@ namespace phyz {
 		return out;
 	}
 
-	//anti tunneling weighted is for trying to force penetration in the correct direction. It can give an incorrect "does seperating axis exist" test though
-	static ExtremaInfo findTriangleExtrema(const StaticMeshFace& tri, mthz::Vec3 dir, bool anti_tunneling_weighted) {
+	static ExtremaInfo findTriangleExtrema(const StaticMeshFace& tri, mthz::Vec3 dir) {
 		ExtremaInfo extrema;
-		if (anti_tunneling_weighted) {
-			if (dir.dot(tri.normal) > 0) {
-				extrema.min_val = -std::numeric_limits<double>::infinity();
-			}
-			else {
-				extrema.max_val = std::numeric_limits<double>::infinity();
-			}
-		}
 
 		for (int i = 0; i < 3; i++) {
 			mthz::Vec3 p = tri.vertices[i].p;
@@ -1283,12 +1274,11 @@ namespace phyz {
 		const GaussMap& ag = a.getGaussMap();
 
 		ExtremaInfo poly_info = findExtrema(a, b.normal);
-		CheckNormResults b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, false), b.normal);
+		CheckNormResults b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal), b.normal);
 		if (b_norm_x.seprAxisExists()) {
 			out.max_pen_depth = -1;
 			return out;
 		}
-		b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, true), b.normal);
 		if (b_norm_x.pen_depth < min_pen.pen_depth) { //no normalDirectionValid check needed for this direction
 			min_pen = b_norm_x;
 		}
@@ -1299,12 +1289,11 @@ namespace phyz {
 		for (const GaussVert& g : ag.face_verts) {
 			if (!g.SAT_redundant) {
 				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(a.getPoints()[g.SAT_reference_point_index]));
-				CheckNormResults x = sat_checknorm(recentered_g_extrema, findTriangleExtrema(b, g.v, false), g.v);
+				CheckNormResults x = sat_checknorm(recentered_g_extrema, findTriangleExtrema(b, g.v), g.v);
 				if (x.seprAxisExists()) {
 					out.max_pen_depth = -1;
 					return out;
 				}
-				x = sat_checknorm(recentered_g_extrema, findTriangleExtrema(b, g.v, true), g.v);
 				if (x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
 				}
@@ -1357,12 +1346,11 @@ namespace phyz {
 				}
 
 				ExtremaInfo poly_extrema = findExtrema(a, n);
-				CheckNormResults x = sat_checknorm(poly_extrema, findTriangleExtrema(b, n, false), n);
+				CheckNormResults x = sat_checknorm(poly_extrema, findTriangleExtrema(b, n), n);
 				if (x.seprAxisExists()) {
 					out.max_pen_depth = -1;
 					return out;
 				}
-				x = sat_checknorm(poly_extrema, findTriangleExtrema(b, n, true), n);
 				if (x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
 				}
@@ -1420,12 +1408,11 @@ namespace phyz {
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
 		ExtremaInfo sphere_extrema = getSphereExtrema(a, b.normal);
-		CheckNormResults b_norm_x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, b.normal, false), b.normal);
+		CheckNormResults b_norm_x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, b.normal), b.normal);
 		if (b_norm_x.seprAxisExists()) {
 			out.max_pen_depth = -1;
 			return out;
 		}
-		b_norm_x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, b.normal, true), b.normal);
 		if (b_norm_x.pen_depth < min_pen.pen_depth) {
 			min_pen = b_norm_x;
 		}
@@ -1437,12 +1424,11 @@ namespace phyz {
 			mthz::Vec3 p = b.vertices[i].p;
 			mthz::Vec3 n = (p - a.getCenter()).normalize();
 			ExtremaInfo sphere_extrema = getSphereExtrema(a, n);
-			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n, false), n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n, true), n);
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 				a_feature_id = i;
@@ -1456,12 +1442,11 @@ namespace phyz {
 			mthz::Vec3 sample = e.p1 - a.getCenter();
 			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
 			ExtremaInfo sphere_extrema = getSphereExtrema(a, n);
-			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n, false), n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n, true), n);
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 				a_feature_id = e.id;
@@ -1507,12 +1492,11 @@ namespace phyz {
 		mthz::Vec3 a_height_axis = a.getHeightAxis();
 		{
 			ExtremaInfo cyl_extrema = getCylinderExtrema(a, a_height_axis);
-			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, a_height_axis, false), a_height_axis);
+			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, a_height_axis), a_height_axis);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, a_height_axis, true), a_height_axis);
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 			}
@@ -1522,12 +1506,11 @@ namespace phyz {
 		}
 
 		ExtremaInfo poly_info = getCylinderExtrema(a, b.normal);
-		CheckNormResults b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, false), b.normal);
+		CheckNormResults b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal), b.normal);
 		if (b_norm_x.seprAxisExists()) {
 			out.max_pen_depth = -1;
 			return out;
 		}
-		b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal, true), b.normal);
 		if (b_norm_x.pen_depth < min_pen.pen_depth) {
 			min_pen = b_norm_x;
 		}
@@ -1543,12 +1526,11 @@ namespace phyz {
 
 			mthz::Vec3 dir_normed = dir.normalize();
 			ExtremaInfo cyl_extrema = getCylinderExtrema(a, dir_normed);
-			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, dir_normed, false), dir_normed);
+			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, dir_normed), dir_normed);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, dir_normed, true), dir_normed);
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 			}
@@ -1563,12 +1545,11 @@ namespace phyz {
 			mthz::Vec3 diff = p - a.getCenter();
 			mthz::Vec3 n = (diff - a_height_axis * a_height_axis.dot(diff)).normalize();
 			ExtremaInfo cyl_extrema = getCylinderExtrema(a, n);
-			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, n, false), n);
+			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, n, true), n);
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 			}
@@ -1620,12 +1601,11 @@ namespace phyz {
 				}
 
 				ExtremaInfo poly_extrema = getCylinderExtrema(a, n);
-				CheckNormResults x = sat_checknorm(poly_extrema, findTriangleExtrema(b, n, false), n);
+				CheckNormResults x = sat_checknorm(poly_extrema, findTriangleExtrema(b, n), n);
 				if (x.seprAxisExists()) {
 					out.max_pen_depth = -1;
 					return out;
 				}
-				x = sat_checknorm(poly_extrema, findTriangleExtrema(b, n, true), n);
 				if (x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
 				}
@@ -1688,7 +1668,7 @@ namespace phyz {
 		mthz::Mat3 local_to_world_rot = b_world_orientation.getRotMatrix();
 
 		std::vector<unsigned int> tri_candidates;
-		bool local_transformation_required = b_world_position != mthz::Vec3() || b_world_orientation != mthz::Quaternion();
+		bool local_transformation_required = b_world_position != mthz::Vec3(0,0,0) || b_world_orientation != mthz::Quaternion(1,0,0,0);
 		if (!local_transformation_required) {
 			tri_candidates = b.getAABBTree().getCollisionCandidatesWith(a_aabb);
 		}

@@ -8,7 +8,7 @@ namespace phyz {
 		return c1_index + c2_index * num_constraints;
 	}
 
-	HolonomicSystem::HolonomicSystem(std::vector<Constraint*> constraints_og_order) 
+	HolonomicSystem::HolonomicSystem(std::vector<Constraint*> constraints_og_order)
 		: system_degree(0), buffer_capacity(0)
 	{
 		int n = constraints_og_order.size();
@@ -35,7 +35,7 @@ namespace phyz {
 				else {
 					//assume true, might be overwritten to false later.
 					block_stays_empty[c1][c2] = true;
-					block_stays_empty[c2][c1] = true; 
+					block_stays_empty[c2][c1] = true;
 				}
 			}
 		}
@@ -69,7 +69,7 @@ namespace phyz {
 					if (unconnected_neighbor_count == 0) break; //not going to get better than 0
 				}
 			}
-			
+
 			assert(least_unconnected_neighbors_index != -1);
 			//save ordering by pushing to constaints in the order of elimination
 			int least_unconnected = remaining_elimination_candidates[least_unconnected_neighbors_index];
@@ -115,25 +115,26 @@ namespace phyz {
 		diagonal_elem_buffer_capacity = MAX_CONSTRAINT_DEGREE * system_degree;
 
 #ifdef NDEBUG
-		buffer = new double[buffer_capacity];
-		diagonal_elem_buffer = new double[diagonal_elem_buffer_capacity];
+		buffer = new double[buffer_capacity + diagonal_elem_buffer_capacity];
+		diagonal_elem_buffer = buffer + buffer_capacity;
 #else
 		//so that contents of buffer can be viewed in the debugger
-		debug_buffer = std::vector<double>(buffer_capacity, 0);
-		debug_diagonal_elem_buffer = std::vector<double>(diagonal_elem_buffer_capacity, 0);
-		debug_inverse = std::vector<double>(system_degree * system_degree);
-
+		if (USE_GAUSS_ELIM_FOR_INVERSE) {
+			debug_inverse = std::vector<double>(system_degree * system_degree);
+		}
+		else {
+			debug_buffer = std::vector<double>(buffer_capacity, 0);
+			debug_diagonal_elem_buffer = std::vector<double>(diagonal_elem_buffer_capacity, 0);
+		}
 		buffer = debug_buffer.data();
 		diagonal_elem_buffer = debug_diagonal_elem_buffer.data();
 #endif
-
 	}
 
 	HolonomicSystem::~HolonomicSystem() {
 		if (constraints.size() > 0) {
 #ifdef NDEBUG
 			delete buffer;
-			delete diagonal_elem_buffer;
 #endif
 		}
 	}
@@ -142,8 +143,10 @@ namespace phyz {
 		: constraints(h.constraints), system_degree(h.system_degree), buffer(h.buffer), buffer_capacity(h.buffer_capacity), 
 		diagonal_elem_buffer(h.diagonal_elem_buffer), diagonal_elem_buffer_capacity(h.diagonal_elem_buffer_capacity), 
 
-		block_location_table(std::move(h.block_location_table)), vector_location_lookup(std::move(h.vector_location_lookup)),
-		debug_buffer(std::move(h.debug_buffer)), debug_diagonal_elem_buffer(std::move(h.debug_diagonal_elem_buffer)), debug_inverse(std::move(h.debug_inverse))
+		block_location_table(std::move(h.block_location_table)), vector_location_lookup(std::move(h.vector_location_lookup))
+#ifndef NDEBUG
+		,debug_buffer(std::move(h.debug_buffer)), debug_diagonal_elem_buffer(std::move(h.debug_diagonal_elem_buffer)), debug_inverse(std::move(h.debug_inverse))
+#endif
 	{
 		h.buffer = nullptr;
 		h.diagonal_elem_buffer = nullptr;
@@ -160,10 +163,11 @@ namespace phyz {
 		diagonal_elem_buffer_capacity = h.diagonal_elem_buffer_capacity;
 		block_location_table = std::move(h.block_location_table);
 		vector_location_lookup = std::move(h.vector_location_lookup);
+#ifndef NDEBUG
 		debug_buffer = std::move(h.debug_buffer);
 		debug_diagonal_elem_buffer = std::move(h.debug_diagonal_elem_buffer);
 		debug_inverse = std::move(h.debug_inverse);
-
+#endif
 		h.buffer = nullptr;
 		h.diagonal_elem_buffer = nullptr;
 	}
@@ -197,7 +201,7 @@ namespace phyz {
 		//c: current value of all constraints
 
 		std::vector<double> delta(system_degree); //initialize as t - c, then transform into d via multiplication by A^-1
-		
+
 		for (int i = 0; i < constraints.size(); i++) {
 			int pos = getVectorPos(i);
 			switch (constraints[i]->getDegree()) {
@@ -210,16 +214,14 @@ namespace phyz {
 			}
 		}
 
-		std::vector<double> initial_val = delta;
-
-		/*printf("\nDELTA:\n");
-		for (double d : delta) {
-			printf("%f ", d);
+		double before_error = 0;
+		for (int i = 0; i < system_degree; i++) {
+			before_error += delta[i] * delta[i];
 		}
-		printf("\n");*/
-
+		before_error = sqrt(before_error);
+		
 #ifndef NDEBUG
-		//if (false) {
+		if (USE_GAUSS_ELIM_FOR_INVERSE) {
 			std::vector<double> correct_impulse(system_degree, 0);
 
 			for (int i = 0; i < system_degree; i++) {
@@ -228,19 +230,16 @@ namespace phyz {
 				}
 			}
 
-			//printf("\nCALCULATED IMPULSE NEEDED:\n");
-			for (double d : correct_impulse) {
-				//printf("%f ", d);
-			}
-			//printf("\n");
-		//}
+			delta = correct_impulse;
+			goto ApplyImpulse;
+		}
+		{
 #endif
 
 		//A^-1 = (L^-t)(D^-1)(L^-1) 
-		
 		//Multiply by L inverse (inversion is as simple as making non diagonal blocks negative)
 		std::vector<double> multByLEffect(system_degree);
-		for (int col = 0; col + 1< constraints.size(); col++) {
+		for (int col = 0; col + 1 < constraints.size(); col++) {
 			multByLEffect = std::vector<double>(system_degree, 0); //set to zero
 
 			for (int row = col + 1; row < constraints.size(); row++) {
@@ -261,12 +260,6 @@ namespace phyz {
 			}
 		}
 
-		//printf("\nDELTA AFTER L^-1:\n");
-		for (double d : delta) {
-		//	printf("%f ", d);
-		}
-		//printf("\n");
-
 		//Multiply by D inverse
 		std::vector<double> multByDOut(system_degree);
 		for (int col = 0; col < constraints.size(); col++) {
@@ -277,13 +270,8 @@ namespace phyz {
 		}
 		delta = multByDOut;
 
-		//printf("\nDELTA AFTER D^-1:\n");
-		for (double d : delta) {
-			//printf("%f ", d);
-		}
-		//printf("\n");
-
 		//Multiply by L^-t
+
 		std::vector<double> multByLTEffect(6);
 		for (int col = constraints.size() - 2; col >= 0; col--) {
 			multByLTEffect = std::vector<double>(6, 0);
@@ -306,25 +294,24 @@ namespace phyz {
 			}
 		}
 
-		//printf("\nDELTA AFTER L^-t:\n");
-		for (double d : delta) {
-			//printf("%f ", d);
+#ifndef NDEBUG
 		}
-		//printf("\n");
+		ApplyImpulse:
+#endif
 
-		
-		std::vector<double> applied_impulse = delta;
+		printf("\nImpulses: ");
+		for (double d : delta) printf("%f, ", d);
 
 		//delta now equal to A^-1(t - c) = d, just need to store impulse and velocity changes now
 		for (int i = 0; i < constraints.size(); i++) {
 			int pos = getVectorPos(i);
 			switch (constraints[i]->getDegree()) {
-			case 1: applyImpulseChange<1>((DegreedConstraint<1>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
-			case 2: applyImpulseChange<2>((DegreedConstraint<2>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
-			case 3: applyImpulseChange<3>((DegreedConstraint<3>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
-			case 4: applyImpulseChange<4>((DegreedConstraint<4>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
-			case 5: applyImpulseChange<5>((DegreedConstraint<5>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
-			case 6: applyImpulseChange<6>((DegreedConstraint<6>*)constraints[i], applied_impulse, pos, use_psuedo_values); break;
+			case 1: applyImpulseChange<1>((DegreedConstraint<1>*)constraints[i], delta, pos, use_psuedo_values); break;
+			case 2: applyImpulseChange<2>((DegreedConstraint<2>*)constraints[i], delta, pos, use_psuedo_values); break;
+			case 3: applyImpulseChange<3>((DegreedConstraint<3>*)constraints[i], delta, pos, use_psuedo_values); break;
+			case 4: applyImpulseChange<4>((DegreedConstraint<4>*)constraints[i], delta, pos, use_psuedo_values); break;
+			case 5: applyImpulseChange<5>((DegreedConstraint<5>*)constraints[i], delta, pos, use_psuedo_values); break;
+			case 6: applyImpulseChange<6>((DegreedConstraint<6>*)constraints[i], delta, pos, use_psuedo_values); break;
 			}
 		}
 
@@ -340,31 +327,13 @@ namespace phyz {
 			}
 		}
 
-		/*printf("\nTARGET DELTA AFTER APPLY:\n");
-		for (double d : delta) {
-			printf("%f ", d);
+		double after_error = 0;
+		for (int i = 0; i < system_degree; i++) {
+			after_error += delta[i] * delta[i];
 		}
-		printf("\n");*/
+		after_error = sqrt(after_error);
 
-		double mag = 0;
-		for (double d : applied_impulse) mag += d * d;
-		mag = sqrt(mag);
-		if (mag >= 0.75) {
-			/*printf("mag is: %f\n", mag);
-
-			printf("\nDELTA:\n");
-			for (double d : initial_val) {
-				printf("%f ", d);
-			}
-			printf("\n");
-
-			printf("\nTARGET DELTA AFTER APPLY:\n");
-			for (double d : delta) {
-				printf("%f ", d);
-			}
-			printf("\n");*/
-			int a = 1 + 2;
-		}
+		printf("before error: %10.5f, after_error: %10.5f\n", before_error, after_error);
 	}
 
 
@@ -428,7 +397,7 @@ namespace phyz {
 
 	void HolonomicSystem::computeInverse(double cfm) {
 #ifndef NDEBUG
-		//if (false) {
+		if (USE_GAUSS_ELIM_FOR_INVERSE) {
 			int row_offset = 0;
 			for (int row = 0; row < constraints.size(); row++) {
 				int col_offset = 0;
@@ -450,16 +419,9 @@ namespace phyz {
 				row_offset += constraints[row]->getDegree();
 			}
 
-			/*printf("\n======TRUEEEEE======\n");
-			for (int r = 0; r < system_degree; r++) {
-				for (int c = 0; c < system_degree; c++) {
-					printf("%8.3f", debug_inverse[r * system_degree + c]);
-				}
-				printf("\n");
-			}*/
-
 			mthz::rowMajorOrderInverse(system_degree, debug_inverse.data(), debug_inverse.data());
-		//}
+			return;
+		}
 #endif
 
 		//set initial values
@@ -477,7 +439,7 @@ namespace phyz {
 		}
 
 		//debugPrintBuffer("BLOCK_VIEW", false);
-		//debugPrintBuffer("COPIED VALUES");
+		debugPrintBuffer("COPIED VALUES");
 
 		//compute LDL
 		for (int col = 0; col < constraints.size(); col++) {

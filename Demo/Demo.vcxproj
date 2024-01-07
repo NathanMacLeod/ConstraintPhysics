@@ -164,9 +164,11 @@
     <ClInclude Include="src\Demos\ForkliftDemo.h" />
     <ClInclude Include="src\Demos\GyroscopeDemo.h" />
     <ClInclude Include="src\Demos\ImageDemo.h" />
+    <ClInclude Include="src\Demos\MarbleMachineDemo.h" />
     <ClInclude Include="src\Demos\NewtonsCradleDemo.h" />
     <ClInclude Include="src\Demos\olcPixelGameEngine.h" />
-    <ClInclude Include="src\Demos\ScissorLiftDemo.h" />
+    <ClInclude Include="src\Demos\LDLSolverDemos.h" />
+    <ClInclude Include="src\Demos\StanfordArmadillo.h" />
     <ClInclude Include="src\Demos\TrebuchetDemo.h" />
     <ClInclude Include="src\Demos\VideoDemo.h" />
     <ClInclude Include="src\Demos\WreckingBallDemo.h" />

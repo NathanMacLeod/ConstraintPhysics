@@ -184,6 +184,7 @@ namespace phyz {
 		double octree_size = 2000;
 		double octree_minsize = 1;
 	
+		double holonomic_block_solver_CFM = 0.001;
 		bool compute_holonomic_inverse_in_parallel = true;
 		bool use_holonomic_system_solver = true;
 

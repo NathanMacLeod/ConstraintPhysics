@@ -106,7 +106,7 @@ namespace phyz {
 			break;
 		case AABB_TREE:
 			for (RigidBody* b : bodies) {
-				aabb_tree.update(b, b->getMovementType() == RigidBody::DYNAMIC, b->getID(), b->aabb);
+				aabb_tree.update(b, b->getMovementType() != RigidBody::DYNAMIC, b->getID(), b->aabb);
 			}
 			possible_intersections = aabb_tree.getAllCollisionCandidates();
 			break;
@@ -222,6 +222,8 @@ namespace phyz {
 				}
 				else {
 					for (int i = 0; i < b2->geometry.size(); i++) {
+						//if b1 movement type is static, BVH of the mesh is always updated to world coordinates whenever modified.
+						//if its kinematic, we keep the BVH constant and instead translate the other rigid body to local coordinates of b1, so that we can reuuse the same BVH.
 						bool use_local_transformation_on_mesh = b1->getMovementType() == RigidBody::KINEMATIC;
 
 						std::vector<Manifold> detected_manifolds;
@@ -348,7 +350,7 @@ namespace phyz {
 
 			thread_manager.enqueue_do_all_tasks<IslandConstraints>(n_threads, &active_data.island_systems,
 				[&](IslandConstraints island_system, int index) {
-					PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations, &compute_holonomic_inverses_status[index]);
+					PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations, &compute_holonomic_inverses_status[index]);
 				}
 			);
 			for (int i = 0; i < active_data.island_systems.size(); i++) {
@@ -360,7 +362,7 @@ namespace phyz {
 				int size = island_system.systems.size();
 				thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
 					[&, size, i](HolonomicSystem* h, int index) {
-						h->computeInverse(0.0001);
+						h->computeInverse(holonomic_block_solver_CFM);
 					}, &compute_holonomic_inverses_status[i]
 				);
 			}
@@ -370,13 +372,13 @@ namespace phyz {
 		else if (use_multithread) {
 			thread_manager.do_all<IslandConstraints>(n_threads, active_data.island_systems,
 				[&](IslandConstraints island_system) {
-					PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+					PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
 				}
 			);
 		}
 		else {
 			for (IslandConstraints& island_system : active_data.island_systems) {
-				PGS_solve(this, island_system.constraints, island_system.systems, pgsVelIterations,  pgsPosIterations, pgsHolonomicIterations);
+				PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations,  pgsPosIterations, pgsHolonomicIterations);
 			}
 		}
 

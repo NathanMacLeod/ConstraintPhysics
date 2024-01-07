@@ -12,7 +12,8 @@ namespace phyz {
 	void PGS_solve(
 		PhysicsEngine* pEngine, 
 		const std::vector<Constraint*>& constraints, 
-		const std::vector<HolonomicSystem*>& holonomic_systems, 
+		const std::vector<HolonomicSystem*>& holonomic_systems,
+		double holonomic_block_solver_CFM,
 		int n_itr_vel, int n_itr_pos, int n_itr_holonomic, 
 		ThreadManager::JobStatus* compute_inverse_status=nullptr
 	);

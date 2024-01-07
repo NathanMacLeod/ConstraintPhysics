@@ -116,10 +116,16 @@
     <ClInclude Include="src\renderer\Texture.h">
       <Filter>src\renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\Demos\ScissorLiftDemo.h">
+    <ClInclude Include="src\Demos\LDLSolverDemos.h">
       <Filter>src\Demos</Filter>
     </ClInclude>
     <ClInclude Include="src\Demos\NewtonsCradleDemo.h">
+      <Filter>src\Demos</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\MarbleMachineDemo.h">
+      <Filter>src\Demos</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\StanfordArmadillo.h">
       <Filter>src\Demos</Filter>
     </ClInclude>
   </ItemGroup>

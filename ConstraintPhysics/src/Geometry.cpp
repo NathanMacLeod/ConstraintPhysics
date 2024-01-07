@@ -767,6 +767,8 @@ namespace phyz {
 			out.edges[j].out_direction = rot * edges[j].out_direction;
 		}
 
+		out.aabb = AABB::encapsulatePointCloud({ out.vertices[0].p, out.vertices[1].p, out.vertices[2].p });
+
 		return out;
 	}
 

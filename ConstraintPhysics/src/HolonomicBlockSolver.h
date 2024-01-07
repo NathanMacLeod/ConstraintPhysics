@@ -24,7 +24,6 @@ namespace phyz {
 	private:
 		std::vector<Constraint*> constraints;
 		int system_degree;
-
 		
 		int buffer_capacity;
 		double* diagonal_elem_buffer;
@@ -38,9 +37,12 @@ namespace phyz {
 		int getBlockDiagonalElemBufferLocation(int block_row, int block_column);
 		int getVectorPos(int constraint_row);
 
+#ifndef NDEBUG
+		bool USE_GAUSS_ELIM_FOR_INVERSE = true;
 		std::vector<double> debug_buffer;
 		std::vector<double> debug_diagonal_elem_buffer;
 		std::vector<double> debug_inverse;
+#endif
 	};
 
 };
