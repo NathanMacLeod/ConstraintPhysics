@@ -343,7 +343,7 @@ namespace phyz {
 
 		auto t5 = std::chrono::system_clock::now();
 
-		if (use_multithread && compute_holonomic_inverse_in_parallel && use_holonomic_system_solver) {
+		if (use_multithread && compute_holonomic_inverse_in_parallel && using_holonomic_system_solver()) {
 			std::vector<ThreadManager::JobStatus> compute_holonomic_inverses_status(active_data.island_systems.size());
 
 			int islands_with_holonomic_systems_count = 0;
@@ -1641,7 +1641,7 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints() {
-		if (use_holonomic_system_solver) shatterFracturedHolonomicSystems();
+		if (using_holonomic_system_solver()) shatterFracturedHolonomicSystems();
 
 		static int current_visit_tag_value = 0;
 		current_visit_tag_value++; //used to avoid visiting same constraint twice
@@ -1651,7 +1651,7 @@ namespace phyz {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
-				if (use_holonomic_system_solver) maintainAllHolonomicSystemStuffRelatedToThisEdge(e);
+				if (using_holonomic_system_solver()) maintainAllHolonomicSystemStuffRelatedToThisEdge(e);
 
 				if (e->visited_tag == current_visit_tag_value)
 					continue; //skip
@@ -1941,7 +1941,7 @@ namespace phyz {
 					if (n->b->getMovementType() == RigidBody::KINEMATIC) interacting_with_kinematic = true;
 					if (curr->b->getAsleep() && (n->b->getAsleep() || n->b->getMovementType() == RigidBody::FIXED) || visited.find(n) != visited.end()) continue;
 
-					if (use_holonomic_system_solver && e->h != nullptr && std::find(output->island_systems->begin(), output->island_systems->end(), &e->h->system) == output->island_systems->end()) {
+					if (using_holonomic_system_solver() && e->h != nullptr && std::find(output->island_systems->begin(), output->island_systems->end(), &e->h->system) == output->island_systems->end()) {
 						output->island_systems->push_back(&e->h->system);
 					}
 

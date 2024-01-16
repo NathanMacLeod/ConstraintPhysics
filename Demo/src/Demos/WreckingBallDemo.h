@@ -31,7 +31,7 @@ public:
 
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(true);
-		p.setPGSIterations(45, 35);
+		p.setPGSIterations(85, 35);
 		p.setGlobalConstraintForceMixing(0.01);
 		p.setPrintPerformanceData(true);
 		//p.setWarmStartDisabled(true);

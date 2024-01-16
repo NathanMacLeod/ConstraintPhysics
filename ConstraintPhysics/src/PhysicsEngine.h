@@ -175,7 +175,8 @@ namespace phyz {
 
 		int pgsVelIterations = 20;
 		int pgsPosIterations = 15;
-		int pgsHolonomicIterations = 3; //only matters if use_holonomic_system_solver is enabled
+		int pgsHolonomicIterations = 3;
+		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
 
 		BroadPhaseStructure broadphase = AABB_TREE;
 		double aabbtree_margin_size = 0.1;
@@ -186,7 +187,6 @@ namespace phyz {
 	
 		double holonomic_block_solver_CFM = 0.001;
 		bool compute_holonomic_inverse_in_parallel = true;
-		bool use_holonomic_system_solver = true;
 
 		int angle_velocity_update_tick_count = 4;
 		bool is_internal_gyro_forces_disabled = false;

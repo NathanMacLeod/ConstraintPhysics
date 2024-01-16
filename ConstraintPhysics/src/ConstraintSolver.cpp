@@ -34,6 +34,7 @@ namespace phyz {
 
 		mthz::NVec<n> current_val = constraint->getConstraintValue(*vel_a_change, *vel_b_change);
 		mthz::NVec<n> delta = target_val - current_val;
+		//printf("%f\n", delta.mag());
 		//Apply projection on the accumulation, not the delta, to allow reversing overcorrection.
 		mthz::NVec<n> impulse_new = (*accumulated_impulse) + constraint->impulse_to_value_inverse * delta;
 		mthz::NVec<n> impulse_diff = constraint->isInequalityConstraint()? constraint->projectValidImpulse(impulse_new) - *accumulated_impulse
@@ -42,7 +43,6 @@ namespace phyz {
 			constraint->computeAndApplyVelocityChange(impulse_diff, vel_a_change, vel_b_change);
 			*accumulated_impulse += impulse_diff;
 		}
-		
 	}
 
 	static void constraintStep(Constraint* c, bool pos_correct) {
@@ -94,7 +94,6 @@ namespace phyz {
 			double di = new_impulses->at(i) - old_impulses[i];
 			total_delta += di * di;
 		}
-		total_delta = sqrt(total_delta);
 		return total_delta == 0;
 	}
 
@@ -132,13 +131,6 @@ namespace phyz {
 			c->b_psuedo_velocity_change = &vB->psuedo_vel_change;
 		}
 
-		bool holonomic_inverse_computed_in_parallel = compute_inverse_status != nullptr;
-		if (!holonomic_inverse_computed_in_parallel) {
-			for (HolonomicSystem* h : holonomic_systems) {
-				h->computeInverse(holonomic_block_solver_CFM);
-			}
-		}
-
 		//apply warm starting
 		for (Constraint* c : constraints) {
 			if (c->constraintWarmStarted()) {
@@ -146,6 +138,7 @@ namespace phyz {
 			}
 		}
 
+		//really need to refactor this into a class
 		int system_degree = get_total_island_degree(constraints);
 		std::vector<double> impulse_val_buff1(system_degree);
 		std::vector<double> impulse_val_buff2(system_degree);
@@ -159,7 +152,6 @@ namespace phyz {
 
 		write_all_impulses(constraints, old_impulse_val_buff, false);
 		write_all_impulses(constraints, old_psuedo_impulse_val_buff, true);
-
 
 		for (int i = 0; i < n_itr_vel; i++) {
 			for (Constraint* c : constraints) {
@@ -187,23 +179,31 @@ namespace phyz {
 			if (converged) break;
 		}
 
-		//write_all_impulses(constraints, old_impulse_val_buff, false);
-
-		//If holonomic inverse is being computed in another thread, don't continue until it has finished
-		if (holonomic_inverse_computed_in_parallel && holonomic_systems.size() > 0) compute_inverse_status->waitUntilDone();
-		
-		//apply block solver solutions for holonomic systems
-		for (int i = 0; i < n_itr_holonomic; i++) {
-			for (HolonomicSystem* h : holonomic_systems) {
-				h->computeAndApplyImpulses(true);
-				h->computeAndApplyImpulses(false);
+		if (holonomic_systems.size() > 0) {
+			bool holonomic_inverse_computed_in_parallel = compute_inverse_status != nullptr;
+			//If holonomic inverse is being computed in another thread, don't continue until it has finished
+			if (holonomic_inverse_computed_in_parallel) {
+				compute_inverse_status->waitUntilDone();
+			}
+			else {
+				for (HolonomicSystem* h : holonomic_systems) {
+					h->computeInverse(holonomic_block_solver_CFM);
+				}
 			}
 
-			for (Constraint* c : constraints) {
-				if (c->is_in_holonomic_system) continue;
+			//apply block solver solutions for holonomic systems
+			for (int i = 0; i < n_itr_holonomic; i++) {
+				for (HolonomicSystem* h : holonomic_systems) {
+					h->computeAndApplyImpulses(true);
+					h->computeAndApplyImpulses(false);
+				}
 
-				if (c->needsPosCorrect()) constraintStep(c, true);
-				constraintStep(c, false);
+				for (Constraint* c : constraints) {
+					if (c->is_in_holonomic_system) continue;
+
+					if (c->needsPosCorrect()) constraintStep(c, true);
+					constraintStep(c, false);
+				}
 			}
 		}
 
@@ -390,7 +390,7 @@ namespace phyz {
 		this->is_in_holonomic_system = is_in_holonomic_system;
 		//mthz::Mat3 inverse_inertia_mat3 = (mthz::Mat3::iden()*a->getInvMass() + mthz::Mat3::iden()*b->getInvMass() - mthz::Mat3::cross_mat(rA)*rotDirA - mthz::Mat3::cross_mat(rB)*rotDirB);
 		//inverse_inertia = applyCFM(Mat3tomthz::NMat33(inverse_inertia_mat3), constraint_force_mixing).inverse();
-		
+
 		mthz::NMat<3, 3> rA_skew = mthz::crossMat(rA);
 		mthz::NMat<3, 3> rB_skew = mthz::crossMat(rB);
 
@@ -404,7 +404,10 @@ namespace phyz {
 
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
-		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
+
+		mthz::Vec3 ap_vel = a->getVelOfPoint(socket_pos_a);
+		mthz::Vec3 bp_vel = b->getVelOfPoint(socket_pos_a);
+		mthz::Vec3 vel_diff = ap_vel - bp_vel;
 
 		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 		mthz::Vec3 error = socket_pos_b - socket_pos_a;

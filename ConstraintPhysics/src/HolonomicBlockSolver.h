@@ -38,7 +38,7 @@ namespace phyz {
 		int getVectorPos(int constraint_row);
 
 #ifndef NDEBUG
-		bool USE_GAUSS_ELIM_FOR_INVERSE = true;
+		bool USE_GAUSS_ELIM_FOR_INVERSE = false;
 		std::vector<double> debug_buffer;
 		std::vector<double> debug_diagonal_elem_buffer;
 		std::vector<double> debug_inverse;

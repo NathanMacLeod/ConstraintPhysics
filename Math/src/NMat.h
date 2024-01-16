@@ -119,6 +119,7 @@ namespace mthz {
 	}
 
 	void rowMajorOrderInverse(int n, double* target, double* source);
+	void rowMajorOrderInverse(int n, float* target, float* source);
 
 	template<int n>
 	void rowMajorOrderInverse(double* target, double* source) {

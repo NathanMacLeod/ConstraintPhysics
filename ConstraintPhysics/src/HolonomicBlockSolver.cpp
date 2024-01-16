@@ -213,12 +213,6 @@ namespace phyz {
 			case 6: writeTargetDelta<6>((DegreedConstraint<6>*)constraints[i], &delta, pos, use_psuedo_values); break;
 			}
 		}
-
-		double before_error = 0;
-		for (int i = 0; i < system_degree; i++) {
-			before_error += delta[i] * delta[i];
-		}
-		before_error = sqrt(before_error);
 		
 #ifndef NDEBUG
 		if (USE_GAUSS_ELIM_FOR_INVERSE) {
@@ -299,9 +293,6 @@ namespace phyz {
 		ApplyImpulse:
 #endif
 
-		printf("\nImpulses: ");
-		for (double d : delta) printf("%f, ", d);
-
 		//delta now equal to A^-1(t - c) = d, just need to store impulse and velocity changes now
 		for (int i = 0; i < constraints.size(); i++) {
 			int pos = getVectorPos(i);
@@ -315,25 +306,6 @@ namespace phyz {
 			}
 		}
 
-		for (int i = 0; i < constraints.size(); i++) {
-			int pos = getVectorPos(i);
-			switch (constraints[i]->getDegree()) {
-			case 1: writeTargetDelta<1>((DegreedConstraint<1>*)constraints[i], &delta, pos, use_psuedo_values); break;
-			case 2: writeTargetDelta<2>((DegreedConstraint<2>*)constraints[i], &delta, pos, use_psuedo_values); break;
-			case 3: writeTargetDelta<3>((DegreedConstraint<3>*)constraints[i], &delta, pos, use_psuedo_values); break;
-			case 4: writeTargetDelta<4>((DegreedConstraint<4>*)constraints[i], &delta, pos, use_psuedo_values); break;
-			case 5: writeTargetDelta<5>((DegreedConstraint<5>*)constraints[i], &delta, pos, use_psuedo_values); break;
-			case 6: writeTargetDelta<6>((DegreedConstraint<6>*)constraints[i], &delta, pos, use_psuedo_values); break;
-			}
-		}
-
-		double after_error = 0;
-		for (int i = 0; i < system_degree; i++) {
-			after_error += delta[i] * delta[i];
-		}
-		after_error = sqrt(after_error);
-
-		printf("before error: %10.5f, after_error: %10.5f\n", before_error, after_error);
 	}
 
 
@@ -439,7 +411,7 @@ namespace phyz {
 		}
 
 		//debugPrintBuffer("BLOCK_VIEW", false);
-		debugPrintBuffer("COPIED VALUES");
+		//debugPrintBuffer("COPIED VALUES");
 
 		//compute LDL
 		for (int col = 0; col < constraints.size(); col++) {
