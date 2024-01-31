@@ -162,7 +162,9 @@ public:
 		p.setSleepingEnabled(false);
 
 		if (parameters["use_ldl"] == "2") {
-			p.setPGSIterations(15, 5, 10);
+			//p.setPGSIterations(15, 5, 3)
+			p.setPGSIterations(0, 0, 1);
+			p.setWarmStartDisabled(true);
 		}
 		else {
 			p.setPGSIterations(18, 8, 0);
@@ -332,15 +334,19 @@ public:
 			pos.y = 120;
 
 			mthz::Vec3 chain_pos(0, 130, 0);
-			double chain_width = 0.1;
-			double chain_height = 15;
+			double chain_width = 0.31;
+			double chain_height = 0.6;
 
 			double attach_box_size = 1;
 			phyz::ConvexUnionGeometry attach_box = phyz::ConvexUnionGeometry::box(chain_pos - mthz::Vec3(1, 1, 1) * attach_box_size / 2, attach_box_size, attach_box_size, attach_box_size);
 			phyz::ConvexUnionGeometry chain = phyz::ConvexUnionGeometry::box(mthz::Vec3(-chain_width / 2.0, 0, -chain_width / 2.0), chain_width, -chain_height, chain_width, phyz::Material::modified_density(2));
 			
+			//debugging only
+			phyz::RigidBody* top_chain = nullptr;
+			phyz::RigidBody* bot_chain = nullptr;
+
 			phyz::RigidBody* attach_box_r = p.createRigidBody(attach_box, phyz::RigidBody::FIXED);
-			int n_chain = 1;
+			int n_chain = 2;// 40;
 			phyz::RigidBody* previous_chain = nullptr;
 
 			for (int i = 0; i < n_chain; i++) {
@@ -350,10 +356,13 @@ public:
 				phyz::RigidBody* this_chain_r = p.createRigidBody(this_chain);
 
 				if (i == 0) {
-					p.addBallSocketConstraint(attach_box_r, this_chain_r, this_chain_pos);
+					top_chain = this_chain_r;
+					p.setConstraintPosCorrectMethod(p.addBallSocketConstraint(attach_box_r, this_chain_r, this_chain_pos), phyz::MASTER_SLAVE);
+					
 				}
 				else {
-					p.addBallSocketConstraint(previous_chain, this_chain_r, this_chain_pos);
+					bot_chain = this_chain_r;
+					p.setConstraintPosCorrectMethod(p.addBallSocketConstraint(previous_chain, this_chain_r, this_chain_pos), phyz::MASTER_SLAVE);
 				}
 
 				bodies.push_back({ fromGeometry(this_chain), this_chain_r });
@@ -363,15 +372,32 @@ public:
 			mthz::Vec3 final_chain_pos = chain_pos + mthz::Vec3(0, -n_chain * chain_height, 0);
 			double ball_radius = 7;
 			mthz::Vec3 ball_pos = final_chain_pos + mthz::Vec3(0, -ball_radius, 0);
-			phyz::ConvexUnionGeometry ball = phyz::ConvexUnionGeometry::sphere(ball_pos, ball_radius);
+			phyz::ConvexUnionGeometry ball = phyz::ConvexUnionGeometry::sphere(ball_pos, ball_radius, phyz::Material::modified_density(0.01));
 			phyz::RigidBody* ball_r = p.createRigidBody(ball);
 
 			bodies.push_back({ fromGeometry(attach_box), attach_box_r });
 
-			ball_r->setVel(mthz::Vec3(0, 0, 10));
+			ball_r->setVel(mthz::Vec3(0, 0, 0.1));
 
-			p.addBallSocketConstraint(ball_r, previous_chain, final_chain_pos);
+			p.setConstraintPosCorrectMethod(p.addBallSocketConstraint(ball_r, previous_chain, final_chain_pos), phyz::MASTER_SLAVE, false);
 			bodies.push_back({ fromGeometry(ball), ball_r });
+
+			top_chain->setCOMtoPosition(mthz::Vec3(0.000351, 129.700055, 0.005730));
+			top_chain->setOrientation(mthz::Quaternion(0.999954, -0.009551, 0.000194, 0.000583));
+			top_chain->setVel(mthz::Vec3(-0.107645, -1.094619, -5.858201));
+			top_chain->setAngVel(mthz::Vec3(19.865123, 0.016209, -0.368053));
+
+			bot_chain->setCOMtoPosition(mthz::Vec3(0.001068, 129.100427, 0.025241));
+			bot_chain->setOrientation(mthz::Quaternion(0.999730, -0.022971, -0.003380, 0.000688));
+			bot_chain->setVel(mthz::Vec3(-0.108013, -2.893442, -5.823545));
+			bot_chain->setAngVel(mthz::Vec3(-19.782583, -0.018427, 0.358964));
+
+			ball_r->setCOMtoPosition(mthz::Vec3(0.001547, 121.800749, 0.047491));
+			ball_r->setOrientation(mthz::Quaternion(1.000000, -0.000605, 0.000000, 0.000008));
+			ball_r->setVel(mthz::Vec3(-0.000211, -3.597621, 0.091148));
+			ball_r->setAngVel(mthz::Vec3(-0.003119, 0.000000, 0.000075));
+
+			ball_r->setMovementType(phyz::RigidBody::KINEMATIC);
 		}
 		else {
 			pos.y += 30;
@@ -477,6 +503,22 @@ public:
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				for (PhysBod p : bodies) {
+					phyz::RigidBody* b = p.r;
+					if (b->getMovementType() == phyz::RigidBody::FIXED) continue;
+
+					mthz::Vec3 p = b->getCOM();
+					mthz::Quaternion o = b->getOrientation();
+					mthz::Vec3 v = b->getVel();
+					mthz::Vec3 a = b->getAngVel();
+					printf("pos: (%f, %f, %f); orient: (%f, %f, %f, %f); vel: (%f, %f, %f), ang_vel: (%f, %f, %f)\n",
+						p.x, p.y, p.z,
+						o.r, o.i, o.j, o.k,
+						v.x, v.y, v.z,
+						a.x, a.y, a.z
+					);
+				}
+
 				p.timeStep();
 				printf("%d\n", tick_count++);
 			}
@@ -499,8 +541,8 @@ public:
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
 			while (phyz_time > slow_factor * timestep) {
 				phyz_time -= slow_factor * timestep;
-				//if (tick_count++ <= 35) {
-					p.timeStep();
+				//if (tick_count++ <= 83) {
+				//	p.timeStep();
 				//}
 			}
 

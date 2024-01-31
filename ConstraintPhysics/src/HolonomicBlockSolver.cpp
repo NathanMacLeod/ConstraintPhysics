@@ -391,7 +391,32 @@ namespace phyz {
 				row_offset += constraints[row]->getDegree();
 			}
 
-			mthz::rowMajorOrderInverse(system_degree, debug_inverse.data(), debug_inverse.data());
+			for (int i = 0; i < debug_inverse.size(); i++) {
+				if (i % system_degree == 0) printf("\n");
+				printf("% 10f ", debug_inverse[i]);
+			}
+			printf("\n\n");
+
+			std::vector<double> target(debug_inverse.size());
+			mthz::rowMajorOrderInverse(system_degree, target.data(), debug_inverse.data());
+
+
+			std::vector<double> idenmaybe(debug_inverse.size(), 0);
+			for (int i = 0; i < system_degree; i++) {
+				for (int j = 0; j < system_degree; j++) {
+					for (int k = 0; k < system_degree; k++) {
+						idenmaybe[i + j * system_degree] += target[k + j * system_degree] * debug_inverse[i + k * system_degree];
+					}
+				}
+			}
+
+			for (int i = 0; i < debug_inverse.size(); i++) {
+				if (i % system_degree == 0) printf("\n");
+				printf("%f ", idenmaybe[i]);
+			}
+			printf("\n\n");
+
+			debug_inverse = target;
 			return;
 		}
 #endif
