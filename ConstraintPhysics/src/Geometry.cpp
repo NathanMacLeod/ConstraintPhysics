@@ -515,7 +515,7 @@ namespace phyz {
 		return out;
 	}
 
-	MeshInput generateGridMeshInput(int grid_length, int grid_width, double grid_size, mthz::Vec3 position) {
+	MeshInput generateGridMeshInput(int grid_length, int grid_width, double grid_size, mthz::Vec3 position, Material material) {
 		std::vector<mthz::Vec3> points((grid_length + 1) * (grid_width + 1));
 		std::vector<TriIndices> triangle_indices(grid_length * grid_width * 2);
 
@@ -530,8 +530,8 @@ namespace phyz {
 					unsigned int indx3 = i + (grid_width + 1) * j;
 					unsigned int indx4 = i - 1 + (grid_width + 1) * j;
 
-					triangle_indices[2 * tile_indx] = TriIndices{ indx3, indx2, indx1, Material::default_material() };
-					triangle_indices[2 * tile_indx + 1] = TriIndices{ indx4, indx3, indx1, Material::default_material() };
+					triangle_indices[2 * tile_indx] = TriIndices{ indx3, indx2, indx1, material };
+					triangle_indices[2 * tile_indx + 1] = TriIndices{ indx4, indx3, indx1, material };
 				}
 			}
 		}

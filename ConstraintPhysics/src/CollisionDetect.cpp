@@ -1686,7 +1686,7 @@ namespace phyz {
 
 		for (unsigned int i : tri_candidates) {
 			StaticMeshFace tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
-			double non_gauss_valid_normal_penalty = 0.1 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
+			double non_gauss_valid_normal_penalty = 0 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
 			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
@@ -1719,7 +1719,7 @@ namespace phyz {
 
 		for (unsigned int i : tri_candidates) {
 			const StaticMeshFace& tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
-			double non_gauss_valid_normal_penalty = 0.1 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
+			double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
 			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
@@ -1752,7 +1752,7 @@ namespace phyz {
 
 		for (unsigned int i : tri_candidates) {
 			const StaticMeshFace& tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
-			double non_gauss_valid_normal_penalty = 0.1 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
+			double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
 			Manifold m = SAT_CylinderTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {

@@ -382,8 +382,6 @@ namespace phyz {
 			}
 		}
 
-		maintainConstraintGraphApplyPoweredConstraints();
-
 		auto t6 = std::chrono::system_clock::now();
 
 		auto update_positions = [&](RigidBody* b) {
@@ -1364,6 +1362,10 @@ namespace phyz {
 
 	void PhysicsEngine::setGlobalConstraintForceMixing(double cfm) {
 		global_cfm = cfm;
+	}
+
+	void PhysicsEngine::setHolonomicSolverCFM(double cfm) {
+		holonomic_block_solver_CFM = cfm;
 	}
 
 	void PhysicsEngine::deleteWarmstartData(RigidBody* r) {

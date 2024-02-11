@@ -101,6 +101,7 @@ namespace phyz {
 		void setWarmStartDisabled(bool b);
 		void setSleepParameters(double vel_sensitivity, double ang_vel_sensitivity, double aceleration_sensitivity, double sleep_assesment_time, int non_sleepy_tick_threshold);
 		void setGlobalConstraintForceMixing(double cfm);
+		void setHolonomicSolverCFM(double cfm);
 
 		//really only exists for debugging
 		void deleteWarmstartData(RigidBody* r);
@@ -185,7 +186,7 @@ namespace phyz {
 		double octree_size = 2000;
 		double octree_minsize = 1;
 	
-		double holonomic_block_solver_CFM = 0;// 0.00001;
+		double holonomic_block_solver_CFM = 0.00001;
 		bool compute_holonomic_inverse_in_parallel = true;
 
 		int angle_velocity_update_tick_count = 4;
