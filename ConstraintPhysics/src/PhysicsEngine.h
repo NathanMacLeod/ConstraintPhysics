@@ -229,7 +229,7 @@ namespace phyz {
 		std::mutex constraint_graph_lock;
 
 		//constraint force mixing - softens constraints and makes more stable
-		double global_cfm = 0.025;
+		double global_cfm = 0;// 0.025;
 		
 		struct Contact {
 			RigidBody* b1;

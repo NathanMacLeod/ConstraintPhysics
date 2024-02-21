@@ -42,16 +42,16 @@ namespace mthz {
 			return out;
 		};
 
-		double mag() const {
+		double magSqrd() const {
 			double sum = 0;
 			for (int i = 0; i < n; i++) {
 				sum += v[i] * v[i];
 			}
-			return sqrt(sum);
+			return sum;
 		}
 		
 		NVec<n> norm() const {
-			return *this * (1.0 / sqrt(mag()));
+			return *this * (1.0 / sqrt(magSqrd()));
 		}
 
 		double dot(const NVec<n> nv) const {

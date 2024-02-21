@@ -360,7 +360,7 @@ namespace phyz {
 
 			out.push_back(ClipEvaluationPoint{ c.ps[i], c.p_IDs[i], m, false });
 		}
-		if (c.ps.size() > 3 && !isWindingCounterClockwise(c)) std::reverse(out.begin(), out.end());
+		if (c.ps.size() > 2 && !isWindingCounterClockwise(c)) std::reverse(out.begin(), out.end());
 
 		return out;
 	}

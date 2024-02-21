@@ -344,7 +344,7 @@ public:
 
 		printf("Checking for existing precomputation...\n");
 		char precompute_file[256];
-		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d_%c.txt", level_of_detail, parameters["shape"]);
+		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d_%c.txt", level_of_detail, toupper(parameters["shape"][0]));
 		if (fileExists(precompute_file)) {
 			printf("File found. Loading...\n");
 			readComputation(precompute_file, &pre_bodies, n_frames);
