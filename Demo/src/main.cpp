@@ -17,6 +17,7 @@
 #include "Demos/NewtonsCradleDemo.h"
 #include "Demos/MarbleMachineDemo.h"
 #include "Demos/StanfordArmadillo.h"
+#include "Demos/HovercraftDemo.h"
 
 int main() {
 
@@ -35,6 +36,7 @@ int main() {
 	manager.registerScene("Newtons Cradle", "Newtons cradle.", [](DemoManager* m, DemoProperties p) { return new NewtonsCradleDemo(m, p); });
 	manager.registerScene("Marble Machine", "A functioning marble machine downloaded from a 3d printing site.", [](DemoManager* m, DemoProperties p) { return new MarbleMachineDemo(m, p); });
 	manager.registerScene("Stanford Armadillo", "oh yeah", [](DemoManager* m, DemoProperties p) { return new StanfordArmadillo(m, p); });
+	manager.registerScene("Hover car", "Drive a hovercar that uses raycasts.", [](DemoManager* m, DemoProperties p) { return new HovercraftDemo(m, p); });
 	manager.registerScene("Debug demo", "for setting up debug scenes", [](DemoManager* m, DemoProperties p) { return new DebugDemo(m, p); });
 
 	manager.selectProperties();

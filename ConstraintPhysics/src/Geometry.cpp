@@ -819,7 +819,7 @@ namespace phyz {
 				continue;
 			}
 
-			closest_hit = RayQueryReturn{ true, hit_pos, t };
+			closest_hit = RayQueryReturn{ true, hit_pos, tri.normal, t };
 		}
 
 		return closest_hit;

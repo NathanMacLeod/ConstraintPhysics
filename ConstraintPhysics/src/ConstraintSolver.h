@@ -212,7 +212,7 @@ namespace phyz {
 		inline int getDegree() override { return 1; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
-		inline bool needsPosCorrect() override { return false; }
+		inline bool needsPosCorrect() override { return rot_limit_status != NOT_EXCEEDED; }
 
 	private:
 		enum LimitStatus { NOT_EXCEEDED = 0, BELOW_MIN, ABOVE_MAX };

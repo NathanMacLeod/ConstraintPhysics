@@ -44,6 +44,7 @@ namespace phyz {
 	struct RayQueryReturn {
 		bool did_hit;
 		mthz::Vec3 intersection_point;
+		mthz::Vec3 surface_norm;
 		double intersection_dist;
 	};
 

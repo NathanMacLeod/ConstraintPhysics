@@ -55,6 +55,7 @@ namespace phyz {
 		bool did_hit;
 		RigidBody* hit_object;
 		mthz::Vec3 hit_position;
+		mthz::Vec3 surface_normal;
 		double hit_distance;
 	};
 

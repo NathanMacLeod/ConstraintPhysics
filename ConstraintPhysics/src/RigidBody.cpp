@@ -184,7 +184,7 @@ namespace phyz {
 			}
 		}
 		
-		return RayHitInfo{ closest_hit_info.did_hit, this, closest_hit_info.intersection_point, closest_hit_info.intersection_dist };
+		return RayHitInfo{ closest_hit_info.did_hit, this, closest_hit_info.intersection_point, closest_hit_info.surface_norm, closest_hit_info.intersection_dist };
 	}
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical

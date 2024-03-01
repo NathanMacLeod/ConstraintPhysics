@@ -188,7 +188,7 @@ namespace phyz {
 		mthz::Vec3 intersection_point = ray_origin + t * ray_dir;
 
 		if (t < 0 || (intersection_point - disk_center).magSqrd() > radius * radius) return { false };
-		return RayQueryReturn{ true, intersection_point, t };
+		return RayQueryReturn{ true, intersection_point,  disk_normal, t };
 	}
 
 	RayQueryReturn Cylinder::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
@@ -227,7 +227,8 @@ namespace phyz {
 			mthz::Vec3 intersect_point = ray_origin + intersect_dist * ray_dir;
 			double intersect_height = intersect_point.dot(height_axis);
 			if (abs(intersect_height - center.dot(height_axis)) < height / 2.0) {
-				out = RayQueryReturn{ true, intersect_point, intersect_dist };
+				mthz::Vec3 norm = ((intersect_point - center) - height_axis * height_axis.dot(intersect_point - center)).normalize();
+				out = RayQueryReturn{ true, intersect_point, norm, intersect_dist};
 			}
 		}
 	exit_side_test:
@@ -340,7 +341,9 @@ namespace phyz {
 			else t = std::min<double>(t1, t2);
 		}
 		
-		return RayQueryReturn{ true, ray_origin + t * ray_dir, t };
+		mthz::Vec3 hit_p = ray_origin + t * ray_dir;
+		mthz::Vec3 norm = (hit_p - center).normalize();
+		return RayQueryReturn{ true, hit_p, norm, t };
 	}
 
 	Polyhedron::Polyhedron(const Polyhedron& c)
@@ -630,7 +633,7 @@ namespace phyz {
 				if (out_dir.dot(intersection_point - edge_p1) > 0) continue; //the intersection of the ray with the surfaces plane does not lie within the surface
 			}
 
-			return RayQueryReturn{ true, intersection_point, t };
+			return RayQueryReturn{ true, intersection_point, n, t };
 		}
 
 		return { false };
