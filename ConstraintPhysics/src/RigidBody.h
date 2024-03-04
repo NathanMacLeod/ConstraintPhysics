@@ -20,32 +20,35 @@ namespace phyz {
 		typedef int PKey;
 		enum GeometryType { CONVEX_UNION, STATIC_MESH };
 		enum MovementType { DYNAMIC, FIXED, KINEMATIC };
+		enum CenterOfMassType { CUSTOM, PHYSICALLY_BASED };
 
 		PKey trackPoint(mthz::Vec3 p); //track the movement of p which is on the body b. P given in local coordinates
-		mthz::Vec3 getTrackedP(PKey pk);
+		mthz::Vec3 getTrackedP(PKey pk) const;
 		mthz::Vec3 getVelOfPoint(mthz::Vec3 p) const;
 		inline unsigned int getID() const { return id; }
 
-		double getMass();
-		double getInvMass();
-		mthz::Mat3 getTensor();
-		mthz::Mat3 getInvTensor();
-		bool getAsleep();
-		inline MovementType getMovementType() { return movement_type; }
-		inline bool getNoCollision() { return no_collision; }
-		mthz::Vec3 getPos() { return getTrackedP(origin_pkey); }
-		inline mthz::Vec3 getCOM() { return com; }
-		inline mthz::Quaternion getOrientation() { return orientation; }
-		mthz::Vec3 getVel();
-		mthz::Vec3 getAngVel();
-		inline GeometryType getGeometryType() { return geometry_type; }
-		RayHitInfo checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
+		double getMass() const;
+		double getInvMass() const;
+		mthz::Mat3 getTensor() const;
+		mthz::Mat3 getInvTensor() const;
+		bool getAsleep() const;
+		inline MovementType getMovementType() const { return movement_type; }
+		inline bool getNoCollision() const { return no_collision; }
+		mthz::Vec3 getPos() const { return getTrackedP(origin_pkey); }
+		inline mthz::Vec3 getCOM() const { return com_type == PHYSICALLY_BASED? com : getTrackedP(custom_com_pos); }
+		inline mthz::Quaternion getOrientation() const { return orientation; }
+		mthz::Vec3 getVel() const;
+		mthz::Vec3 getAngVel() const;
+		inline GeometryType getGeometryType() const { return geometry_type; }
+		RayHitInfo checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 
 		void applyForce(mthz::Vec3 force) { vel += force * getInvMass(); }
 		void applyTorque(mthz::Vec3 torque) { ang_vel += getInvTensor() * torque; }
 		void applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position);
 		void setToPosition(const mthz::Vec3& pos);
-		void setCOMtoPosition(const mthz::Vec3& pos);
+		void translateSoCOMAtPosition(const mthz::Vec3& pos);
+		void setCOMType(CenterOfMassType com_type);
+		void setCustomCOMLocalPosition(mthz::Vec3 new_local_com_pos);
 		void setMass(double mass, bool adjust_inertia_tensor_proportionally = true);
 		void rotate(mthz::Quaternion q);
 		void translate(const mthz::Vec3& v);
@@ -65,6 +68,8 @@ namespace phyz {
 		unsigned int id;
 
 		mthz::Quaternion orientation;
+		CenterOfMassType com_type;
+		PKey custom_com_pos;
 		mthz::Vec3 com;
 		mthz::Vec3 vel;
 		mthz::Vec3 ang_vel;
@@ -98,6 +103,8 @@ namespace phyz {
 		mthz::Mat3 invTensor;
 		mthz::Mat3 tensor;
 		mthz::Mat3 reference_invTensor;
+		mthz::Mat3 custom_com_referenceTensor;
+		mthz::Mat3 custom_com_referenceInvTensor;
 		mthz::Mat3 reference_tensor;
 		double mass;
 		bool asleep;

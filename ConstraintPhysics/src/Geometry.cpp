@@ -793,7 +793,7 @@ namespace phyz {
 		return out;
 	}
 
-	RayQueryReturn StaticMeshGeometry::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+	RayQueryReturn StaticMeshGeometry::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
 		std::vector<unsigned int> hit_candidates = aabb_tree.raycastHitCandidates(ray_origin, ray_dir);
 		
 		RayQueryReturn closest_hit{ false }; //false signifies no confirmed hit so far

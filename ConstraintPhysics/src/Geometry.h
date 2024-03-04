@@ -95,7 +95,7 @@ namespace phyz {
 		inline const std::vector<StaticMeshFace>& getTriangles() const { return triangles; }
 		inline const AABBTree<unsigned int>& getAABBTree() const { return aabb_tree; }
 
-		RayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
+		RayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 
 		friend class Surface;
 		friend class Edge;

@@ -41,29 +41,44 @@ public:
 
 		std::vector<PhysBod> bodies;
 
-		//************************
-		//*******BASE PLATE*******
-		//************************
-		double s = 500;
-		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
-		Mesh m2 = fromGeometry(geom2);
-		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
-		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
-		bodies.push_back({ m2, r2 });
+		mthz::Vec3 center = mthz::Vec3(0, -2, 0);
+		int grid_count = 360;
+		double grid_size = 0.5;
+		phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, center + mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));//phyz::generateRadialMeshInput(center, 8, 100, 1);
+
+		for (mthz::Vec3& v : grid.points) {
+			//v.y += 0.1 * 2 * (0.5 - frand());
+			//v.y += 0.0055 * (v - center).magSqrd();
+			//v.y += 3 - 0.5 * (v - center).mag() + 0.02 * (v - center).magSqrd();
+			v.y += cos((v - center).mag() / 2.33);
+		}
+
+		phyz::RigidBody* gr = p.createRigidBody(grid);
+		bodies.push_back({ fromStaticMeshInput(grid, color{1.0, 0.84, 0.0, 0.25, 0.75, 0.63, 51.2 }), gr });
 
 		mthz::Vec3 car_dimensions(1, 0.25, 0.5);
 		mthz::Vec3 car_position(0, 5, 0);
-		double lift_max_dist = 0.5;
-		double lift_equilibrium_dist = 0.35;
+		double lift_max_dist = 0.3;
+		double lift_equilibrium_dist = 0.27;
+		double grip = 0.5;
+		double dampen = 0.4;
 
 		phyz::ConvexUnionGeometry car_chasis = phyz::ConvexUnionGeometry::box(car_position - car_dimensions / 2, car_dimensions.x, car_dimensions.y, car_dimensions.z);
 		phyz::RigidBody* car_r = p.createRigidBody(car_chasis);
+		car_r->setCOMType(phyz::RigidBody::CUSTOM);
+		car_r->setCustomCOMLocalPosition(car_position + mthz::Vec3(0, -0.33, 0));
+		double front_wheel_turn_angle = 0;
+		double max_turn_angle = PI / 8;
 
-		std::vector<phyz::RigidBody::PKey> lift_positions = {
-			car_r->trackPoint(car_position + mthz::Vec3(car_dimensions.x / 2, 0, car_dimensions.z / 2)),
-			car_r->trackPoint(car_position + mthz::Vec3(car_dimensions.x / 2, 0, -car_dimensions.z / 2)),
-			car_r->trackPoint(car_position + mthz::Vec3(-car_dimensions.x / 2, 0, car_dimensions.z / 2)),
-			car_r->trackPoint(car_position + mthz::Vec3(-car_dimensions.x / 2, 0, -car_dimensions.z / 2)),
+		struct WheelInfo {
+			phyz::RigidBody::PKey location_key;
+			bool is_turning_wheel;
+		};
+		std::vector<WheelInfo> lift_positions = {
+			WheelInfo{car_r->trackPoint(car_position + mthz::Vec3(car_dimensions.x / 2, 0, car_dimensions.z / 2)), true},
+			WheelInfo{car_r->trackPoint(car_position + mthz::Vec3(car_dimensions.x / 2, 0, -car_dimensions.z / 2)), true},
+			WheelInfo{car_r->trackPoint(car_position + mthz::Vec3(-car_dimensions.x / 2, 0, car_dimensions.z / 2)), false},
+			WheelInfo{car_r->trackPoint(car_position + mthz::Vec3(-car_dimensions.x / 2, 0, -car_dimensions.z / 2)), false}
 		};
 
 		bodies.push_back({ fromGeometry(car_chasis), car_r });
@@ -141,12 +156,16 @@ public:
 				car_r->applyImpulse(-oriented_forward * 0.1 * timestep, car_r->getCOM() - 0.2 * oriented_up);
 			}
 
-			/*if (rndr::getKeyDown(GLFW_KEY_J)) {
-				steer_angle = -steer_max_angle;
+			double steer_strength = 0.03 * car_r->getMass();
+			if (rndr::getKeyDown(GLFW_KEY_J)) {
+				front_wheel_turn_angle = -max_turn_angle;
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_L)) {
-				steer_angle = steer_max_angle;
-			}*/
+				front_wheel_turn_angle = max_turn_angle;
+			}
+			else {
+				front_wheel_turn_angle = 0;
+			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
 				manager->deselectCurrentScene();
@@ -161,9 +180,11 @@ public:
 				mthz::Vec3 lift_dir = car_r->getOrientation().applyRotation(mthz::Vec3(0, -1, 0));
 				mthz::Vec3 forward_dir = car_r->getOrientation().applyRotation(mthz::Vec3(1, 0, 0));
 				mthz::Vec3 side_dir = car_r->getOrientation().applyRotation(mthz::Vec3(0, 0, 1));
+				mthz::Vec3 turned_wheel_side_dir = car_r->getOrientation().applyRotation(mthz::Quaternion(front_wheel_turn_angle, mthz::Vec3(0, 1, 0)).applyRotation(mthz::Vec3(0, 0, 1)));
+
 				all_contact_points.clear();
-				for (phyz::RigidBody::PKey lift_point_key : lift_positions) {
-					mthz::Vec3 lift_point = car_r->getTrackedP(lift_point_key);
+				for (WheelInfo wheel_info : lift_positions) {
+					mthz::Vec3 lift_point = car_r->getTrackedP(wheel_info.location_key);
 
 					phyz::RayHitInfo ray_cast = p.raycastFirstIntersection(lift_point, lift_dir, { car_r });
 					if (ray_cast.did_hit && ray_cast.hit_distance < lift_max_dist) {
@@ -172,18 +193,40 @@ public:
 						mthz::Vec3 rel_vel = car_r->getVelOfPoint(ray_cast.hit_position) - ray_cast.hit_object->getVelOfPoint(ray_cast.hit_position);
 						double vel = rel_vel.dot(lift_dir);
 						//lifting force
-						double force = 0.3 * k * vel + sqrt(lift_max_dist - ray_cast.hit_distance) * k / sqrt(lift_max_dist - lift_equilibrium_dist);
+						double force = std::max<double>(0, dampen * k * vel + (lift_max_dist - ray_cast.hit_distance) * k / (lift_max_dist - lift_equilibrium_dist));
 						mthz::Vec3 clipped_lift = lift_dir * ray_cast.surface_normal.dot(lift_dir) * force * timestep;
 						car_r->applyImpulse(clipped_lift, ray_cast.hit_position);
+
 						//all_contact_points.push_back({ ray_cast.hit_position, -lift_dir });
 
 						//friction
-						double friction_constant = 0;
-						mthz::Vec3 friction_side = rel_vel.dot(side_dir) > 0 ? -side_dir : side_dir;
-						mthz::Vec3 fiction_dir = friction_side - ray_cast.surface_normal.dot(friction_side) * ray_cast.surface_normal;
-						car_r->applyImpulse(fiction_dir * friction_constant * force * timestep, ray_cast.hit_position);
-						all_contact_points.push_back({ ray_cast.hit_position, fiction_dir });
+						double friction_constant = grip * k;
+						mthz::Vec3 wheel_side_dir = wheel_info.is_turning_wheel ? turned_wheel_side_dir : side_dir;
+						mthz::Vec3 friction_dir = (wheel_side_dir - ray_cast.surface_normal * ray_cast.surface_normal.dot(wheel_side_dir)).normalize();
+						mthz::Vec3 friction_force = -friction_dir * friction_dir.dot(rel_vel) * friction_constant * timestep;
+						car_r->applyImpulse(friction_force, ray_cast.hit_position);
+						all_contact_points.push_back({ ray_cast.hit_position, friction_dir });
+
+
+					//	mthz::Vec3 wheel_side_dir = wheel_info.is_turning_wheel ? turned_wheel_side_dir : side_dir;
+					//	mthz::Vec3 friction_dir = (wheel_side_dir - ray_cast.surface_normal.dot(wheel_side_dir) * ray_cast.surface_normal).normalize();
+					//	if (friction_dir.dot(rel_vel) > 0) friction_dir = -friction_dir;
+					////	mthz::Vec3 friction_side = rel_vel.dot(side_dir) > 0 ? -side_dir : side_dir;
+					//	
+					//	
+					//	mthz::Vec3 car_r_lever = ray_cast.hit_position - car_r->getCOM();
+					//	mthz::Vec3 object_lever = ray_cast.hit_position - ray_cast.hit_object->getCOM();
+					//	double friction_to_make_still = -friction_dir.dot(rel_vel) / (
+					//		car_r->getInvMass() + ray_cast.hit_object->getInvMass()
+					//		+ friction_dir.dot(car_r->getInvTensor() * car_r_lever.cross(friction_dir)) + friction_dir.dot(ray_cast.hit_object->getInvTensor() * object_lever.cross(friction_dir))
+					//	);
+
+					//	printf("desired friction: %f, friction to make still: %f\n", -force * friction_constant * timestep * lift_dir.dot(ray_cast.surface_normal), friction_to_make_still);
+					//	double friction = -force * friction_constant * timestep * lift_dir.dot(ray_cast.surface_normal);// std::min<double>(friction_to_make_still, -force * friction_constant * timestep * lift_dir.dot(ray_cast.surface_normal));
+					//	car_r->applyImpulse(friction_dir * friction, ray_cast.hit_position);
+					//	all_contact_points.push_back({ ray_cast.hit_position, friction_dir });
 					}
+					all_contact_points.push_back({ car_r->getCOM(), mthz::Vec3(0, -1, 0)});
 				}
 
 				phyz_time -= slow_factor * timestep;

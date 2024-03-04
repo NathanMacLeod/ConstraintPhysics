@@ -8,6 +8,7 @@
 namespace phyz {
 
 	static void calculateMassProperties(const ConvexUnionGeometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass, bool override_center_of_mass, mthz::Vec3 center_of_mass_override);
+	static mthz::Mat3 recenterTensor(double mass, const mthz::Mat3& tensor, mthz::Vec3 new_center_of_rotation, mthz::Vec3 old_center_of_rotation, mthz::Vec3 true_center_of_mass_of_geometry);
 
 	RigidBody::RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id, bool overide_center_of_mass = false, mthz::Vec3 local_coords_com_override = mthz::Vec3(0, 0, 0))
 		: geometry_type(CONVEX_UNION), geometry(source_geometry.getPolyhedra()), reference_geometry(source_geometry.getPolyhedra()), vel(0, 0, 0), ang_vel(0, 0, 0),
@@ -32,6 +33,10 @@ namespace phyz {
 		origin_pkey = trackPoint(mthz::Vec3(0,0,0));
 		setToPosition(pos);
 		recievedWakingAction = false;
+
+		com_type = PHYSICALLY_BASED;
+		custom_com_referenceTensor = reference_tensor;
+		custom_com_referenceTensor = reference_invTensor;
 	}
 
 	RigidBody::RigidBody(const StaticMeshGeometry& source_geometry, unsigned int id) 
@@ -56,7 +61,7 @@ namespace phyz {
 	void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
 		assert(!isnan(impulse.mag()) && !isnan(position.mag()));
 
-		mthz::Vec3 torque = (position - com).cross(impulse);
+		mthz::Vec3 torque = (position - getCOM()).cross(impulse);
 		vel += getInvMass() * impulse;
 		ang_vel += getInvTensor() * torque;
 		alertWakingAction();
@@ -67,7 +72,7 @@ namespace phyz {
 		alertWakingAction();
 	}
 
-	void RigidBody::setCOMtoPosition(const mthz::Vec3& pos) {
+	void RigidBody::translateSoCOMAtPosition(const mthz::Vec3& pos) {
 		com = pos;
 		updateGeometry();
 		alertWakingAction();
@@ -132,7 +137,7 @@ namespace phyz {
 		return track_p.size() - 1;
 	}
 
-	mthz::Vec3 RigidBody::getTrackedP(PKey pk) {
+	mthz::Vec3 RigidBody::getTrackedP(PKey pk) const {
 		if (pk < 0 || pk >= track_p.size()) {
 			return mthz::Vec3(-1, -1, -1);
 		}
@@ -140,51 +145,56 @@ namespace phyz {
 	}
 
 	mthz::Vec3 RigidBody::getVelOfPoint(mthz::Vec3 p) const {
-		return vel + ang_vel.cross(p - com);
+		return vel + ang_vel.cross(p - getCOM());
 	}
 
-	double RigidBody::getMass() {
+	double RigidBody::getMass() const {
 		return (movement_type == FIXED || movement_type == KINEMATIC)? std::numeric_limits<double>::infinity() : mass;
 	}
 
-	double RigidBody::getInvMass() {
+	double RigidBody::getInvMass() const {
 		return (movement_type == FIXED || movement_type == KINEMATIC) ? 0 : 1.0 / mass;
 	}
 
-	mthz::Mat3 RigidBody::getTensor() {
+	mthz::Mat3 RigidBody::getTensor() const {
 		return (movement_type == FIXED || movement_type == KINEMATIC) ? tensor * std::numeric_limits<double>::infinity() : tensor;
 	}
 
-	mthz::Mat3 RigidBody::getInvTensor() {
+	mthz::Mat3 RigidBody::getInvTensor() const {
 		return (movement_type == FIXED || movement_type == KINEMATIC) ? mthz::Mat3::zero() : invTensor;
 	}
 
-	mthz::Vec3 RigidBody::getVel() { 
+	mthz::Vec3 RigidBody::getVel() const {
 		return (movement_type == FIXED)? mthz::Vec3(0, 0, 0) : vel;
 	}
 
-	mthz::Vec3 RigidBody::getAngVel() { 
+	mthz::Vec3 RigidBody::getAngVel() const {
 		return (movement_type == FIXED) ? mthz::Vec3(0, 0, 0) : ang_vel;
 	}
 
-	bool RigidBody::getAsleep() {
+	bool RigidBody::getAsleep() const {
 		return asleep && movement_type == DYNAMIC;
 	}
 
-	RayHitInfo RigidBody::checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+	RayHitInfo RigidBody::checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
 		RayQueryReturn closest_hit_info = { false };
 
-		for (int i = 0; i < geometry.size(); i++) {
-			//check ray actually hits the convex primitive AABB. if geometry.size == 1 then the convex primitive AABB == the rigid body AABB, which is redundant to check
-			if (geometry.size() != 1 && !AABB::rayIntersectsAABB(geometry_AABB[i], ray_origin, ray_dir)) continue;
+		if (geometry_type == CONVEX_UNION) {
+			for (int i = 0; i < geometry.size(); i++) {
+				//check ray actually hits the convex primitive AABB. if geometry.size == 1 then the convex primitive AABB == the rigid body AABB, which is redundant to check
+				if (geometry.size() != 1 && !AABB::rayIntersectsAABB(geometry_AABB[i], ray_origin, ray_dir)) continue;
 
-			RayQueryReturn hit_info = geometry[i].testRayIntersection(ray_origin, ray_dir);
-			if (hit_info.did_hit && (!closest_hit_info.did_hit || hit_info.intersection_dist < closest_hit_info.intersection_dist)) {
-				closest_hit_info = hit_info;
+				RayQueryReturn hit_info = geometry[i].testRayIntersection(ray_origin, ray_dir);
+				if (hit_info.did_hit && (!closest_hit_info.did_hit || hit_info.intersection_dist < closest_hit_info.intersection_dist)) {
+					closest_hit_info = hit_info;
+				}
 			}
 		}
-		
-		return RayHitInfo{ closest_hit_info.did_hit, this, closest_hit_info.intersection_point, closest_hit_info.surface_norm, closest_hit_info.intersection_dist };
+		else {
+			closest_hit_info = mesh.testRayIntersection(ray_origin, ray_dir);
+		}
+
+		return RayHitInfo{ closest_hit_info.did_hit, (phyz::RigidBody*)this, closest_hit_info.intersection_point, closest_hit_info.surface_norm, closest_hit_info.intersection_dist };
 	}
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical
@@ -238,13 +248,29 @@ namespace phyz {
 		ang_vel = itr_ang_vel;
 	}
 
+	void RigidBody::setCOMType(CenterOfMassType com_type) {
+		this->com_type = com_type;
+		alertWakingAction();
+	}
+
+	void RigidBody::setCustomCOMLocalPosition(mthz::Vec3 new_custom_com_pos) {
+		custom_com_pos = trackPoint(new_custom_com_pos);
+		custom_com_referenceTensor = recenterTensor(mass, reference_tensor, local_coord_origin + new_custom_com_pos, mthz::Vec3(0, 0, 0), mthz::Vec3(0, 0, 0));
+		custom_com_referenceInvTensor = custom_com_referenceTensor.inverse();
+		alertWakingAction();
+		updateGeometry();
+	}
+
 	void RigidBody::updateGeometry() {
 
 		orientation = orientation.normalize();
 		mthz::Mat3 rot = orientation.getRotMatrix();
 		mthz::Mat3 rot_conjugate = orientation.conjugate().getRotMatrix();
-		tensor = rot * reference_tensor * rot_conjugate;
-		invTensor = rot * reference_invTensor * rot_conjugate;
+
+		mthz::Mat3 reference_tensor_to_use = com_type == CUSTOM ? custom_com_referenceTensor : reference_tensor;
+		mthz::Mat3 reference_invTensor_to_use = com_type == CUSTOM ? custom_com_referenceInvTensor : reference_invTensor;
+		tensor = rot * reference_tensor_to_use * rot_conjugate;
+		invTensor = rot * reference_invTensor_to_use * rot_conjugate;
 		
 		if (geometry_type == CONVEX_UNION) {
 			for (int i = 0; i < reference_geometry.size(); i++) {
@@ -360,12 +386,11 @@ namespace phyz {
 		}
 	}
 
-	static mthz::Mat3 recenterTensor(double mass, const mthz::Mat3& tensor, mthz::Vec3 new_center_of_rotation, mthz::Vec3 old_center_of_rotation = mthz::Vec3(0, 0, 0)) {
+	static mthz::Mat3 recenterTensor(double mass, const mthz::Mat3& tensor, mthz::Vec3 new_center_of_rotation, mthz::Vec3 old_origin, mthz::Vec3 true_com) {
 		mthz::Mat3 out = tensor;
 		
-		//transposition of inertia tensor to be relative to new point
-		mthz::Vec3 d = new_center_of_rotation - old_center_of_rotation;
-		mthz::Vec3 com = new_center_of_rotation;
+		mthz::Vec3 d = new_center_of_rotation - old_origin;
+		mthz::Vec3 com = true_com - old_origin;
 		out.v[0][0] += mass * (d.y * d.y + d.z * d.z - 2 * d.y * com.y - 2 * d.z * com.z);
 		out.v[0][1] += mass * (d.x * com.y + d.y * com.x - d.x * d.y);
 		out.v[0][2] += mass * (d.x * com.z + d.z * com.x - d.x * d.z);
@@ -520,7 +545,7 @@ namespace phyz {
 				if (!override_center_of_mass) *com += sphere_mass * s.getCenter();
 
 				double k = 2.0 / 5.0 * sphere_mass * s.getRadius() * s.getRadius();
-				mthz::Mat3 sphere_tensor = recenterTensor(sphere_mass, k * mthz::Mat3::iden(), mthz::Vec3(0, 0, 0), s.getCenter());
+				mthz::Mat3 sphere_tensor = recenterTensor(sphere_mass, k * mthz::Mat3::iden(), mthz::Vec3(0, 0, 0), s.getCenter(), s.getCenter());
 
 				*tensor += sphere_tensor;
 			}
@@ -551,7 +576,7 @@ namespace phyz {
 					cylinder_tensor = rot * cylinder_tensor * rot_invert;
 				}
 
-				cylinder_tensor = recenterTensor(cylinder_mass, cylinder_tensor, mthz::Vec3(0, 0, 0), c.getCenter());
+				cylinder_tensor = recenterTensor(cylinder_mass, cylinder_tensor, mthz::Vec3(0, 0, 0), c.getCenter(), c.getCenter());
 				*tensor += cylinder_tensor;
 			}
 			break;
@@ -561,6 +586,6 @@ namespace phyz {
 		}
 
 		if (!override_center_of_mass) *com /= *mass;
-		*tensor = recenterTensor(*mass, *tensor, *com);
+		*tensor = recenterTensor(*mass, *tensor, *com, mthz::Vec3(0, 0, 0), *com);
 	}
 }
