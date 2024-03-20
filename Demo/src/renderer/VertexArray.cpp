@@ -23,6 +23,12 @@ namespace rndr {
 	}
 
 	template<>
+	void VertexArrayLayout::Push<int32_t>(unsigned int count) {
+		elements.push_back({ GL_INT, count, GL_FALSE });
+		stride += count * VertexBufferElement::GetSizeOfType(GL_INT) * count;
+	}
+
+	template<>
 	void VertexArrayLayout::Push<unsigned char>(unsigned int count) {
 		elements.push_back({ GL_UNSIGNED_BYTE, count, GL_TRUE });
 		stride += count * VertexBufferElement::GetSizeOfType(GL_UNSIGNED_BYTE) * count;

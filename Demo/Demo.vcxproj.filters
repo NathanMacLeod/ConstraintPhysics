@@ -51,6 +51,9 @@
     <ClCompile Include="Dependencies\stb_image\stb_image.cpp">
       <Filter>src\renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\ModelReader.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\renderer\Renderer.h">
@@ -130,6 +133,12 @@
     </ClInclude>
     <ClInclude Include="src\Demos\HovercraftDemo.h">
       <Filter>src\Demos</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ModelReader.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Camera.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

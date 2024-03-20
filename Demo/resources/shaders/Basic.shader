@@ -7,14 +7,19 @@ layout(location = 2) in float in_ambient_k;
 layout(location = 3) in float in_diffuse_k;
 layout(location = 4) in float in_specular_k;
 layout(location = 5) in float in_specular_p;
+layout(location = 6) in float tex_id;
+layout(location = 7) in vec2 tex_coords;
 
 out vec3 v_Color;
 out vec4 v_mat_props;
+out float v_tex_ids;
+out vec2 v_tex_coords;
 
 void main() {
 	v_mat_props = vec4(in_ambient_k, in_diffuse_k, in_specular_k, in_specular_p);
 	gl_Position = position;
 	v_Color = in_color;
+	v_tex_ids = tex_id;
 }
 
 #shader geometry
@@ -25,10 +30,14 @@ layout(triangle_strip, max_vertices = 3) out;
 
 in vec3 v_Color[];
 in vec4 v_mat_props[];
+in float v_tex_ids[];
+in vec2 v_tex_coords[];
 out vec3 g_Color;
 out vec4 g_mat_props;
 out vec3 g_pos;
 out vec3 g_Norm;
+out float g_tex_id;
+out vec2 g_tex_coords;
 
 uniform mat4 u_P;
 
@@ -45,16 +54,22 @@ void main() {
 	g_mat_props = v_mat_props[0];
 	gl_Position = u_P * gl_in[0].gl_Position;
 	g_pos = vec3(gl_in[0].gl_Position);
+	g_tex_id = v_tex_ids[0];
+	g_tex_coords = v_tex_coords[0];
 	EmitVertex();
 	g_Color = v_Color[1];
 	g_mat_props = v_mat_props[1];
 	gl_Position = u_P * gl_in[1].gl_Position;
 	g_pos = vec3(gl_in[1].gl_Position);
+	g_tex_id = v_tex_ids[1];
+	g_tex_coords = v_tex_coords[1];
 	EmitVertex();
 	g_Color = v_Color[2];
 	g_mat_props = v_mat_props[2];
 	gl_Position = u_P * gl_in[2].gl_Position;
 	g_pos = vec3(gl_in[2].gl_Position);
+	g_tex_id = v_tex_ids[2];
+	g_tex_coords = v_tex_coords[2];
 	EmitVertex();
 }
 
@@ -65,12 +80,15 @@ in vec3 g_Norm;
 in vec3 g_pos;
 in vec3 g_Color;
 in vec4 g_mat_props;
+in float g_tex_id;
+in vec2 g_tex_coords;
 out vec4 color;
 
 uniform int u_Asleep;
 uniform vec3 u_ambient_light;
 uniform vec3 u_pointlight_col;
 uniform vec3 u_pointlight_pos;
+uniform sampler2D u_textures[32];
 
 
 void main() {
@@ -80,8 +98,15 @@ void main() {
 	float specular_k = g_mat_props[2];
 	float specular_p = g_mat_props[3];
 
-	vec3 surface_color = (u_Asleep == 1)? vec3(1.0, 0, 0) : g_Color;
-
+	vec3 surface_color;
+	int tex_index = int(g_tex_id);
+	if (g_tex_id != -1) {
+		vec4 tex_color = texture(u_textures[tex_index], g_tex_coords);
+		surface_color = vec3(tex_color[0], tex_color[1], tex_color[2]);
+	}
+	else {
+		surface_color = (u_Asleep == 1) ? vec3(1.0, 0, 0) : g_Color;
+	}
 	vec3 observed_ambient = ambient_k * u_ambient_light * surface_color;
 
 	vec3 light_dir = normalize(u_pointlight_pos - vec3(g_pos));

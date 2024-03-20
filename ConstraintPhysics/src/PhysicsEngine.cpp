@@ -664,7 +664,7 @@ namespace phyz {
 		}
 	}
 
-	RayHitInfo PhysicsEngine::raycastFirstIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir, std::vector<RigidBody*> ignore_list) {
+	RayHitInfo PhysicsEngine::raycastFirstIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir, std::vector<RigidBody*> ignore_list) const {
 		std::vector<RigidBody*> candidates;
 		if (broadphase == TEST_COMPARE || broadphase == AABB_TREE) {
 			candidates = aabb_tree.raycastHitCandidates(ray_origin, ray_dir);

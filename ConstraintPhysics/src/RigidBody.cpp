@@ -12,7 +12,7 @@ namespace phyz {
 
 	RigidBody::RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id, bool overide_center_of_mass = false, mthz::Vec3 local_coords_com_override = mthz::Vec3(0, 0, 0))
 		: geometry_type(CONVEX_UNION), geometry(source_geometry.getPolyhedra()), reference_geometry(source_geometry.getPolyhedra()), vel(0, 0, 0), ang_vel(0, 0, 0),
-		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), id(id)
+		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), com_type(PHYSICALLY_BASED), id(id)
 	{
 		movement_type = DYNAMIC;
 		calculateMassProperties(source_geometry, &this->com, &this->reference_tensor, &this->mass, overide_center_of_mass, local_coords_com_override);
@@ -34,7 +34,6 @@ namespace phyz {
 		setToPosition(pos);
 		recievedWakingAction = false;
 
-		com_type = PHYSICALLY_BASED;
 		custom_com_referenceTensor = reference_tensor;
 		custom_com_referenceTensor = reference_invTensor;
 	}
@@ -266,7 +265,7 @@ namespace phyz {
 		orientation = orientation.normalize();
 		mthz::Mat3 rot = orientation.getRotMatrix();
 		mthz::Mat3 rot_conjugate = orientation.conjugate().getRotMatrix();
-
+		
 		mthz::Mat3 reference_tensor_to_use = com_type == CUSTOM ? custom_com_referenceTensor : reference_tensor;
 		mthz::Mat3 reference_invTensor_to_use = com_type == CUSTOM ? custom_com_referenceInvTensor : reference_invTensor;
 		tensor = rot * reference_tensor_to_use * rot_conjugate;

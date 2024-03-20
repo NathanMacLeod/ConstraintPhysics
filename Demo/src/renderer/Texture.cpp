@@ -12,7 +12,7 @@ namespace rndr {
 		stbi_set_flip_vertically_on_load(true);
 		unsigned char* image = stbi_load(texture_path.c_str(), &texture_width, &texture_height, &num_color_ch, 4);
 
-		glGenTextures(1, &textureID);
+		glGenTextures(1, (GLuint*)&textureID);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -26,13 +26,13 @@ namespace rndr {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	void Texture::bindToTextureUnitI(unsigned int i) const {
+	void Texture::bindToTextureUnitI(int i) const {
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 	}
 
 	void Texture::deleteTexture() {
-		glDeleteTextures(1, &textureID);
+		glDeleteTextures(1, (const GLuint*)&textureID);
 	}
 
 }

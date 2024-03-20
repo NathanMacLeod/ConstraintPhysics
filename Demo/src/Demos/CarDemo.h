@@ -1,6 +1,7 @@
 #pragma once
 #include "DemoScene.h"
 #include "../Mesh.h"
+#include "../Camera.h"
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
 
 class CarDemo : public DemoScene {
@@ -50,8 +51,8 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setPGSIterations(20, 20, 0);
-		p.setGlobalConstraintForceMixing(0.0001);
+		p.setPGSIterations(0, 0, 20);
+		p.setGlobalConstraintForceMixing(0.001);
 		//p.setOctreeParams(100, 0.5);
 		//p.setWarmStartDisabled(true);
 
@@ -765,7 +766,7 @@ public:
 
 			if (rndr::getKeyPressed(GLFW_KEY_T)) {
 				//p.disallowCollision(pinion_r, steering_wheel_rod3_r);
-				p.timeStep();
+				//p.timeStep();
 			}
 
 			/*if (rndr::getKeyPressed(GLFW_KEY_T)) {
@@ -791,7 +792,7 @@ public:
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
 			while (phyz_time > timestep) {
 				phyz_time -= timestep;
-				//p.timeStep();
+				p.timeStep();
 			}
 
 			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));

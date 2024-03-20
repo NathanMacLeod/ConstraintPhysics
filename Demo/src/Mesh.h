@@ -14,6 +14,9 @@ struct Vertex {
 	float diffuse_k;
 	float specular_k;
 	float specular_p;
+	float texture_id;
+	float texture_u;
+	float texture_v;
 
 	static rndr::VertexArrayLayout generateLayout();
 };

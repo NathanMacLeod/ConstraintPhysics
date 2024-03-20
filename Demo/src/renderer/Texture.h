@@ -9,7 +9,7 @@ namespace rndr {
 		Texture(std::string texture_path);
 
 		bool isNoTexture() const { return textureID == -1; }
-		void bindToTextureUnitI(unsigned int i) const;
+		void bindToTextureUnitI(int i) const;
 		int getTextureID() const { return textureID; }
 		void deleteTexture();
 
@@ -17,7 +17,7 @@ namespace rndr {
 
 	private:
 		bool no_texture;
-		unsigned int textureID;
+		int textureID;
 	};
 
 }

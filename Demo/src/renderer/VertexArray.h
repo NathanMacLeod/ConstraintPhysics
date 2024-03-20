@@ -46,6 +46,9 @@ namespace rndr {
 		void Push<unsigned int>(unsigned int count);
 
 		template<>
+		void Push<int32_t>(unsigned int count);
+
+		template<>
 		void Push<unsigned char>(unsigned int count);
 
 		inline const std::vector<VertexBufferElement>& getElements() const { return elements; }
