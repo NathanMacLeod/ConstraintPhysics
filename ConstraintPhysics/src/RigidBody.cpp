@@ -30,7 +30,7 @@ namespace phyz {
 		}
 		aabb = AABB::combine(geometry_AABB);
 		local_coord_origin = -com;
-		origin_pkey = trackPoint(mthz::Vec3(0,0,0));
+		origin_pkey = trackPoint(mthz::Vec3(0, 0, 0));
 		setToPosition(pos);
 		recievedWakingAction = false;
 
@@ -38,8 +38,8 @@ namespace phyz {
 		custom_com_referenceTensor = reference_invTensor;
 	}
 
-	RigidBody::RigidBody(const StaticMeshGeometry& source_geometry, unsigned int id) 
-		: geometry_type(STATIC_MESH), reference_mesh(source_geometry), mesh(source_geometry), vel(0, 0, 0), ang_vel(0, 0, 0), psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), 
+	RigidBody::RigidBody(const StaticMeshGeometry& source_geometry, unsigned int id)
+		: geometry_type(STATIC_MESH), reference_mesh(source_geometry), mesh(source_geometry), vel(0, 0, 0), ang_vel(0, 0, 0), psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0),
 		asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), id(id)
 	{
 		movement_type = FIXED;
@@ -106,21 +106,21 @@ namespace phyz {
 		alertWakingAction();
 	}
 
-	void RigidBody::setVel(mthz::Vec3 vel) { 
-		this->vel = vel; 
+	void RigidBody::setVel(mthz::Vec3 vel) {
+		this->vel = vel;
 		alertWakingAction();
 	}
 
-	void RigidBody::setAngVel(mthz::Vec3 ang_vel) { 
+	void RigidBody::setAngVel(mthz::Vec3 ang_vel) {
 		assert(!isnan(ang_vel.mag()));
-		this->ang_vel = ang_vel; 
+		this->ang_vel = ang_vel;
 		alertWakingAction();
 	}
 
-	void RigidBody::setMovementType(MovementType type) { 
+	void RigidBody::setMovementType(MovementType type) {
 		assert(geometry_type != STATIC_MESH || type != DYNAMIC);
 
-		this->movement_type = type; 
+		this->movement_type = type;
 		if (type != FIXED) {
 			alertWakingAction();
 		}
@@ -141,6 +141,13 @@ namespace phyz {
 			return mthz::Vec3(-1, -1, -1);
 		}
 		return com + orientation.applyRotation(track_p[pk]);
+	}
+
+	mthz::Vec3 RigidBody::getExtrapolatedTrackedP(PKey pk) const {
+		if (pk < 0 || pk >= track_p.size()) {
+			return mthz::Vec3(-1, -1, -1);
+		}
+		return extrapolated_com + orientation.applyRotation(track_p[pk]);
 	}
 
 	mthz::Vec3 RigidBody::getVelOfPoint(mthz::Vec3 p) const {
@@ -265,6 +272,9 @@ namespace phyz {
 		orientation = orientation.normalize();
 		mthz::Mat3 rot = orientation.getRotMatrix();
 		mthz::Mat3 rot_conjugate = orientation.conjugate().getRotMatrix();
+
+		extrapolated_com = com;
+		extrapolated_orientation = orientation;
 		
 		mthz::Mat3 reference_tensor_to_use = com_type == CUSTOM ? custom_com_referenceTensor : reference_tensor;
 		mthz::Mat3 reference_invTensor_to_use = com_type == CUSTOM ? custom_com_referenceInvTensor : reference_invTensor;

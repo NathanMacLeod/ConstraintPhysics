@@ -620,8 +620,9 @@ namespace phyz {
 		for (const Surface& s : surfaces) {
 			mthz::Vec3 sp = s.getPointI(0);
 			mthz::Vec3 n = s.normal();
+			double eps = 0.0001;
 
-			if (ray_dir.dot(n) > 0 || (ray_origin - sp).dot(n) < 0) continue; //disqualifies ray for being on wrong side or facing wrong direction
+			if (ray_dir.dot(n) > -eps || (ray_origin - sp).dot(n) < 0) continue; //disqualifies ray for being on wrong side or facing wrong direction
 
 			double t = n.dot(sp - ray_origin) / n.dot(ray_dir);
 			mthz::Vec3 intersection_point = ray_origin + t * ray_dir;
@@ -630,10 +631,12 @@ namespace phyz {
 				mthz::Vec3 edge_p2 = s.getPointI(i + 1 == s.n_points() ? 0 : i + 1);
 
 				mthz::Vec3 out_dir = (edge_p2 - edge_p1).cross(n);
-				if (out_dir.dot(intersection_point - edge_p1) > 0) continue; //the intersection of the ray with the surfaces plane does not lie within the surface
+				if (out_dir.dot(intersection_point - edge_p1) > 0) goto next_surface; //the intersection of the ray with the surfaces plane does not lie within the surface
 			}
 
 			return RayQueryReturn{ true, intersection_point, n, t };
+
+			next_surface: continue;
 		}
 
 		return { false };

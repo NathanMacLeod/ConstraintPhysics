@@ -131,7 +131,7 @@
     <ClInclude Include="src\Demos\StanfordArmadillo.h">
       <Filter>src\Demos</Filter>
     </ClInclude>
-    <ClInclude Include="src\Demos\HovercraftDemo.h">
+    <ClInclude Include="src\Demos\RaycastCarDemo.h">
       <Filter>src\Demos</Filter>
     </ClInclude>
     <ClInclude Include="src\ModelReader.h">

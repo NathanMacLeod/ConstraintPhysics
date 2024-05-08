@@ -568,6 +568,19 @@ namespace phyz {
 		}
 	}
 
+	void PhysicsEngine::extrapolateObjectPositions(double time_elapsed) {
+		for (RigidBody* b : bodies) {
+			if (b->getAsleep() || b->getMovementType() == RigidBody::MovementType::FIXED) continue;
+			
+			b->translateExtrapolatedPos(b->getVel() * time_elapsed);
+
+			mthz::Vec3 ang_vel = b->getAngVel();
+			if (ang_vel.magSqrd() > 0.0000001) {
+				b->rotateExtrapolatedOrientation(mthz::Quaternion(ang_vel.mag() * time_elapsed, ang_vel.normalize()));
+			}
+		}
+	}
+
 	RigidBody* PhysicsEngine::createRigidBody(const ConvexUnionGeometry& geometry, RigidBody::MovementType movement_type, mthz::Vec3 position, mthz::Quaternion orientation, bool override_center_of_mass, mthz::Vec3 center_of_mass_override) {
 		RigidBody* r = new RigidBody(geometry, position, orientation, next_id++, override_center_of_mass, center_of_mass_override);
 		r->setMovementType(movement_type);

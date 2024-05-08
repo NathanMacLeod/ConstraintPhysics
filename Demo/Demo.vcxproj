@@ -165,7 +165,7 @@
     <ClInclude Include="src\Demos\DzhanibekovDemo.h" />
     <ClInclude Include="src\Demos\ForkliftDemo.h" />
     <ClInclude Include="src\Demos\GyroscopeDemo.h" />
-    <ClInclude Include="src\Demos\HovercraftDemo.h" />
+    <ClInclude Include="src\Demos\RaycastCarDemo.h" />
     <ClInclude Include="src\Demos\ImageDemo.h" />
     <ClInclude Include="src\Demos\MarbleMachineDemo.h" />
     <ClInclude Include="src\Demos\NewtonsCradleDemo.h" />

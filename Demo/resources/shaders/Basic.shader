@@ -100,7 +100,8 @@ void main() {
 
 	vec3 surface_color;
 	int tex_index = int(g_tex_id);
-	if (g_tex_id != -1) {
+	//something going wrong here
+	if (false && g_tex_id != -1) {
 		vec4 tex_color = texture(u_textures[tex_index], g_tex_coords);
 		surface_color = vec3(tex_color[0], tex_color[1], tex_color[2]);
 	}

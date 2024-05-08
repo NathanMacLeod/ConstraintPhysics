@@ -24,6 +24,7 @@ namespace phyz {
 
 		PKey trackPoint(mthz::Vec3 p); //track the movement of p which is on the body b. P given in local coordinates
 		mthz::Vec3 getTrackedP(PKey pk) const;
+		mthz::Vec3 getExtrapolatedTrackedP(PKey pk) const;
 		mthz::Vec3 getVelOfPoint(mthz::Vec3 p) const;
 		inline unsigned int getID() const { return id; }
 
@@ -35,8 +36,11 @@ namespace phyz {
 		inline MovementType getMovementType() const { return movement_type; }
 		inline bool getNoCollision() const { return no_collision; }
 		mthz::Vec3 getPos() const { return getTrackedP(origin_pkey); }
+		mthz::Vec3 getExtrapolatedPos() const { return getExtrapolatedTrackedP(origin_pkey); }
 		inline mthz::Vec3 getCOM() const { return com_type == PHYSICALLY_BASED? com : getTrackedP(custom_com_pos); }
+		inline mthz::Vec3 getExtrapoltedCOM() const { return com_type == PHYSICALLY_BASED ? extrapolated_com : getExtrapolatedTrackedP(custom_com_pos); }
 		inline mthz::Quaternion getOrientation() const { return orientation; }
+		inline mthz::Quaternion getExtrapolatedOrientation() const { return extrapolated_orientation; }
 		mthz::Vec3 getVel() const;
 		mthz::Vec3 getAngVel() const;
 		inline GeometryType getGeometryType() const { return geometry_type; }
@@ -58,6 +62,8 @@ namespace phyz {
 		void setMovementType(MovementType type);
 		void setNoCollision(bool no_collision);
 		void setSleepDisabled(bool b) { sleep_disabled = b; }
+		void translateExtrapolatedPos(mthz::Vec3 translation) { extrapolated_com += translation; }
+		void rotateExtrapolatedOrientation(mthz::Quaternion rotation) { extrapolated_orientation = rotation * extrapolated_orientation; }
 
 		friend class PhysicsEngine;
 	private:
@@ -68,9 +74,11 @@ namespace phyz {
 		unsigned int id;
 
 		mthz::Quaternion orientation;
+		mthz::Quaternion extrapolated_orientation;
 		CenterOfMassType com_type;
 		PKey custom_com_pos;
 		mthz::Vec3 com;
+		mthz::Vec3 extrapolated_com;
 		mthz::Vec3 vel;
 		mthz::Vec3 ang_vel;
 		mthz::Vec3 psuedo_vel;
