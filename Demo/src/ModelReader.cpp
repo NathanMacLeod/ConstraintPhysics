@@ -49,7 +49,6 @@ MeshColliderOutput readMeshAndColliders(std::string formatted_obj_path, double s
 	std::vector<mthz::Vec3> current_vertices;
 	std::vector<std::vector<int>> current_face_indices;
 
-
 	std::string line;
 
 	static char buff[2048];

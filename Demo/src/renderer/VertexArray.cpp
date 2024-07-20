@@ -153,6 +153,10 @@ namespace rndr {
 		return index_capacity - n_indices_allocated;
 	}
 
+	unsigned int BatchArray::remainingTextureCapacity() const {
+		return assigned_textures.size();
+	}
+
 	void BatchArray::bind() const {
 		for (int i = 0; i < assigned_textures.size(); i++) {
 			assigned_textures[i].bindToTextureUnitI(i);
