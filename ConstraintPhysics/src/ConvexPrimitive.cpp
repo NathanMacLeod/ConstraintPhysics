@@ -7,6 +7,8 @@
 
 namespace phyz {
 
+	static const double EPS = 0.0000000001;
+
 	static int next_id;
 	
 	ConvexPrimitive::ConvexPrimitive(const ConvexPrimitive& c)
@@ -363,7 +365,6 @@ namespace phyz {
 			std::vector<Surface> surfaces;
 		};
 
-		double EPS = 0.00000000001;
 		std::vector<SurfaceGroup> groups;
 		for (const Surface& s : p.getSurfaces()) {
 			bool not_added_to_group = true;
@@ -406,16 +407,14 @@ namespace phyz {
 					}
 				}
 
-				double POS_EPS = 0.000000000001;
 				FaceCoordP min_u = all_points[0];
 				for (FaceCoordP p : all_points) {
-					if (abs(p.u - min_u.u) < POS_EPS) min_u = p.v < min_u.v ? p : min_u;
+					if (abs(p.u - min_u.u) < EPS) min_u = p.v < min_u.v ? p : min_u;
 					else if (p.u < min_u.u) min_u = p;
 				}
 				std::vector<FaceCoordP> hull_points = { min_u };
 				double anglefrom_u = 0; double anglefrom_v = 1; //for calculating angle via dot product
 
-				double COLINEAR_ANGLE_EPS = 0.00000000001;
 				int max_itr = 50000;
 				int itr = 0;
 				while (itr++ < max_itr) {
@@ -434,7 +433,7 @@ namespace phyz {
 						double normed_dot_value = (anglefrom_u * rel_pos_u + anglefrom_v * rel_pos_v) / dist;
 						double angle = acos(normed_dot_value);
 
-						if (abs(min_angle_angle - angle) < COLINEAR_ANGLE_EPS) {
+						if (abs(min_angle_angle - angle) < EPS) {
 							//points colinear- tiebreaker based on distance 
 							if (dist > min_angle_dist) {
 								min_angle_p = p;
@@ -543,6 +542,21 @@ namespace phyz {
 		}
 
 		gauss_map = computeGaussMap();
+
+#ifndef ndebug
+		//confirm all surfaces are actually flat
+		for (const phyz::Surface& s : getSurfaces()) {
+			mthz::Vec3 n = s.normal();
+			mthz::Vec3 ref_p = s.getPointI(0);
+			double ref_val = ref_p.dot(n);
+			for (int i = 1; i < s.n_points(); i++) {
+				double error = abs(s.getPointI(i).dot(n) - ref_val);
+				double dist = (s.getPointI(i) - ref_p).mag();
+				double ang = atan(error / dist) * 180 / PI;
+				assert(ang < 0.1);
+			}
+		}
+#endif
 	}
 
 	AABB Polyhedron::gen_AABB() const {
@@ -753,7 +767,7 @@ namespace phyz {
 
 			bool redundant = false;
 			for (GaussVert& g : g.face_verts) {
-				if (s1.normal().dot(g.v) < -0.999999999) {
+				if (s1.normal().dot(g.v) < -1 + EPS) {
 					redundant = true;
 					break;
 				}

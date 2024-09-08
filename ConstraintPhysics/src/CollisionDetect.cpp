@@ -641,6 +641,7 @@ namespace phyz {
 		ContactArea b_contact = findContactArea(b, (-1) * norm, b_maxP, min_pen.b_maxPID, u, w);
 
 		std::vector<ProjectedContactPoint> manifold_pool = clipContacts(a_contact, b_contact);
+		assert(manifold_pool.size() > 0);
 		double a_pen = min_pen.pen_depth;
 		double a_dot_val = a_maxP.dot(norm);
 		mthz::Vec3 n_offset = norm * a_dot_val;
