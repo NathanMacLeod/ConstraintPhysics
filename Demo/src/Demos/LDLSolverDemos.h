@@ -162,10 +162,10 @@ public:
 		p.setSleepingEnabled(false);
 
 		if (parameters["use_ldl"] == "2") {
-			p.setPGSIterations(25, 10, 5);
+			p.setPGSIterations(10, 5, 1);
 		}
 		else {
-			p.setPGSIterations(30, 15, 0);
+			p.setPGSIterations(4, 3, 0);
 		}
 
 		LDLDemoType demo_type;
@@ -382,7 +382,7 @@ public:
 			bodies.push_back({ fromGeometry(ball), ball_r });
 
 			//works well with a low CFM
-			p.setHolonomicSolverCFM(0.01);
+			p.setHolonomicSolverCFM(0.0000001);
 		}
 		else {
 			pos.y += 30;
@@ -418,14 +418,10 @@ public:
 			}
 		}
 
-		//p.setPistonTargetVelocity(scissor_slider, slider_force, 0);
-		//printf("current_pos: %f\n", p.getPistonPosition(scissor_slider));
-
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
 
-		float t = 0;
 		float fElapsedTime;
 
 		double mv_speed = 2;
@@ -491,7 +487,7 @@ public:
 				orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
 			}
 
-			/*if (rndr::getKeyPressed(GLFW_KEY_T)) {
+			if (rndr::getKeyPressed(GLFW_KEY_T)) {
 				for (PhysBod p : bodies) {
 					phyz::RigidBody* b = p.r;
 					if (b->getMovementType() == phyz::RigidBody::FIXED) continue;
@@ -510,9 +506,7 @@ public:
 
 				p.timeStep();
 				printf("%d\n", tick_count++);
-			}*/
-
-			t += fElapsedTime;
+			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_Y)) {
 				lock_cam = !lock_cam;
@@ -528,9 +522,10 @@ public:
 
 			phyz_time += fElapsedTime;
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
-			while (phyz_time > slow_factor * timestep) {
+			while (phyz_time > slow_factor * timestep && (tick_count < 120 || true)) {
 				phyz_time -= slow_factor * timestep;
 				p.timeStep();
+				tick_count++;
 			}
 
 			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));

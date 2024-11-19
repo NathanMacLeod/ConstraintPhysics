@@ -382,6 +382,13 @@ namespace phyz {
 			}
 		}
 
+		bool inspect_again = false;
+
+		if (inspect_again) {
+			maintainConstraintGraphApplyPoweredConstraints();
+		}
+
+
 		auto t6 = std::chrono::system_clock::now();
 
 		auto update_positions = [&](RigidBody* b) {

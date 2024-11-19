@@ -86,6 +86,14 @@ namespace phyz {
 		}
 	}
 
+	template<int n>
+	static double get_target_diff_magnitude(DegreedConstraint<n>* c) {
+		mthz::NVec<n> current_val = c->getConstraintValue(*c->a_velocity_change, *c->b_velocity_change);
+		mthz::NVec<n> target_val = c->target_val;
+
+		return (current_val - target_val).magSqrd();
+	}
+
 	static bool checkIfConverged(const std::vector<Constraint*>& constraints, const std::vector<double>& old_impulses, std::vector<double>* new_impulses, bool psuedo_velocity) {
 		write_all_impulses(constraints, new_impulses, psuedo_velocity);
 
@@ -94,6 +102,25 @@ namespace phyz {
 			double di = new_impulses->at(i) - old_impulses[i];
 			total_delta += di * di;
 		}
+
+		/*double target_diff = 0;
+		for (Constraint* c : constraints) {
+			double diff_sqrd = 0;
+			switch (c->getDegree()) {
+			case 1: diff_sqrd = get_target_diff_magnitude((DegreedConstraint<1>*)c); break;
+			case 2: diff_sqrd = get_target_diff_magnitude((DegreedConstraint<2>*)c); break;
+			case 3: diff_sqrd = get_target_diff_magnitude((DegreedConstraint<3>*)c); break;
+			case 4: diff_sqrd = get_target_diff_magnitude((DegreedConstraint<4>*)c); break;
+			case 5: diff_sqrd = get_target_diff_magnitude((DegreedConstraint<5>*)c); break;
+			case 6: diff_sqrd = get_target_diff_magnitude((DegreedConstraint<6>*)c); break;
+			}
+			target_diff += diff_sqrd;
+		}
+
+		printf("impulse delta magnitude: %f, target diff magnitude: %f\n", sqrt(total_delta), sqrt(target_diff));*/
+
+
+
 		return total_delta == 0;
 	}
 
@@ -196,6 +223,11 @@ namespace phyz {
 				for (HolonomicSystem* h : holonomic_systems) {
 					h->computeAndApplyImpulses(true);
 					h->computeAndApplyImpulses(false);
+
+					bool converged = checkIfConverged(constraints, *old_impulse_val_buff, new_impulse_val_buff, false);
+					std::vector<double>* tmp = old_impulse_val_buff;
+					old_impulse_val_buff = new_impulse_val_buff;
+					new_impulse_val_buff = tmp;
 				}
 
 				for (Constraint* c : constraints) {
@@ -206,6 +238,11 @@ namespace phyz {
 				}
 			}
 		}
+		
+		// =~=~=~=~=~=~=~=~=~=~=~=~
+		// =~=~=~VEL CHANGES~=~=~=~
+		// =~=~=~=~=~=~=~=~=~=~=~=~
+		printf("\n=~=~=~=~=~=~=~=~=~=~=~=~\n=~=~=~VEL CHANGES~=~=~=~\n=~=~=~=~=~=~=~=~=~=~=~=~\n");
 
 		for (const auto& kv_pair : velocity_changes) {
 			RigidBody* b = kv_pair.first;
@@ -215,6 +252,20 @@ namespace phyz {
 			mthz::Vec3 angular_change(deltaV->velocity_change.v[3], deltaV->velocity_change.v[4], deltaV->velocity_change.v[5]);
 			mthz::Vec3 psuedo_linear_change(deltaV->psuedo_vel_change.v[0], deltaV->psuedo_vel_change.v[1], deltaV->psuedo_vel_change.v[2]);
 			mthz::Vec3 psuedo_angular_change(deltaV->psuedo_vel_change.v[3], deltaV->psuedo_vel_change.v[4], deltaV->psuedo_vel_change.v[5]);
+
+			double holonomic_vel_change_cap = 3.5;
+			double psuedo_multiplier = 4;
+			double angle_multiplier = 0.5;
+			if (linear_change.mag() > holonomic_vel_change_cap) linear_change *= holonomic_vel_change_cap / linear_change.mag();
+			if (angular_change.mag() > holonomic_vel_change_cap * angle_multiplier) angular_change *= holonomic_vel_change_cap * angle_multiplier / angular_change.mag();
+			if (psuedo_linear_change.mag() > holonomic_vel_change_cap * psuedo_multiplier) psuedo_linear_change *= holonomic_vel_change_cap * psuedo_multiplier / psuedo_linear_change.mag();
+			if (psuedo_angular_change.mag() > holonomic_vel_change_cap * psuedo_multiplier * angle_multiplier) psuedo_angular_change *= holonomic_vel_change_cap * psuedo_multiplier * angle_multiplier / psuedo_angular_change.mag();
+
+			printf(
+				"vel_change: %f, %f %f; ang_vel_change: %f %f %f\n", 
+				linear_change.x, linear_change.y, linear_change.z, 
+				angular_change.x, angular_change.y, angular_change.z
+			);
 
 			pEngine->applyVelocityChange(b, linear_change, angular_change, psuedo_linear_change, psuedo_angular_change);
 			delete deltaV;

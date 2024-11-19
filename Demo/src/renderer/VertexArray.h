@@ -89,6 +89,7 @@ namespace rndr {
 
 		unsigned int remainingVertexCapacity() const;
 		unsigned int remainingIndexCapacity() const;
+		unsigned int remainingTextureCapacity() const;
 		inline unsigned int getIndexCount() const { return n_indices_allocated; }
 		inline unsigned int getTextureCount() const { return assigned_textures.size(); }
 
