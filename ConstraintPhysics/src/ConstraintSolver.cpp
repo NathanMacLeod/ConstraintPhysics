@@ -100,6 +100,8 @@ namespace phyz {
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
 	//the first third of this video explains it pretty well: https://www.youtube.com/watch?v=P-WP1yMOkc4 (Improving an Iterative Physics Solver Using a Direct Method)
 	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, double holonomic_block_solver_CFM, int n_itr_vel, int n_itr_pos, int n_itr_holonomic, ThreadManager::JobStatus* compute_inverse_status) {
+		auto t0 = std::chrono::system_clock::now();
+		
 		struct VelPair {
 			VelPair() : velocity_change({0.0}), psuedo_vel_change({0.0}) {} //initialize zeroed out
 			mthz::NVec<6> velocity_change;
@@ -179,11 +181,17 @@ namespace phyz {
 			if (converged) break;
 		}
 
+		auto t1 = std::chrono::system_clock::now();
+		//printf("PGS done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(t1 - t0).count());
+
 		if (holonomic_systems.size() > 0) {
 			bool holonomic_inverse_computed_in_parallel = compute_inverse_status != nullptr;
 			//If holonomic inverse is being computed in another thread, don't continue until it has finished
 			if (holonomic_inverse_computed_in_parallel) {
+				auto wait0 = std::chrono::system_clock::now();
 				compute_inverse_status->waitUntilDone();
+				auto wait1 = std::chrono::system_clock::now();
+				//printf("Waited %f milliseconds\n", 1000 * std::chrono::duration<float>(wait1 - wait0).count());
 			}
 			else {
 				for (HolonomicSystem* h : holonomic_systems) {

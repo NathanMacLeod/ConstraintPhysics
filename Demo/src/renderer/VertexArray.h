@@ -87,6 +87,7 @@ namespace rndr {
 		void push(void* vertex_data, int vertex_count, std::vector<unsigned int> index_data);
 		void flush();
 
+		unsigned int remainingTextureCapacity() const;
 		unsigned int remainingVertexCapacity() const;
 		unsigned int remainingIndexCapacity() const;
 		inline unsigned int getIndexCount() const { return n_indices_allocated; }

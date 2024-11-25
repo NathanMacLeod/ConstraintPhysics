@@ -162,7 +162,7 @@ public:
 		p.setSleepingEnabled(false);
 
 		if (parameters["use_ldl"] == "2") {
-			p.setPGSIterations(25, 10, 5);
+			p.setPGSIterations(0, 0, 1);
 		}
 		else {
 			p.setPGSIterations(30, 15, 0);
@@ -382,7 +382,7 @@ public:
 			bodies.push_back({ fromGeometry(ball), ball_r });
 
 			//works well with a low CFM
-			p.setHolonomicSolverCFM(0.01);
+			p.setHolonomicSolverCFM(0);
 		}
 		else {
 			pos.y += 30;
@@ -435,6 +435,8 @@ public:
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
 
 		int tick_count = 0;
+
+		bool paused = true;
 
 		while (rndr::render_loop(&fElapsedTime)) {
 
@@ -524,9 +526,15 @@ public:
 				return;
 			}
 
+			if (rndr::getKeyPressed(GLFW_KEY_P)) {
+				paused = !paused;
+			}
+
 			double slow_factor = 1;
 
-			phyz_time += fElapsedTime;
+			if (!paused) {
+				phyz_time += fElapsedTime;
+			}
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
 			while (phyz_time > slow_factor * timestep) {
 				phyz_time -= slow_factor * timestep;

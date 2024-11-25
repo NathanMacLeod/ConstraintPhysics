@@ -344,6 +344,18 @@ namespace phyz {
 		//the block will end up having a non-zero value.
 	}
 
+	template<int c1_degree>
+	static void computeBlockInitialValueDegreedHelper(double* target, DegreedConstraint<c1_degree>* d1, Constraint* c2) {
+		switch (c2->getDegree()) {
+		case 1: computeBlockInitialValueDegreed(target, d1, (DegreedConstraint<1>*)c2); break;
+		case 2: computeBlockInitialValueDegreed(target, d1, (DegreedConstraint<2>*)c2); break;
+		case 3: computeBlockInitialValueDegreed(target, d1, (DegreedConstraint<3>*)c2); break;
+		case 4: computeBlockInitialValueDegreed(target, d1, (DegreedConstraint<4>*)c2); break;
+		case 5: computeBlockInitialValueDegreed(target, d1, (DegreedConstraint<5>*)c2); break;
+		case 6: computeBlockInitialValueDegreed(target, d1, (DegreedConstraint<6>*)c2); break;
+		}
+	}
+
 	static void computeBlockInitialValue(double* target, Constraint* c1, Constraint* c2, double cfm);
 
 	//note this method computes the dot of a row on the left matrix and a row on the right matrix,
@@ -562,68 +574,26 @@ namespace phyz {
 		}
 	}
 
+	template<int block_width>
+	static void multMatWithVecDegreedHelper(int block_height, std::vector<double>* target, int write_index, std::vector<double>& source_vector, int source_index, double* matrix_source) {
+		switch (block_height) {
+		case 1: multMatWithVecDegreed<block_width, 1>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 2: multMatWithVecDegreed<block_width, 2>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 3: multMatWithVecDegreed<block_width, 3>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 4: multMatWithVecDegreed<block_width, 4>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 5: multMatWithVecDegreed<block_width, 5>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 6: multMatWithVecDegreed<block_width, 6>(target, write_index, source_vector, source_index, matrix_source); break;
+		}
+	}
+
 	static void multMatWithVec(int block_width, int block_height, std::vector<double>* target, int write_index, std::vector<double>& source_vector, int source_index, double* matrix_source) {
 		switch (block_width) {
-		case 1:
-			switch (block_height) {
-			case 1: multMatWithVecDegreed<1, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatWithVecDegreed<1, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatWithVecDegreed<1, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatWithVecDegreed<1, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatWithVecDegreed<1, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatWithVecDegreed<1, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 2:
-			switch (block_height) {
-			case 1: multMatWithVecDegreed<2, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatWithVecDegreed<2, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatWithVecDegreed<2, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatWithVecDegreed<2, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatWithVecDegreed<2, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatWithVecDegreed<2, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 3:
-			switch (block_height) {
-			case 1: multMatWithVecDegreed<3, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatWithVecDegreed<3, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatWithVecDegreed<3, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatWithVecDegreed<3, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatWithVecDegreed<3, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatWithVecDegreed<3, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 4:
-			switch (block_height) {
-			case 1: multMatWithVecDegreed<4, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatWithVecDegreed<4, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatWithVecDegreed<4, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatWithVecDegreed<4, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatWithVecDegreed<4, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatWithVecDegreed<4, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 5:
-			switch (block_height) {
-			case 1: multMatWithVecDegreed<5, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatWithVecDegreed<5, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatWithVecDegreed<5, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatWithVecDegreed<5, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatWithVecDegreed<5, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatWithVecDegreed<5, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 6:
-			switch (block_height) {
-			case 1: multMatWithVecDegreed<6, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatWithVecDegreed<6, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatWithVecDegreed<6, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatWithVecDegreed<6, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatWithVecDegreed<6, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatWithVecDegreed<6, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
+		case 1: multMatWithVecDegreedHelper<1>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 2: multMatWithVecDegreedHelper<2>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 3: multMatWithVecDegreedHelper<3>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 4: multMatWithVecDegreedHelper<4>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 5: multMatWithVecDegreedHelper<5>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 6: multMatWithVecDegreedHelper<6>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
 		}
 	}
 
@@ -641,68 +611,26 @@ namespace phyz {
 		}
 	}
 
+	template<int block_width>
+	static void multMatTransposedWithVecDegreedHelper(int block_height, std::vector<double>* target, int write_index, std::vector<double>& source_vector, int source_index, double* matrix_source) {
+		switch (block_height) {
+		case 1: multMatTransposedWithVecDegreed<block_width, 1>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 2: multMatTransposedWithVecDegreed<block_width, 2>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 3: multMatTransposedWithVecDegreed<block_width, 3>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 4: multMatTransposedWithVecDegreed<block_width, 4>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 5: multMatTransposedWithVecDegreed<block_width, 5>(target, write_index, source_vector, source_index, matrix_source); break;
+		case 6: multMatTransposedWithVecDegreed<block_width, 6>(target, write_index, source_vector, source_index, matrix_source); break;
+		}
+	}
+
 	static void multMatTransposedWithVec(int block_width, int block_height, std::vector<double>* target, int write_index, std::vector<double>& source_vector, int source_index, double* matrix_source) {
 		switch (block_width) {
-		case 1:
-			switch (block_height) {
-			case 1: multMatTransposedWithVecDegreed<1, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatTransposedWithVecDegreed<1, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatTransposedWithVecDegreed<1, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatTransposedWithVecDegreed<1, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatTransposedWithVecDegreed<1, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatTransposedWithVecDegreed<1, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 2:
-			switch (block_height) {
-			case 1: multMatTransposedWithVecDegreed<2, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatTransposedWithVecDegreed<2, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatTransposedWithVecDegreed<2, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatTransposedWithVecDegreed<2, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatTransposedWithVecDegreed<2, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatTransposedWithVecDegreed<2, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 3:
-			switch (block_height) {
-			case 1: multMatTransposedWithVecDegreed<3, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatTransposedWithVecDegreed<3, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatTransposedWithVecDegreed<3, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatTransposedWithVecDegreed<3, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatTransposedWithVecDegreed<3, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatTransposedWithVecDegreed<3, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 4:
-			switch (block_height) {
-			case 1: multMatTransposedWithVecDegreed<4, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatTransposedWithVecDegreed<4, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatTransposedWithVecDegreed<4, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatTransposedWithVecDegreed<4, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatTransposedWithVecDegreed<4, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatTransposedWithVecDegreed<4, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 5:
-			switch (block_height) {
-			case 1: multMatTransposedWithVecDegreed<5, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatTransposedWithVecDegreed<5, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatTransposedWithVecDegreed<5, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatTransposedWithVecDegreed<5, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatTransposedWithVecDegreed<5, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatTransposedWithVecDegreed<5, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
-		case 6:
-			switch (block_height) {
-			case 1: multMatTransposedWithVecDegreed<6, 1>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 2: multMatTransposedWithVecDegreed<6, 2>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 3: multMatTransposedWithVecDegreed<6, 3>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 4: multMatTransposedWithVecDegreed<6, 4>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 5: multMatTransposedWithVecDegreed<6, 5>(target, write_index, source_vector, source_index, matrix_source); break;
-			case 6: multMatTransposedWithVecDegreed<6, 6>(target, write_index, source_vector, source_index, matrix_source); break;
-			}
-			break;
+		case 1: multMatTransposedWithVecDegreedHelper<1>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 2: multMatTransposedWithVecDegreedHelper<2>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 3: multMatTransposedWithVecDegreedHelper<3>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 4: multMatTransposedWithVecDegreedHelper<4>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 5: multMatTransposedWithVecDegreedHelper<5>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
+		case 6: multMatTransposedWithVecDegreedHelper<6>(block_height, target, write_index, source_vector, source_index, matrix_source); break;
 		}
 	}
 
@@ -727,86 +655,13 @@ namespace phyz {
 			return;
 		}
 
-		//lol
 		switch (c1->getDegree()) {
-		case 1:
-		{
-			DegreedConstraint<1>* d1 = (DegreedConstraint<1>*)c1;
-			switch (c2->getDegree()) {
-			case 1: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<1>*)c2); break;
-			case 2: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<2>*)c2); break;
-			case 3: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<3>*)c2); break;
-			case 4: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<4>*)c2); break;
-			case 5: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<5>*)c2); break;
-			case 6: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<6>*)c2); break;
-			}
-			break;
-		}
-		case 2:
-		{
-			DegreedConstraint<2>* d1 = (DegreedConstraint<2>*)c1;
-			switch (c2->getDegree()) {
-			case 1: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<1>*)c2); break;
-			case 2: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<2>*)c2); break;
-			case 3: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<3>*)c2); break;
-			case 4: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<4>*)c2); break;
-			case 5: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<5>*)c2); break;
-			case 6: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<6>*)c2); break;
-			}
-			break;
-		}
-		case 3:
-		{
-			DegreedConstraint<3>* d1 = (DegreedConstraint<3>*)c1;
-			switch (c2->getDegree()) {
-			case 1: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<1>*)c2); break;
-			case 2: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<2>*)c2); break;
-			case 3: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<3>*)c2); break;
-			case 4: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<4>*)c2); break;
-			case 5: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<5>*)c2); break;
-			case 6: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<6>*)c2); break;
-			}
-			break;
-		}
-		case 4:
-		{
-			DegreedConstraint<4>* d1 = (DegreedConstraint<4>*)c1;
-			switch (c2->getDegree()) {
-			case 1: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<1>*)c2); break;
-			case 2: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<2>*)c2); break;
-			case 3: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<3>*)c2); break;
-			case 4: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<4>*)c2); break;
-			case 5: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<5>*)c2); break;
-			case 6: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<6>*)c2); break;
-			}
-			break;
-		}
-		case 5:
-		{
-			DegreedConstraint<5>* d1 = (DegreedConstraint<5>*)c1;
-			switch (c2->getDegree()) {
-			case 1: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<1>*)c2); break;
-			case 2: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<2>*)c2); break;
-			case 3: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<3>*)c2); break;
-			case 4: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<4>*)c2); break;
-			case 5: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<5>*)c2); break;
-			case 6: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<6>*)c2); break;
-			}
-			break;
-		}
-		case 6:
-		{
-			DegreedConstraint<6>* d1 = (DegreedConstraint<6>*)c1;
-			switch (c2->getDegree()) {
-			case 1: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<1>*)c2); break;
-			case 2: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<2>*)c2); break;
-			case 3: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<3>*)c2); break;
-			case 4: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<4>*)c2); break;
-			case 5: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<5>*)c2); break;
-			case 6: computeBlockInitialValueDegreed(block_pos, d1, (DegreedConstraint<6>*)c2); break;
-			}
-			break;
-		}
+		case 1: computeBlockInitialValueDegreedHelper(block_pos, (DegreedConstraint<1>*)c1, c2); break;
+		case 2: computeBlockInitialValueDegreedHelper(block_pos, (DegreedConstraint<2>*)c1, c2); break;
+		case 3: computeBlockInitialValueDegreedHelper(block_pos, (DegreedConstraint<3>*)c1, c2); break;
+		case 4: computeBlockInitialValueDegreedHelper(block_pos, (DegreedConstraint<4>*)c1, c2); break;
+		case 5: computeBlockInitialValueDegreedHelper(block_pos, (DegreedConstraint<5>*)c1, c2); break;
+		case 6: computeBlockInitialValueDegreedHelper(block_pos, (DegreedConstraint<6>*)c1, c2); break;
 		}
 	}
 
@@ -821,68 +676,26 @@ namespace phyz {
 		}
 	}
 
+	template<int block_width>
+	static void calculateLowerTriangleBlockDegreedHelper(int block_height, double* target, double* lower_triangle_source, double* inverse_diagonal_block) {
+		switch (block_height) {
+		case 1: calculateLowerTriangleBlockDegreed<block_width, 1>(target, lower_triangle_source, inverse_diagonal_block); break;
+		case 2: calculateLowerTriangleBlockDegreed<block_width, 2>(target, lower_triangle_source, inverse_diagonal_block); break;
+		case 3: calculateLowerTriangleBlockDegreed<block_width, 3>(target, lower_triangle_source, inverse_diagonal_block); break;
+		case 4: calculateLowerTriangleBlockDegreed<block_width, 4>(target, lower_triangle_source, inverse_diagonal_block); break;
+		case 5: calculateLowerTriangleBlockDegreed<block_width, 5>(target, lower_triangle_source, inverse_diagonal_block); break;
+		case 6: calculateLowerTriangleBlockDegreed<block_width, 6>(target, lower_triangle_source, inverse_diagonal_block); break;
+		}
+	}
+
 	static void calculateLowerTriangleBlock(int block_width, int block_height, double* target, double* lower_triangle_source, double* inverse_diagonal_block) {
 		switch (block_width) {
-		case 1:
-			switch (block_height) {
-			case 1: calculateLowerTriangleBlockDegreed<1, 1>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 2: calculateLowerTriangleBlockDegreed<1, 2>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 3: calculateLowerTriangleBlockDegreed<1, 3>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 4: calculateLowerTriangleBlockDegreed<1, 4>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 5: calculateLowerTriangleBlockDegreed<1, 5>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 6: calculateLowerTriangleBlockDegreed<1, 6>(target, lower_triangle_source, inverse_diagonal_block); break;
-			}
-			break;
-		case 2:
-			switch (block_height) {
-			case 1: calculateLowerTriangleBlockDegreed<2, 1>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 2: calculateLowerTriangleBlockDegreed<2, 2>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 3: calculateLowerTriangleBlockDegreed<2, 3>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 4: calculateLowerTriangleBlockDegreed<2, 4>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 5: calculateLowerTriangleBlockDegreed<2, 5>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 6: calculateLowerTriangleBlockDegreed<2, 6>(target, lower_triangle_source, inverse_diagonal_block); break;
-			}
-			break;
-		case 3:
-			switch (block_height) {
-			case 1: calculateLowerTriangleBlockDegreed<3, 1>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 2: calculateLowerTriangleBlockDegreed<3, 2>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 3: calculateLowerTriangleBlockDegreed<3, 3>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 4: calculateLowerTriangleBlockDegreed<3, 4>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 5: calculateLowerTriangleBlockDegreed<3, 5>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 6: calculateLowerTriangleBlockDegreed<3, 6>(target, lower_triangle_source, inverse_diagonal_block); break;
-			}
-			break;
-		case 4:
-			switch (block_height) {
-			case 1: calculateLowerTriangleBlockDegreed<4, 1>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 2: calculateLowerTriangleBlockDegreed<4, 2>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 3: calculateLowerTriangleBlockDegreed<4, 3>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 4: calculateLowerTriangleBlockDegreed<4, 4>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 5: calculateLowerTriangleBlockDegreed<4, 5>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 6: calculateLowerTriangleBlockDegreed<4, 6>(target, lower_triangle_source, inverse_diagonal_block); break;
-			}
-			break;
-		case 5:
-			switch (block_height) {
-			case 1: calculateLowerTriangleBlockDegreed<5, 1>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 2: calculateLowerTriangleBlockDegreed<5, 2>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 3: calculateLowerTriangleBlockDegreed<5, 3>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 4: calculateLowerTriangleBlockDegreed<5, 4>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 5: calculateLowerTriangleBlockDegreed<5, 5>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 6: calculateLowerTriangleBlockDegreed<5, 6>(target, lower_triangle_source, inverse_diagonal_block); break;
-			}
-			break;
-		case 6:
-			switch (block_height) {
-			case 1: calculateLowerTriangleBlockDegreed<6, 1>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 2: calculateLowerTriangleBlockDegreed<6, 2>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 3: calculateLowerTriangleBlockDegreed<6, 3>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 4: calculateLowerTriangleBlockDegreed<6, 4>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 5: calculateLowerTriangleBlockDegreed<6, 5>(target, lower_triangle_source, inverse_diagonal_block); break;
-			case 6: calculateLowerTriangleBlockDegreed<6, 6>(target, lower_triangle_source, inverse_diagonal_block); break;
-			}
-			break;
+		case 1: calculateLowerTriangleBlockDegreedHelper<1>(block_height, target, lower_triangle_source, inverse_diagonal_block); break;
+		case 2: calculateLowerTriangleBlockDegreedHelper<2>(block_height, target, lower_triangle_source, inverse_diagonal_block); break;
+		case 3: calculateLowerTriangleBlockDegreedHelper<3>(block_height, target, lower_triangle_source, inverse_diagonal_block); break;
+		case 4: calculateLowerTriangleBlockDegreedHelper<4>(block_height, target, lower_triangle_source, inverse_diagonal_block); break;
+		case 5: calculateLowerTriangleBlockDegreedHelper<5>(block_height, target, lower_triangle_source, inverse_diagonal_block); break;
+		case 6: calculateLowerTriangleBlockDegreedHelper<6>(block_height, target, lower_triangle_source, inverse_diagonal_block); break;
 		}
 	}
 
@@ -895,69 +708,27 @@ namespace phyz {
 		}
 	}
 
+	template<int block_width, int edge_width>
+	static void computeLowerDiagonalBlockDegreedHelper(int block_height, double* target, double* ldtb_source, double* ldtb_buffer_source) {
+		switch (block_height) {
+		case 1: computeLowerDiagonalBlockDegreed<block_width, 1, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
+		case 2: computeLowerDiagonalBlockDegreed<block_width, 2, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
+		case 3: computeLowerDiagonalBlockDegreed<block_width, 3, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
+		case 4: computeLowerDiagonalBlockDegreed<block_width, 4, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
+		case 5: computeLowerDiagonalBlockDegreed<block_width, 5, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
+		case 6: computeLowerDiagonalBlockDegreed<block_width, 6, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
+		}
+	}
+
 	template<int edge_width>
 	static void computeLowerDiagonalBlock(int block_width, int block_height, double* target, double* ldtb_source, double* ldtb_buffer_source) {
 		switch (block_width) {
-		case 1:
-			switch (block_height) {
-			case 1: computeLowerDiagonalBlockDegreed<1, 1, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 2: computeLowerDiagonalBlockDegreed<1, 2, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 3: computeLowerDiagonalBlockDegreed<1, 3, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 4: computeLowerDiagonalBlockDegreed<1, 4, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 5: computeLowerDiagonalBlockDegreed<1, 5, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 6: computeLowerDiagonalBlockDegreed<1, 6, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			}
-			break;
-		case 2:
-			switch (block_height) {
-			case 1: computeLowerDiagonalBlockDegreed<2, 1, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 2: computeLowerDiagonalBlockDegreed<2, 2, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 3: computeLowerDiagonalBlockDegreed<2, 3, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 4: computeLowerDiagonalBlockDegreed<2, 4, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 5: computeLowerDiagonalBlockDegreed<2, 5, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 6: computeLowerDiagonalBlockDegreed<2, 6, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			}
-			break;
-		case 3:
-			switch (block_height) {
-			case 1: computeLowerDiagonalBlockDegreed<3, 1, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 2: computeLowerDiagonalBlockDegreed<3, 2, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 3: computeLowerDiagonalBlockDegreed<3, 3, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 4: computeLowerDiagonalBlockDegreed<3, 4, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 5: computeLowerDiagonalBlockDegreed<3, 5, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 6: computeLowerDiagonalBlockDegreed<3, 6, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			}
-			break;
-		case 4:
-			switch (block_height) {
-			case 1: computeLowerDiagonalBlockDegreed<4, 1, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 2: computeLowerDiagonalBlockDegreed<4, 2, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 3: computeLowerDiagonalBlockDegreed<4, 3, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 4: computeLowerDiagonalBlockDegreed<4, 4, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 5: computeLowerDiagonalBlockDegreed<4, 5, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 6: computeLowerDiagonalBlockDegreed<4, 6, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			}
-			break;
-		case 5:
-			switch (block_height) {
-			case 1: computeLowerDiagonalBlockDegreed<5, 1, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 2: computeLowerDiagonalBlockDegreed<5, 2, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 3: computeLowerDiagonalBlockDegreed<5, 3, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 4: computeLowerDiagonalBlockDegreed<5, 4, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 5: computeLowerDiagonalBlockDegreed<5, 5, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 6: computeLowerDiagonalBlockDegreed<5, 6, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			}
-			break;
-		case 6:
-			switch (block_height) {
-			case 1: computeLowerDiagonalBlockDegreed<6, 1, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 2: computeLowerDiagonalBlockDegreed<6, 2, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 3: computeLowerDiagonalBlockDegreed<6, 3, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 4: computeLowerDiagonalBlockDegreed<6, 4, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 5: computeLowerDiagonalBlockDegreed<6, 5, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			case 6: computeLowerDiagonalBlockDegreed<6, 6, edge_width>(target, ldtb_source, ldtb_buffer_source); break;
-			}
-			break;
+		case 1: computeLowerDiagonalBlockDegreedHelper<1, edge_width>(block_height, target, ldtb_source, ldtb_buffer_source); break;
+		case 2: computeLowerDiagonalBlockDegreedHelper<2, edge_width>(block_height, target, ldtb_source, ldtb_buffer_source); break;
+		case 3: computeLowerDiagonalBlockDegreedHelper<3, edge_width>(block_height, target, ldtb_source, ldtb_buffer_source); break;
+		case 4: computeLowerDiagonalBlockDegreedHelper<4, edge_width>(block_height, target, ldtb_source, ldtb_buffer_source); break;
+		case 5: computeLowerDiagonalBlockDegreedHelper<5, edge_width>(block_height, target, ldtb_source, ldtb_buffer_source); break;
+		case 6: computeLowerDiagonalBlockDegreedHelper<6, edge_width>(block_height, target, ldtb_source, ldtb_buffer_source); break;
 		}
 	}
 

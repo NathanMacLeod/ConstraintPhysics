@@ -54,6 +54,8 @@ namespace phyz {
 	static int i = 0;
 	void PhysicsEngine::timeStep() {
 
+		//printf("\n======NEW TIMESTEP=====\n");
+
 		//remove deleted bodies from relevant structures
 		while (!bodies_to_delete.empty()) {
 			RigidBody* to_delete = bodies_to_delete.back();
@@ -363,6 +365,8 @@ namespace phyz {
 				thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
 					[&, size, i](HolonomicSystem* h, int index) {
 						h->computeInverse(holonomic_block_solver_CFM);
+						auto donet = std::chrono::system_clock::now();
+						//printf("Compute inverse done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(donet - t5).count());
 					}, &compute_holonomic_inverses_status[i]
 				);
 			}
