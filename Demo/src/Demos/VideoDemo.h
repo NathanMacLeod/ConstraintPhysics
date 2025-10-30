@@ -114,13 +114,11 @@ public:
 		int hit_count = 0;
 	};
 
-	std::string message = "This repository includes the precomputation colors (saved in Demo/resources/precomputation/bad_apple_colors.txt) generated such that the animation will work for my system, but there is no gurantee that they will work for yours.\n"
-		"If they do not work, and you want to run the animation, you will have to recompute them yourself. First, delete the old precomputation. Then, you will need the frames of Bad Apple to generate the precomputation.\n\n"
-		"For size reasons, the frames are not included in the repository.\n"
+	std::string message =  "You will need the frames of Bad Apple to generate the precomputation. For size reasons, the frames are not included in the repository.\n"
 		"a zip of the files can be downloaded from here:\n"
 		"https://drive.google.com/file/d/1shzoR-C-iM0UoIdzUDJGmQgXZ7tUFtMA/view?usp=sharing\n\n"
 		"Simply unzip the contents into the directory Demo/resources/precomputations/bad_apple\n"
-		"Such that the file path of each frame is Demo/resources/precomputations/bad_apple/bad_apple_frame_i.png\n";
+		"Such that the file path of each frame is Demo/resources/bad_apple/bad_apple_frames/bad_apple_frame_i.png\n";
 
 	void run() override {
 
@@ -334,8 +332,8 @@ public:
 		});
 
 		int tick_count = 0;
-		int frame_count = 0;
-		int N_FRAMES = 6572;
+		int frame_count = 52;
+		int N_FRAMES = 60;// 6572;
 		int n_balls_spawned = 0;
 		double video_aspect_ratio = 360.0 / 480.0;
 		unsigned int starting_id = p.getNextBodyID(); //id of all spawned balls >= this number

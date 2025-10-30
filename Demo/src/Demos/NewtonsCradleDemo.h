@@ -53,7 +53,7 @@ public:
 		p.setSleepingEnabled(false);
 		p.setPGSIterations(45, 35);
 		p.setGlobalConstraintForceMixing(0.01);
-		p.setPrintPerformanceData(true);
+		//p.setPrintPerformanceData(true);
 		p.setStep_time(1.0 / 200);
 		//p.setWarmStartDisabled(true);
 

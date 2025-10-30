@@ -764,10 +764,10 @@ public:
 				return;
 			}
 
-			if (rndr::getKeyPressed(GLFW_KEY_T)) {
-				//p.disallowCollision(pinion_r, steering_wheel_rod3_r);
-				//p.timeStep();
-			}
+			//if (rndr::getKeyPressed(GLFW_KEY_T)) {
+			//	//p.disallowCollision(pinion_r, steering_wheel_rod3_r);
+			//	//p.timeStep();
+			//}
 
 			/*if (rndr::getKeyPressed(GLFW_KEY_T)) {
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));

@@ -33,7 +33,7 @@ public:
 		p.setSleepingEnabled(true);
 		p.setPGSIterations(85, 35);
 		p.setGlobalConstraintForceMixing(0.01);
-		p.setPrintPerformanceData(true);
+		//p.setPrintPerformanceData(true);
 		//p.setWarmStartDisabled(true);
 
 		bool lock_cam = true;

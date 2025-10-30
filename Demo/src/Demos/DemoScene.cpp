@@ -114,7 +114,7 @@ std::string DemoScene::pickParameterFromOptions(const std::string& prompt, const
 		return false;
 	};
 
-	std::string error_message = "Incorrect options. Valid options are: ";
+	std::string error_message = "Invalid option. Valid options are: ";
 	for (int i = 0; i < options.size(); i++) {
 		if (i + 1 < options.size()) error_message += std::format("{}, ", options[i]);
 		else						error_message += std::format("{}: ", options[i]);

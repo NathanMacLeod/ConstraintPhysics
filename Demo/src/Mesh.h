@@ -55,7 +55,7 @@ static struct color {
 	float specular_k = 0.7;
 	float specular_p = 5.0;
 
-	bool operator==(const color& c) {
+	bool operator==(const color& c) const {
 		return r == c.r && g == c.g && b == c.b;
  	}
 };

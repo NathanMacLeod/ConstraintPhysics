@@ -22,7 +22,7 @@
 int main() {
 
 	DemoManager manager;
-	manager.registerScene("Rock Paper Scissors", "Red converts green, green converts blue, and blue converts red.", [](DemoManager* m, DemoProperties p) { return new ColActionDemo(m, p); });
+	//manager.registerScene("Rock Paper Scissors", "Red converts green, green converts blue, and blue converts red.", [](DemoManager* m, DemoProperties p) { return new ColActionDemo(m, p); });
 	manager.registerScene("Wrecking Ball", "Knock over a tower with a simulated wrecking ball.", [](DemoManager* m, DemoProperties p) { return new WreckingBallDemo(m, p); });
 	manager.registerScene("Precomputed Simulation", "Precompute and view a simulation of colored falling blocks, whose final resting position will create an image.", [](DemoManager* m, DemoProperties p) { return new ImageDemo(m, p); });
 	manager.registerScene("Simulated Car", "Drive a simulated car, featuring a working steering wheel and differential.", [](DemoManager* m, DemoProperties p) { return new CarDemo(m, p); });
@@ -32,7 +32,7 @@ int main() {
 	manager.registerScene("Trebuchet", "Launch projectiles with a simulated floating-arm trebuchet.", [](DemoManager* m, DemoProperties p) { return new TrebuchetDemo(m, p); });
 	manager.registerScene("Angular Momentum Demo", "A common demonstration of the conservation of angular momentom, recreated in the engine", [](DemoManager* m, DemoProperties p) { return new AngularMomentumDemo(m, p); });
 	manager.registerScene("Gyroscope", "A simulated gyroscope", [](DemoManager* m, DemoProperties p) { return new GyroscopeDemo(m, p); });
-	manager.registerScene("Bad Apple Demo", "Renders bad apple veeerrryyyyy slowly. NOTE: comes with an existing precomputation, which may or may not work on your system. Run for more info", [](DemoManager* m, DemoProperties p) { return new VideoDemo(m, p); });
+	manager.registerScene("Bad Apple Demo", "Renders bad apple veeerrryyyyy slowly. Requires precomputation before the first run, which takes a very long time.", [](DemoManager* m, DemoProperties p) { return new VideoDemo(m, p); });
 	manager.registerScene("Newtons Cradle", "Newtons cradle.", [](DemoManager* m, DemoProperties p) { return new NewtonsCradleDemo(m, p); });
 	manager.registerScene("Marble Machine", "A functioning marble machine downloaded from a 3d printing site.", [](DemoManager* m, DemoProperties p) { return new MarbleMachineDemo(m, p); });
 	manager.registerScene("Stanford Armadillo", "oh yeah", [](DemoManager* m, DemoProperties p) { return new StanfordArmadillo(m, p); });

@@ -22,6 +22,15 @@ public:
 			"Choose to run the demo using 1) Normal PGS solver; 2) LDL-PGS solver: ", { "1", "2" }
 		);
 
+		// for the high mass ratio demo with LDL, ask whether to use a stable or unstable tick rate
+		if (out["which_demo"] == "2" && out["use_ldl"] == "2") {
+			out["unstable_tickrate"] = pickParameterFromOptions("Choose to run the scene 1) high tick rate, so scene runs stable 2) low tick rate, to see the simulation fail: ", { "1", "2" });
+		}
+		else {
+			//default to high tick rate
+			out["unstable_tickrate"] = "1";
+		}
+
 		return out;
 	}
 
@@ -153,7 +162,7 @@ public:
 
 	void run() override {
 
-		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
+		rndr::init(properties.window_width, properties.window_height, "LDL Solver Demo");
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
 		}
@@ -162,11 +171,12 @@ public:
 		p.setSleepingEnabled(false);
 
 		if (parameters["use_ldl"] == "2") {
-			p.setPGSIterations(0, 0, 1);
+			p.setPGSIterations(5, 2, 1);
 		}
 		else {
-			p.setPGSIterations(30, 15, 0);
+			p.setPGSIterations(5, 2, 0);
 		}
+
 
 		LDLDemoType demo_type;
 		std::string demo_response = parameters["which_demo"];
@@ -174,7 +184,10 @@ public:
 		else if (demo_response == "2") demo_type = HIGH_MASS_RATIO;
 		else if (demo_response == "3") demo_type = BRIDGE;
 
-		double timestep = 1 / 120.0;
+		double timestep = 1 / 160.0;
+		if (parameters["unstable_tickrate"] == "2") {
+			timestep = 1 / 120.0;
+		}
 		p.setStep_time(timestep);
 
 		bool lock_cam = false;
@@ -436,7 +449,7 @@ public:
 
 		int tick_count = 0;
 
-		bool paused = true;
+		bool paused = false;
 
 		while (rndr::render_loop(&fElapsedTime)) {
 
@@ -493,8 +506,8 @@ public:
 				orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
 			}
 
-			/*if (rndr::getKeyPressed(GLFW_KEY_T)) {
-				for (PhysBod p : bodies) {
+			if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				/*for (PhysBod p : bodies) {
 					phyz::RigidBody* b = p.r;
 					if (b->getMovementType() == phyz::RigidBody::FIXED) continue;
 
@@ -508,11 +521,11 @@ public:
 						v.x, v.y, v.z,
 						a.x, a.y, a.z
 					);
-				}
+				}*/
 
 				p.timeStep();
 				printf("%d\n", tick_count++);
-			}*/
+			}
 
 			t += fElapsedTime;
 

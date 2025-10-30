@@ -57,7 +57,7 @@ public:
 		//***********
 		//****BOX****
 		//***********
-		double box_size = 10;
+		double box_size = 0.2;
 		double wall_width = 0.25;
 
 		phyz::Material bouncy{ phyz::CFM{phyz::USE_GLOBAL}, 1.0, 1.0, 0.0, 0.0 };
