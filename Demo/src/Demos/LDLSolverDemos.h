@@ -344,7 +344,7 @@ public:
 			p.disallowCollisionSet(all_bodies);
 
 			//works well with a low CFM
-			p.setHolonomicSolverCFM(0.00001);
+			p.setHolonomicSolverCFM(0.000000001);
 		}
 		else if (demo_type == HIGH_MASS_RATIO) {
 			pos.x += 20;
@@ -427,7 +427,7 @@ public:
 
 
 				//works well with a high CFM
-				p.setHolonomicSolverCFM(0.000001);
+				p.setHolonomicSolverCFM(0.0001);
 			}
 		}
 

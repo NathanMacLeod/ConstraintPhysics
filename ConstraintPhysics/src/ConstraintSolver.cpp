@@ -206,6 +206,7 @@ namespace phyz {
 					h->computeAndApplyImpulses(false);
 				}
 
+				// iterate over non-holonomic constraints again
 				for (Constraint* c : constraints) {
 					if (c->is_in_holonomic_system) continue;
 
