@@ -19,14 +19,14 @@ static char* getToken(char* s, const char* delim, char** next_token) {
 	return token;
 }
 
-static void outputData(MeshColliderOutput* out, bool is_current_object_collider, const std::string current_object_name, const std::vector<mthz::Vec3>& current_vertices, const std::vector<std::vector<int>>& current_face_indices) {
+static void outputData(MeshColliderOutput* out, bool is_current_object_collider, const std::string current_object_name, const std::vector<mthz::Vec3>& current_vertices, const std::vector<std::vector<uint32_t>>& current_face_indices) {
 	if (is_current_object_collider) {
 		out->colliders[current_object_name] = phyz::ConvexUnionGeometry(phyz::ConvexPrimitive((const phyz::ConvexGeometry&)phyz::Polyhedron::getPolyAfterFindMergedCoplanarFaces(phyz::Polyhedron(current_vertices, current_face_indices)), phyz::Material::default_material()));
 	}
 	else {
 		//this whole code block is super dumb but is also a temporary hack. Will have to redo things anyway when textures are added
-		std::vector<std::vector<unsigned int>> unsigned_face_indices;
-		for (const std::vector<int>& face_indices : current_face_indices) {
+		std::vector<std::vector<uint32_t>> unsigned_face_indices;
+		for (const std::vector<uint32_t>& face_indices : current_face_indices) {
 			std::vector<unsigned int> unsigned_face;
 			for (int i : face_indices) unsigned_face.push_back(i);
 			unsigned_face_indices.push_back(unsigned_face);
@@ -41,13 +41,13 @@ MeshColliderOutput readMeshAndColliders(std::string formatted_obj_path, double s
 	
 	MeshColliderOutput out;
 
-	int vertex_offset = 1;
+	uint32_t vertex_offset = 1;
 
 	bool no_current_object = true;
 	bool is_current_object_collider;
 	std::string current_object_name;
 	std::vector<mthz::Vec3> current_vertices;
-	std::vector<std::vector<int>> current_face_indices;
+	std::vector<std::vector<uint32_t>> current_face_indices;
 
 	std::string line;
 
@@ -64,7 +64,7 @@ MeshColliderOutput readMeshAndColliders(std::string formatted_obj_path, double s
 			if (strcmp(token, "g") == 0) { //new group
 				if (!no_current_object) {
 					outputData(&out, is_current_object_collider, current_object_name, current_vertices, current_face_indices);
-					vertex_offset += current_vertices.size();
+					vertex_offset += static_cast<uint32_t>(current_vertices.size());
 					current_vertices.clear();
 					current_face_indices.clear();
 				}
@@ -93,7 +93,7 @@ MeshColliderOutput readMeshAndColliders(std::string formatted_obj_path, double s
 			else if (strcmp(token, "f") == 0) { //face
 				assert(!no_current_object);
 
-				std::vector<int> indices;
+				std::vector<uint32_t> indices;
 				while ((token = strtok_s(NULL, delim, &next_token)) != NULL) {
 					int index = atoi(token) - vertex_offset;
 					assert(index >= 0 && index < current_vertices.size());

@@ -87,16 +87,16 @@ public:
 		buffer_indx = 0;
 		_sopen_s(&fd, filename.c_str(), _O_CREAT | _O_BINARY | _O_WRONLY, _SH_DENYRW, _S_IWRITE);
 
-		int n_spheres = colors.size();
+		uint32_t n_spheres = static_cast<uint32_t>(colors.size());
 		write8(fd,  0x000000FF & n_spheres);
 		write8(fd, (0x0000FF00 & n_spheres) >> 8);
 		write8(fd, (0x00FF0000 & n_spheres) >> 16);
 		write8(fd, (0xFF000000 & n_spheres) >> 24);
 
 		for (color c : colors) {
-			write8(fd, c.r * 255);
-			write8(fd, c.g * 255);
-			write8(fd, c.b * 255);
+			write8(fd, static_cast<uint8_t>(c.r * 255.0f));
+			write8(fd, static_cast<uint8_t>(c.g * 255.0f));
+			write8(fd, static_cast<uint8_t>(c.b * 255.0f));
 		}
 		flush(fd);
 		_close(fd);
@@ -139,7 +139,6 @@ public:
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(false); //never going to happen anyway
 		p.setPGSIterations(3, 1);
-		//p.setSleepParameters(5.0, 5.0, 1.0, 0.0, 20);
 		std::string precomputation_file = "resources/precomputations/bad_apple_colors.txt";
 		bool precompute_colors_mode = !fileExists(precomputation_file);
 
@@ -316,9 +315,9 @@ public:
 		double phyz_time = 0;
 		double timestep = 1 / 60.0;
 
-		int ticks_per_balldrop = 0.25 / timestep;
+		int ticks_per_balldrop = static_cast<int>(0.25 / timestep);
 		int display_release_tick_counter = 0;
-		int ticks_for_release_time = 3 / timestep;
+		int ticks_for_release_time = static_cast<int>(3 / timestep);
 		bool next_frame_trigger_reset = true;
 
 		p.setStep_time(timestep);
@@ -333,7 +332,7 @@ public:
 
 		int tick_count = 0;
 		int frame_count = 52;
-		int N_FRAMES = 60;// 6572;
+		int N_FRAMES = 6572;
 		int n_balls_spawned = 0;
 		double video_aspect_ratio = 360.0 / 480.0;
 		unsigned int starting_id = p.getNextBodyID(); //id of all spawned balls >= this number
@@ -559,12 +558,11 @@ public:
 				mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
 				mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
 
-				double aspect_ratio = (double)properties.window_height / properties.window_width;
-				//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-				shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 60.0));
-				shader.setUniform3f("u_ambient_light", 0.95, 0.95, 0.95);
-				shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-				shader.setUniform3f("u_pointlight_col", 0.05, 0.05, 0.05);
+				float aspect_ratio = (float)properties.window_height / properties.window_width;
+				shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 50.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
+				shader.setUniform3f("u_ambient_light", 0.95f, 0.95f, 0.95f);
+				shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
+				shader.setUniform3f("u_pointlight_col", 0.05f, 0.05f, 0.05f);
 				shader.setUniform1i("u_Asleep", false);
 
 				for (TransformablePhysBod& b : bodies) {
@@ -573,7 +571,7 @@ public:
 						rndr::draw(batch_array, shader);
 						batch_array.flush();
 					}
-					batch_array.push(b.transformed_mesh.vertices.data(), b.transformed_mesh.vertices.size(), b.transformed_mesh.indices);
+					batch_array.push(b.transformed_mesh.vertices.data(), static_cast<uint32_t>(b.transformed_mesh.vertices.size()), b.transformed_mesh.indices);
 				}
 
 				rndr::draw(batch_array, shader);

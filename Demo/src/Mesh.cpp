@@ -41,7 +41,7 @@ Mesh fromPhyzMesh(const phyz::Mesh& m) {
 Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
-	int vertex_offset = 0;
+	uint32_t vertex_offset = 0;
 
 	for (const phyz::ConvexPrimitive& prim : g.getPolyhedra()) {
 		switch (prim.getType()) {
@@ -56,14 +56,14 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 
 			for (const phyz::Surface& s : c.getSurfaces()) {
 				//naive- only works if all faces are convex
-				for (int i = 2; i < s.n_points(); i++) {
+				for (uint32_t i = 2; i < s.n_points(); i++) {
 					indices.push_back(s.point_indexes[0] + vertex_offset);
 					indices.push_back(s.point_indexes[i - 1] + vertex_offset);
 					indices.push_back(s.point_indexes[i] + vertex_offset);
 				}
 			}
 
-			vertex_offset += c.getPoints().size();
+			vertex_offset += static_cast<uint32_t>(c.getPoints().size());
 			break;
 		}
 
@@ -224,7 +224,10 @@ void writeTransformedTo(const Mesh& m, Mesh* out, mthz::Vec3 model_position, mth
 	for (int i = 0; i < m.vertices.size(); i++) {
 		mthz::Vec3 pos = mthz::Vec3(m.vertices[i].x, m.vertices[i].y, m.vertices[i].z);
 		mthz::Vec3 transformed_pos = camera_rot * (model_rot * pos + model_position - camera_position);
-		out->vertices[i].x = transformed_pos.x; out->vertices[i].y = transformed_pos.y; out->vertices[i].z = transformed_pos.z;
+
+		out->vertices[i].x = static_cast<float>(transformed_pos.x);
+		out->vertices[i].y = static_cast<float>(transformed_pos.y);
+		out->vertices[i].z = static_cast<float>(transformed_pos.z);
 
 		if (recolor) {
 			out->vertices[i].r = new_color.r; out->vertices[i].g = new_color.g; out->vertices[i].b = new_color.b;

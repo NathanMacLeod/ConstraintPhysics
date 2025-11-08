@@ -61,7 +61,8 @@ namespace mthz {
 
 	NMat<3, 3> crossMat(mthz::Vec3 v) {
 		NMat<3, 3> out;
-		out.v[0][1] = -v.z; out.v[0][2] = v.y;
+
+		                   out.v[0][1] = -v.z; out.v[0][2] = v.y;
 		out.v[1][0] = v.z;                     out.v[1][2] = -v.x;
 		out.v[2][0] = -v.y; out.v[2][1] = v.x;
 

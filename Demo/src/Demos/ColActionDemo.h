@@ -39,7 +39,7 @@ public:
 		Mesh m = fromGeometry(g);
 		phyz::RigidBody* r = p.createRigidBody(g);
 
-		return Agent{ new rndr::VertexArray(m.vertices.data(), m.vertices.size(), Vertex::generateLayout()), new rndr::IndexBuffer(m.indices.data(), m.indices.size()), r, color };
+		return Agent{ new rndr::VertexArray(m.vertices.data(), static_cast<uint32_t>(m.vertices.size()), Vertex::generateLayout()), new rndr::IndexBuffer(m.indices.data(), static_cast<uint32_t>(m.indices.size())), r, color };
 	}
 
 	void run() override {
@@ -211,9 +211,8 @@ public:
 				mthz::Vec3 cam_pos = pos;
 				mthz::Quaternion cam_orient = orient;
 
-				double aspect_ratio = (double)properties.window_height / properties.window_width;
-
-				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 60.0) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(a.r->getPos(), a.r->getOrientation()));
+				float aspect_ratio = (float)properties.window_height / properties.window_width;
+				shader.setUniformMat4f("u_MVP", rndr::Mat4::proj(0.1f, 50.0f, 2.0f, 2.0f * aspect_ratio, 60.0f) * rndr::Mat4::cam_view(cam_pos, cam_orient) * rndr::Mat4::model(a.r->getPos(), a.r->getOrientation()));
 				shader.setUniform1i("u_Color", a.color);
 
 				rndr::draw(*a.va, *a.ib, shader);

@@ -100,6 +100,9 @@ namespace phyz {
 		case SPHERE:		return ((Sphere*)geometry)->testRayIntersection(ray_origin, ray_dir);
 		case CYLINDER:		return ((Cylinder*)geometry)->testRayIntersection(ray_origin, ray_dir);
 		}
+
+		assert(false);
+		return {};
 	}
 
 	Cylinder::Cylinder(const Cylinder& c) 
@@ -107,7 +110,7 @@ namespace phyz {
 		top_face_approximation(c.top_face_approximation), bot_face_approximation(c.bot_face_approximation)
 	{}
 
-	Cylinder::Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis, int edge_approximation_detail, int face_approximation_detail)
+	Cylinder::Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis, uint32_t edge_approximation_detail, uint32_t face_approximation_detail)
 		: center(center), height_axis(height_axis), radius(radius), height(height), gauss_verts(2 + edge_approximation_detail), gauss_arcs(2 * edge_approximation_detail),
 		top_face_approximation(face_approximation_detail), bot_face_approximation(face_approximation_detail)
 	{
@@ -146,15 +149,15 @@ namespace phyz {
 	Cylinder Cylinder::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
 		mthz::Vec3 new_center = pivot_point + q.applyRotation(center - pivot_point);
 		mthz::Vec3 new_height_axis = q.applyRotation(height_axis);
-		return Cylinder(new_center, radius, height, new_height_axis, gauss_verts.size() - 2, top_face_approximation.size());
+		return Cylinder(new_center, radius, height, new_height_axis, static_cast<uint32_t>(gauss_verts.size()) - 2, static_cast<uint32_t>(top_face_approximation.size()));
 	}
 
 	Cylinder Cylinder::getTranslated(mthz::Vec3 t) const {
-		return Cylinder(center + t, radius, height, height_axis, gauss_verts.size() - 2, top_face_approximation.size());
+		return Cylinder(center + t, radius, height, height_axis, static_cast<uint32_t>(gauss_verts.size()) - 2, static_cast<uint32_t>(top_face_approximation.size()));
 	}
 
 	Cylinder Cylinder::getScaled(double d, mthz::Vec3 center_of_dialtion) const {
-		return Cylinder(d * (center - center_of_dialtion) + center_of_dialtion, radius * d, height * d, height_axis, gauss_verts.size() - 2, top_face_approximation.size());
+		return Cylinder(d * (center - center_of_dialtion) + center_of_dialtion, radius * d, height * d, height_axis, static_cast<uint32_t>(gauss_verts.size()) - 2, static_cast<uint32_t>(top_face_approximation.size()));
 	}
 
 	void Cylinder::recomputeFromReference(const ConvexGeometry& reference_geometry, const mthz::Mat3& rot, mthz::Vec3 trans) {
@@ -382,26 +385,26 @@ namespace phyz {
 		}
 
 		//some vertices might be deleted, so indices are not going to remain accurate.
-		std::map<int, int> new_vertex_indices;
+		std::map<uint32_t, uint32_t> new_vertex_indices;
 		std::vector<mthz::Vec3> remaining_vertices;
-		std::vector<std::vector<int>> surface_vertex_indices;
+		std::vector<std::vector<uint32_t>> surface_vertex_indices;
 
 		for (const SurfaceGroup& g : groups) {
-			std::vector<int> extrema_point_indices;
+			std::vector<uint32_t> extrema_point_indices;
 
 			if (g.surfaces.size() == 1) extrema_point_indices = g.surfaces[0].point_indexes;
 			else {
 				//since p is convex, then all surfaces are also convex. Treat vertices as a point cloud, and use gift wrapping to generate the outer surface
 				struct FaceCoordP {
 					double u, v;
-					int original_index;
+					uint32_t original_index;
 				};
 				std::vector<FaceCoordP> all_points;
 				mthz::Vec3 u, v;
 				g.shared_norm.getPerpendicularBasis(&u, &v);
 
 				for (const Surface& s : g.surfaces) {
-					for (int vert_indx : s.point_indexes) {
+					for (uint32_t vert_indx : s.point_indexes) {
 						mthz::Vec3 pos = p.getPoints()[vert_indx];
 						all_points.push_back(FaceCoordP{ u.dot(pos), v.dot(pos), vert_indx });
 					}
@@ -465,11 +468,11 @@ namespace phyz {
 				for (FaceCoordP p : hull_points) extrema_point_indices.push_back(p.original_index);
 			}
 
-			std::vector<int> merged_surface_indices;
+			std::vector<uint32_t> merged_surface_indices;
 
-			for (int i : extrema_point_indices) {
+			for (uint32_t i : extrema_point_indices) {
 				if (new_vertex_indices.find(i) == new_vertex_indices.end()) {
-					new_vertex_indices[i] = remaining_vertices.size();
+					new_vertex_indices[i] = static_cast<uint32_t>(remaining_vertices.size());
 					remaining_vertices.push_back(p.getPoints()[i]);
 				}
 				merged_surface_indices.push_back(new_vertex_indices[i]);
@@ -481,7 +484,7 @@ namespace phyz {
 		return Polyhedron(remaining_vertices, surface_vertex_indices);
 	}
 
-	Polyhedron::Polyhedron(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices)
+	Polyhedron::Polyhedron(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<uint32_t>>& surface_vertex_indices)
 		: points(points), adjacent_faces_to_vertex(points.size()), adjacent_edges_to_vertex(points.size())
 	{
 		assert(points.size() >= 4);
@@ -491,14 +494,14 @@ namespace phyz {
 		for (const mthz::Vec3& p : points) {
 			interior_point += p;
 		}
-		interior_point /= points.size();
+		interior_point /= static_cast<double>(points.size());
 
 		//create surfaces
-		int surfaceID = points.size();
+		int32_t surfaceID = static_cast<int32_t>(points.size());
 		surfaces.reserve(surface_vertex_indices.size());
-		for (int i = 0; i < surface_vertex_indices.size(); i++) {
-			const std::vector<int>& s = surface_vertex_indices[i];
-			for (int j : s) {
+		for (uint32_t i = 0; i < surface_vertex_indices.size(); i++) {
+			const std::vector<uint32_t>& s = surface_vertex_indices[i];
+			for (uint32_t j : s) {
 				assert(j >= 0 && j < points.size());
 				adjacent_faces_to_vertex[j].push_back(i);
 			}
@@ -507,8 +510,8 @@ namespace phyz {
 
 		//create edges
 		struct Pair {
-			int p1;
-			int p2;
+			uint32_t p1;
+			uint32_t p2;
 
 			bool operator==(const Pair p) {
 				return (p1 == p.p1 && p2 == p.p2) || (p2 == p.p1 && p1 == p.p2);
@@ -516,8 +519,8 @@ namespace phyz {
 		};
 		std::vector<Pair> seen_pairs;
 		for (const Surface& s : surfaces) {
-			int n = s.point_indexes.size();
-			for (int i = 0; i < n; i++) {
+			uint32_t n = static_cast<uint32_t>(s.point_indexes.size());
+			for (uint32_t i = 0; i < n; i++) {
 				Pair p = Pair{ s.point_indexes[i], s.point_indexes[(i + 1) % n] };
 
 				bool seen = false;
@@ -549,7 +552,7 @@ namespace phyz {
 			mthz::Vec3 n = s.normal();
 			mthz::Vec3 ref_p = s.getPointI(0);
 			double ref_val = ref_p.dot(n);
-			for (int i = 1; i < s.n_points(); i++) {
+			for (uint32_t i = 1; i < s.n_points(); i++) {
 				double error = abs(s.getPointI(i).dot(n) - ref_val);
 				double dist = (s.getPointI(i) - ref_p).mag();
 				double ang = atan(error / dist) * 180 / PI;
@@ -640,7 +643,7 @@ namespace phyz {
 
 			double t = n.dot(sp - ray_origin) / n.dot(ray_dir);
 			mthz::Vec3 intersection_point = ray_origin + t * ray_dir;
-			for (int i = 0; i < s.n_points(); i++) {
+			for (uint32_t i = 0; i < s.n_points(); i++) {
 				mthz::Vec3 edge_p1 = s.getPointI(i);
 				mthz::Vec3 edge_p2 = s.getPointI(i + 1 == s.n_points() ? 0 : i + 1);
 
@@ -673,7 +676,7 @@ namespace phyz {
 		poly = nullptr;
 	}
 
-	Surface::Surface(const std::vector<int>& point_indexes, Polyhedron* poly, mthz::Vec3 interior_point, int surfaceID)
+	Surface::Surface(const std::vector<uint32_t>& point_indexes, Polyhedron* poly, mthz::Vec3 interior_point, int32_t surfaceID)
 		: point_indexes(point_indexes), poly(poly), surfaceID(surfaceID)
 	{
 		assert(point_indexes.size() >= 3);
@@ -716,8 +719,8 @@ namespace phyz {
 		return (p2 - p1).cross(p3 - p2).normalize() * normalDirection;
 	}
 
-	int Surface::n_points() const {
-		return point_indexes.size();
+	uint32_t Surface::n_points() const {
+		return static_cast<uint32_t>(point_indexes.size());
 	}
 
 
@@ -731,7 +734,7 @@ namespace phyz {
 		mthz::Vec3 u, w;
 		normal.getPerpendicularBasis(&u, &w);
 		double area = 0;
-		for (int i = 0; i < n_points(); i++) {
+		for (uint32_t i = 0; i < n_points(); i++) {
 			int i1 = i;
 			int i2 = (i + 1 == n_points()) ? 0 : i+1;
 
@@ -749,10 +752,10 @@ namespace phyz {
 
 		//reverse if winding was clockwise
 		if (area < 0) {
-			for (int i = 0; i < point_indexes.size() / 2; i++) {
-				int j = point_indexes.size() - 1 - i;
+			for (uint32_t i = 0; i < static_cast<uint32_t>(point_indexes.size()) / 2; i++) {
+				uint32_t j = static_cast<uint32_t>(point_indexes.size()) - 1 - i;
 
-				int tmp = point_indexes[j];
+				uint32_t tmp = point_indexes[j];
 				point_indexes[j] = point_indexes[i];
 				point_indexes[i] = tmp;
 			}
@@ -762,7 +765,7 @@ namespace phyz {
 
 	GaussMap Polyhedron::computeGaussMap() const {
 		GaussMap g;
-		for (int i = 0; i < surfaces.size(); i++) {
+		for (uint32_t i = 0; i < surfaces.size(); i++) {
 			const Surface& s1 = surfaces[i];
 
 			bool redundant = false;
@@ -772,14 +775,14 @@ namespace phyz {
 					break;
 				}
 			}
-			int reference_point_index = s1.point_indexes[0];
+			uint32_t reference_point_index = s1.point_indexes[0];
 			g.face_verts.push_back(GaussVert{ s1.normal(), redundant, findExtrema(*this, s1.normal()), reference_point_index, s1.normal().dot(points[reference_point_index]) });
 
-			for (int j = i + 1; j < surfaces.size(); j++) {
+			for (uint32_t j = i + 1; j < surfaces.size(); j++) {
 				const Surface& s2 = surfaces[j];
 
-				for (int k = 0; k < s1.n_points(); k++) {
-					for (int w = 0; w < s2.n_points(); w++) {
+				for (uint32_t k = 0; k < s1.n_points(); k++) {
+					for (uint32_t w = 0; w < s2.n_points(); w++) {
 						int s1_indx1 = s1.point_indexes[k];
 						int s1_indx2 = s1.point_indexes[(k + 1) % s1.n_points()];
 						int s2_indx1 = s2.point_indexes[w];

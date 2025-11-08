@@ -1,12 +1,12 @@
 #include "ProgressBar.h"
 
-ProgressBarState render_progress_bar(double percent, int width, bool done, ProgressBarState prev_state, float force_update_time, bool show_animation) {
+ProgressBarState render_progress_bar(double percent, int width, bool done, ProgressBarState prev_state, double force_update_time, bool show_animation) {
 	static std::vector<std::string> animation_c = { "|@-----<", ">-@----<", ">--@---<", ">---@--<", ">----@-<", ">-----@|", ">----@-<", ">---@--<", ">--@---<", ">-@----<" };
 	ProgressBarState out = prev_state;
 	out.use_status = IN_USE;
 	auto now = std::chrono::system_clock::now();
 
-	int current_percent_int = done ? 100 : 100 * percent;
+	int current_percent_int = done ? 100 : static_cast<int>(100 * percent);
 	out.current_percent_int = current_percent_int;
 	float time_since_last_render = prev_state.use_status != IN_USE ? -1 : std::chrono::duration<float>(now - prev_state.last_render_time).count();
 	//should rerender progress bar?
@@ -24,7 +24,7 @@ ProgressBarState render_progress_bar(double percent, int width, bool done, Progr
 
 		//render progress bar
 		printf("[");
-		int prog = done ? width : percent * width;
+		int prog = done ? width : static_cast<int>(percent * width);
 		for (int i = 0; i < width; i++) {
 			if (i <= prog) {
 				printf("#");
@@ -43,21 +43,21 @@ ProgressBarState render_progress_bar(double percent, int width, bool done, Progr
 				//compare to oldest data point in comparison history
 				int comparison_indx = std::min<int>(prev_state.current_percent_int, COMPLETION_PROJECTION_HISTORY_SIZE - 1);
 
-				float time_elapsed = std::chrono::duration<float>(now - prev_state.prev_percent_history[comparison_indx]).count();
-				float percents_computed_since = (100 * percent - prev_state.current_percent_int + comparison_indx) / 100.0;
+				double time_elapsed = std::chrono::duration<double>(now - prev_state.prev_percent_history[comparison_indx]).count();
+				double percents_computed_since = 100 * percent - prev_state.current_percent_int + comparison_indx / 100.0;
 
-				float time_remaining = (1.0 - percent) * time_elapsed / percents_computed_since; //time per percent * percent remaining
+				double time_remaining = (1.0 - percent) * time_elapsed / percents_computed_since; //time per percent * percent remaining
 
-				int remaining_minutes = time_remaining / 60;
-				int remaining_seconds = time_remaining - remaining_minutes * 60;
+				int remaining_minutes = static_cast<int>(time_remaining / 60);
+				int remaining_seconds = static_cast<int>(time_remaining - remaining_minutes * 60);
 
 				printf("         Time Remaining: %02d:%02d\r", remaining_minutes, remaining_seconds);
 			}
 			else if (done && prev_state.use_status == IN_USE) {
-				float total_time = std::chrono::duration<float>(now - prev_state.start_time).count();
+				double total_time = std::chrono::duration<double>(now - prev_state.start_time).count();
 
-				int total_minutes = total_time / 60;
-				int total_seconds = total_time - total_minutes * 60;
+				int total_minutes = static_cast<int>(total_time / 60);
+				int total_seconds = static_cast<int>(total_time - total_minutes * 60);
 
 				printf("         Total Time: %02d:%02d\n", total_minutes, total_seconds);
 			}

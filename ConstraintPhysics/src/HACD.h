@@ -12,7 +12,7 @@ namespace phyz {
 
 	struct Mesh {
 		std::vector<mthz::Vec3> vertices;
-		std::vector<std::vector<unsigned int>> face_indices;
+		std::vector<std::vector<uint32_t>> face_indices;
 
 		AABB getAABB();
 	};

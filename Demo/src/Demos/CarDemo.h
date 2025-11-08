@@ -52,7 +52,7 @@ public:
 
 		phyz::PhysicsEngine p;
 		p.setPGSIterations(20, 10, 2);
-		p.setGlobalConstraintForceMixing(0.001);
+		p.setGlobalConstraintForceMixing(0.0001);
 		//p.setOctreeParams(100, 0.5);
 		//p.setWarmStartDisabled(true);
 
@@ -270,7 +270,7 @@ public:
 
 
 		double differential_gear2_tooth_size = 0.05;
-		double differential_gear2_teeth = 12;
+		uint32_t differential_gear2_teeth = 12;
 		mthz::Vec3 differential_gear2_position = differential_elbow1_position + mthz::Vec3(0, -differential_elbow_height, 0);
 		phyz::ConvexUnionGeometry differential_gear2 = phyz::ConvexUnionGeometry::gear(differential_gear2_position, differential_gear2_radius, differential_gear2_tooth_size, differential_gear2_height, differential_gear2_teeth, false, phyz::Material::modified_density(8))
 			.getRotated(mthz::Quaternion(PI, mthz::Vec3(0, 0, 1)), differential_gear2_position);
@@ -281,7 +281,7 @@ public:
 		double axle1_gear_radius = differential_gear2_radius;
 		double axle1_gear_tooth_size = differential_gear2_tooth_size;
 		double axle1_gear_height = differential_gear2_height;
-		int axle1_gear_teeth = differential_gear2_teeth;
+		uint32_t axle1_gear_teeth = differential_gear2_teeth;
 		mthz::Vec3 axle1_gear_position = differential_center + mthz::Vec3(0, 0, differential_gear2_radius + differential_gear2_tooth_size / 4.0);
 		phyz::ConvexUnionGeometry axle1_gear = phyz::ConvexUnionGeometry::gear(axle1_gear_position, axle1_gear_radius, axle1_gear_tooth_size, axle1_gear_height, axle1_gear_teeth, true, phyz::Material::modified_density(0.1))
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), axle1_gear_position);
@@ -804,12 +804,11 @@ public:
 			mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
 			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
 
-			double aspect_ratio = (double)properties.window_height / properties.window_width;
-			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 60.0));
-			shader.setUniform3f("u_ambient_light", 0.4, 0.4, 0.4);
-			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-			shader.setUniform3f("u_pointlight_col", 0.6, 0.6, 0.6);
+			float aspect_ratio = (float)properties.window_height / properties.window_width;
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 50.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
+			shader.setUniform3f("u_ambient_light", 0.4f, 0.4f, 0.4f);
+			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
+			shader.setUniform3f("u_pointlight_col", 0.6f, 0.6f, 0.6f);
 			shader.setUniform1i("u_Asleep", false);
 
 			for (const PhysBod& b : bodies) {
@@ -820,7 +819,7 @@ public:
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}
-				batch_array.push(transformed_mesh.vertices.data(), transformed_mesh.vertices.size(), transformed_mesh.indices);
+				batch_array.push(transformed_mesh.vertices.data(), static_cast<int>(transformed_mesh.vertices.size()), transformed_mesh.indices);
 			}
 
 			rndr::draw(batch_array, shader);

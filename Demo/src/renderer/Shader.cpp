@@ -41,7 +41,7 @@ namespace rndr {
 	}
 
 	void Shader::setUniform1iv(const std::string& name, std::vector<int> is) {
-		glUniform1iv(getUniformLocation(name), is.size(), is.data());
+		glUniform1iv(getUniformLocation(name), static_cast<GLsizei>(is.size()), is.data());
 	}
 
 	void Shader::setUniform3f(const std::string& name, float v0, float v1, float v2) {

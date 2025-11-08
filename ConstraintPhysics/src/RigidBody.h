@@ -93,7 +93,7 @@ namespace phyz {
 		void wake();
 		void alertWakingAction();
 
-		void rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr = 1, bool gyro_accel_disabled=false);
+		void rotateWhileApplyingGyroAccel(double fElapsedTime, int n_itr = 1, bool gyro_accel_disabled=false);
 		void updateGeometry();
 		void translateNoGeomUpdate(mthz::Vec3 v);
 		void rotateNoGeomUpdate(mthz::Quaternion q);

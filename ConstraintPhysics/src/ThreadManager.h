@@ -35,7 +35,7 @@ namespace phyz {
 
 	private:
 		struct TastSetManagement {
-			TastSetManagement(int n_threads, int num_tasks, JobStatus* status_update)
+			TastSetManagement(uint32_t n_threads, uint32_t num_tasks, JobStatus* status_update)
 				: next_index(0), jobs_for_task_set(std::min<int>(n_threads, num_tasks)), status_update(status_update), index_completed_count(0)
 			{}
 
@@ -45,7 +45,7 @@ namespace phyz {
 
 			std::atomic_int next_index;
 			std::atomic_int index_completed_count;
-			int jobs_for_task_set;
+			uint32_t jobs_for_task_set;
 			JobStatus* status_update;
 		};
 	public:
@@ -100,17 +100,17 @@ namespace phyz {
 		}
 
 		template <typename T, typename Func>
-		void enqueue_do_all_tasks(int n_threads, const std::vector<T>* in_vector, const Func& action, JobStatus* status_update = nullptr) {
+		void enqueue_do_all_tasks(uint32_t n_threads, const std::vector<T>* in_vector, const Func& action, JobStatus* status_update = nullptr) {
 			start_working = false;
 			if (in_vector->size() == 0) {
 				return;
 			}
 
-			task_sets.push_back(TastSetManagement(n_threads, in_vector->size(), status_update));
-			int task_index = task_sets.size() - 1;
+			task_sets.push_back(TastSetManagement(n_threads, static_cast<uint32_t>(in_vector->size()), status_update));
+			int task_index = static_cast<int>(task_sets.size()) - 1;
 
 			job_lock.lock();
-			for (int i = 0; i < task_sets[task_index].jobs_for_task_set; i++) {
+			for (uint32_t i = 0; i < task_sets[task_index].jobs_for_task_set; i++) {
 				jobs.push_back([&, task_index, in_vector, action]() {
 
 					int my_index = -1;
@@ -158,7 +158,7 @@ namespace phyz {
 		}
 
 		template <typename T, typename Func>
-		void do_all(int n_threads, const std::vector<T>& in_vector, const Func& action) {
+		void do_all(uint32_t n_threads, const std::vector<T>& in_vector, const Func& action) {
 			if (in_vector.size() == 0) {
 				return;
 			}
@@ -172,9 +172,9 @@ namespace phyz {
 			bool all_done = false;
 
 			std::unique_lock<std::mutex> lk(done_lock);
-			int n_jobs = std::min<double>(n_threads, in_vector.size());
+			uint32_t n_jobs = std::min<uint32_t>(n_threads, static_cast<uint32_t>(in_vector.size()));
 			job_lock.lock();
-			for (int i = 0; i < n_jobs; i++) {
+			for (uint32_t i = 0; i < n_jobs; i++) {
 				jobs.push_back([&, n_jobs]() {
 
 					int my_index = -1;

@@ -21,7 +21,7 @@ private:
 	};
 
 	struct BodyHistory {
-		BodyHistory(phyz::RigidBody* r, const phyz::ConvexUnionGeometry& g, color c={0.4, 0.4, 0.4}) : r(r), g(g), color(c), ray_hit_count(0) {}
+		BodyHistory(phyz::RigidBody* r, const phyz::ConvexUnionGeometry& g, color c={0.4f, 0.4f, 0.4f}) : r(r), g(g), color(c), ray_hit_count(0) {}
 
 		phyz::RigidBody* r;
 		phyz::ConvexUnionGeometry g;
@@ -45,7 +45,7 @@ private:
 		case TETRAS: return 90;
 		case DODECS: return 70;
 		case STEL_DODS: return 100;
-		default: assert(false);
+		default: assert(false); return -1;
 		}
 	}
 
@@ -55,8 +55,8 @@ private:
 
 		//0.5 is to check for inclusion of center of pixel, not top left corner
 
-		for (int x = start_x * s.width / dim_x + 0.5; x <= end_x * s.width / dim_x + 0.5; x++) {
-			for (int y = start_y * s.height / dim_y + 0.5; y <= end_y * s.height / dim_y + 0.5; y++) {
+		for (int x = static_cast<int>(start_x * s.width / dim_x + 0.5); x <= static_cast<int>(end_x * s.width / dim_x + 0.5); x++) {
+			for (int y = static_cast<int>(start_y * s.height / dim_y + 0.5); y <= static_cast<int>(end_y * s.height / dim_y + 0.5); y++) {
 				if (x >= 0 && x < s.width && y >= 0 && y < s.height) {
 					olc::Pixel p = s.GetPixel(x, y);
 					average.r += p.r / 255.0f; average.g += p.g / 255.0f; average.b += p.b / 255.0f;
@@ -104,7 +104,7 @@ private:
 		ProgressBarState progress_bar_state{ INITIALIZING };
 
 		for (int i = 0; i < n_frames; i++) {
-			progress_bar_state = render_progress_bar(i / (float)n_frames, progress_bar_width, false, progress_bar_state, 0.33, true);
+			progress_bar_state = render_progress_bar((double) i / n_frames, progress_bar_width, false, progress_bar_state, 0.33, true);
 			for (BodyHistory& b : *bodies) {
 				double x = read64(fd); double y = read64(fd); double z = read64(fd);
 				double r = read64(fd); double i = read64(fd); double j = read64(fd); double k = read64(fd);
@@ -207,7 +207,7 @@ public:
 		bool lock_cam = true;
 
 		std::vector<BodyHistory> pre_bodies;
-		std::vector<int> recolor_body_indexes;
+		std::vector<size_t> recolor_body_indexes;
 
 		mthz::Vec3 base_dim(8.5, 0.25, 0.75);
 		phyz::ConvexUnionGeometry base = phyz::ConvexUnionGeometry::box(mthz::Vec3(), base_dim.x, base_dim.y, base_dim.z);
@@ -339,7 +339,7 @@ public:
 		double frame_time = 1 / 120.0;
 		int steps_per_frame = 2;
 		double simulation_time = 75;
-		int n_frames = simulation_time / frame_time + 1;
+		int n_frames = static_cast<int>(simulation_time / frame_time) + 1;
 		int progress_bar_width = 50;
 
 		printf("Checking for existing precomputation...\n");
@@ -358,7 +358,7 @@ public:
 			
 			p.setStep_time(frame_time / steps_per_frame);
 			for (BodyHistory& b : pre_bodies) {
-				b.history.reserve(simulation_time / frame_time);
+				b.history.reserve(static_cast<size_t>(simulation_time / frame_time));
 				b.history.push_back({ b.r->getPos(), b.r->getOrientation() });
 			}
 
@@ -390,8 +390,8 @@ public:
 		switch(color_scheme) {
 		case RAINBOW:
 		{
-			for (int indx : recolor_body_indexes) {
-				int col_pick = (pre_bodies[indx].r->getCOM().x - base_dim.y) * 6 / effective_width;
+			for (size_t indx : recolor_body_indexes) {
+				int col_pick = static_cast<int>((pre_bodies[indx].r->getCOM().x - base_dim.y) * 6 / effective_width);
 
 				switch (col_pick) {
 				case 0:
@@ -410,7 +410,7 @@ public:
 					pre_bodies[indx].color = color{ 0.0, 0.0, 1.0 };
 					break;
 				case 5:
-					pre_bodies[indx].color = color{ 0.29, 0.0, 0.5 };
+					pre_bodies[indx].color = color{ 0.29f, 0.0f, 0.5f };
 					break;
 				}
 			}
@@ -419,7 +419,7 @@ public:
 		case IMG_SQR_AVG:
 		{
 			olc::Sprite image(parameters["filepath"]);
-			for (int indx : recolor_body_indexes) {
+			for (size_t indx : recolor_body_indexes) {
 				phyz::RigidBody* r = pre_bodies[indx].r;
 
 				mthz::Vec3 com_rel = r->getCOM() - mthz::Vec3(base_dim.y, base_dim.y, 0);
@@ -431,7 +431,7 @@ public:
 		{
 			p.forceAABBTreeUpdate();
 			std::unordered_map<phyz::RigidBody*, BodyHistory*> body_map;
-			for (int indx : recolor_body_indexes) {
+			for (size_t indx : recolor_body_indexes) {
 				body_map[pre_bodies[indx].r] = &pre_bodies[indx];
 			}
 
@@ -474,9 +474,9 @@ public:
 								if (body_map.find(hit.hit_object) != body_map.end()) {
 									BodyHistory* hit_body = body_map[hit.hit_object];
 
-									hit_body->color.r += color.r / 255.0;
-									hit_body->color.g += color.g / 255.0;
-									hit_body->color.b += color.b / 255.0;
+									hit_body->color.r += color.r / 255.0f;
+									hit_body->color.g += color.g / 255.0f;
+									hit_body->color.b += color.b / 255.0f;
 
 									hit_body->ray_hit_count++;
 								}
@@ -488,7 +488,7 @@ public:
 
 			render_progress_bar(1.0, progress_bar_width, true, progress_bar_state);
 
-			for (int indx : recolor_body_indexes) {
+			for (size_t indx : recolor_body_indexes) {
 				if (pre_bodies[indx].ray_hit_count == 0) {
 					phyz::RigidBody* r = pre_bodies[indx].r;
 
@@ -538,7 +538,7 @@ public:
 
 			t += fElapsedTime;
 
-			int new_frame = t / frame_time;
+			int new_frame = static_cast<int>(t / frame_time);
 			if (new_frame != curr_frame && new_frame < n_frames) {
 				curr_frame = new_frame;
 			}
@@ -563,9 +563,9 @@ public:
 				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(cam_pos, camera_dir, { front_wall_r });
 
 				if (hit_info.did_hit) {
-					for (int indx : recolor_body_indexes) {
+					for (size_t indx : recolor_body_indexes) {
 						if (pre_bodies[indx].r == hit_info.hit_object) {
-							printf("Hit index: %d\n", indx);
+							printf("Hit index: %d\n", static_cast<uint32_t>(indx));
 						}
 					}
 				}
@@ -598,12 +598,11 @@ public:
 			mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
 			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
 
-			double aspect_ratio = (double)properties.window_height / properties.window_width;
-			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 50.0, 2.0, 2.0 * aspect_ratio, 60.0));
-			shader.setUniform3f("u_ambient_light", 1.0, 1.0, 1.0);
-			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-			shader.setUniform3f("u_pointlight_col", 0.0, 0.0, 0.0);
+			float aspect_ratio = (float)properties.window_height / properties.window_width;
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 50.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
+			shader.setUniform3f("u_ambient_light", 1.0f, 1.0f, 1.0f);
+			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
+			shader.setUniform3f("u_pointlight_col", 0.0f, 0.0f, 0.0f);
 			shader.setUniform1i("u_Asleep", false);
 
 			auto setTransformedMatrix = [&](int indx) {
@@ -629,7 +628,8 @@ public:
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}
-				batch_array.push(m.vertices.data(), m.vertices.size(), m.indices);
+
+				batch_array.push(m.vertices.data(), static_cast<int>(m.vertices.size()), m.indices);
 			}
 
 			rndr::draw(batch_array, shader);

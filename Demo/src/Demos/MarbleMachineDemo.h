@@ -44,10 +44,10 @@ public:
 		mthz::Vec3 center(0, -14, -5);
 
 		phyz::RigidBody* marble_track_r = p.createRigidBody(marble_track_input, true);
-		bodies.push_back({ fromStaticMeshInput(marble_track_input, color{ 0.7, 0.45, 1.0, 0.25, 0.75, 0.63, 51.2 }), marble_track_r });
+		bodies.push_back({ fromStaticMeshInput(marble_track_input, color{ 0.7f, 0.45f, 1.0f, 0.25f, 0.75f, 0.63f, 51.2f }), marble_track_r });
 
 		phyz::RigidBody* marble_screw_r = p.createRigidBody(marble_screw_input, false);
-		bodies.push_back({ fromStaticMeshInput(marble_screw_input, color{ 0.7, 0.45, 1.0, 0.25, 0.75, 0.63, 51.2 }), marble_screw_r });
+		bodies.push_back({ fromStaticMeshInput(marble_screw_input, color{ 0.7f, 0.45f, 1.0f, 0.25f, 0.75f, 0.63f, 51.2f }), marble_screw_r });
 
 		marble_track_r->setToPosition(center);
 		marble_screw_r->setToPosition(center);
@@ -166,12 +166,11 @@ public:
 			mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
 			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
 
-			double aspect_ratio = (double)properties.window_height / properties.window_width;
-			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 500.0, 2.0, 2.0 * aspect_ratio, 60.0));
-			shader.setUniform3f("u_ambient_light", 0.4, 0.4, 0.4);
-			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-			shader.setUniform3f("u_pointlight_col", 0.6, 0.6, 0.6);
+			float aspect_ratio = (float)properties.window_height / properties.window_width;
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 500.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
+			shader.setUniform3f("u_ambient_light", 0.4f, 0.4f, 0.4f);
+			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
+			shader.setUniform3f("u_pointlight_col", 0.6f, 0.6f, 0.6f);
 			shader.setUniform1i("u_Asleep", false);
 
 			for (const PhysBod& b : bodies) {
@@ -182,7 +181,7 @@ public:
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}
-				batch_array.push(transformed_mesh.vertices.data(), transformed_mesh.vertices.size(), transformed_mesh.indices);
+				batch_array.push(transformed_mesh.vertices.data(), static_cast<int>(transformed_mesh.vertices.size()), transformed_mesh.indices);
 			}
 
 			rndr::draw(batch_array, shader);

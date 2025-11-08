@@ -85,7 +85,7 @@ namespace phyz {
 		
 		RayHitInfo raycastFirstIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir, std::vector<RigidBody*> ignore_list = std::vector<RigidBody*>()) const;
 
-		inline int getNumBodies() { return bodies.size(); }
+		inline uint32_t getNumBodies() { return static_cast<uint32_t>(bodies.size()); }
 		inline mthz::Vec3 getGravity() { return gravity; }
 		inline double getStep_time() { return step_time; }
 		std::vector<RigidBody*> getBodies();

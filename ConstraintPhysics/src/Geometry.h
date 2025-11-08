@@ -21,7 +21,7 @@ namespace phyz {
 		static ConvexUnionGeometry regDodecahedron(mthz::Vec3 pos, double size, Material material = Material::default_material());
 		static ConvexUnionGeometry stellatedDodecahedron(mthz::Vec3 pos, double size, double spike_length_ratio, Material = Material::default_material());
 		static ConvexUnionGeometry triPrism(double x1, double z1, double x2, double z2, double x3, double z3, double y, double height, Material material = Material::default_material());
-		static ConvexUnionGeometry polyCylinder(mthz::Vec3 pos, double radius, double height, int detail = 10, Material material = Material::default_material());
+		static ConvexUnionGeometry polyCylinder(mthz::Vec3 pos, double radius, double height, uint32_t detail = 10, Material material = Material::default_material());
 		static ConvexUnionGeometry ring(mthz::Vec3 pos, double inner_radius, double outter_radius, double height, int detail = 4, Material material = Material::default_material());
 		static ConvexUnionGeometry gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity = false, Material material = Material::default_material(), double tooth_width = -1);
 		static ConvexUnionGeometry bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity = false, Material material = Material::default_material(), double hole_radius = 0.0, int circle_detail = 7);
@@ -43,7 +43,7 @@ namespace phyz {
 	//used for defining tri mesh geometry
 	//note winding (counter-clockwise) is significant, determines the normal direction 
 	struct TriIndices {
-		unsigned int i1, i2, i3;
+		uint32_t i1, i2, i3;
 		Material material;
 	};
 

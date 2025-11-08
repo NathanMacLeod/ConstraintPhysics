@@ -66,8 +66,8 @@ namespace rndr {
 		void bind() const;
 		void unbind() const;
 	private:
-		unsigned int vertexArrayID;
-		unsigned int vertexBufferID;
+		uint32_t vertexArrayID;
+		uint32_t vertexBufferID;
 	};
 
 	class Shader;
@@ -84,29 +84,29 @@ namespace rndr {
 
 		TexturePushStatus attemptPushTexture(Texture t);
 
-		void push(void* vertex_data, int vertex_count, std::vector<unsigned int> index_data);
+		void push(void* vertex_data, uint32_t vertex_count, std::vector<uint32_t> index_data);
 		void flush();
 
-		unsigned int remainingTextureCapacity() const;
-		unsigned int remainingVertexCapacity() const;
-		unsigned int remainingIndexCapacity() const;
-		inline unsigned int getIndexCount() const { return n_indices_allocated; }
-		inline unsigned int getTextureCount() const { return assigned_textures.size(); }
+		uint32_t remainingTextureCapacity() const;
+		uint32_t remainingVertexCapacity() const;
+		uint32_t remainingIndexCapacity() const;
+		inline uint32_t getIndexCount() const { return n_indices_allocated; }
+		inline uint32_t getTextureCount() const { return static_cast<uint32_t>(assigned_textures.size()); }
 
 		void bind() const;
 		void unbind() const;
 
 	private:
-		unsigned int texture_capcity = 32;
-		unsigned int vertex_capacity;
-		unsigned int index_capacity;
-		unsigned int n_vertices_allocated;
-		unsigned int n_indices_allocated;
-		unsigned int vertex_size;
+		uint32_t texture_capcity = 32;
+		uint32_t vertex_capacity;
+		uint32_t index_capacity;
+		uint32_t n_vertices_allocated;
+		uint32_t n_indices_allocated;
+		uint32_t vertex_size;
 
-		unsigned int vertexArrayID;
-		unsigned int vertexBufferID;
-		unsigned int indexBufferID;
+		uint32_t vertexArrayID;
+		uint32_t vertexBufferID;
+		uint32_t indexBufferID;
 
 		std::vector<Texture> assigned_textures;
 	};

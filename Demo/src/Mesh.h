@@ -46,14 +46,14 @@ struct TransformablePhysBod {
 };
 
 
-static struct color {
+struct color {
 	float r;
 	float g;
 	float b;
-	float ambient_k = 1.0;
-	float diffuse_k = 1.0;
-	float specular_k = 0.7;
-	float specular_p = 5.0;
+	float ambient_k = 1.0f;
+	float diffuse_k = 1.0f;
+	float specular_k = 0.7f;
+	float specular_p = 5.0f;
 
 	bool operator==(const color& c) const {
 		return r == c.r && g == c.g && b == c.b;

@@ -105,6 +105,9 @@ namespace phyz {
 		case GGG:
 			return { mthz::Vec3(mid.x, mid.y, mid.z), mthz::Vec3(max.x, max.y, max.z) };
 		}
+
+		assert(false);
+		return {};
 	}
 
 }

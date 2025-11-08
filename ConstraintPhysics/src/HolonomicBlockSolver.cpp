@@ -11,7 +11,7 @@ namespace phyz {
 	HolonomicSystem::HolonomicSystem(std::vector<Constraint*> constraints_og_order)
 		: system_degree(0), buffer_capacity(0)
 	{
-		int n = constraints_og_order.size();
+		uint32_t n = static_cast<uint32_t>(constraints_og_order.size());
 		if (constraints_og_order.size() == 0) return;
 		//compute the proper ordering to have the most sparse system possible. Track which blocks we can ignore due to sparsity.
 		std::vector<bool> edge_map(n * n, false); //false means no edge
@@ -19,9 +19,9 @@ namespace phyz {
 		std::vector<int> remaining_elimination_candidates(n);
 		//initialize edge_map which we use for finding the correct elimination order, and 
 		//block_stays_empty, which tracks which blocks we wil be able to ignore given our elimination order
-		for (int i = 0; i < n; i++) {
+		for (uint32_t i = 0; i < n; i++) {
 			remaining_elimination_candidates[i] = i;
-			for (int j = 0; j < n; j++) {
+			for (uint32_t j = 0; j < n; j++) {
 				Constraint* c1 = constraints_og_order[i];
 				Constraint* c2 = constraints_og_order[j];
 
@@ -48,7 +48,7 @@ namespace phyz {
 			for (int i = 0; i < remaining_elimination_candidates.size(); i++) {
 				//get all neighbors to constraint_i
 				std::vector<int> neighbors;
-				for (int j = 0; j < n; j++) {
+				for (uint32_t j = 0; j < n; j++) {
 					if (j != remaining_elimination_candidates[i] && edge_map[get_edge_map_index(n, remaining_elimination_candidates[i], j)]) {
 						neighbors.push_back(j);
 					}
@@ -76,7 +76,7 @@ namespace phyz {
 			constraints.push_back(constraints_og_order[least_unconnected]);
 			remaining_elimination_candidates.erase(remaining_elimination_candidates.begin() + least_unconnected_neighbors_index);
 			//remove node from graph
-			for (int j = 0; j < n; j++) {
+			for (uint32_t j = 0; j < n; j++) {
 				edge_map[get_edge_map_index(n, least_unconnected, j)] = false;
 				edge_map[get_edge_map_index(n, j, least_unconnected)] = false;
 			}
@@ -267,7 +267,7 @@ namespace phyz {
 		//Multiply by L^-t
 
 		std::vector<double> multByLTEffect(6);
-		for (int col = constraints.size() - 2; col >= 0; col--) {
+		for (int col = static_cast<uint32_t>(constraints.size()) - 2; col >= 0; col--) {
 			multByLTEffect = std::vector<double>(6, 0);
 
 			for (int row = col + 1; row < constraints.size(); row++) {
@@ -403,30 +403,40 @@ namespace phyz {
 				row_offset += constraints[row]->getDegree();
 			}
 
+			/*printf("Matrix before inversion\n");
 			for (int i = 0; i < debug_inverse.size(); i++) {
 				if (i % system_degree == 0) printf("\n");
 				printf("% 10f ", debug_inverse[i]);
 			}
-			printf("\n\n");
+			printf("\n\n");*/
 
 			std::vector<double> target(debug_inverse.size());
 			mthz::rowMajorOrderInverse(system_degree, target.data(), debug_inverse.data());
 
 
-			std::vector<double> idenmaybe(debug_inverse.size(), 0);
+			//std::vector<double> idenmaybe(debug_inverse.size(), 0);
+			double norm = 0;
 			for (int i = 0; i < system_degree; i++) {
 				for (int j = 0; j < system_degree; j++) {
+					double val = 0;
 					for (int k = 0; k < system_degree; k++) {
-						idenmaybe[i + j * system_degree] += target[k + j * system_degree] * debug_inverse[i + k * system_degree];
+						//idenmaybe[i + j * system_degree] += target[k + j * system_degree] * debug_inverse[i + k * system_degree];
+						val += target[k + j * system_degree] * debug_inverse[i + k * system_degree];
 					}
+					double expected = i == j ? 1.0 : 0.0;
+					norm += (expected - val) * (expected - val);
 				}
 			}
+			norm = sqrt(norm);
 
+			printf("\nNORM OF (A^-1 * A) - I: %.10e\n", norm);
+
+			/*printf("Matrix after inversion\n");
 			for (int i = 0; i < debug_inverse.size(); i++) {
 				if (i % system_degree == 0) printf("\n");
-				printf("%f ", idenmaybe[i]);
+				printf("% 10f ", debug_inverse[i]);
 			}
-			printf("\n\n");
+			printf("\n\n");*/
 
 			debug_inverse = target;
 			return;
@@ -520,7 +530,7 @@ namespace phyz {
 	}
 
 	int HolonomicSystem::getBlockBufferLocation(int block_row, int block_column) {
-		int n = constraints.size();
+		int n = static_cast<int>(constraints.size());
 
 		assert(block_row >= 0 && block_row <= n);
 		assert(block_column <= block_row);
@@ -651,6 +661,7 @@ namespace phyz {
 			
 			for (int i = 0; i < n; i++) {
 				block_pos[i + n * i] *= (1 + cfm); //add cfm along the diagonal
+				//block_pos[i + n * i] += cfm; //experimenting with Tikhonov regularization
 			}
 			return;
 		}

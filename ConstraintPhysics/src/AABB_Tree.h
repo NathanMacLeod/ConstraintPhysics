@@ -151,7 +151,7 @@ namespace phyz {
 		}
 
 		std::vector<Pair<T>> getAllCollisionCandidates() const {
-			static int prev_colpair_size = 0;
+			static uint32_t prev_colpair_size = 0;
 			if (root == nullptr || root->is_leaf) return std::vector<Pair<T>>();
 
 			std::vector<Pair<T>> col_pairs;
@@ -219,7 +219,7 @@ namespace phyz {
 				}
 			}
 
-			prev_colpair_size = col_pairs.size();
+			prev_colpair_size = static_cast<uint32_t>(col_pairs.size());
 			return col_pairs;
 		}
 

@@ -14,8 +14,8 @@ namespace phyz {
 		void operator=(HolonomicSystem&& h);
 		void computeInverse(double cfm);
 		void computeAndApplyImpulses(bool use_psuedo_velocities);
-		inline int getDegree() { return system_degree; }
-		inline int getNumConstraints() { return constraints.size(); }
+		inline uint32_t getDegree() { return system_degree; }
+		inline uint32_t getNumConstraints() { return static_cast<uint32_t>(constraints.size()); }
 
 		void debugPrintBuffer(std::string message="BUFFER CONTENT", bool print_val=true);
 

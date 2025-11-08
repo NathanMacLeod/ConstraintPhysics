@@ -11,7 +11,7 @@ namespace rndr {
     static std::chrono::time_point<std::chrono::system_clock> t_last;
     static int window_width, window_height;
     static GLFWwindow* window;
-    static enum KeyState { KEY_PRESSED, KEY_DOWN, KEY_UP };
+    enum KeyState { KEY_PRESSED, KEY_DOWN, KEY_UP };
     static const int N_KEYS = 350;
     static KeyState keys[N_KEYS];
 

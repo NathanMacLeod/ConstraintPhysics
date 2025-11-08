@@ -74,7 +74,7 @@ namespace phyz {
 			b->recievedWakingAction = false;
 
 			if (b->movement_type == RigidBody::DYNAMIC && !b->getAsleep()) {
-				b->recordMovementState(sleep_delay / step_time);
+				b->recordMovementState(static_cast<int>(sleep_delay / step_time));
 
 				if (bodySleepy(b)) {
 					b->sleep_ready_counter += step_time;
@@ -273,7 +273,7 @@ namespace phyz {
 						lock_second->mutex.lock();
 						for (int i = 0; i < man.points.size(); i++) {
 							const ContactP& p = man.points[i];
-							addContact(lock_first, lock_second, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, man.points.size(), p.pen_depth, posCorrectCoeff(contact_pos_correct_hardness, step_time), averageCFM(global_cfm, p.s1_cfm, p.s2_cfm));
+							addContact(lock_first, lock_second, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, static_cast<uint32_t>(man.points.size()), p.pen_depth, posCorrectCoeff(contact_pos_correct_hardness, step_time), averageCFM(global_cfm, p.s1_cfm, p.s2_cfm));
 						}
 						lock_first->mutex.unlock();
 						lock_second->mutex.unlock();
@@ -361,7 +361,7 @@ namespace phyz {
 
 				islands_with_holonomic_systems_count++;
 
-				int size = island_system.systems.size();
+				int size = static_cast<int>(island_system.systems.size());
 				thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
 					[&, size, i](HolonomicSystem* h, int index) {
 						h->computeInverse(holonomic_block_solver_CFM);
@@ -1441,7 +1441,7 @@ namespace phyz {
 		if (r->sleep_disabled) return false;	
 
 		const std::vector<RigidBody::MovementState>& body_history = r->history;
-		int n = body_history.size();
+		int n = static_cast<int>(body_history.size());
 		if (n == 0 || 2 * n < (sleep_delay / step_time)) {
 			return false;
 		}
@@ -1603,6 +1603,9 @@ namespace phyz {
 			assert(!std::isinf(returnval));
 			return returnval;
 		}
+		
+		assert(false);
+		return -1.0;
 	}
 
 	bool PhysicsEngine::Motor::constraintIsActive() {
@@ -1647,6 +1650,9 @@ namespace phyz {
 			assert(!std::isinf(returnval));
 			return returnval;
 		}
+
+		assert(false);
+		return -1.0;
 	}
 	void PhysicsEngine::Piston::writePrevVel(mthz::Vec3 slide_axis) {
 		prev_velocity = b2->getVel().dot(slide_axis) - b1->getVel().dot(slide_axis);
@@ -2383,6 +2389,7 @@ namespace phyz {
 		}
 		else {
 			assert(false);
+			return nullptr;
 		}
 	}
 

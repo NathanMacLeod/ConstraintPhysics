@@ -2,9 +2,6 @@
 #include "PhysicsEngine.h"
 #include <unordered_map>
 #include <cassert>
-
-#define NDEBUG
-
 #include <chrono>
 
 namespace phyz {
@@ -34,7 +31,6 @@ namespace phyz {
 
 		mthz::NVec<n> current_val = constraint->getConstraintValue(*vel_a_change, *vel_b_change);
 		mthz::NVec<n> delta = target_val - current_val;
-		//printf("%f\n", delta.mag());
 		//Apply projection on the accumulation, not the delta, to allow reversing overcorrection.
 		mthz::NVec<n> impulse_new = (*accumulated_impulse) + constraint->impulse_to_value_inverse * delta;
 		mthz::NVec<n> impulse_diff = constraint->isInequalityConstraint()? constraint->projectValidImpulse(impulse_new) - *accumulated_impulse
@@ -201,6 +197,7 @@ namespace phyz {
 
 			//apply block solver solutions for holonomic systems
 			for (int i = 0; i < n_itr_holonomic; i++) {
+
 				for (HolonomicSystem* h : holonomic_systems) {
 					h->computeAndApplyImpulses(true);
 					h->computeAndApplyImpulses(false);
@@ -507,8 +504,8 @@ namespace phyz {
 		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 		{
 			mthz::Vec3 pos_correct = (hinge_pos_b - hinge_pos_a) * pos_correct_hardness;
-			double u_correct = u.dot(n)* rot_correct_hardness;
-			double w_correct = w.dot(n)* rot_correct_hardness;
+			double u_correct = u.dot(n) * rot_correct_hardness;
+			double w_correct = w.dot(n) * rot_correct_hardness;
 			psuedo_target_val = mthz::NVec<5>{ pos_correct.x, pos_correct.y, pos_correct.z, u_correct, w_correct };
 		}
 	}
@@ -565,6 +562,9 @@ namespace phyz {
 		case BELOW_MIN:
 			return mthz::NVec<1>{ std::max<double>(impulse.v[0], 0) };
 		}
+
+		assert(false);
+		return mthz::NVec<1>{-1.0};
 	}
 
 	////******************************
@@ -734,6 +734,9 @@ namespace phyz {
 		case ABOVE_MAX: return mthz::NVec<1>{ std::min<double>(impulse.v[0], 0)};
 		case BELOW_MIN: return mthz::NVec<1>{ std::max<double>(impulse.v[0], 0)};
 		}
+
+		assert(false);
+		return mthz::NVec<1>{-1.0};
 	}
 
 	//******************************

@@ -19,4 +19,4 @@ struct ProgressBarState {
 
 //ProgressBarState renderProgressBar(ProgressBarState prev_state, int bar_width, float current_percent, bool done)
 
-ProgressBarState render_progress_bar(double percent, int width, bool done, ProgressBarState prev_state = ProgressBarState{ UNUSED }, float force_update_time = std::numeric_limits<float>::infinity(), bool show_animation = false);
+ProgressBarState render_progress_bar(double percent, int width, bool done, ProgressBarState prev_state = ProgressBarState{ UNUSED }, double force_update_time = std::numeric_limits<float>::infinity(), bool show_animation = false);

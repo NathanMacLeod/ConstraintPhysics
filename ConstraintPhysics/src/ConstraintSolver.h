@@ -34,6 +34,7 @@ namespace phyz {
 
 		virtual double getImpulseMag() = 0;
 		virtual double getPsuedoImpulseMag() = 0;
+		virtual double getNormOfCurrentValueFromTargetValue(bool for_psuedo_vel) = 0;
 		virtual int getDegree() = 0;
 		virtual bool isInequalityConstraint() = 0;
 		virtual bool needsPosCorrect() = 0;
@@ -76,6 +77,25 @@ namespace phyz {
 			double mag = 0;
 			for (int i = 0; i < n; i++) mag += psuedo_impulse.v[i] * psuedo_impulse.v[i];
 			return sqrt(mag);
+		}
+
+		double getNormOfCurrentValueFromTargetValue(bool for_psuedo_vel) override {
+			mthz::NVec<6>* vel_a_change, *vel_b_change;
+			mthz::NVec<n> targ_val;
+			if (for_psuedo_vel) {
+				vel_a_change = a_psuedo_velocity_change;
+				vel_b_change = b_psuedo_velocity_change;
+				targ_val = psuedo_target_val;
+			}
+			else {
+				vel_a_change = a_velocity_change;
+				vel_b_change = b_velocity_change;
+				targ_val = target_val;
+			}
+
+			mthz::NVec<n> current_val = getConstraintValue(*vel_a_change, *vel_b_change);
+			mthz::NVec<n> delta = targ_val - current_val;
+			return sqrt(delta.magSqrd());
 		}
 
 		mthz::NVec<n> impulse;

@@ -14,7 +14,7 @@ namespace phyz {
 	ConvexUnionGeometry ConvexUnionGeometry::box(mthz::Vec3 pos, double dx, double dy, double dz, Material material) {
 
 		std::vector<mthz::Vec3> points(8);
-		std::vector<std::vector<int>> surface_indices(6);
+		std::vector<std::vector<uint32_t>> surface_indices(6);
 
 		points[0] = (mthz::Vec3(pos.x, pos.y, pos.z)); //0
 		points[1] = (mthz::Vec3(pos.x + dx, pos.y, pos.z)); //1
@@ -46,7 +46,7 @@ namespace phyz {
 
 	ConvexUnionGeometry ConvexUnionGeometry::psuedoSphere(mthz::Vec3 center, double radius, int n_rows, int n_cols, Material material) {
 		std::vector<mthz::Vec3> points;
-		std::vector<std::vector<int>> surface_indices;
+		std::vector<std::vector<uint32_t>> surface_indices;
 
 		mthz::Vec3 bottom_pole = center - mthz::Vec3(0, radius, 0);
 		mthz::Vec3 top_pole = center + mthz::Vec3(0, radius, 0);
@@ -64,9 +64,9 @@ namespace phyz {
 			}
 		}
 
-		int bottom_pole_index = 0;
-		int top_pole_index = 1;
-		int nonpole_offset = 2;
+		uint32_t bottom_pole_index = 0;
+		uint32_t top_pole_index = 1;
+		uint32_t nonpole_offset = 2;
 		//create surfaces
 		for (int col = 0; col < n_cols; col++) {
 			int i1 = col;
@@ -100,7 +100,7 @@ namespace phyz {
 		const double rt3 = sqrt(3.0);
 
 		std::vector<mthz::Vec3> points = { p1, p2, p3, p4 };
-		std::vector<std::vector<int>> surface_indices(4);
+		std::vector<std::vector<uint32_t>> surface_indices(4);
 
 		surface_indices[0] = { 0, 1, 2 };
 		surface_indices[1] = { 1, 2, 3 };
@@ -112,7 +112,7 @@ namespace phyz {
 
 	ConvexUnionGeometry ConvexUnionGeometry::triPrism(double x1, double z1, double x2, double z2, double x3, double z3, double y, double height, Material material) {
 		std::vector<mthz::Vec3> points(6);
-		std::vector<std::vector<int>> surface_indices(5);
+		std::vector<std::vector<uint32_t>> surface_indices(5);
 
 		points[0] = (mthz::Vec3(x1, y, z1)); //0
 		points[1] = (mthz::Vec3(x2, y, z2)); //1
@@ -133,7 +133,7 @@ namespace phyz {
 
 	ConvexUnionGeometry ConvexUnionGeometry::octahedron(mthz::Vec3 pos, double radius, Material material) {
 		std::vector<mthz::Vec3> points(6);
-		std::vector<std::vector<int>> surface_indices(8);
+		std::vector<std::vector<uint32_t>> surface_indices(8);
 
 		points[0] = mthz::Vec3(0, radius, 0);
 		points[1] = mthz::Vec3(-radius, 0, 0);
@@ -158,7 +158,7 @@ namespace phyz {
 	//https://en.wikipedia.org/wiki/Regular_dodecahedron#Cartesian_coordinates
 	ConvexUnionGeometry ConvexUnionGeometry::regDodecahedron(mthz::Vec3 pos, double size, Material material) {
 		std::vector<mthz::Vec3> points(20);
-		std::vector<std::vector<int>> surface_indices(12);
+		std::vector<std::vector<uint32_t>> surface_indices(12);
 
 		double r = size / 2.0;
 		double phi = (1 + sqrt(5)) / 2.0;
@@ -214,7 +214,7 @@ namespace phyz {
 			mthz::Vec3 spike_tip = center + s.normal() * spike_length_ratio * size;
 
 			std::vector<mthz::Vec3> points(6);
-			std::vector<std::vector<int>> surface_indices(6);
+			std::vector<std::vector<uint32_t>> surface_indices(6);
 
 			for (int i = 0; i < 5; i++) points[i] = s.getPointI(i);
 			points[5] = spike_tip;
@@ -234,24 +234,24 @@ namespace phyz {
 		return dodecahedron;
 	}
 
-	ConvexUnionGeometry ConvexUnionGeometry::polyCylinder(mthz::Vec3 pos, double radius, double height, int detail, Material material) {
-		int n_faces = 3 + detail;
+	ConvexUnionGeometry ConvexUnionGeometry::polyCylinder(mthz::Vec3 pos, double radius, double height, uint32_t detail, Material material) {
+		uint32_t n_faces = 3 + detail;
 		std::vector<mthz::Vec3> points(n_faces * 2);
-		std::vector<std::vector<int>> surface_indices(2 + n_faces);
+		std::vector<std::vector<uint32_t>> surface_indices(2 + n_faces);
 
-		for (int i = 0; i < n_faces; i++) {
+		for (uint32_t i = 0; i < n_faces; i++) {
 			double theta = 2 * PI * i / n_faces;
 			points[i] = mthz::Vec3(pos.x + radius * cos(theta), pos.y, pos.z + radius * sin(theta));
 			points[i + n_faces] = mthz::Vec3(pos.x + radius * cos(theta), pos.y + height, pos.z + radius * sin(theta));
 		}
 
-		for (int i = 0; i < n_faces; i++) {
+		for (uint32_t i = 0; i < n_faces; i++) {
 			surface_indices[0].push_back(n_faces - 1 - i);
 			surface_indices[1].push_back(n_faces + i);
 		}
 
-		for (int i = 0; i < n_faces; i++) {
-			int j = (i + 1 == n_faces) ? 0 : i + 1;
+		for (uint32_t i = 0; i < n_faces; i++) {
+			uint32_t j = (i + 1 == n_faces) ? 0 : i + 1;
 			surface_indices[i + 2] = { i, j, n_faces + j, n_faces + i };
 		}
 
@@ -279,7 +279,7 @@ namespace phyz {
 				points[j], points[j + n_faces], points[j + 2 * n_faces], points[j + 3 * n_faces]
 			};
 
-			std::vector<std::vector<int>> surface_indices = {
+			std::vector<std::vector<uint32_t>> surface_indices = {
 				{ { 0, 1, 5, 4 } }, //underside
 				{ { 1, 5, 7, 3 } }, //outside
 				{ { 2, 3, 7, 6 } }, //upperside
@@ -296,7 +296,7 @@ namespace phyz {
 
 	static ConvexUnionGeometry tooth(mthz::Vec3 pos, double width, double length, double height, Material material) {
 		std::vector<mthz::Vec3> points(12);
-		std::vector<std::vector<int>> surface_indices(8);
+		std::vector<std::vector<uint32_t>> surface_indices(8);
 		double f = 0.4;
 		double p = 0.3;
 
@@ -376,7 +376,7 @@ namespace phyz {
 		double dTheta = PI / n_segments;
 		for (int i = 0; i < n_segments; i++) {
 			std::vector<mthz::Vec3> points(8);
-			std::vector<std::vector<int>> surface_indices(6);
+			std::vector<std::vector<uint32_t>> surface_indices(6);
 
 
 			double t1 = i * dTheta;
@@ -412,7 +412,7 @@ namespace phyz {
 		double dTheta = 2 * PI / n_segments;
 		for (int i = 0; i < n_segments; i++) {
 			std::vector<mthz::Vec3> tube_points(8);
-			std::vector<std::vector<int>> tube_surface_indices(6);
+			std::vector<std::vector<uint32_t>> tube_surface_indices(6);
 
 			double t1 = i * dTheta;
 			double t2 = (i + 1) * dTheta;
@@ -440,7 +440,7 @@ namespace phyz {
 			out = ConvexUnionGeometry::merge(out, tube_segment);
 
 			std::vector<mthz::Vec3> bowl_points(8);
-			std::vector<std::vector<int>> bowl_surface_indices(6);
+			std::vector<std::vector<uint32_t>> bowl_surface_indices(6);
 
 			bowl_points[0] = tube_points[4];
 			bowl_points[1] = tube_points[5];
@@ -539,31 +539,31 @@ namespace phyz {
 		return MeshInput{ triangle_indices, points };
 	}
 
-	MeshInput generateRadialMeshInput(int n_rot_segments, int n_radial_segments, double radius_size, mthz::Vec3 position) {
+	MeshInput generateRadialMeshInput(uint32_t n_rot_segments, uint32_t n_radial_segments, double radius_size, mthz::Vec3 position) {
 		assert(n_radial_segments >= 1);
 
 		std::vector<mthz::Vec3> points(1 + n_rot_segments * n_radial_segments);
 		std::vector<TriIndices> triangle_indices(n_rot_segments + 2 * n_rot_segments * (n_radial_segments - 1));
 
 		points[0] = position; //center;
-		int offset = 1;
+		uint32_t offset = 1;
 
 		double dTheta = 2 * PI / n_rot_segments;
-		for (int r = 1; r < n_radial_segments+1; r++) {
-			for (int t = 0; t < n_rot_segments; t++) {
+		for (uint32_t r = 1; r < n_radial_segments+1; r++) {
+			for (uint32_t t = 0; t < n_rot_segments; t++) {
 				double theta = dTheta * t;
 				points[offset + t + (r-1) * n_rot_segments] = position + r * radius_size * mthz::Vec3(mthz::Vec3(cos(theta), 0, -sin(theta)));
 			}
 		}
 
 		
-		for (unsigned int t = 0; t < n_rot_segments; t++) {
+		for (uint32_t t = 0; t < n_rot_segments; t++) {
 			triangle_indices[t] = TriIndices{ 0, t + offset, ((t + 1) % n_rot_segments) + offset, Material::default_material() };
 		}
 
 		
-		for (int r = 0; r < n_radial_segments - 1; r++) {
-			for (unsigned int t = 0; t < n_rot_segments; t++) {
+		for (uint32_t r = 0; r < n_radial_segments - 1; r++) {
+			for (uint32_t t = 0; t < n_rot_segments; t++) {
 
 				unsigned int indx1 = (r+1) * n_rot_segments + t + offset;
 				unsigned int indx2 = (r+1) * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
@@ -683,8 +683,8 @@ namespace phyz {
 		}
 
 		int next_triangle_id = 0;
-		int vertex_id_offset = input.triangle_indices.size();
-		int next_edge_id = input.triangle_indices.size() + input.points.size();
+		int vertex_id_offset = static_cast<int>(input.triangle_indices.size());
+		int next_edge_id = static_cast<int>(input.triangle_indices.size() + input.points.size());
 		//using the neighbor graph to compute all the finalized StaticMeshTri objects
 		//neighbor info is needed to determine the gauss arcs for valid edge collisions.
 		triangles.reserve(neighbor_graph.size());

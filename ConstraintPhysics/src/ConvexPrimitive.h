@@ -112,7 +112,7 @@ namespace phyz {
 		mthz::Vec3 v;
 		bool SAT_redundant;
 		ExtremaInfo cached_SAT_query;
-		int SAT_reference_point_index;
+		uint32_t SAT_reference_point_index;
 		double SAT_reference_point_value;
 	};
 
@@ -125,7 +125,7 @@ namespace phyz {
 	public:
 		Cylinder() {}
 		Cylinder(const Cylinder& c);
-		Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis = mthz::Vec3(0, 1, 0), int edge_approximation_detail = 12, int face_approximation_detail = 8);
+		Cylinder(mthz::Vec3 center, double radius, double height, mthz::Vec3 height_axis = mthz::Vec3(0, 1, 0), uint32_t edge_approximation_detail = 12, uint32_t face_approximation_detail = 8);
 
 		Cylinder getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point = mthz::Vec3(0, 0, 0)) const;
 		Cylinder getTranslated(mthz::Vec3 t) const;
@@ -137,11 +137,11 @@ namespace phyz {
 		inline double getRadius() const { return radius; }
 		inline double getHeight() const { return height; }
 		inline int getTopApproxPointIDOffset() const { return 0; }
-		inline int getBotApproxPointIDOffset() const { return top_face_approximation.size(); }
-		inline int getTopSurfaceID() const { return 2 * top_face_approximation.size(); }
-		inline int getBotSurfaceID() const { return 2 * top_face_approximation.size() + 1; }
-		inline int getTopEdgeID() const { return 2 * top_face_approximation.size() + 2; }
-		inline int getBotEdgeID() const { return 2 * top_face_approximation.size() + 3; }
+		inline int getBotApproxPointIDOffset() const { return static_cast<int>(top_face_approximation.size()); }
+		inline int getTopSurfaceID() const { return 2 * static_cast<int>(top_face_approximation.size()); }
+		inline int getBotSurfaceID() const { return 2 * static_cast<int>(top_face_approximation.size()) + 1; }
+		inline int getTopEdgeID() const { return 2 * static_cast<int>(top_face_approximation.size()) + 2; }
+		inline int getBotEdgeID() const { return 2 * static_cast<int>(top_face_approximation.size()) + 3; }
 		inline mthz::Vec3 getHeightAxis() const { return height_axis; }
 		inline mthz::Vec3 getCenter() const { return center; }
 		inline mthz::Vec3 getTopDiskCenter() const { return center + 0.5 * height * height_axis; }
@@ -174,7 +174,7 @@ namespace phyz {
 	public:
 		Polyhedron() {}
 		Polyhedron(const Polyhedron& c);
-		Polyhedron(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<int>>& surface_vertex_indices);
+		Polyhedron(const std::vector<mthz::Vec3>& points, const std::vector<std::vector<uint32_t>>& surface_vertex_indices);
 
 		//polyhedrons don't work well as colliders if they have coplanar faces. This method
 		//is to get a cleaned version of a polyhedron if it was fed data that might contain coplanar faces
@@ -232,16 +232,16 @@ namespace phyz {
 
 	class Surface {
 	public:
-		Surface(const std::vector<int>& point_indexes, Polyhedron* poly, mthz::Vec3 interior_point, int surfaceID = -1);
+		Surface(const std::vector<uint32_t>& point_indexes, Polyhedron* poly, mthz::Vec3 interior_point, int32_t surfaceID = -1);
 		Surface(const Surface& s, Polyhedron* poly);
 		Surface();
 
-		int n_points() const;
+		uint32_t n_points() const;
 		mthz::Vec3 normal() const;
 		mthz::Vec3 getPointI(int i) const;
-		inline int getSurfaceID() const { return surfaceID; }
+		inline int32_t getSurfaceID() const { return surfaceID; }
 
-		std::vector<int> point_indexes;
+		std::vector<uint32_t> point_indexes;
 		friend class Polyhedron;
 	private:
 		void findNormalCalcInfo(const mthz::Vec3& normalish);

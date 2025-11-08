@@ -101,6 +101,8 @@ namespace phyz {
 			}
 		}
 		
+		assert(false);
+		return {};
 	}
 
 	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
@@ -112,6 +114,9 @@ namespace phyz {
 		case CYLINDER:
 			return SAT_CylinderMesh((const Cylinder&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		}
+		
+		assert(false);
+		return {};
 	}
 
 	std::vector<Manifold> detectCollision(const StaticMeshGeometry& a, mthz::Vec3 a_world_position, mthz::Quaternion a_world_orientation, const ConvexPrimitive& b, AABB b_aabb) {
@@ -267,10 +272,10 @@ namespace phyz {
 	}
 
 	static inline ContactArea projectCylinderFace(const std::vector<mthz::Vec3> face_verts, mthz::Vec3 u, mthz::Vec3 w, int face_id, int point_id_offset) {
-		int n_points = face_verts.size();
+		uint32_t n_points = static_cast<int>(face_verts.size());
 		ContactArea out = { std::vector<mthz::NVec<2>>(n_points), std::vector<int>(n_points), face_id, FACE };
 
-		for (int i = 0; i < n_points; i++) {
+		for (uint32_t i = 0; i < n_points; i++) {
 			out.ps[i] = { face_verts[i].dot(u), face_verts[i].dot(w) };
 			out.p_IDs[i] = i + point_id_offset;
 		}
@@ -701,8 +706,8 @@ namespace phyz {
 
 
 	static bool checkCylinderEdgeApproxVsBarrel(const Cylinder& a, const Cylinder& b, mthz::Vec3 barrel_height_axis, const std::vector<mthz::Vec3> edge_approx, CheckNormResults* out) {
-		int n = edge_approx.size();
-		for (int i = 0; i < n; i++) {
+		uint32_t n = static_cast<uint32_t>(edge_approx.size());
+		for (uint32_t i = 0; i < n; i++) {
 			mthz::Vec3 edge_dir = edge_approx[(i + 1) % n] - edge_approx[i];
 			mthz::Vec3 dir = edge_dir.cross(barrel_height_axis);
 			if (dir.mag() < 0.00000000001) continue;
@@ -909,7 +914,7 @@ namespace phyz {
 		uint32_t a_feature_id;
 
 		//very hacky using the fact that gauss verts have the same order as the corresponding surfaces they are made from. SurfaceID's start at points.size().
-		int corresponding_surface_id = a.getPoints().size();
+		uint32_t corresponding_surface_id = static_cast<uint32_t>(a.getPoints().size());
 		for (const GaussVert& g : gauss_map.face_verts) {
 			if (!g.SAT_redundant) {
 				ExtremaInfo recentered_g_extrema = recenter(g.cached_SAT_query, g.SAT_reference_point_value, g.v.dot(a.getPoints()[g.SAT_reference_point_index]));
@@ -1771,7 +1776,7 @@ namespace phyz {
 		for (int i = 0; i < m1.points.size(); i++) {
 			out.points[i] = m1.points[i];
 		}
-		int off = m1.points.size();
+		uint32_t off = static_cast<uint32_t>(m1.points.size());
 		for (int i = 0; i < m2.points.size(); i++) {
 			out.points[i + off] = m2.points[i];
 		}

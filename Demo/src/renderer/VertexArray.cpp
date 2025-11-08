@@ -11,30 +11,30 @@
 namespace rndr {
 
 	template<>
-	void VertexArrayLayout::Push<float>(unsigned int count) {
+	void VertexArrayLayout::Push<float>(uint32_t count) {
 		elements.push_back({ GL_FLOAT, count, GL_FALSE });
 		stride += count * VertexBufferElement::GetSizeOfType(GL_FLOAT);
 	}
 
 	template<>
-	void VertexArrayLayout::Push<unsigned int>(unsigned int count) {
+	void VertexArrayLayout::Push<uint32_t>(uint32_t count) {
 		elements.push_back({ GL_UNSIGNED_INT, count, GL_FALSE });
 		stride += count * VertexBufferElement::GetSizeOfType(GL_UNSIGNED_INT) * count;
 	}
 
 	template<>
-	void VertexArrayLayout::Push<int32_t>(unsigned int count) {
+	void VertexArrayLayout::Push<int32_t>(uint32_t count) {
 		elements.push_back({ GL_INT, count, GL_FALSE });
 		stride += count * VertexBufferElement::GetSizeOfType(GL_INT) * count;
 	}
 
 	template<>
-	void VertexArrayLayout::Push<unsigned char>(unsigned int count) {
+	void VertexArrayLayout::Push<unsigned char>(uint32_t count) {
 		elements.push_back({ GL_UNSIGNED_BYTE, count, GL_TRUE });
 		stride += count * VertexBufferElement::GetSizeOfType(GL_UNSIGNED_BYTE) * count;
 	}
 
-	VertexArray::VertexArray(void* data, unsigned int data_size, const VertexArrayLayout& layout) {
+	VertexArray::VertexArray(void* data, uint32_t data_size, const VertexArrayLayout& layout) {
 		glGenBuffers(1, &vertexBufferID);
 		glBindBuffer(GL_ARRAY_BUFFER, vertexBufferID);
 		glBufferData(GL_ARRAY_BUFFER, data_size, data, GL_STATIC_DRAW);
@@ -43,8 +43,8 @@ namespace rndr {
 
 		bind();
 		const auto& elements = layout.getElements();
-		unsigned int offset = 0;
-		for (unsigned int i = 0; i < elements.size(); i++) {
+		size_t offset = 0;
+		for (uint32_t i = 0; i < elements.size(); i++) {
 			const auto& element = elements[i];
 			glEnableVertexAttribArray(i);
 			glVertexAttribPointer(i, element.count, element.type, element.normalized, layout.GetStride(), (const void*)offset);
@@ -64,7 +64,7 @@ namespace rndr {
 		glBindVertexArray(0);
 	}
 
-	BatchArray::BatchArray(const VertexArrayLayout& layout, unsigned int vertex_capacity)
+	BatchArray::BatchArray(const VertexArrayLayout& layout, uint32_t vertex_capacity)
 		: vertex_capacity(vertex_capacity), n_indices_allocated(0), n_vertices_allocated(0)
 	{
 		const int INDEX_BUFFER_SIZE_FACTOR = 6;
@@ -78,14 +78,14 @@ namespace rndr {
 
 		glGenBuffers(1, &indexBufferID);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferID);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * vertex_capacity * sizeof(unsigned int), nullptr, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * vertex_capacity * sizeof(uint32_t), nullptr, GL_DYNAMIC_DRAW);
 
 		glGenVertexArrays(1, &vertexArrayID);
 
 		glBindVertexArray(vertexArrayID);
 		const auto& elements = layout.getElements();
-		unsigned int offset = 0;
-		for (unsigned int i = 0; i < elements.size(); i++) {
+		size_t offset = 0;
+		for (uint32_t i = 0; i < elements.size(); i++) {
 			const auto& element = elements[i];
 			glEnableVertexAttribArray(i);
 			glVertexAttribPointer(i, element.count, element.type, element.normalized, layout.GetStride(), (const void*)offset);
@@ -122,10 +122,10 @@ namespace rndr {
 		}
 	}
 
-	void BatchArray::push(void* vertex_data, int vertex_count, std::vector<unsigned int> index_data) {
+	void BatchArray::push(void* vertex_data, uint32_t vertex_count, std::vector<uint32_t> index_data) {
 		assert(vertex_count + n_vertices_allocated <= vertex_capacity && index_data.size() + n_indices_allocated <= index_capacity);
 
-		std::vector<unsigned int> adjusted_indices(index_data);
+		std::vector<uint32_t> adjusted_indices(index_data);
 		for (int i = 0; i < adjusted_indices.size(); i++) {
 			adjusted_indices[i] += n_vertices_allocated;
 		}
@@ -133,10 +133,10 @@ namespace rndr {
 		bind();
 
 		glBufferSubData(GL_ARRAY_BUFFER, n_vertices_allocated * vertex_size, vertex_count * vertex_size, vertex_data);
-		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, n_indices_allocated * sizeof(unsigned int), adjusted_indices.size() * sizeof(unsigned int), adjusted_indices.data());
+		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, n_indices_allocated * sizeof(uint32_t), adjusted_indices.size() * sizeof(uint32_t), adjusted_indices.data());
 
 		n_vertices_allocated += vertex_count;
-		n_indices_allocated += index_data.size();
+		n_indices_allocated += static_cast<uint32_t>(index_data.size());
 	}
 
 	void BatchArray::flush() {
@@ -145,16 +145,16 @@ namespace rndr {
 		assigned_textures.clear();
 	}
 
-	unsigned int BatchArray::remainingVertexCapacity() const {
+	uint32_t BatchArray::remainingVertexCapacity() const {
 		return vertex_capacity - n_vertices_allocated;
 	}
 
-	unsigned int BatchArray::remainingIndexCapacity() const {
+	uint32_t BatchArray::remainingIndexCapacity() const {
 		return index_capacity - n_indices_allocated;
 	}
 
-	unsigned int BatchArray::remainingTextureCapacity() const {
-		return assigned_textures.size();
+	uint32_t BatchArray::remainingTextureCapacity() const {
+		return static_cast<uint32_t>(assigned_textures.size());
 	}
 
 	void BatchArray::bind() const {

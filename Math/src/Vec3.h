@@ -57,17 +57,18 @@ namespace mthz {
 		}
 
 		inline double& operator[](int index) {
-			if (index == 0) return x;
-			if (index == 1) return y;
-			if (index == 2) return z;
-			assert(false);
+			assert(index >= 0 && index < 3);
+			if (index == 0)      return x;
+			else if (index == 1) return y;
+			else                 return z;
+			
 		}
 
 		inline double operator[](int index) const {
-			if (index == 0) return x;
-			if (index == 1) return y;
-			if (index == 2) return z;
-			assert(false);
+			assert(index >= 0 && index < 3);
+			if (index == 0)      return x;
+			else if (index == 1) return y;
+			else                 return z;
 		}
 
 		inline bool operator==(const Vec3 v) const {

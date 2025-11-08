@@ -133,7 +133,7 @@ namespace phyz {
 
 	RigidBody::PKey RigidBody::trackPoint(mthz::Vec3 p) {
 		track_p.push_back(local_coord_origin + p);
-		return track_p.size() - 1;
+		return static_cast<int>(track_p.size()) - 1;
 	}
 
 	mthz::Vec3 RigidBody::getTrackedP(PKey pk) const {
@@ -204,8 +204,8 @@ namespace phyz {
 	}
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical
-	void RigidBody::rotateWhileApplyingGyroAccel(float fElapsedTime, int n_itr, bool gyro_accel_disabled) {
-		const int CUTOFF_MAG = 0.00000000001;
+	void RigidBody::rotateWhileApplyingGyroAccel(double fElapsedTime, int n_itr, bool gyro_accel_disabled) {
+		const double CUTOFF_MAG = 0.00000000001;
 		const int NEWTON_STEPS = 2;
 
 		if (ang_vel.magSqrd() == 0) {
@@ -228,7 +228,7 @@ namespace phyz {
 			mthz::Vec3 w = itr_ang_vel; //initial guess
 
 			//n_itr is number of sub-timesteps
-			float t_step = fElapsedTime / n_itr;
+			double t_step = fElapsedTime / n_itr;
 			//using newtons method to approximate result of implicit integration
 			for (int i = 0; i < NEWTON_STEPS; i++) {
 				mthz::Vec3 f = t_step * w.cross(itr_tensor * w) - itr_tensor * (itr_ang_vel - w);
@@ -346,7 +346,7 @@ namespace phyz {
 		}
 	}
 
-	static struct IntrgVals {
+	struct IntrgVals {
 		IntrgVals() {
 			v = 0;
 			v2 = 0;
@@ -360,8 +360,8 @@ namespace phyz {
 		double v3;
 	};
 
-	static enum Axis { X, Y, Z };
-	static enum MappedAxis { A, B, C };
+	enum Axis { X, Y, Z };
+	enum MappedAxis { A, B, C };
 	static double getAxisVal(mthz::Vec3 v, MappedAxis axis, Axis proj_axis) {
 		switch (proj_axis) {
 		case X:
@@ -393,6 +393,9 @@ namespace phyz {
 				return v.z;
 			}
 		}
+
+		assert(false);
+		return -1.0;
 	}
 
 	static mthz::Mat3 recenterTensor(double mass, const mthz::Mat3& tensor, mthz::Vec3 new_center_of_rotation, mthz::Vec3 old_origin, mthz::Vec3 true_com) {
@@ -453,7 +456,7 @@ namespace phyz {
 
 					//green's theorem
 					double g1 = 0, ga = 0, gb = 0, gab = 0, ga2 = 0, gb2 = 0, ga2b = 0, gab2 = 0, ga3 = 0, gb3 = 0;
-					for (int i = 0; i < s.n_points(); i++) {
+					for (uint32_t i = 0; i < s.n_points(); i++) {
 						mthz::Vec3 v = s.getPointI(i);
 						mthz::Vec3 v2 = s.getPointI((i + 1) % s.n_points());
 

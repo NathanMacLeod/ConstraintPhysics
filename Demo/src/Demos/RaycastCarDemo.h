@@ -591,11 +591,11 @@ public:
 			mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
 			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos -cam_pos);
 
-			double aspect_ratio = (double)properties.window_height / properties.window_width;
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 550.0, 2.0, 2.0 * aspect_ratio, 60.0));
-			shader.setUniform3f("u_ambient_light", 0.8, 0.8, 0.8);
-			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-			shader.setUniform3f("u_pointlight_col", 0.2, 0.2, 0.2);
+			float aspect_ratio = (float)properties.window_height / properties.window_width;
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 550.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
+			shader.setUniform3f("u_ambient_light", 0.8f, 0.8f, 0.8f);
+			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
+			shader.setUniform3f("u_pointlight_col", 0.2f, 0.2f, 0.2f);
 			shader.setUniform1i("u_Asleep", false);
 
 			for (const PhysBod& b : bodies) {
@@ -606,7 +606,7 @@ public:
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}
-				batch_array.push(transformed_mesh.vertices.data(), transformed_mesh.vertices.size(), transformed_mesh.indices);
+				batch_array.push(transformed_mesh.vertices.data(), static_cast<int>(transformed_mesh.vertices.size()), transformed_mesh.indices);
 			}
 
 			for (const Contact& c : all_contact_points) {
@@ -627,7 +627,7 @@ public:
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}
-				batch_array.push(transformed_mesh.vertices.data(), transformed_mesh.vertices.size(), transformed_mesh.indices);
+				batch_array.push(transformed_mesh.vertices.data(), static_cast<int>(transformed_mesh.vertices.size()), transformed_mesh.indices);
 			}
 
 			for (MeshAndPosTransform m : car.getAlMeshesWithPosititons()) {
@@ -638,7 +638,7 @@ public:
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}
-				batch_array.push(transformed_mesh.vertices.data(), transformed_mesh.vertices.size(), transformed_mesh.indices);
+				batch_array.push(transformed_mesh.vertices.data(), static_cast<int>(transformed_mesh.vertices.size()), transformed_mesh.indices);
 
 			}
 

@@ -178,13 +178,15 @@ public:
 		}
 
 
+		p.setHolonomicSolverCFM(0.00001);
+
 		LDLDemoType demo_type;
 		std::string demo_response = parameters["which_demo"];
 		if      (demo_response == "1") demo_type = SCISSOR_LIFT;
 		else if (demo_response == "2") demo_type = HIGH_MASS_RATIO;
 		else if (demo_response == "3") demo_type = BRIDGE;
 
-		double timestep = 1 / 160.0;
+		double timestep = 1 / 60.0;
 		if (parameters["unstable_tickrate"] == "2") {
 			timestep = 1 / 120.0;
 		}
@@ -344,7 +346,7 @@ public:
 			p.disallowCollisionSet(all_bodies);
 
 			//works well with a low CFM
-			p.setHolonomicSolverCFM(0.000000001);
+			//p.setHolonomicSolverCFM(0.000000001);
 		}
 		else if (demo_type == HIGH_MASS_RATIO) {
 			pos.x += 20;
@@ -395,7 +397,7 @@ public:
 			bodies.push_back({ fromGeometry(ball), ball_r });
 
 			//works well with a low CFM
-			p.setHolonomicSolverCFM(0);
+			//p.setHolonomicSolverCFM(0);
 		}
 		else {
 			pos.y += 30;
@@ -419,7 +421,7 @@ public:
 				phyz::RigidBody* panel_r = p.createRigidBody(panel, panel_movement);
 
 				if (i != 0) {
-					p.addHingeConstraint(panel_r, previous_panel, panel_pos + mthz::Vec3(bridge_panel_length / 2, 0, -bridge_panel_gap / 2), mthz::Vec3(1, 0, 0));
+					p.addHingeConstraint(panel_r, previous_panel, panel_pos + mthz::Vec3(bridge_panel_length / 2, 0, -bridge_panel_gap / 2), mthz::Vec3(1, 0, 0), -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), 1000, 1000);
 				}
 
 				previous_panel = panel_r;
@@ -427,7 +429,7 @@ public:
 
 
 				//works well with a high CFM
-				p.setHolonomicSolverCFM(0.0001);
+				//p.setHolonomicSolverCFM(0.0000000000000001);
 			}
 		}
 
@@ -549,9 +551,10 @@ public:
 				phyz_time += fElapsedTime;
 			}
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
-			while (phyz_time > slow_factor * timestep) {
+			while (phyz_time > slow_factor * timestep && tick_count < 74) {
 				phyz_time -= slow_factor * timestep;
 				p.timeStep();
+				tick_count++;
 			}
 
 			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));
@@ -563,12 +566,11 @@ public:
 			mthz::Vec3 pointlight_pos(0.0, 225.0, 0.0);
 			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
 
-			double aspect_ratio = (double)properties.window_height / properties.window_width;
-			//shader.setUniformMat4f("u_MV", rndr::Mat4::cam_view(mthz::Vec3(0, 0, 0), cam_orient) * rndr::Mat4::model(b.r->getPos(), b.r->getOrientation()));
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1, 550.0, 2.0, 2.0 * aspect_ratio, 60.0));
-			shader.setUniform3f("u_ambient_light", 0.4, 0.4, 0.4);
-			shader.setUniform3f("u_pointlight_pos", trnsfm_light_pos.x, trnsfm_light_pos.y, trnsfm_light_pos.z);
-			shader.setUniform3f("u_pointlight_col", 0.6, 0.6, 0.6);
+			float aspect_ratio = (float)properties.window_height / properties.window_width;
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 550.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
+			shader.setUniform3f("u_ambient_light", 0.4f, 0.4f, 0.4f);
+			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
+			shader.setUniform3f("u_pointlight_col", 0.6f, 0.6f, 0.6f);
 			shader.setUniform1i("u_Asleep", false);
 
 			for (const PhysBod& b : bodies) {
@@ -579,7 +581,7 @@ public:
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}
-				batch_array.push(transformed_mesh.vertices.data(), transformed_mesh.vertices.size(), transformed_mesh.indices);
+				batch_array.push(transformed_mesh.vertices.data(), static_cast<int>(transformed_mesh.vertices.size()), transformed_mesh.indices);
 			}
 
 			rndr::draw(batch_array, shader);
