@@ -5,7 +5,6 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
-//debug
 #include <chrono>
 
 static const double FLATTENING_BIAS_MAG = 0;
@@ -90,8 +89,6 @@ namespace phyz {
 				b->vel += gravity * step_time;
 			}
 		}
-
-		maintainConstraintGraphApplyPoweredConstraints();
 
 		auto t2 = std::chrono::system_clock::now();
 
@@ -345,79 +342,85 @@ namespace phyz {
 
 		auto t5 = std::chrono::system_clock::now();
 
-		if (use_multithread && compute_holonomic_inverse_in_parallel && using_holonomic_system_solver()) {
-			std::vector<ThreadManager::JobStatus> compute_holonomic_inverses_status(active_data.island_systems.size());
+		double sub_itr_duration = step_time / sub_itr_count;
+		for (int i = 0; i < sub_itr_count; i++) {
+			// update constraints
+			maintainConstraintGraphApplyPoweredConstraints();
 
-			int islands_with_holonomic_systems_count = 0;
+			// solve constraints
+			if (use_multithread && compute_holonomic_inverse_in_parallel && using_holonomic_system_solver()) {
+				std::vector<ThreadManager::JobStatus> compute_holonomic_inverses_status(active_data.island_systems.size());
 
-			thread_manager.enqueue_do_all_tasks<IslandConstraints>(n_threads, &active_data.island_systems,
-				[&](IslandConstraints island_system, int index) {
-					PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations, &compute_holonomic_inverses_status[index]);
+				int islands_with_holonomic_systems_count = 0;
+
+				thread_manager.enqueue_do_all_tasks<IslandConstraints>(n_threads, &active_data.island_systems,
+					[&](IslandConstraints island_system, int index) {
+						PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations, &compute_holonomic_inverses_status[index]);
+					}
+				);
+				for (int i = 0; i < active_data.island_systems.size(); i++) {
+					IslandConstraints& island_system = active_data.island_systems[i];
+					if (island_system.systems.empty()) continue;
+
+					islands_with_holonomic_systems_count++;
+
+					int size = static_cast<int>(island_system.systems.size());
+					thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
+						[&, size, i](HolonomicSystem* h, int index) {
+							h->computeInverse(holonomic_block_solver_CFM);
+							auto donet = std::chrono::system_clock::now();
+							//printf("Compute inverse done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(donet - t5).count());
+						}, &compute_holonomic_inverses_status[i]
+							);
 				}
-			);
-			for (int i = 0; i < active_data.island_systems.size(); i++) {
-				IslandConstraints& island_system = active_data.island_systems[i];
-				if (island_system.systems.empty()) continue;
 
-				islands_with_holonomic_systems_count++;
-
-				int size = static_cast<int>(island_system.systems.size());
-				thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
-					[&, size, i](HolonomicSystem* h, int index) {
-						h->computeInverse(holonomic_block_solver_CFM);
-						auto donet = std::chrono::system_clock::now();
-						//printf("Compute inverse done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(donet - t5).count());
-					}, &compute_holonomic_inverses_status[i]
+				thread_manager.execute_jobs();
+			}
+			else if (use_multithread) {
+				thread_manager.do_all<IslandConstraints>(n_threads, active_data.island_systems,
+					[&](IslandConstraints island_system) {
+						PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+					}
 				);
 			}
-
-			thread_manager.execute_jobs();
-		}
-		else if (use_multithread) {
-			thread_manager.do_all<IslandConstraints>(n_threads, active_data.island_systems,
-				[&](IslandConstraints island_system) {
+			else {
+				for (IslandConstraints& island_system : active_data.island_systems) {
 					PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
 				}
-			);
-		}
-		else {
-			for (IslandConstraints& island_system : active_data.island_systems) {
-				PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations,  pgsPosIterations, pgsHolonomicIterations);
+			}
+
+			//update pos and vel
+			auto update_positions = [&](RigidBody* b) {
+				if ((b->getMovementType() != RigidBody::FIXED) && !b->getAsleep()) {
+					b->prev_com = b->getCOM();
+					b->prev_orientation = b->getOrientation();
+
+					b->com += (b->vel + b->psuedo_vel) * sub_itr_duration;
+
+					if (b->ang_vel.magSqrd() != 0) {
+						bool no_gyro = is_internal_gyro_forces_disabled || b->getMovementType() == RigidBody::KINEMATIC;
+
+						b->rotateWhileApplyingGyroAccel(sub_itr_duration, angle_velocity_update_tick_count, no_gyro);
+						mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
+						b->orientation = mthz::Quaternion(sub_itr_duration * psuedo_rot.mag(), psuedo_rot) * b->orientation;
+					}
+
+					b->psuedo_vel = mthz::Vec3(0, 0, 0);
+					b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
+				}
+			};
+
+			if (use_multithread) {
+				thread_manager.do_all<RigidBody*>(n_threads, bodies, update_positions);
+			}
+			else {
+				for (RigidBody* b : bodies) {
+					update_positions(b);
+				}
 			}
 		}
 
 		auto t6 = std::chrono::system_clock::now();
-
-		auto update_positions = [&](RigidBody* b) {
-			if ((b->getMovementType() != RigidBody::FIXED) && !b->getAsleep()) {
-				b->prev_com = b->getCOM();
-				b->prev_orientation = b->getOrientation();
-
-				b->com += (b->vel + b->psuedo_vel) * step_time;
-
-				if (b->ang_vel.magSqrd() != 0) {
-					bool no_gyro = is_internal_gyro_forces_disabled || b->getMovementType() == RigidBody::KINEMATIC;
-
-					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count, no_gyro);
-					mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
-					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
-				}
-
-				b->psuedo_vel = mthz::Vec3(0, 0, 0);
-				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
-			}
-		};
-
-		if (use_multithread) {
-			thread_manager.do_all<RigidBody*>(n_threads, bodies, update_positions);
-		}
-		else {
-			for (RigidBody* b : bodies) {
-				update_positions(b);
-			}
-		}
-
-		applyMasterSlavePosCorrect(active_data);
 
 		auto update_geometry = [&](RigidBody* b) {
 			bool moveable = (b->getMovementType() != RigidBody::FIXED) && !b->getAsleep();
@@ -460,115 +463,6 @@ namespace phyz {
 					printf("AABB_Tree: %f, Octree %f, Bruteforce: %f\n", aabb_time, octree_time, none_time);
 				}
 			}
-		}
-	}
-
-	void PhysicsEngine::applyMasterSlavePosCorrect(const ActiveConstraintData& a) {
-		for (BallSocket* b : a.mast_slav_bss) {
-			RigidBody* slave;
-			mthz::Vec3 master_attachp, slave_attachp;
-			if (b->b1_master) {
-				slave = b->b2;
-				master_attachp = b->b1->getTrackedP(b->b1_point_key);
-				slave_attachp = b->b2->getTrackedP(b->b2_point_key);
-			}
-			else {
-				slave = b->b1;
-				master_attachp = b->b2->getTrackedP(b->b2_point_key);
-				slave_attachp = b->b1->getTrackedP(b->b1_point_key);
-			}
-
-			slave->translateNoGeomUpdate(master_attachp - slave_attachp);
-		}
-		for (Hinge* h : a.mast_slav_hs) {
-			RigidBody* slave;
-			mthz::Vec3 master_attachp, slave_attachp;
-			mthz::Vec3 master_rotaxis, slave_rotaxis;
-			if (h->b1_master) {
-				slave = h->b2;
-				master_attachp = h->b1->getTrackedP(h->b1_point_key);
-				slave_attachp = h->b2->getTrackedP(h->b2_point_key);
-				master_rotaxis = h->b1->getOrientation().applyRotation(h->b1_rot_axis_body_space);
-				slave_rotaxis = h->b2->getOrientation().applyRotation(h->b2_rot_axis_body_space);
-			}
-			else {
-				slave = h->b1;
-				master_attachp = h->b2->getTrackedP(h->b2_point_key);
-				slave_attachp = h->b1->getTrackedP(h->b1_point_key);
-				master_rotaxis = h->b2->getOrientation().applyRotation(h->b2_rot_axis_body_space);
-				slave_rotaxis = h->b1->getOrientation().applyRotation(h->b1_rot_axis_body_space);
-			}
-
-			mthz::Vec3 crs = slave_rotaxis.cross(master_rotaxis);
-			if (crs.magSqrd() > 0.000000001) {
-				mthz::Vec3 rot_axis = crs.normalize();
-				double ang = asin(crs.mag());
-				slave->rotate(mthz::Quaternion(ang, rot_axis));
-			}
-			slave->translateNoGeomUpdate(master_attachp - slave_attachp);
-		}
-		for (Slider* s : a.mast_slav_ss) {
-			RigidBody* master, *slave;
-			mthz::Vec3 master_attachp, slave_attachp;
-			mthz::Vec3 master_slide_axis;
-			if (s->b1_master) {
-				master = s->b1; slave = s->b2;
-				master_attachp = s->b1->getTrackedP(s->b1_point_key);
-				slave_attachp = s->b2->getTrackedP(s->b2_point_key);
-				master_slide_axis = s->b1->getOrientation().applyRotation(s->b1_slide_axis_body_space);
-			}
-			else {
-				master = s->b1; slave = s->b1;
-				master_attachp = s->b2->getTrackedP(s->b2_point_key);
-				slave_attachp = s->b1->getTrackedP(s->b1_point_key);
-				master_slide_axis = s->b2->getOrientation().applyRotation(s->b2_slide_axis_body_space);
-			}
-
-			slave->rotateNoGeomUpdate(master->getOrientation() * slave->getOrientation().conjugate());
-			mthz::Vec3 attachp_diff = master_attachp - slave_attachp;
-			slave->translateNoGeomUpdate(attachp_diff - master_slide_axis * master_slide_axis.dot(attachp_diff));
-		}
-		for (SlidingHinge* s : a.mast_slav_shs) {
-			RigidBody* master, * slave;
-			mthz::Vec3 master_attachp, slave_attachp;
-			mthz::Vec3 master_slide_axis, slave_slide_axis;
-			if (s->b1_master) {
-				master = s->b1; slave = s->b2;
-				master_attachp = s->b1->getTrackedP(s->b1_point_key);
-				slave_attachp = s->b2->getTrackedP(s->b2_point_key);
-				master_slide_axis = s->b1->getOrientation().applyRotation(s->b1_slide_axis_body_space);
-			}
-			else {
-				master = s->b1; slave = s->b1;
-				master_attachp = s->b2->getTrackedP(s->b2_point_key);
-				slave_attachp = s->b1->getTrackedP(s->b1_point_key);
-				master_slide_axis = s->b2->getOrientation().applyRotation(s->b2_slide_axis_body_space);
-			}
-
-			mthz::Vec3 crs = slave_slide_axis.cross(master_slide_axis);
-			if (crs.magSqrd() > 0.000000001) {
-				mthz::Vec3 rot_axis = crs.normalize();
-				double ang = asin(crs.mag());
-				slave->rotateNoGeomUpdate(mthz::Quaternion(ang, rot_axis));
-			}
-			mthz::Vec3 attachp_diff = master_attachp - slave_attachp;
-			slave->translateNoGeomUpdate(attachp_diff - master_slide_axis * master_slide_axis.dot(attachp_diff));
-		}
-		for (Weld* w : a.mast_slav_ws) {
-			RigidBody* master, * slave;
-			mthz::Vec3 master_attachp, slave_attachp;
-			if (w->b1_master) {
-				master = w->b1; slave = w->b2;
-				master_attachp = w->b1->getTrackedP(w->b1_point_key);
-				slave_attachp = w->b2->getTrackedP(w->b2_point_key);
-			}
-			else {
-				master = w->b1; slave = w->b1;
-				master_attachp = w->b2->getTrackedP(w->b2_point_key);
-				slave_attachp = w->b1->getTrackedP(w->b1_point_key);
-			}
-			slave->rotateNoGeomUpdate(master->getOrientation()* slave->getOrientation().conjugate());
-			slave->translateNoGeomUpdate(master_attachp - slave_attachp);
 		}
 	}
 
@@ -744,7 +638,6 @@ namespace phyz {
 			b2_key,
 			CFM{USE_GLOBAL},
 			pos_correct_strength,
-			PSUEDO_VELOCITY,
 			true,
 			uniqueID
 		};
@@ -777,7 +670,6 @@ namespace phyz {
 			b2->trackPoint(b2_attach_pos_local),
 			CFM{USE_GLOBAL},
 			pos_correct_strength,
-			PSUEDO_VELOCITY,
 			true,
 			uniqueID
 		};
@@ -816,7 +708,6 @@ namespace phyz {
 			CFM{USE_GLOBAL},
 			pos_correct_strength,
 			rot_correct_strength,
-			PSUEDO_VELOCITY,
 			true,
 			uniqueID
 		};
@@ -859,7 +750,6 @@ namespace phyz {
 			CFM{USE_GLOBAL},
 			pos_correct_strength,
 			rot_correct_strength,
-			PSUEDO_VELOCITY,
 			true,
 			uniqueID
 		};
@@ -902,7 +792,6 @@ namespace phyz {
 			CFM{USE_GLOBAL},
 			pos_correct_strength,
 			rot_correct_strength,
-			PSUEDO_VELOCITY,
 			true,
 			uniqueID
 		};
@@ -936,7 +825,6 @@ namespace phyz {
 			CFM{USE_GLOBAL},
 			pos_correct_strength,
 			rot_correct_strength,
-			PSUEDO_VELOCITY,
 			true,
 			uniqueID
 		};
@@ -978,72 +866,6 @@ namespace phyz {
 		constraint_map[uniqueID] = e;
 		return ConstraintID{ ConstraintID::SPRING, uniqueID };
 
-	}
-
-	void PhysicsEngine::setConstraintPosCorrectMethod(ConstraintID id, PosErrorResolutionMode error_correct_method, bool b1_master) {
-		assert(constraint_map.find(id.uniqueID) != constraint_map.end());
-
-		SharedConstraintsEdge* e = constraint_map[id.uniqueID];
-		switch (id.type) {
-		case ConstraintID::DISTANCE:
-			for (int i = 0; i < e->distance_constraints.size(); i++) {
-				Distance* d = e->distance_constraints[i];
-				if (d->uniqueID == id.uniqueID) {
-					d->pos_error_mode = error_correct_method;
-					d->b1_master = b1_master;
-				}
-			}
-			break;
-		case ConstraintID::BALL:
-			for (int i = 0; i < e->ball_socket_constraints.size(); i++) {
-				BallSocket* b = e->ball_socket_constraints[i];
-				if (b->uniqueID == id.uniqueID) {
-					b->pos_error_mode = error_correct_method;
-					b->b1_master = b1_master;
-				}
-			}
-			break;
-		case ConstraintID::HINGE:
-			for (int i = 0; i < e->hinge_constraints.size(); i++) {
-				Hinge* h = e->hinge_constraints[i];
-				if (h->uniqueID == id.uniqueID) {
-					h->pos_error_mode = error_correct_method;
-					h->b1_master = b1_master;
-				}
-			}
-			break;
-		case ConstraintID::SLIDER:
-			for (int i = 0; i < e->slider_constraints.size(); i++) {
-				Slider* s = e->slider_constraints[i];
-				if (s->uniqueID == id.uniqueID) {
-					s->pos_error_mode = error_correct_method;
-					s->b1_master = b1_master;
-				}
-			}
-			break;
-		case ConstraintID::SLIDING_HINGE:
-			for (int i = 0; i < e->sliding_hinge_constraints.size(); i++) {
-				SlidingHinge* s = e->sliding_hinge_constraints[i];
-				if (s->uniqueID == id.uniqueID) {
-					s->pos_error_mode = error_correct_method;
-					s->b1_master = b1_master;
-
-				}
-
-			}
-			break;
-		case ConstraintID::WELD:
-			for (int i = 0; i < e->weld_constraints.size(); i++) {
-				Weld* w = e->weld_constraints[i];
-				if (w->uniqueID == id.uniqueID) {
-					w->pos_error_mode = error_correct_method;
-					w->b1_master = b1_master;
-
-				}
-
-			}
-			break;
-		}
 	}
 
 	void PhysicsEngine::setConstraintUseCustomCFM(ConstraintID id, double custom_cfm) {
@@ -1743,7 +1565,7 @@ namespace phyz {
 					mthz::Vec3 b1_pos = d->b1->getTrackedP(d->b1_point_key);
 					mthz::Vec3 b2_pos = d->b2->getTrackedP(d->b2_point_key);
 					mthz::NVec<1> starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : warm_start_coefficient * d->constraint.impulse;
-					double pos_correct_coeff = d->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(d->pos_correct_hardness, step_time) : 0;
+					double pos_correct_coeff = posCorrectCoeff(d->pos_correct_hardness, step_time);
 					d->constraint = DistanceConstraint(d->b1, d->b2, b1_pos, b2_pos, d->target_distance, pos_correct_coeff, d->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse);
 				}
 				for (BallSocket* bs: e->ball_socket_constraints) {
@@ -1751,7 +1573,7 @@ namespace phyz {
 					mthz::Vec3 b1_pos = bs->b1->getTrackedP(bs->b1_point_key);
 					mthz::Vec3 b2_pos = bs->b2->getTrackedP(bs->b2_point_key);
 					mthz::NVec<3> starting_impulse = warm_start_disabled ? mthz::NVec<3>{ 0.0} : warm_start_coefficient * bs->constraint.impulse;
-					double pos_correct_coeff = bs->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(bs->pos_correct_hardness, step_time) : 0;
+					double pos_correct_coeff = posCorrectCoeff(bs->pos_correct_hardness, step_time);
 					bs->constraint = BallSocketConstraint(bs->b1, bs->b2, b1_pos, b2_pos, pos_correct_coeff, bs->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse);
 				}
 				for (Hinge* h : e->hinge_constraints) {
@@ -1768,8 +1590,8 @@ namespace phyz {
 					}
 					h->motor.writePrevVel(b1_hinge_axis, h->b1->getAngVel(), h->b2->getAngVel());
 
-					double pos_correct_coeff = h->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(h->pos_correct_hardness, step_time) : 0;
-					double rot_correct_coeff = h->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(h->rot_correct_hardness, step_time) : 0;
+					double pos_correct_coeff = posCorrectCoeff(h->pos_correct_hardness, step_time);
+					double rot_correct_coeff = posCorrectCoeff(h->rot_correct_hardness, step_time);
 
 					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : warm_start_coefficient * h->constraint.impulse;
 					h->constraint = HingeConstraint(h->b1, h->b2, b1_pos, b2_pos, b1_hinge_axis, b2_hinge_axis, pos_correct_coeff, rot_correct_coeff, h->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse, h->constraint.u, h->constraint.w);
@@ -1794,8 +1616,8 @@ namespace phyz {
 						s->piston.piston_constraint = PistonConstraint(s->b1, s->b2, b1_slide_axis, piston_target_velocity, s->piston.max_force * step_time, s->cfm.getCFMValue(global_cfm),  piston_starting_impulse);
 					}
 
-					double pos_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->pos_correct_hardness, step_time) : 0;
-					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
+					double pos_correct_coeff = posCorrectCoeff(s->pos_correct_hardness, step_time);
+					double rot_correct_coeff = posCorrectCoeff(s->rot_correct_hardness, step_time);
 
 					mthz::NVec<5> starting_impulse = warm_start_disabled ? mthz::NVec<5>{ 0.0} : warm_start_coefficient * s->constraint.impulse;
 					s->constraint = SliderConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, pos_correct_coeff, pos_correct_coeff, s->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
@@ -1827,8 +1649,8 @@ namespace phyz {
 					}
 					s->motor.writePrevVel(b1_slide_axis, s->b1->getAngVel(), s->b2->getAngVel());
 
-					double pos_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->pos_correct_hardness, step_time) : 0;
-					double rot_correct_coeff = s->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(s->rot_correct_hardness, step_time) : 0;
+					double pos_correct_coeff = posCorrectCoeff(s->pos_correct_hardness, step_time);
+					double rot_correct_coeff = posCorrectCoeff(s->rot_correct_hardness, step_time);
 
 					mthz::NVec<4> starting_impulse = warm_start_disabled ? mthz::NVec<4>{ 0.0} : warm_start_coefficient * s->constraint.impulse;
 					s->constraint = SlidingHingeConstraint(s->b1, s->b2, b1_pos, b2_pos, b1_slide_axis, b2_slide_axis, pos_correct_coeff, rot_correct_coeff, s->cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse, s->constraint.u, s->constraint.w);
@@ -1837,8 +1659,8 @@ namespace phyz {
 					mthz::Vec3 b1_pos = w->b1->getTrackedP(w->b1_point_key);
 					mthz::Vec3 b2_pos = w->b2->getTrackedP(w->b2_point_key);
 
-					double pos_correct_coeff = w->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(w->pos_correct_hardness, step_time) : 0;
-					double rot_correct_coeff = w->pos_error_mode == PSUEDO_VELOCITY || true ? posCorrectCoeff(w->rot_correct_hardness, step_time) : 0;
+					double pos_correct_coeff = posCorrectCoeff(w->pos_correct_hardness, step_time);
+					double rot_correct_coeff = posCorrectCoeff(w->rot_correct_hardness, step_time);
 
 					mthz::NVec<6> starting_impulse = warm_start_disabled ? mthz::NVec<6>{ 0.0} : warm_start_coefficient * w->constraint.impulse;
 					w->constraint = WeldConstraint(w->b1, w->b2, b1_pos, b2_pos, pos_correct_coeff, rot_correct_coeff, w->cfm.getCFMValue(global_cfm), is_in_holonomic_system, w->constraint.impulse);
@@ -1945,15 +1767,9 @@ namespace phyz {
 				std::vector<HolonomicSystem*>* island_systems;
 				std::vector<Constraint*>* island_constraints;
 				std::vector<RigidBody*>* island_bodies;
-				std::vector<Distance*>* mast_slav_ds;
-				std::vector<BallSocket*>* mast_slav_bss;
-				std::vector<Hinge*>* mast_slav_hs;
-				std::vector<Slider*>* mast_slav_ss;
-				std::vector<SlidingHinge*>* mast_slav_shs;
-				std::vector<Weld*>* mast_slav_ws;
 			};
 			
-			InStruct in = { &all_ready_to_sleep, &island_constraints.systems, &island_constraints.constraints, &island_bodies, & out.mast_slav_ds, &out.mast_slav_bss, &out.mast_slav_hs, &out.mast_slav_ss, &out.mast_slav_shs, &out.mast_slav_ws };
+			InStruct in = { &all_ready_to_sleep, &island_constraints.systems, &island_constraints.constraints, &island_bodies };
 			int new_contact_life = this->contact_life;
 			bfsVisitAll(n, &visited, (void*)&in, [&visited, new_contact_life, this](ConstraintGraphNode* curr, void* in) {
 				InStruct* output = (InStruct*)in;
@@ -1979,22 +1795,18 @@ namespace phyz {
 					}
 					for (Distance* d : e->distance_constraints) {
 						output->island_constraints->push_back(&d->constraint);
-						if (d->pos_error_mode == MASTER_SLAVE) output->mast_slav_ds->push_back(d);
 					}
 					for (BallSocket* bs : e->ball_socket_constraints) {
 						output->island_constraints->push_back(&bs->constraint);
-						if (bs->pos_error_mode == MASTER_SLAVE) output->mast_slav_bss->push_back(bs);
 					}
 					for (Hinge* h : e->hinge_constraints) {
 						output->island_constraints->push_back(&h->constraint);
-						if (h->pos_error_mode == MASTER_SLAVE) output->mast_slav_hs->push_back(h);
 						if (h->motor.constraintIsActive()) {
 							output->island_constraints->push_back(&h->motor.motor_constraint);
 						}
 					}
 					for (Slider* s : e->slider_constraints) {
 						output->island_constraints->push_back(&s->constraint);
-						if (s->pos_error_mode == MASTER_SLAVE) output->mast_slav_ss->push_back(s);
 						if (s->piston.pistonIsActive()) {
 							output->island_constraints->push_back(&s->piston.piston_constraint);
 						}
@@ -2004,7 +1816,6 @@ namespace phyz {
 					}
 					for (SlidingHinge* s : e->sliding_hinge_constraints) {
 						output->island_constraints->push_back(&s->constraint);
-						if (s->pos_error_mode == MASTER_SLAVE) output->mast_slav_shs->push_back(s);
 						if (s->piston.pistonIsActive()) {
 							output->island_constraints->push_back(&s->piston.piston_constraint);
 						}
@@ -2016,7 +1827,6 @@ namespace phyz {
 						}
 					}
 					for (Weld* w : e->weld_constraints) {
-						if (w->pos_error_mode == MASTER_SLAVE) output->mast_slav_ws->push_back(w);
 						output->island_constraints->push_back(&w->constraint);
 					}
 					

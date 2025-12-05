@@ -33,11 +33,6 @@ namespace phyz {
 	typedef int ColActionID;
 	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifold)> ColAction;
 
-	//PSUEDO_VELOCITY: position correction is done by calcualting a bonus velocity to push constrained objects back to valid positions
-	//MASTER_SLAVE: The master body (designed by master_b1 bool) dictates the correct position, and the slave object is translated to it. 
-	//Psuedo velocities are still calculated and applied for the sake of other constraints that interact with the master/slave pair.
-	enum PosErrorResolutionMode { PSUEDO_VELOCITY, MASTER_SLAVE };
-
 	struct ConstraintID {
 		ConstraintID() : uniqueID(-1) {}
 		enum Type { DISTANCE, BALL, HINGE, SLIDER, SPRING, SLIDING_HINGE, WELD };
@@ -143,7 +138,6 @@ namespace phyz {
 		ConstraintID addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length = -1);
 		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
 
-		void setConstraintPosCorrectMethod(ConstraintID id, PosErrorResolutionMode error_correct_method, bool b1_master = true);
 		void setConstraintUseCustomCFM(ConstraintID id, double custom_cfm);
 		void setConstraintUseGlobalCFM(ConstraintID id);
 		void removeConstraint(ConstraintID id, bool reenable_collision=true);
@@ -176,9 +170,10 @@ namespace phyz {
 
 		unsigned int next_id = 1;
 
-		int pgsVelIterations = 20;
-		int pgsPosIterations = 15;
-		int pgsHolonomicIterations = 3;
+		int pgsVelIterations = 1;
+		int pgsPosIterations = 1;
+		int sub_itr_count = 1;
+		int pgsHolonomicIterations = 1;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
 
 		BroadPhaseStructure broadphase = AABB_TREE;
@@ -198,6 +193,7 @@ namespace phyz {
 		struct ConstraintGraphNode; 
 		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness, CFM cfm);
 		void maintainConstraintGraphApplyPoweredConstraints();
+		void updateConstraints(std::vector<Constraint*> constraints);
 		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
 		bool bodySleepy(RigidBody* r);
@@ -253,7 +249,6 @@ namespace phyz {
 			RigidBody::PKey b2_point_key;
 			CFM cfm;
 			double pos_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
 			bool b1_master;
 			int uniqueID;
 		};
@@ -266,7 +261,6 @@ namespace phyz {
 			RigidBody::PKey b2_point_key;
 			CFM cfm;
 			double pos_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
 			bool b1_master;
 			int uniqueID;
 		};
@@ -331,7 +325,6 @@ namespace phyz {
 			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
 			bool b1_master;
 			int uniqueID;
 		};
@@ -348,7 +341,6 @@ namespace phyz {
 			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
 			bool b1_master;
 			int uniqueID;
 		};
@@ -366,7 +358,6 @@ namespace phyz {
 			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
 			bool b1_master;
 			int uniqueID;
 		};
@@ -380,7 +371,6 @@ namespace phyz {
 			CFM cfm;
 			double pos_correct_hardness;
 			double rot_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
 			bool b1_master;
 			int uniqueID;
 		};
@@ -403,16 +393,16 @@ namespace phyz {
 
 		struct ActiveConstraintData {
 			std::vector<IslandConstraints> island_systems;
-			std::vector<BallSocket*> mast_slav_bss;
+			/*std::vector<BallSocket*> mast_slav_bss;
 			std::vector<Distance*> mast_slav_ds;
 			std::vector<Hinge*> mast_slav_hs;
 			std::vector<Slider*> mast_slav_ss;
 			std::vector<SlidingHinge*> mast_slav_shs;
-			std::vector<Weld*> mast_slav_ws;
+			std::vector<Weld*> mast_slav_ws;*/
 		};
 
 		ActiveConstraintData sleepOrSolveIslands();
-		void applyMasterSlavePosCorrect(const ActiveConstraintData& a);
+		//void applyMasterSlavePosCorrect(const ActiveConstraintData& a);
 
 		struct HolonomicSystemNodes;
 
