@@ -134,6 +134,8 @@ public:
 
 		bool single_step_mode = false;
 
+		bool paused = true;
+
 		while (rndr::render_loop(&fElapsedTime)) {
 
 			/*for (phyz::RigidBody* r : p.getBodies()) {
@@ -222,6 +224,15 @@ public:
 				if (hit_info.did_hit) hit_info.hit_object->applyImpulse(camera_dir * 1, hit_info.hit_position);
 			}
 
+			if (rndr::getKeyPressed(GLFW_KEY_P)) {
+				paused = !paused;
+			}
+
+			if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				p.timeStep();
+				//printf("%d\n", tick_count++);
+			}
+
 			t += fElapsedTime;
 
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
@@ -229,8 +240,10 @@ public:
 				return;
 			}
 
-			phyz_time += fElapsedTime;
-			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+			if (!paused) {
+				phyz_time += fElapsedTime;
+				phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+			}
 			while (!single_step_mode && phyz_time > timestep) {
 				all_contact_points.clear();
 				phyz_time -= timestep;

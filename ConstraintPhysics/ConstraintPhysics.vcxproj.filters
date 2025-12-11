@@ -36,6 +36,9 @@
     <ClCompile Include="src\HolonomicBlockSolver.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\PersistentConstraint.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\PhysicsEngine.h">
@@ -78,6 +81,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\HolonomicBlockSolver.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PersistentConstraint.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
