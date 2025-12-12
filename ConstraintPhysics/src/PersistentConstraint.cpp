@@ -3,7 +3,7 @@
 namespace phyz {
 
 	Motor::Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle, uint32_t id_value)
-		: PersistentConstraint(ConstraintID(ConstraintID::Type::MOTOR, id_value), b1, b2), target_velocity(0), max_torque(0), target_position(0),
+		: PersistentConstraint(ConstraintID(ConstraintID::Type::MOTOR, id_value), b1, b2), b1_rot_axis_body_space(b1_rot_axis_local), target_velocity(0), max_torque(0), target_position(0),
 		  mode(OFF), min_motor_position(min_angle), max_motor_position(max_angle)
 	{
 		mthz::Vec3 u1, w1;
@@ -24,7 +24,7 @@ namespace phyz {
 	}
 
 	void Motor::addSolverConstraints(std::vector<Constraint*>* accumulator) {
-		//todo
+		if (constraintIsActive()) { accumulator->push_back(&motor_constraint); }
 	}
 
 	double Motor::calculatePosition(mthz::Vec3 rot_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double step_time) {
@@ -123,7 +123,8 @@ namespace phyz {
 	}
 
 	void Piston::addSolverConstraints(std::vector<Constraint*>* accumulator) {
-		//todo
+		if (slide_limit_exceeded) { accumulator->push_back(&slide_limit); }
+		if (pistonIsActive()) { accumulator->push_back(&piston_constraint); }
 	}
 
 	double Piston::calculatePosition(mthz::Vec3 b1_pos, mthz::Vec3 b2_pos, mthz::Vec3 slide_axis) {
@@ -179,15 +180,17 @@ namespace phyz {
 
 	void Contact::updateSolverConstraints(bool warm_start_disabled, double warm_start_coefficient, double step_time, double global_cfm, bool is_in_holonomic_system) {
 		mthz::Vec3 b1_pos = b1->getOrientation().applyRotation(contact_pos_local_b1) + b1->getCOM();
-		mthz::Vec3 b2_pos = b2->getOrientation().applyRotation(contact_pos_local_b1) + b2->getCOM();
+		mthz::Vec3 b2_pos = b2->getOrientation().applyRotation(contact_pos_local_b2) + b2->getCOM();
 		mthz::Vec3 norm = b1->getOrientation().applyRotation(normal_local_b1);
 
 		double adjusted_depth = (b2_pos - b1_pos).dot(norm) + pen_depth;
 		//todo
 		mthz::NVec<1> contact_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0 } : warm_start_coefficient * contact.impulse;
 		mthz::NVec<2> friction_impulse = warm_start_disabled ? mthz::NVec<2> { 0.0 } : warm_start_coefficient * friction.impulse;
+
+		double pos_correct_coeff = posCorrectCoeff(pos_correct_hardness, step_time);
 		double normal_impulse_limit = std::numeric_limits<double>::infinity();
-		contact = ContactConstraint(b1, b2, norm, b1_pos, bounce, adjusted_depth, pos_correct_hardness, cfm.getCFMValue(global_cfm), contact_impulse, cutoff_vel);
+		contact = ContactConstraint(b1, b2, norm, b1_pos, bounce, adjusted_depth, pos_correct_coeff, cfm.getCFMValue(global_cfm), contact_impulse, cutoff_vel);
 		friction = FrictionConstraint(b1, b2, norm, b1_pos, friction_coeff, &contact, cfm.getCFMValue(global_cfm), friction_impulse, friction.u, friction.w, normal_impulse_limit);
 	}
 

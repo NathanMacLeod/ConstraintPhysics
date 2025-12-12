@@ -313,22 +313,22 @@ public:
 			double non_dist_pos_correct_strength = 600;
 			double inf = std::numeric_limits<double>::infinity();
 
-			p.addHingeConstraint(base_r, front_right_wheel_r, front_right_wheel_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addHingeConstraint(base_r, rear_right_wheel_r, rear_right_wheel_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addHingeConstraint(base_r, front_left_wheel_r, front_left_wheel_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addHingeConstraint(base_r, rear_left_wheel_r, rear_left_wheel_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
+			p.addHingeConstraint(base_r, front_right_wheel_r, front_right_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
+			p.addHingeConstraint(base_r, rear_right_wheel_r, rear_right_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
+			p.addHingeConstraint(base_r, front_left_wheel_r, front_left_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
+			p.addHingeConstraint(base_r, rear_left_wheel_r, rear_left_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
 
-			p.addHingeConstraint(base_r, scissor_out.bot_rear_right_rung_r, scissor_out.bot_rear_right_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addHingeConstraint(base_r, scissor_out.bot_rear_left_rung_r, scissor_out.bot_rear_left_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addHingeConstraint(bottom_slider_r, scissor_out.bot_front_right_rung_r, scissor_out.bot_front_right_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addHingeConstraint(bottom_slider_r, scissor_out.bot_front_left_rung_r, scissor_out.bot_front_left_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addSliderConstraint(base_r, bottom_slider_r, bottom_slider_r->getCOM(), mthz::Vec3(0, 0, 1), -inf, inf, non_dist_pos_correct_strength);
+			p.addHingeConstraint(base_r, scissor_out.bot_rear_right_rung_r, scissor_out.bot_rear_right_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
+			p.addHingeConstraint(base_r, scissor_out.bot_rear_left_rung_r, scissor_out.bot_rear_left_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
+			p.addHingeConstraint(bottom_slider_r, scissor_out.bot_front_right_rung_r, scissor_out.bot_front_right_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
+			p.addHingeConstraint(bottom_slider_r, scissor_out.bot_front_left_rung_r, scissor_out.bot_front_left_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
+			p.addSliderConstraint(base_r, bottom_slider_r, bottom_slider_r->getCOM(), mthz::Vec3(0, 0, 1),  non_dist_pos_correct_strength);
 
-			p.addHingeConstraint(top_slider_r, scissor_out.top_rear_right_rung_r, scissor_out.top_front_right_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addHingeConstraint(top_slider_r, scissor_out.top_rear_left_rung_r, scissor_out.top_front_left_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addHingeConstraint(platform_r, scissor_out.top_front_right_rung_r, scissor_out.top_rear_right_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addHingeConstraint(platform_r, scissor_out.top_front_left_rung_r, scissor_out.top_rear_left_pos, mthz::Vec3(1, 0, 0), -inf, inf, non_dist_pos_correct_strength);
-			p.addSliderConstraint(platform_r, top_slider_r, top_slider_r->getCOM(), mthz::Vec3(0, 0, 1), -inf, inf, non_dist_pos_correct_strength);
+			p.addHingeConstraint(top_slider_r, scissor_out.top_rear_right_rung_r, scissor_out.top_front_right_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
+			p.addHingeConstraint(top_slider_r, scissor_out.top_rear_left_rung_r, scissor_out.top_front_left_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
+			p.addHingeConstraint(platform_r, scissor_out.top_front_right_rung_r, scissor_out.top_rear_right_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
+			p.addHingeConstraint(platform_r, scissor_out.top_front_left_rung_r, scissor_out.top_rear_left_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
+			p.addSliderConstraint(platform_r, top_slider_r, top_slider_r->getCOM(), mthz::Vec3(0, 0, 1),  non_dist_pos_correct_strength);
 
 			scissor_height_right = p.addDistanceConstraint(scissor_out.bot_rear_right_rung_r, scissor_out.top_rear_right_rung_r, scissor_out.bot_right_middle_pos, scissor_out.top_right_middle_pos);
 			scissor_height_left = p.addDistanceConstraint(scissor_out.bot_rear_left_rung_r, scissor_out.top_rear_left_rung_r, scissor_out.bot_left_middle_pos, scissor_out.top_left_middle_pos);
@@ -421,7 +421,7 @@ public:
 				phyz::RigidBody* panel_r = p.createRigidBody(panel, panel_movement);
 
 				if (i != 0) {
-					p.addHingeConstraint(panel_r, previous_panel, panel_pos + mthz::Vec3(bridge_panel_length / 2, 0, -bridge_panel_gap / 2), mthz::Vec3(1, 0, 0), -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), 1000, 1000);
+					p.addHingeConstraint(panel_r, previous_panel, panel_pos + mthz::Vec3(bridge_panel_length / 2, 0, -bridge_panel_gap / 2), mthz::Vec3(1, 0, 0), 1000, 1000);
 				}
 
 				previous_panel = panel_r;

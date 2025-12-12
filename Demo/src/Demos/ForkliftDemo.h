@@ -348,8 +348,13 @@ public:
 		p.addSliderConstraint(chasis_r, suspension_block1_r, front_wheel1_position, mthz::Vec3(0, -1, 0), -hard_suspension_limit_dist, hard_suspension_limit_dist);
 		p.addSliderConstraint(chasis_r, suspension_block2_r, front_wheel2_position, mthz::Vec3(0, -1, 0), -hard_suspension_limit_dist, hard_suspension_limit_dist);
 
-		phyz::ConstraintID steer_motor1 = p.addSlidingHingeConstraint(chasis_r, steering_block1_r, rear_wheel1_position, mthz::Vec3(0, -1, 0), -hard_suspension_limit_dist, hard_suspension_limit_dist, -steer_max_angle, steer_max_angle);
-		phyz::ConstraintID steer_motor2 = p.addSlidingHingeConstraint(chasis_r, steering_block2_r, rear_wheel2_position, mthz::Vec3(0, -1, 0), -hard_suspension_limit_dist, hard_suspension_limit_dist, -steer_max_angle, steer_max_angle);
+		
+		phyz::ConstraintID hinge1 = p.addSlidingHingeConstraint(chasis_r, steering_block1_r, rear_wheel1_position, mthz::Vec3(0, -1, 0));
+		phyz::ConstraintID steer_motor1 = p.addMotorConstraint(hinge1, -steer_max_angle, steer_max_angle);
+		p.addPistonConstraint(hinge1, -hard_suspension_limit_dist, hard_suspension_limit_dist);
+		phyz::ConstraintID hinge2 = p.addSlidingHingeConstraint(chasis_r, steering_block2_r, rear_wheel2_position, mthz::Vec3(0, -1, 0));
+		phyz::ConstraintID steer_motor2 = p.addMotorConstraint(hinge2, -steer_max_angle, steer_max_angle);
+		p.addPistonConstraint(hinge2, -hard_suspension_limit_dist, hard_suspension_limit_dist);
 
 		p.addSpring(chasis_r, suspension_block1_r, front_wheel1_position + mthz::Vec3(0, spring_dist, 0), front_wheel1_position, spring_damping, spring_stiffness);
 		p.addSpring(chasis_r, suspension_block2_r, front_wheel2_position + mthz::Vec3(0, spring_dist, 0), front_wheel2_position, spring_damping, spring_stiffness);

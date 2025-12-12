@@ -89,7 +89,11 @@ namespace phyz {
 		Distance(RigidBody* b1, RigidBody* b2, double target_distance, RigidBody::PKey b1_key, RigidBody::PKey b2_key, double pos_correct_strength, uint32_t id_value)
 			: PersistentConstraint(ConstraintID(ConstraintID::Type::DISTANCE, id_value), b1, b2), target_distance(target_distance), b1_point_key(b1_key), b2_point_key(b2_key),
 			  cfm(CFM{USE_GLOBAL}), pos_correct_hardness(pos_correct_strength), constraint(DistanceConstraint())
-		{}
+		{
+			//init b1, b2 ptr on constraint as holonomic logic needs it
+			constraint.a = b1;
+			constraint.b = b2;
+		}
 
 		DistanceConstraint constraint;
 		double target_distance;
@@ -113,7 +117,11 @@ namespace phyz {
 		BallSocket(RigidBody* b1, RigidBody* b2, RigidBody::PKey b1_key, RigidBody::PKey b2_key, double pos_correct_strength, uint32_t id_value)
 			: PersistentConstraint(ConstraintID(ConstraintID::Type::BALL, id_value), b1, b2), b1_point_key(b1_key), b2_point_key(b2_key),
 			cfm(CFM{ USE_GLOBAL }), pos_correct_hardness(pos_correct_strength), constraint(BallSocketConstraint())
-		{}
+		{
+			//init b1, b2 ptr on constraint as holonomic logic needs it
+			constraint.a = b1;
+			constraint.b = b2;
+		}
 
 		BallSocketConstraint constraint;
 		RigidBody::PKey b1_point_key;
@@ -209,7 +217,11 @@ namespace phyz {
 			: PersistentConstraint(ConstraintID(ConstraintID::Type::HINGE, id_value), b1, b2), b1_point_key(b1_key), b2_point_key(b2_key),
 			b1_rot_axis_body_space(b1_rot_axis_local), b2_rot_axis_body_space(b2_rot_axis_local), cfm(CFM{ USE_GLOBAL }), pos_correct_hardness(pos_correct_strength),
 			rot_correct_hardness(rot_correct_strength), constraint(HingeConstraint())
-		{}
+		{
+			//init b1, b2 ptr on constraint as holonomic logic needs it
+			constraint.a = b1;
+			constraint.b = b2;
+		}
 
 		HingeConstraint constraint;
 		RigidBody::PKey b1_point_key;
@@ -237,7 +249,11 @@ namespace phyz {
 			: PersistentConstraint(ConstraintID(ConstraintID::Type::SLIDER, id_value), b1, b2), b1_point_key(b1_key), b2_point_key(b2_key),
 			b1_slide_axis_body_space(b1_slide_axis_local), b2_slide_axis_body_space(b2_slide_axis_local), cfm(CFM{ USE_GLOBAL }), pos_correct_hardness(pos_correct_strength),
 			rot_correct_hardness(rot_correct_strength), constraint(SliderConstraint())
-		{}
+		{
+			//init b1, b2 ptr on constraint as holonomic logic needs it
+			constraint.a = b1;
+			constraint.b = b2;
+		}
 
 		SliderConstraint constraint;
 		RigidBody::PKey b1_point_key;
@@ -265,7 +281,11 @@ namespace phyz {
 			: PersistentConstraint(ConstraintID(ConstraintID::Type::SLIDING_HINGE, id_value), b1, b2), b1_point_key(b1_key), b2_point_key(b2_key),
 			b1_slide_axis_body_space(b1_slide_axis_local), b2_slide_axis_body_space(b2_slide_axis_local), cfm(CFM{ USE_GLOBAL }), pos_correct_hardness(pos_correct_strength),
 			rot_correct_hardness(rot_correct_strength), constraint(SlidingHingeConstraint())
-		{}
+		{
+			//init b1, b2 ptr on constraint as holonomic logic needs it
+			constraint.a = b1;
+			constraint.b = b2;
+		}
 
 		SlidingHingeConstraint constraint;
 		RigidBody::PKey b1_point_key;
@@ -291,7 +311,11 @@ namespace phyz {
 		Weld(RigidBody* b1, RigidBody* b2, RigidBody::PKey b1_key, RigidBody::PKey b2_key, double pos_correct_strength, double rot_correct_strength, uint32_t id_value)
 			: PersistentConstraint(ConstraintID(ConstraintID::Type::WELD, id_value), b1, b2), b1_point_key(b1_key), b2_point_key(b2_key),
 			cfm(CFM{ USE_GLOBAL }), pos_correct_hardness(pos_correct_strength), rot_correct_hardness(rot_correct_strength), constraint(WeldConstraint())
-		{}
+		{
+			//init b1, b2 ptr on constraint as holonomic logic needs it
+			constraint.a = b1;
+			constraint.b = b2;
+		}
 
 		WeldConstraint constraint;
 		RigidBody::PKey b1_point_key;

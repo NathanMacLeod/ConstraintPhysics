@@ -676,11 +676,11 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::BALL, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double min_angle, double max_angle, double pos_correct_strength, double rot_correct_strength) {
-		return addHingeConstraint(b1, b2, attach_pos_local, attach_pos_local, rot_axis_local, rot_axis_local, min_angle, max_angle, pos_correct_strength, rot_correct_strength);
+	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength, double rot_correct_strength) {
+		return addHingeConstraint(b1, b2, attach_pos_local, attach_pos_local, rot_axis_local, rot_axis_local, pos_correct_strength, rot_correct_strength);
 	}
 
-	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle, double pos_correct_strength, double rot_correct_strength) {
+	ConstraintID PhysicsEngine::addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength, double rot_correct_strength) {
 		disallowCollision(b1, b2);
 		uint32_t uniqueID = nextConstraintID++;
 
@@ -712,12 +712,51 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::HINGE, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double negative_slide_limit, double positive_slide_limit, double pos_correct_strength, double rot_correct_strength) {
-		return addSliderConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, negative_slide_limit, positive_slide_limit, pos_correct_strength, rot_correct_strength);
+	ConstraintID PhysicsEngine::addMotorConstraint(ConstraintID base_constraint_id, double min_angle, double max_angle) {
+		uint32_t uniqueID = nextConstraintID++;
+
+		PersistentConstraint* base_constraint = getConstraint(base_constraint_id);
+		mthz::Vec3 b1_rot_axis_local, b2_rot_axis_local;
+
+		if (base_constraint->getId().getType() == ConstraintID::Type::HINGE) {
+			Hinge* h = static_cast<Hinge*>(base_constraint);
+			b1_rot_axis_local = h->b1_rot_axis_body_space;
+			b2_rot_axis_local = h->b2_rot_axis_body_space;
+		}
+		else if (base_constraint->getId().getType() == ConstraintID::Type::SLIDING_HINGE) {
+			SlidingHinge* h = static_cast<SlidingHinge*>(base_constraint);
+			b1_rot_axis_local = h->b1_slide_axis_body_space;
+			b2_rot_axis_local = h->b2_slide_axis_body_space;
+		}
+		else {
+			assert(false);
+		}
+
+		Motor* m = new Motor(
+			base_constraint->b1,
+			base_constraint->b2,
+			b1_rot_axis_local,
+			b2_rot_axis_local,
+			min_angle,
+			max_angle,
+			uniqueID
+		);
+
+		ConstraintGraphNode* n1 = constraint_graph_nodes[base_constraint->b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[base_constraint->b2->getID()];
+		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		e->constraints.push_back(m);
+
+		constraint_map[uniqueID] = e;
+		return ConstraintID{ ConstraintID::MOTOR, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local,
-		double negative_slide_limit, double positive_slide_limit, double pos_correct_strength, double rot_correct_strength) {
+	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength, double rot_correct_strength) {
+		return addSliderConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, pos_correct_strength, rot_correct_strength);
+	}
+
+	ConstraintID PhysicsEngine::addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength, double rot_correct_strength) {
 		disallowCollision(b1, b2);
 		uint32_t uniqueID = nextConstraintID++;
 
@@ -752,12 +791,55 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::SLIDER, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double negative_slide_limit, double positive_slide_limit, double min_angle, double max_angle, double pos_correct_strength, double rot_correct_strength) {
-		return addSlidingHingeConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, negative_slide_limit, positive_slide_limit, min_angle, max_angle, pos_correct_strength, rot_correct_strength);
+	ConstraintID PhysicsEngine::addPistonConstraint(ConstraintID base_constraint_id, double negative_slide_limit, double positive_slide_limit) {
+		uint32_t uniqueID = nextConstraintID++;
+
+		PersistentConstraint* base_constraint = getConstraint(base_constraint_id);
+		RigidBody::PKey b1_pkey, b2_pkey;
+		mthz::Vec3 b1_slide_axis_local;
+
+		if (base_constraint->getId().getType() == ConstraintID::Type::SLIDER) {
+			Slider* s = static_cast<Slider*>(base_constraint);
+			b1_pkey = s->b1_point_key;
+			b2_pkey = s->b2_point_key;
+			b1_slide_axis_local = s->b1_slide_axis_body_space;
+		}
+		else if (base_constraint->getId().getType() == ConstraintID::Type::SLIDING_HINGE) {
+			SlidingHinge* s = static_cast<SlidingHinge*>(base_constraint);
+			b1_pkey = s->b1_point_key;
+			b2_pkey = s->b2_point_key;
+			b1_slide_axis_local = s->b1_slide_axis_body_space;
+		}
+		else {
+			assert(false);
+		}
+
+		Piston* m = new Piston(
+			base_constraint->b1,
+			base_constraint->b2,
+			b1_pkey,
+			b2_pkey,
+			b1_slide_axis_local,
+			negative_slide_limit,
+			positive_slide_limit,
+			uniqueID
+		);
+
+		ConstraintGraphNode* n1 = constraint_graph_nodes[base_constraint->b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[base_constraint->b2->getID()];
+		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		e->constraints.push_back(m);
+
+		constraint_map[uniqueID] = e;
+		return ConstraintID{ ConstraintID::PISTON, uniqueID };
 	}
 
-	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local,
-		double negative_slide_limit, double positive_slide_limit, double min_angle, double max_angle, double pos_correct_strength, double rot_correct_strength) {
+	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength, double rot_correct_strength) {
+		return addSlidingHingeConstraint(b1, b2, slider_pos_local, slider_pos_local, slider_axis_local, slider_axis_local, pos_correct_strength, rot_correct_strength);
+	}
+
+	ConstraintID PhysicsEngine::addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength, double rot_correct_strength) {
 		disallowCollision(b1, b2);
 		uint32_t uniqueID = nextConstraintID++;
 
@@ -917,8 +999,8 @@ namespace phyz {
 		mthz::Mat3 b1_inv_orient = b1->getOrientation().conjugate().getRotMatrix();
 		mthz::Mat3 b2_inv_orient = b2->getOrientation().conjugate().getRotMatrix();
 		mthz::Vec3 norm_local_b1 = b1_inv_orient * norm;
-		mthz::Vec3 p_local_b1 = b1_inv_orient * (norm - b1->getCOM());
-		mthz::Vec3 p_local_b2 = b2_inv_orient * (norm - b2->getCOM());
+		mthz::Vec3 p_local_b1 = b1_inv_orient * (p - b1->getCOM());
+		mthz::Vec3 p_local_b2 = b2_inv_orient * (p - b2->getCOM());
 
 		for (PersistentConstraint* pc : e->constraints) {
 			if (pc->getId().getType() != ConstraintID::Type::CONTACT) continue;
@@ -1236,7 +1318,7 @@ namespace phyz {
 
 	void PhysicsEngine::removeExpiredContactConstraints(SharedConstraintsEdge* e) {
 		for (auto itr = e->constraints.begin(); itr != e->constraints.end();) {
-			if ((*itr)->getId().getType() != ConstraintID::Type::CONTACT) { continue; }
+			if ((*itr)->getId().getType() != ConstraintID::Type::CONTACT) { itr++; continue; }
 			Contact* c = static_cast<Contact*>(*itr);
 			if (c->isExpired()) {
 				delete c;
@@ -1365,6 +1447,7 @@ namespace phyz {
 						bool is_contact = c->getId().getType() == ConstraintID::Type::CONTACT;
 						if (is_contact && static_cast<Contact*>(c)->is_live_contact) {
 							c->addSolverConstraints(output->island_constraints);
+							static_cast<Contact*>(c)->is_live_contact = false;
 						}
 						else if(!is_contact && c->isSolverConstraint()) {
 							c->addSolverConstraints(output->island_constraints);
