@@ -970,7 +970,8 @@ namespace phyz {
 			reallowCollision(e->n1->b, e->n2->b);
 		} 
 
-		for (PersistentConstraint* c : e->constraints) {
+		for (int i = 0; i < e->constraints.size(); i++) {
+			PersistentConstraint* c = e->constraints[i];
 			if (c->getId() == id) {
 				delete c;
 				e->constraints.erase(e->constraints.begin() + i);
@@ -1288,30 +1289,47 @@ namespace phyz {
 				}
 			}
 		}
+		
+		std::vector<SharedConstraintsEdge*> edges;
 
 		current_visit_tag_value++; //need to update this value again
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
-				bool is_in_holonomic_system = e->h != nullptr;
 
 				if (e->visited_tag == current_visit_tag_value) 
 					continue; //skip
 				e->visited_tag = current_visit_tag_value;
 
-				for (PersistentConstraint* c : e->constraints) {
-					c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time, global_cfm, is_in_holonomic_system);
-				}
+				edges.push_back(e);
 
-				removeExpiredContactConstraints(e);
+				
+			}
+		}
 
-				if (e->noConstraintsLeft()) {
-					// this looks but a bug but it isn't. the destructor for SharedConstraintsEdge
-					// will access n->constraints and remove itself from the vector.
-					delete e;
-					i--;
-				}
+		auto update_constraints_on_edge = [&](SharedConstraintsEdge* e) {
+			bool is_in_holonomic_system = e->h != nullptr;
+			for (PersistentConstraint* c : e->constraints) {
+				c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time, global_cfm, is_in_holonomic_system);
+			}
+
+			removeExpiredContactConstraints(e);
+
+			if (e->noConstraintsLeft()) {
+				// this looks but a bug but it isn't. the destructor for SharedConstraintsEdge
+				// will access n->constraints and remove itself from the vector.
+				delete e;
+				i--;
+			}
+		};
+
+		if (use_multithread) {
+			thread_manager.do_all<SharedConstraintsEdge*>(n_threads, edges, update_constraints_on_edge);
+		}
+		else {
+			for (SharedConstraintsEdge* e : edges) {
+				update_constraints_on_edge(e);
 			}
 		}
 	}

@@ -353,7 +353,7 @@ namespace phyz {
 		inline void addSolverConstraints(std::vector<Constraint*>* accumulator) override { assert(false); }
 		inline void setCFM(CFM new_cfm) override { assert(false); }
 		inline bool isCFMConfigurable() const override { return false; }
-		inline bool isHolonomicConstraint() const override { return true; }
+		inline bool isHolonomicConstraint() const override { return false; }
 		inline bool isPoweredConstraint() const override { return false; }
 		inline void setPoweredConstraintMode(PoweredConstraitMode new_mode) override { assert(false); }
 		inline void clearWarmstartData() override { /*nothing to do*/ };

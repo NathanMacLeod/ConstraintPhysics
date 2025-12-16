@@ -99,10 +99,14 @@ public:
 		p.addHingeConstraint(base_r, r2, base_position, mthz::Vec3(0, 1, 0));
 
 		phyz::RigidBody* arm_r = p.createRigidBody(arm);
-		phyz::ConstraintID rotate_motor = p.addHingeConstraint(base_r, arm_r, spinner_plate_position, mthz::Vec3(0, 0, 1));
+		phyz::ConstraintID rotate_motor = p.addMotorConstraint(
+			p.addHingeConstraint(base_r, arm_r, spinner_plate_position, mthz::Vec3(0, 0, 1))
+		);
 
 		phyz::RigidBody* flywheel_r = p.createRigidBody(flywheel);
-		phyz::ConstraintID spin_motor = p.addHingeConstraint(arm_r, flywheel_r, flywheel_position, mthz::Vec3(0, 1, 0));
+		phyz::ConstraintID spin_motor = p.addMotorConstraint(
+			p.addHingeConstraint(arm_r, flywheel_r, flywheel_position, mthz::Vec3(0, 1, 0))
+		);
 
 		double rotate_speed = 1;
 		double rotate_torque = 10;

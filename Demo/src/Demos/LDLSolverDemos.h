@@ -551,7 +551,7 @@ public:
 				phyz_time += fElapsedTime;
 			}
 			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
-			while (phyz_time > slow_factor * timestep && tick_count < 74) {
+			while (phyz_time > slow_factor * timestep) {
 				phyz_time -= slow_factor * timestep;
 				p.timeStep();
 				tick_count++;

@@ -4,7 +4,7 @@ namespace phyz {
 
 	Motor::Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle, uint32_t id_value)
 		: PersistentConstraint(ConstraintID(ConstraintID::Type::MOTOR, id_value), b1, b2), b1_rot_axis_body_space(b1_rot_axis_local), target_velocity(0), max_torque(0), target_position(0),
-		  mode(OFF), min_motor_position(min_angle), max_motor_position(max_angle)
+		  mode(OFF), min_motor_position(min_angle), max_motor_position(max_angle), cfm(CFM{USE_GLOBAL})
 	{
 		mthz::Vec3 u1, w1;
 		b1_rot_axis_local.getPerpendicularBasis(&u1, &w1);
@@ -114,7 +114,8 @@ namespace phyz {
 
 	Piston::Piston(RigidBody* b1, RigidBody* b2, RigidBody::PKey b1_point_key, RigidBody::PKey b2_point_key, mthz::Vec3 b1_slide_axis_body_space, double min_pos, double max_pos, uint32_t id_value)
 		: PersistentConstraint(ConstraintID(ConstraintID::Type::PISTON, id_value), b1, b2), b1_point_key(b1_point_key), b2_point_key(b2_point_key), b1_slide_axis_body_space(b1_slide_axis_body_space),
-		  target_velocity(0), max_force(0), target_position(0), mode(OFF), min_slide_limit(min_pos), max_slide_limit(max_pos), slide_limit_exceeded(false), piston_constraint(PistonConstraint()), slide_limit(SlideLimitConstraint())
+		  target_velocity(0), max_force(0), target_position(0), mode(OFF), min_slide_limit(min_pos), max_slide_limit(max_pos), slide_limit_exceeded(false),
+		  piston_constraint(PistonConstraint()), slide_limit(SlideLimitConstraint()), cfm(CFM{ USE_GLOBAL })
 	{
 		mthz::Vec3 b1_pos = b1->getTrackedP(b1_point_key);
 		mthz::Vec3 b2_pos = b1->getTrackedP(b2_point_key);
