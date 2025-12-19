@@ -1291,6 +1291,8 @@ namespace phyz {
 		}
 		
 		std::vector<SharedConstraintsEdge*> edges;
+		std::mutex to_delete_mutex;
+		std::vector< SharedConstraintsEdge*> to_delete;
 
 		current_visit_tag_value++; //need to update this value again
 		for (const auto& kv_pair : constraint_graph_nodes) {
@@ -1303,24 +1305,27 @@ namespace phyz {
 				e->visited_tag = current_visit_tag_value;
 
 				edges.push_back(e);
-
-				
 			}
 		}
 
 		auto update_constraints_on_edge = [&](SharedConstraintsEdge* e) {
 			bool is_in_holonomic_system = e->h != nullptr;
 			for (PersistentConstraint* c : e->constraints) {
+				//todo: move the memory update elsewhere
+				if (c->getId().getType() == ConstraintID::Type::CONTACT) {
+					Contact* cont = static_cast<Contact*>(c);
+					cont->memory_life--;
+					if (!cont->is_live_contact) { continue; } // no need to update solver constraints as they wont be used
+				}
 				c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time, global_cfm, is_in_holonomic_system);
 			}
 
 			removeExpiredContactConstraints(e);
 
 			if (e->noConstraintsLeft()) {
-				// this looks but a bug but it isn't. the destructor for SharedConstraintsEdge
-				// will access n->constraints and remove itself from the vector.
-				delete e;
-				i--;
+				to_delete_mutex.lock();
+				to_delete.push_back(e);
+				to_delete_mutex.unlock();
 			}
 		};
 
@@ -1332,6 +1337,12 @@ namespace phyz {
 				update_constraints_on_edge(e);
 			}
 		}
+
+		for (SharedConstraintsEdge* e : to_delete) {
+			// this looks but a bug but it isn't. the destructor for SharedConstraintsEdge
+			// will access n->constraints and remove itself from the vector.
+			delete e;
+		}
 	}
 
 	void PhysicsEngine::removeExpiredContactConstraints(SharedConstraintsEdge* e) {
@@ -1340,7 +1351,7 @@ namespace phyz {
 			Contact* c = static_cast<Contact*>(*itr);
 			if (c->isExpired()) {
 				delete c;
-				e->constraints.erase(itr);
+				itr = e->constraints.erase(itr);
 			}
 			else {
 				itr++;

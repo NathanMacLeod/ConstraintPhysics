@@ -501,6 +501,7 @@ public:
 					orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
 				}
 
+
 				t += fElapsedTime;
 
 				if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {

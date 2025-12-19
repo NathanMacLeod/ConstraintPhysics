@@ -429,7 +429,7 @@ public:
 
 
 				//works well with a high CFM
-				//p.setHolonomicSolverCFM(0.0000000000000001);
+				p.setHolonomicSolverCFM(0.1);
 			}
 		}
 
