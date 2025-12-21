@@ -10,6 +10,7 @@
 #include <functional>
 #include <unordered_map>
 #include <mutex>
+#include "PersistentConstraint.h"
 
 class DebugDemo;
 
@@ -32,24 +33,6 @@ namespace phyz {
 
 	typedef int ColActionID;
 	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifold)> ColAction;
-
-	//PSUEDO_VELOCITY: position correction is done by calcualting a bonus velocity to push constrained objects back to valid positions
-	//MASTER_SLAVE: The master body (designed by master_b1 bool) dictates the correct position, and the slave object is translated to it. 
-	//Psuedo velocities are still calculated and applied for the sake of other constraints that interact with the master/slave pair.
-	enum PosErrorResolutionMode { PSUEDO_VELOCITY, MASTER_SLAVE };
-
-	struct ConstraintID {
-		ConstraintID() : uniqueID(-1) {}
-		enum Type { DISTANCE, BALL, HINGE, SLIDER, SPRING, SLIDING_HINGE, WELD };
-		inline Type getType() { return type; }
-
-		friend class PhysicsEngine;
-	private:
-		ConstraintID(Type type, int id) : type(type), uniqueID(id) {}
-
-		Type type;
-		int uniqueID;
-	};
 
 	struct RayHitInfo {
 		bool did_hit;
@@ -116,34 +99,25 @@ namespace phyz {
 
 		ConstraintID addDistanceConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double target_distance=-1, double pos_correct_strength=1000);
 		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength = 1000);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local,
-			double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity(), double pos_correct_strength = 1000, double rot_correct_strength = 1000);
-
-		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, 
-			double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity(), double pos_correct_strength = 1000, double rot_correct_strength=1000);
-
-		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local,
-			double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity(), double min_angle = -std::numeric_limits<double>::infinity(), 
-			double max_angle = std::numeric_limits<double>::infinity(), double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addMotorConstraint(ConstraintID base_constraint, double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
+		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addPistonConstraint(ConstraintID base_constraint, double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity());
+		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
 
 		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_point_local, mthz::Vec3 b2_attach_point_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
 
 
 		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength = 1000);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double min_angle = -std::numeric_limits<double>::infinity(), 
-			double max_angle = std::numeric_limits<double>::infinity(), double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
 
-		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double negative_slide_limit = -std::numeric_limits<double>::infinity(), 
-			double positive_slide_limit = std::numeric_limits<double>::infinity(), double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
 
-		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double negative_slide_limit = -std::numeric_limits<double>::infinity(),
-			double positive_slide_limit = std::numeric_limits<double>::infinity(), double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity(), 
-			double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
 
 		ConstraintID addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length = -1);
 		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
 
-		void setConstraintPosCorrectMethod(ConstraintID id, PosErrorResolutionMode error_correct_method, bool b1_master = true);
 		void setConstraintUseCustomCFM(ConstraintID id, double custom_cfm);
 		void setConstraintUseGlobalCFM(ConstraintID id);
 		void removeConstraint(ConstraintID id, bool reenable_collision=true);
@@ -176,9 +150,10 @@ namespace phyz {
 
 		unsigned int next_id = 1;
 
-		int pgsVelIterations = 20;
-		int pgsPosIterations = 15;
-		int pgsHolonomicIterations = 3;
+		int pgsVelIterations = 1;
+		int pgsPosIterations = 1;
+		int sub_itr_count = 1;
+		int pgsHolonomicIterations = 1;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
 
 		BroadPhaseStructure broadphase = AABB_TREE;
@@ -196,16 +171,15 @@ namespace phyz {
 		bool friction_impulse_limit_enabled = false;
 
 		struct ConstraintGraphNode; 
-		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness, CFM cfm);
+		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
 		void maintainConstraintGraphApplyPoweredConstraints();
+		//void updateConstraints(std::vector<Constraint*> constraints);
 		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
 		bool bodySleepy(RigidBody* r);
 		void deleteRigidBody(RigidBody* r);
 		bool readyToSleep(RigidBody* b);
 		void wakeupIsland(ConstraintGraphNode* foothold);
-
-		inline double posCorrectCoeff(double pos_correct_strength, double step_time) { return std::min<double>(pos_correct_strength * step_time, 1.0 / step_time); }
 
 		std::vector<RigidBody*> bodies;
 		std::vector<RigidBody*> bodies_to_delete;
@@ -232,169 +206,6 @@ namespace phyz {
 
 		//constraint force mixing - softens constraints and makes more stable
 		double global_cfm = 0;// 0.025;
-		
-		struct Contact {
-			RigidBody* b1;
-			RigidBody* b2;
-			ContactConstraint contact;
-			FrictionConstraint friction;
-			CFM cfm;
-			MagicID magic;
-			int memory_life; //how many frames can be referenced for warm starting before is deleted
-			bool is_live_contact;
-		};
-
-		struct Distance {
-			RigidBody* b1;
-			RigidBody* b2;
-			DistanceConstraint constraint;
-			double target_distance;
-			RigidBody::PKey b1_point_key;
-			RigidBody::PKey b2_point_key;
-			CFM cfm;
-			double pos_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
-			bool b1_master;
-			int uniqueID;
-		};
-
-		struct BallSocket {
-			RigidBody* b1;
-			RigidBody* b2;
-			BallSocketConstraint constraint;
-			RigidBody::PKey b1_point_key;
-			RigidBody::PKey b2_point_key;
-			CFM cfm;
-			double pos_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
-			bool b1_master;
-			int uniqueID;
-		};
-
-		enum PoweredConstraitMode { OFF, CONST_TORQUE, CONST_FORCE, TARGET_VELOCITY, TARGET_POSITION };
-
-		struct Piston {
-			Piston(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_pos, mthz::Vec3 b2_pos, mthz::Vec3 slide_axis, double min_pos, double max_pos);
-			double calculatePosition(mthz::Vec3 b1_pos, mthz::Vec3 b2_pos, mthz::Vec3 slide_axis);
-			double getPistonTargetVelocityValue(double piston_pos, mthz::Vec3 slide_axis, double step_time);
-			void writePrevVel(mthz::Vec3 slide_axis);
-			bool slideLimitExceeded(double piston_pos);
-			bool pistonIsActive();
-
-			RigidBody* b1;
-			RigidBody* b2;
-			SlideLimitConstraint slide_limit;
-			PistonConstraint piston_constraint;
-			PoweredConstraitMode mode;
-			double piston_position;
-			bool slide_limit_exceeded;
-			double min_slide_limit;
-			double max_slide_limit;
-			double max_force;
-			double target_velocity;
-			double target_position;
-			double prev_velocity;
-		};
-
-		struct Motor {
-			Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle);
-			double calculatePosition(mthz::Vec3 rot_axis, mthz::Vec3 ang_vel_b1, mthz::Vec3 ang_vel_b2, double timestep);
-			double getConstraintTargetVelocityValue(mthz::Vec3 rot_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double step_time);
-			void writePrevVel(mthz::Vec3 rot_axis, mthz::Vec3 ang_vel_b1, mthz::Vec3 ang_vel_b2);
-			bool constraintIsActive();
-
-			RigidBody* b1;
-			RigidBody* b2;
-			MotorConstraint motor_constraint;
-			mthz::Vec3 b1_u_axis_reference;
-			mthz::Vec3 b1_w_axis_reference;
-			mthz::Vec3 b2_rot_comparison_axis;
-			PoweredConstraitMode mode;
-			double motor_angular_position;
-			double min_motor_position;
-			double max_motor_position;
-			double max_torque;
-			double target_velocity;
-			double target_position;
-			double prev_velocity;
-		};
-
-		struct Hinge {
-			RigidBody* b1;
-			RigidBody* b2;
-			HingeConstraint constraint;
-			Motor motor;
-			RigidBody::PKey b1_point_key;
-			RigidBody::PKey b2_point_key;
-			mthz::Vec3 b1_rot_axis_body_space;
-			mthz::Vec3 b2_rot_axis_body_space;
-			CFM cfm;
-			double pos_correct_hardness;
-			double rot_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
-			bool b1_master;
-			int uniqueID;
-		};
-
-		struct Slider {
-			RigidBody* b1;
-			RigidBody* b2;
-			SliderConstraint constraint;
-			Piston piston;
-			RigidBody::PKey b1_point_key;
-			RigidBody::PKey b2_point_key;
-			mthz::Vec3 b1_slide_axis_body_space;
-			mthz::Vec3 b2_slide_axis_body_space;
-			CFM cfm;
-			double pos_correct_hardness;
-			double rot_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
-			bool b1_master;
-			int uniqueID;
-		};
-
-		struct SlidingHinge {
-			RigidBody* b1;
-			RigidBody* b2;
-			SlidingHingeConstraint constraint;
-			Piston piston;
-			Motor motor;
-			RigidBody::PKey b1_point_key;
-			RigidBody::PKey b2_point_key;
-			mthz::Vec3 b1_slide_axis_body_space;
-			mthz::Vec3 b2_slide_axis_body_space;
-			CFM cfm;
-			double pos_correct_hardness;
-			double rot_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
-			bool b1_master;
-			int uniqueID;
-		};
-
-		struct Weld {
-			RigidBody* b1;
-			RigidBody* b2;
-			WeldConstraint constraint;
-			RigidBody::PKey b1_point_key;
-			RigidBody::PKey b2_point_key;
-			CFM cfm;
-			double pos_correct_hardness;
-			double rot_correct_hardness;
-			PosErrorResolutionMode pos_error_mode;
-			bool b1_master;
-			int uniqueID;
-		};
-
-		struct Spring {
-			RigidBody* b1;
-			RigidBody* b2;
-			RigidBody::PKey b1_point_key;
-			RigidBody::PKey b2_point_key;
-			double stiffness;
-			double damping;
-			double resting_length;
-			int uniqueID;
-		};
 
 		struct IslandConstraints {
 			std::vector<Constraint*> constraints;
@@ -403,59 +214,38 @@ namespace phyz {
 
 		struct ActiveConstraintData {
 			std::vector<IslandConstraints> island_systems;
-			std::vector<BallSocket*> mast_slav_bss;
-			std::vector<Distance*> mast_slav_ds;
-			std::vector<Hinge*> mast_slav_hs;
-			std::vector<Slider*> mast_slav_ss;
-			std::vector<SlidingHinge*> mast_slav_shs;
-			std::vector<Weld*> mast_slav_ws;
 		};
 
 		ActiveConstraintData sleepOrSolveIslands();
-		void applyMasterSlavePosCorrect(const ActiveConstraintData& a);
 
 		struct HolonomicSystemNodes;
 
 		struct SharedConstraintsEdge {
-			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2), contact_constraints(std::vector<Contact*>()) {}
+			SharedConstraintsEdge(ConstraintGraphNode* n1, ConstraintGraphNode* n2) : n1(n1), n2(n2) {}
 			~SharedConstraintsEdge();
 
 			ConstraintGraphNode* n1;
 			ConstraintGraphNode* n2;
 			HolonomicSystemNodes* h = nullptr;
 			bool holonomic_system_scan_needed = false;
-			std::vector<Contact*> contact_constraints;
-			std::vector<Distance*> distance_constraints;
-			std::vector<BallSocket*> ball_socket_constraints;
-			std::vector<Hinge*> hinge_constraints;
-			std::vector<Slider*> slider_constraints;
-			std::vector<SlidingHinge*> sliding_hinge_constraints;
-			std::vector<Weld*> weld_constraints;
-			std::vector<Spring*> springs;
+			std::vector<PersistentConstraint*> constraints;
 
 			int visited_tag = 0;
 
 			inline ConstraintGraphNode* other(ConstraintGraphNode* c) { return (c->b == n1->b ? n2 : n1); }
 			bool noConstraintsLeft() { 
-				return contact_constraints.empty()
-					&& ball_socket_constraints.empty()
-					&& distance_constraints.empty()
-					&& hinge_constraints.empty()
-					&& slider_constraints.empty()
-					&& sliding_hinge_constraints.empty()
-					&& weld_constraints.empty()
-					&& springs.empty();
+				return constraints.empty();
 			}
 
 			bool hasHolonomicConstraint() {
-				return !(ball_socket_constraints.empty()
-					  && distance_constraints.empty()
-					  && hinge_constraints.empty()
-					  && slider_constraints.empty()
-					  && sliding_hinge_constraints.empty()
-					  && weld_constraints.empty());
+				for (PersistentConstraint* c : constraints) {
+					if (c->isHolonomicConstraint()) return true;
+				}
+				return false;
 			}
 		};
+
+		void removeExpiredContactConstraints(SharedConstraintsEdge* e);
 
 		struct HolonomicSystemNodes {
 			HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges);
@@ -484,8 +274,7 @@ namespace phyz {
 			void insertNewEdge(SharedConstraintsEdge* e);
 		};
 
-		Motor* fetchMotor(ConstraintID id);
-		Piston* fetchPiston(ConstraintID id);
+		PersistentConstraint* getConstraint(ConstraintID id);
 
 		int nextConstraintID = 0;
 		std::unordered_map<int, SharedConstraintsEdge*> constraint_map;

@@ -19,11 +19,19 @@ public:
 		return {
 			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
 			ControlDescription{"UP, DOWN, LEFT, RIGHT", "Rotate the camera"},
-			ControlDescription{"I. K", "Raise, Lower crane arm"},
-			ControlDescription{"J, L", "Rotate crane counter-clockwise, clockwise"},
-			ControlDescription{"R", "Reset tower"},
 			ControlDescription{"ESC", "Return to main menu"},
 		};
+	}
+
+	std::map<std::string, std::string> askParameters() override {
+		std::map<std::string, std::string> out;
+
+		out["whole_or_test_mode"] = pickParameterFromOptions(
+			"Select whether to use the whole video (W), or just a few frames to test (T): ",
+			{ "W", "T" }
+		);
+
+		return out;
 	}
 
 	bool fileExists(const std::string& s) {
@@ -127,6 +135,8 @@ public:
 		printf("\nPress any key to continue: \n");
 		std::getchar();
 
+		bool run_in_test_mode = caseIndefferentStringEquals(parameters["whole_or_test_mode"], "T");
+
 		if (properties.n_threads != 0) {
 			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
 		}
@@ -139,7 +149,7 @@ public:
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(false); //never going to happen anyway
 		p.setPGSIterations(3, 1);
-		std::string precomputation_file = "resources/precomputations/bad_apple_colors.txt";
+		std::string precomputation_file = run_in_test_mode? "resources/precomputations/bad_apple_test.txt" : "resources/precomputations/bad_apple_colors.txt";
 		bool precompute_colors_mode = !fileExists(precomputation_file);
 
 		bool lock_cam = true;
@@ -278,7 +288,7 @@ public:
 
 		p.disallowCollision(display_bottom_r, display_posx_wall_r);
 		p.disallowCollision(display_bottom_r, display_negx_wall_r);
-		phyz::ConstraintID bottom_hinge = p.addHingeConstraint(display_rear_wall_r, display_bottom_r, display_position, mthz::Vec3(1, 0, 0));
+		phyz::ConstraintID bottom_hinge = p.addMotorConstraint(p.addHingeConstraint(display_rear_wall_r, display_bottom_r, display_position, mthz::Vec3(1, 0, 0)));
 		p.setMotorTargetPosition(bottom_hinge, 10000, 0);
 
 		phyz::RigidBody* ramp_r = p.createRigidBody(ramp, phyz::RigidBody::FIXED);
@@ -288,7 +298,7 @@ public:
 		phyz::RigidBody* bucket_support_r = p.createRigidBody(bucket_support_block, phyz::RigidBody::FIXED);
 
 		bucket_r->setSleepDisabled(true);
-		p.addHingeConstraint(bucket_r, bucket_support_r, bucket_pivot_pos, mthz::Vec3(1, 0, 0), PI * 0.03);
+		p.addMotorConstraint(p.addHingeConstraint(bucket_r, bucket_support_r, bucket_pivot_pos, mthz::Vec3(1, 0, 0)), PI * 0.03);
 
 		bodies.push_back(TransformablePhysBod(fromGeometry(bucket, blue), bucket_r));
 		bodies.push_back(TransformablePhysBod(fromGeometry(bucket_support_block, yellow), bucket_support_r));
@@ -331,14 +341,16 @@ public:
 		});
 
 		int tick_count = 0;
-		int frame_count = 52;
-		int N_FRAMES = 6572;
+		int start_frame = run_in_test_mode ? 4419 : 1;
+		int final_frame = run_in_test_mode ? 4423 : 6572;
+		int frame_count = start_frame;
+		int N_FRAMES = final_frame - start_frame + 1;
 		int n_balls_spawned = 0;
 		double video_aspect_ratio = 360.0 / 480.0;
 		unsigned int starting_id = p.getNextBodyID(); //id of all spawned balls >= this number
 
 		if (precompute_colors_mode) {
-			printf("Precomputation not found. Calculating the colors of the balls and saving to Demo/resources/precomputations/bad_apple_colors.txt\n");
+			printf("Precomputation not found. Calculating the colors of the balls and saving to %s\n", precomputation_file.c_str());
 
 			int progress_bar_width = 50;
 			ProgressBarState progress_bar_state{ INITIALIZING };
@@ -346,7 +358,7 @@ public:
 
 
 			std::vector<ColorHitInfo> ball_colors;
-			while (frame_count <= N_FRAMES) {
+			while (frame_count <= final_frame) {
 				phyz_time -= timestep;
 				p.timeStep();
 
@@ -400,7 +412,7 @@ public:
 					}
 					frame_count += 2;
 
-					progress_bar_state = render_progress_bar(frame_count / (float)N_FRAMES, progress_bar_width, false, progress_bar_state, 0.1);
+					progress_bar_state = render_progress_bar((frame_count - start_frame) / (float)N_FRAMES, progress_bar_width, false, progress_bar_state, 0.1);
 				}
 
 				display_release_tick_counter--;
@@ -443,7 +455,7 @@ public:
 				finalized_colors[i] = ball_colors[i].hit_count == 0 ? blue : color{ ball_colors[i].color_sum.r / ball_colors[i].hit_count, ball_colors[i].color_sum.g / ball_colors[i].hit_count, ball_colors[i].color_sum.b / ball_colors[i].hit_count };
 			}
 
-			writeComputation("resources/precomputations/bad_apple_colors.txt", finalized_colors);
+			writeComputation(precomputation_file, finalized_colors);
 
 			printf("To run using the computed ball colors, re-run the demo\n");
 
@@ -456,7 +468,7 @@ public:
 			rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
 
 			std::vector<color> ball_colors;
-			readComputation("resources/precomputations/bad_apple_colors.txt", &ball_colors);
+			readComputation(precomputation_file, &ball_colors);
 			rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 			rndr::Shader shader("resources/shaders/Basic.shader");
 			shader.bind();
@@ -488,6 +500,7 @@ public:
 				else if (rndr::getKeyDown(GLFW_KEY_RIGHT)) {
 					orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
 				}
+
 
 				t += fElapsedTime;
 

@@ -49,7 +49,7 @@ namespace phyz {
 	template<int n>
 	class DegreedConstraint : public Constraint {
 	public:
-		DegreedConstraint() : impulse(mthz::NVec<n>{0.0}) {}
+		DegreedConstraint() : impulse(mthz::NVec<n>{0.0}), psuedo_impulse(mthz::NVec<n>{0.0}) {}
 		DegreedConstraint(RigidBody* a, RigidBody* b, mthz::NVec<n> impulse) : Constraint(a, b), impulse(impulse), psuedo_impulse(mthz::NVec<n>{0.0}) {}
 
 		virtual mthz::NVec<n> projectValidImpulse(mthz::NVec<n> impulse) { return impulse; }

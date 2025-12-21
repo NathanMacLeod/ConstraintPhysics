@@ -30,7 +30,7 @@ static int read_int(int default_value) {
 }
 
 void DemoManager::selectProperties() {
-	properties = DemoProperties{ 1920, 1080, 6 };
+	properties = DemoProperties{ 1920, 1080, 0 };
 	printf("Window Dimension X (leave blank for default %d): ", properties.window_width);
 	properties.window_width = read_int(properties.window_width);
 	printf("Window Dimension Y (leave blank for default %d): ", properties.window_height);

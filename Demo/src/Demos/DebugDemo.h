@@ -48,7 +48,7 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setPGSIterations(5, 2);
+		p.setPGSIterations(1, 1);
 		p.setGlobalConstraintForceMixing(0.001);
 
 		bool lock_cam = true;
@@ -86,7 +86,7 @@ public:
 		//*****************
 		double radius = 4;
 		mthz::Vec3 block_dim(1, 1, 2);
-		addBrickRing(&p, &bodies, block_dim, radius, 12, mthz::Vec3(0, -4, -22), 30);
+		addBrickRing(&p, &bodies, block_dim, radius, 12, mthz::Vec3(0, -4, -22), 8);
 
 		/*for (mthz::Vec3& v : grid.points) {
 			v.y += 0.01 * 2 * (0.5 - frand());
@@ -132,6 +132,8 @@ public:
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
 
 		bool single_step_mode = false;
+
+		bool paused = true;
 
 		while (rndr::render_loop(&fElapsedTime)) {
 
@@ -221,6 +223,15 @@ public:
 				if (hit_info.did_hit) hit_info.hit_object->applyImpulse(camera_dir * 1, hit_info.hit_position);
 			}
 
+			if (rndr::getKeyPressed(GLFW_KEY_P)) {
+				paused = !paused;
+			}
+
+			if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				p.timeStep();
+				//printf("%d\n", tick_count++);
+			}
+
 			t += fElapsedTime;
 
 			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
@@ -228,8 +239,10 @@ public:
 				return;
 			}
 
-			phyz_time += fElapsedTime;
-			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+			if (!paused) {
+				phyz_time += fElapsedTime;
+				phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+			}
 			while (!single_step_mode && phyz_time > timestep) {
 				all_contact_points.clear();
 				phyz_time -= timestep;

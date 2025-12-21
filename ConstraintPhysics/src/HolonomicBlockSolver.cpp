@@ -403,40 +403,8 @@ namespace phyz {
 				row_offset += constraints[row]->getDegree();
 			}
 
-			/*printf("Matrix before inversion\n");
-			for (int i = 0; i < debug_inverse.size(); i++) {
-				if (i % system_degree == 0) printf("\n");
-				printf("% 10f ", debug_inverse[i]);
-			}
-			printf("\n\n");*/
-
 			std::vector<double> target(debug_inverse.size());
 			mthz::rowMajorOrderInverse(system_degree, target.data(), debug_inverse.data());
-
-
-			//std::vector<double> idenmaybe(debug_inverse.size(), 0);
-			double norm = 0;
-			for (int i = 0; i < system_degree; i++) {
-				for (int j = 0; j < system_degree; j++) {
-					double val = 0;
-					for (int k = 0; k < system_degree; k++) {
-						//idenmaybe[i + j * system_degree] += target[k + j * system_degree] * debug_inverse[i + k * system_degree];
-						val += target[k + j * system_degree] * debug_inverse[i + k * system_degree];
-					}
-					double expected = i == j ? 1.0 : 0.0;
-					norm += (expected - val) * (expected - val);
-				}
-			}
-			norm = sqrt(norm);
-
-			printf("\nNORM OF (A^-1 * A) - I: %.10e\n", norm);
-
-			/*printf("Matrix after inversion\n");
-			for (int i = 0; i < debug_inverse.size(); i++) {
-				if (i % system_degree == 0) printf("\n");
-				printf("% 10f ", debug_inverse[i]);
-			}
-			printf("\n\n");*/
 
 			debug_inverse = target;
 			return;

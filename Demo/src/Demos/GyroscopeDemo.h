@@ -87,13 +87,10 @@ public:
 		
 		phyz::RigidBody* body_r = p.createRigidBody(gyroscope_body);
 		phyz::RigidBody* spinner_r = p.createRigidBody(spinner);
-
-		p.setConstraintPosCorrectMethod(p.addHingeConstraint(body_r, spinner_r, gyroscope_center, mthz::Vec3(0, 1, 0), -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(), 2000, 2000), phyz::MASTER_SLAVE);
+		p.addHingeConstraint(body_r, spinner_r, gyroscope_center + mthz::Vec3(0, -spinner_thickness / 2.0, 0), mthz::Vec3(0, 1, 0));
 
 		bodies.push_back({ fromGeometry(gyroscope_body), body_r });
 		bodies.push_back({ fromGeometry(spinner), spinner_r });
-
-		p.setConstraintPosCorrectMethod(p.addBallSocketConstraint(body_r, r2, axle_pos + mthz::Vec3(0, -ball_seperation, 0)), phyz::MASTER_SLAVE, false);
 
 		spinner_r->setAngVel(mthz::Vec3(0, 60, 0));
 
@@ -110,7 +107,7 @@ public:
 		double rot_speed = 1;
 
 		double phyz_time = 0;
-		double timestep = 1 / 600.0;
+		double timestep = 1 / 6000.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
 		p.setAngleVelUpdateTickCount(30);

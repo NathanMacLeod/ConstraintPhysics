@@ -27,6 +27,7 @@
     <ClCompile Include="src\HACD.cpp" />
     <ClCompile Include="src\HolonomicBlockSolver.cpp" />
     <ClCompile Include="src\Octree.cpp" />
+    <ClCompile Include="src\PersistentConstraint.cpp" />
     <ClCompile Include="src\PhysicsEngine.cpp" />
     <ClCompile Include="src\RigidBody.cpp" />
   </ItemGroup>
@@ -42,6 +43,7 @@
     <ClInclude Include="src\HACD.h" />
     <ClInclude Include="src\HolonomicBlockSolver.h" />
     <ClInclude Include="src\Octree.h" />
+    <ClInclude Include="src\PersistentConstraint.h" />
     <ClInclude Include="src\PhysicsEngine.h" />
     <ClInclude Include="src\RigidBody.h" />
     <ClInclude Include="src\ThreadManager.h" />
