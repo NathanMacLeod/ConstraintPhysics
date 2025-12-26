@@ -30,7 +30,7 @@ namespace phyz {
 
 	static char* get_token(char* s, const char* delim, char** next_token) {
 		assert(*next_token != NULL);
-		char* token = strtok_s(s, delim, next_token);
+		char* token = strtok_r(s, delim, next_token);
 		return token;
 	}
 
@@ -45,12 +45,12 @@ namespace phyz {
 		static char buff[2048];
 		std::set<int> referenced_index;
 		while (std::getline(in, line)) {
-			sprintf_s(buff, "%s", line.c_str());
+			sprintf(buff, "%s", line.c_str());
 
 			char* token;
 			char* next_token;
 			const char* delim = " ";
-			if ((token = strtok_s(buff, delim, &next_token)) != NULL) {
+			if ((token = strtok_r(buff, delim, &next_token)) != NULL) {
 
 				//vertex 
 				if (strcmp(token, "v") == 0) {
@@ -61,7 +61,7 @@ namespace phyz {
 				}
 				else if (strcmp(token, "f") == 0) {
 					std::vector<unsigned int> indices;
-					while ((token = strtok_s(NULL, delim, &next_token)) != NULL) {
+					while ((token = strtok_r(NULL, delim, &next_token)) != NULL) {
 						int index = atoi(token) - 1;
 						referenced_index.insert(index);
 						assert(index >= 0 && index < out.vertices.size());

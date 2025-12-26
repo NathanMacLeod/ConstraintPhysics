@@ -4622,9 +4622,9 @@ static stbi_uc first_row_filter[5] =
 static int stbi__paeth(int a, int b, int c)
 {
 	int p = a + b - c;
-	int pa = abs(p - a);
-	int pb = abs(p - b);
-	int pc = abs(p - c);
+	int pa = std::abs(p - a);
+	int pb = std::abs(p - b);
+	int pc = std::abs(p - c);
 	if (pa <= pb && pa <= pc) return a;
 	if (pb <= pc) return b;
 	return c;
@@ -5545,7 +5545,7 @@ static void* stbi__bmp_load(stbi__context* s, int* x, int* y, int* comp, int req
 		return NULL; // error code already set
 
 	flip_vertically = ((int)s->img_y) > 0;
-	s->img_y = abs((int)s->img_y);
+	s->img_y = std::abs((int)s->img_y);
 
 	if (s->img_y > STBI_MAX_DIMENSIONS) return stbi__errpuc("too large", "Very large image (corrupt?)");
 	if (s->img_x > STBI_MAX_DIMENSIONS) return stbi__errpuc("too large", "Very large image (corrupt?)");

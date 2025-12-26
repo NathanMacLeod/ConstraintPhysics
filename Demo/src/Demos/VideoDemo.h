@@ -47,7 +47,7 @@ public:
 	unsigned char read8(int fd) {
 		if (buffer_indx >= buffer_capacity) {
 			buffer_indx = 0;
-			buffer_capacity = _read(fd, buffer, sizeof(unsigned char) * BUFFER_SIZE) / sizeof(unsigned char);
+			buffer_capacity = read(fd, buffer, sizeof(unsigned char) * BUFFER_SIZE) / sizeof(unsigned char);
 			assert(buffer_capacity != 0);
 		}
 		return buffer[buffer_indx++];
@@ -61,7 +61,7 @@ public:
 	}
 
 	void flush(int fd) {
-		_write(fd, buffer, sizeof(unsigned char) * buffer_indx);
+		write(fd, buffer, sizeof(unsigned char) * buffer_indx);
 		buffer_indx = 0;
 	}
 
@@ -69,7 +69,7 @@ public:
 		int fd;
 		buffer_indx = 0;
 		buffer_capacity = 0;
-		_sopen_s(&fd, filename.c_str(), _O_BINARY | _O_RDONLY, _SH_DENYRW, _S_IREAD);
+		fd = open(filename.c_str(), O_RDONLY);
 
 		int progress_bar_width = 50;
 		ProgressBarState progress_bar_state{ INITIALIZING };
@@ -87,13 +87,13 @@ public:
 		}
 
 		render_progress_bar(1.0, progress_bar_width, true, progress_bar_state);
-		_close(fd);
+		close(fd);
 	}
 
 	void writeComputation(std::string filename, const std::vector<color>& colors) {
 		int fd;
 		buffer_indx = 0;
-		_sopen_s(&fd, filename.c_str(), _O_CREAT | _O_BINARY | _O_WRONLY, _SH_DENYRW, _S_IWRITE);
+		fd = open(filename.c_str(), O_CREAT);
 
 		uint32_t n_spheres = static_cast<uint32_t>(colors.size());
 		write8(fd,  0x000000FF & n_spheres);
@@ -107,12 +107,12 @@ public:
 			write8(fd, static_cast<uint8_t>(c.b * 255.0f));
 		}
 		flush(fd);
-		_close(fd);
+		close(fd);
 	}
 
 	olc::Sprite getFrame(int frame_count) {
 		char url[256];
-		sprintf_s(url, "resources/bad_apple/bad_apple_frames/bad_apple_frame%d.png", frame_count);
+		sprintf(url, "resources/bad_apple/bad_apple_frames/bad_apple_frame%d.png", frame_count);
 
 		return olc::Sprite(url);
 	}
@@ -422,7 +422,7 @@ public:
 				}
 
 				
-				if (display_release_tick_counter < 0 && abs(p.getMotorAngularPosition(bottom_hinge)) < 0.01) {
+				if (display_release_tick_counter < 0 && std::abs(p.getMotorAngularPosition(bottom_hinge)) < 0.01) {
 					display_bottom_r->setMovementType(phyz::RigidBody::FIXED);
 				}
 
@@ -522,7 +522,7 @@ public:
 					if (display_release_tick_counter == 0) {
 						p.setMotorTargetPosition(bottom_hinge, 10000, 0);
 					}
-					if (display_release_tick_counter < 0 && abs(p.getMotorAngularPosition(bottom_hinge)) < 0.01) {
+					if (display_release_tick_counter < 0 && std::abs(p.getMotorAngularPosition(bottom_hinge)) < 0.01) {
 						display_bottom_r->setMovementType(phyz::RigidBody::FIXED);
 					}
 

@@ -1,4 +1,5 @@
 #include "ConvexPrimitive.h"
+#include "CollisionDetect.h"
 
 #include <map>
 #include <limits>
@@ -231,7 +232,7 @@ namespace phyz {
 
 			mthz::Vec3 intersect_point = ray_origin + intersect_dist * ray_dir;
 			double intersect_height = intersect_point.dot(height_axis);
-			if (abs(intersect_height - center.dot(height_axis)) < height / 2.0) {
+			if (std::abs(intersect_height - center.dot(height_axis)) < height / 2.0) {
 				mthz::Vec3 norm = ((intersect_point - center) - height_axis * height_axis.dot(intersect_point - center)).normalize();
 				out = RayQueryReturn{ true, intersect_point, norm, intersect_dist};
 			}
@@ -248,8 +249,8 @@ namespace phyz {
 
 	mthz::Vec3 Cylinder::getExtremaOfDisk(mthz::Vec3 disk_center, mthz::Vec3 disk_normal, double radius, mthz::Vec3 target_direction) {
 		//both the parralel and perpendicular cases would involve division by 0
-		if (abs(disk_normal.dot(target_direction)) > 0.99999999) return disk_center;
-		if (abs(disk_normal.dot(target_direction)) < 0.00000001) return disk_center + target_direction * radius;
+		if (std::abs(disk_normal.dot(target_direction)) > 0.99999999) return disk_center;
+		if (std::abs(disk_normal.dot(target_direction)) < 0.00000001) return disk_center + target_direction * radius;
 
 		mthz::Vec3 u, v, w; //u, v, w equivalent of x, y, z in basis where target_direction is z axis
 		w = target_direction; target_direction.getPerpendicularBasis(&u, &v);
@@ -317,7 +318,7 @@ namespace phyz {
 	}
 
 	RayQueryReturn Sphere::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
-		assert(abs(1 - ray_dir.mag()) < 0.0001); //should be unit length
+		assert(std::abs(1 - ray_dir.mag()) < 0.0001); //should be unit length
 
 		mthz::Vec3 rel_org = ray_origin - center;
 		//solve quadratic
@@ -412,7 +413,7 @@ namespace phyz {
 
 				FaceCoordP min_u = all_points[0];
 				for (FaceCoordP p : all_points) {
-					if (abs(p.u - min_u.u) < EPS) min_u = p.v < min_u.v ? p : min_u;
+					if (std::abs(p.u - min_u.u) < EPS) min_u = p.v < min_u.v ? p : min_u;
 					else if (p.u < min_u.u) min_u = p;
 				}
 				std::vector<FaceCoordP> hull_points = { min_u };
@@ -436,7 +437,7 @@ namespace phyz {
 						double normed_dot_value = (anglefrom_u * rel_pos_u + anglefrom_v * rel_pos_v) / dist;
 						double angle = acos(normed_dot_value);
 
-						if (abs(min_angle_angle - angle) < EPS) {
+						if (std::abs(min_angle_angle - angle) < EPS) {
 							//points colinear- tiebreaker based on distance 
 							if (dist > min_angle_dist) {
 								min_angle_p = p;
@@ -553,7 +554,7 @@ namespace phyz {
 			mthz::Vec3 ref_p = s.getPointI(0);
 			double ref_val = ref_p.dot(n);
 			for (uint32_t i = 1; i < s.n_points(); i++) {
-				double error = abs(s.getPointI(i).dot(n) - ref_val);
+				double error = std::abs(s.getPointI(i).dot(n) - ref_val);
 				double dist = (s.getPointI(i) - ref_p).mag();
 				double ang = atan(error / dist) * 180 / PI;
 				assert(ang < 0.1);
@@ -676,6 +677,9 @@ namespace phyz {
 		poly = nullptr;
 	}
 
+	mthz::Vec3 Edge::p1() const { return poly->points[p1_indx]; }
+	mthz::Vec3 Edge::p2() const { return poly->points[p2_indx]; }
+
 	Surface::Surface(const std::vector<uint32_t>& point_indexes, Polyhedron* poly, mthz::Vec3 interior_point, int32_t surfaceID)
 		: point_indexes(point_indexes), poly(poly), surfaceID(surfaceID)
 	{
@@ -700,7 +704,7 @@ namespace phyz {
 		normal_calc_index = 2;
 		mthz::Vec3 v1 = (p1 - p0).normalize();
 		mthz::Vec3 v2 = (poly->points[point_indexes[normal_calc_index]] - p0).normalize();
-		while (abs(v1.dot(v2)) > 0.99 && normal_calc_index + 1 < point_indexes.size()) {
+		while (std::abs(v1.dot(v2)) > 0.99 && normal_calc_index + 1 < point_indexes.size()) {
 			v2 = (poly->points[point_indexes[++normal_calc_index]] - p0).normalize();
 			assert(normal_calc_index < point_indexes.size());
 		}

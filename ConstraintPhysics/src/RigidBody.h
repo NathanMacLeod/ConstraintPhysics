@@ -6,7 +6,7 @@
 #include "Geometry.h"
 #include "ConvexPrimitive.h"
 #include "AABB.h"
-#include <Vector>
+#include <vector>
 #include <set>
 
 namespace phyz {

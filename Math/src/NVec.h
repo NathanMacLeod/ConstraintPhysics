@@ -11,7 +11,7 @@ namespace mthz {
 
 		bool isZero() const {
 			for (int i = 0; i < n; i++) {
-				if (abs(v[i]) > CUTOFF) {
+				if (std::abs(v[i]) > CUTOFF) {
 					return false;
 				}
 			}

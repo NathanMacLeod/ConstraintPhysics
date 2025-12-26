@@ -1,6 +1,7 @@
 #include "CollisionDetect.h"
 #include "ConvexPrimitive.h"
 #include "Geometry.h"
+#include <algorithm>
 
 #include <cassert>
 
@@ -202,7 +203,7 @@ namespace phyz {
 		double best_edge_tolerance = 1.0;
 		for (int edge_index : c.getEdgeIndicesAdjacentToPointI(p_ID)) {
 			const Edge& e = c.getEdges()[edge_index];
-			double sin_ang = abs((e.p2() - e.p1()).normalize().dot(n));
+			double sin_ang = std::abs((e.p2() - e.p1()).normalize().dot(n));
 			if (sin_ang < best_edge_tolerance) {
 				best_edge_tolerance = sin_ang;
 				best_edge_index = edge_index;
@@ -256,7 +257,7 @@ namespace phyz {
 			}
 
 			StaticMeshEdge e = t.edges[i];
-			double sin_ang = abs((e.p2 - e.p1).normalize().dot(n));
+			double sin_ang = std::abs((e.p2 - e.p1).normalize().dot(n));
 			if (sin_ang <= SIN_TOL) {
 				return projectTriangleEdge(e, n, p, u, w);
 			}
@@ -298,13 +299,13 @@ namespace phyz {
 
 	static ContactArea findCylinderContactArea(const Cylinder& c, mthz::Vec3 n, mthz::Vec3 u, mthz::Vec3 w) {
 		mthz::Vec3 height_axis = c.getHeightAxis();
-		if (1 - abs(height_axis.dot(n)) <= COS_TOL && n.dot(height_axis) > 0) {
+		if (1 - std::abs(height_axis.dot(n)) <= COS_TOL && n.dot(height_axis) > 0) {
 			return projectCylinderFace(c.getTopFaceApprox(), u, w, c.getTopSurfaceID(), c.getTopApproxPointIDOffset());
 		}
-		else if (1 - abs(height_axis.dot(n)) <= COS_TOL) {
+		else if (1 - std::abs(height_axis.dot(n)) <= COS_TOL) {
 			return projectCylinderFace(c.getBotFaceApprox(), u, w, c.getBotSurfaceID(), c.getBotApproxPointIDOffset());
 		}
-		else if (abs(height_axis.dot(n)) <= SIN_TOL) {
+		else if (std::abs(height_axis.dot(n)) <= SIN_TOL) {
 			PPAir line = cylinderLengthwiseLineInDirection(c, n);
 			return ContactArea{ {{line.p1.dot(u), line.p1.dot(w)}, {line.p2.dot(u), line.p2.dot(w)}}, {c.getTopEdgeID(), c.getBotEdgeID()}, -1, CYLINDER_BARREL};
 		}
@@ -332,7 +333,7 @@ namespace phyz {
 			else if (d < -0.0000000001) return false;
 		}
 
-		//this only would happen if either c has 2 or less points, or all points are colinear. neither should be happening.
+		//this only would happen if either c has 2 or fewer points, or all points are colinear. neither should be happening.
 		assert(false);
 		return false;
 	}
@@ -849,7 +850,7 @@ namespace phyz {
 		else if (b_contact.origin == EDGE) {
 			manifold_pool = { ProjectedContactPoint{ b_contact.ps[0], 0x0} };
 		}
-		else if (a_contact.origin == CYLINDER_BARREL && b_contact.origin == CYLINDER_BARREL && abs(a_height_axis.dot(b_height_axis)) > 0.995) {
+		else if (a_contact.origin == CYLINDER_BARREL && b_contact.origin == CYLINDER_BARREL && std::abs(a_height_axis.dot(b_height_axis)) > 0.995) {
 			//since the two contact areas are parralel lines, the general clipping doesn't handle this case well.
 			PPAir a_contact_line = cylinderLengthwiseLineInDirection(a, norm);
 			PPAir b_contact_line = cylinderLengthwiseLineInDirection(b, -norm);
@@ -1254,7 +1255,7 @@ namespace phyz {
 			assert(s.gauss_region.size() == 2);
 			mthz::Vec3 arc_normal = s.gauss_region[0].cross(s.gauss_region[1]);
 			//check vector lies close to the plane
-			if (abs(normal.dot(arc_normal)) > EPS) return false;
+			if (std::abs(normal.dot(arc_normal)) > EPS) return false;
 			mthz::Vec3 v0_up = arc_normal.cross(s.gauss_region[0]);
 
 			//check vector doesnt lie outside the arc within the plane

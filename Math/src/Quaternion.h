@@ -33,9 +33,9 @@ namespace mthz {
 		}
 
 		double angleTo(mthz::Quaternion q) {
-			double dot = abs(r * q.r + i * q.i + j * q.j + k * q.k);
+			double dot = std::abs(r * q.r + i * q.i + j * q.j + k * q.k);
 			if (dot > 0.99999999999) return 0;
-			return 2 * acos(abs(r * q.r + i * q.i + j * q.j + k * q.k));
+			return 2 * std::acos(std::abs(r * q.r + i * q.i + j * q.j + k * q.k));
 		}
 
 		Vec3 getRotAxis() {

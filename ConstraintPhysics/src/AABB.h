@@ -146,7 +146,7 @@ namespace phyz{
 
 			double eps = 0.00000000001;
 			for (int i = 0; i < 3; i++) {
-				if (abs(ray_dir[i]) < eps) {
+				if (std::abs(ray_dir[i]) < eps) {
 					//case where ray_dir is parralel to the dimension being clipped
 					if (ray_origin[i] < aabb.min[i] || ray_origin[i] > aabb.max[i]) return false;
 					//otherwise no limitations on bounds so dont need to restrict

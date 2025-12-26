@@ -58,7 +58,7 @@ namespace phyz {
 	}
 
 	void RigidBody::applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position) {
-		assert(!isnan(impulse.mag()) && !isnan(position.mag()));
+		assert(!std::isnan(impulse.mag()) && !std::isnan(position.mag()));
 
 		mthz::Vec3 torque = (position - getCOM()).cross(impulse);
 		vel += getInvMass() * impulse;
@@ -112,7 +112,7 @@ namespace phyz {
 	}
 
 	void RigidBody::setAngVel(mthz::Vec3 ang_vel) {
-		assert(!isnan(ang_vel.mag()));
+		assert(!std::isnan(ang_vel.mag()));
 		this->ang_vel = ang_vel;
 		alertWakingAction();
 	}
@@ -233,7 +233,7 @@ namespace phyz {
 			for (int i = 0; i < NEWTON_STEPS; i++) {
 				mthz::Vec3 f = t_step * w.cross(itr_tensor * w) - itr_tensor * (itr_ang_vel - w);
 				mthz::Mat3 jacobian = itr_tensor + t_step * (mthz::Mat3::cross_mat(w) * itr_tensor - mthz::Mat3::cross_mat(itr_tensor * w));
-				if (abs(jacobian.det()) > CUTOFF_MAG) {
+				if (std::abs(jacobian.det()) > CUTOFF_MAG) {
 					w -= jacobian.inverse() * f;
 				}
 			}
@@ -248,7 +248,7 @@ namespace phyz {
 			}
 		}
 
-		assert(!isnan(itr_ang_vel.mag()));
+		assert(!std::isnan(itr_ang_vel.mag()));
 
 		orientation = itr_orientation;
 		ang_vel = itr_ang_vel;
@@ -437,16 +437,16 @@ namespace phyz {
 					IntrgVals a, b, c;
 					Axis proj_axis;
 
-					if (abs(n.z) > 0.01) {
+					if (std::abs(n.z) > 0.01) {
 						proj_axis = Z;
 					}
 					else {
 
 						//project onto most parralel plane
-						if (abs(n.x) >= abs(n.y) && abs(n.x) >= abs(n.z)) {
+						if (std::abs(n.x) >= std::abs(n.y) && std::abs(n.x) >= std::abs(n.z)) {
 							proj_axis = X;
 						}
-						else if (abs(n.y) >= abs(n.x) && abs(n.y) >= abs(n.z)) {
+						else if (std::abs(n.y) >= std::abs(n.x) && std::abs(n.y) >= std::abs(n.z)) {
 							proj_axis = Y;
 						}
 						else {
@@ -578,7 +578,7 @@ namespace phyz {
 
 				double dp = c.getHeightAxis().dot(mthz::Vec3(0, 1, 0));
 				//rotate tensor to cylinders orientation
-				if (abs(dp) < 0.999999999) {
+				if (std::abs(dp) < 0.999999999) {
 					double rotation_angle = acos(dp);
 					mthz::Vec3 rotation_axis = mthz::Vec3(0, 1, 0).cross(c.getHeightAxis()).normalize();
 					mthz::Quaternion q(rotation_angle, rotation_axis);

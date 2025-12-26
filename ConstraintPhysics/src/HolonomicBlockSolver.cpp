@@ -1,6 +1,7 @@
 #include "HolonomicBlockSolver.h"
 #include "ConstraintSolver.h"
 #include <map>
+#include <climits>
 
 namespace phyz {
 
@@ -102,7 +103,7 @@ namespace phyz {
 
 			for (int row = col; row < constraints.size(); row++) {
 				if (block_stays_empty[constraints[row]][constraints[col]]) {
-					block_location_table.push_back(BLOCK_EMPTY);
+					block_location_table.push_back(static_cast<int>(BLOCK_EMPTY));
 				}
 				else {
 					block_location_table.push_back(buffer_capacity);

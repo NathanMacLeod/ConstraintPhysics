@@ -1061,7 +1061,7 @@ namespace phyz {
 		b->psuedo_vel += delta_psuedo_vel;
 		b->psuedo_ang_vel += delta_psuedo_ang_vel;
 
-		assert(!(isnan(b->vel.mag()) || isnan(b->ang_vel.mag()) || isnan(b->psuedo_vel.mag()) || isnan(b->psuedo_ang_vel.mag())));
+		assert(!(std::isnan(b->vel.mag()) || std::isnan(b->ang_vel.mag()) || std::isnan(b->psuedo_vel.mag()) || std::isnan(b->psuedo_ang_vel.mag())));
 		assert(!std::isinf(b->ang_vel.mag()) && !std::isinf(b->vel.mag()) && !std::isinf(b->psuedo_ang_vel.mag()) && !std::isinf(b->psuedo_vel.mag()));
 
 		double wake_vel = 0.25 * vel_sleep_coeff * gravity.mag(); //a little extra sensitive

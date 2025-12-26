@@ -128,7 +128,7 @@
 
 	Author
 	~~~~~~
-	David Barr, aka javidx9, ©OneLoneCoder 2018, 2019, 2020
+	David Barr, aka javidx9, ï¿½OneLoneCoder 2018, 2019, 2020
 
 	2.01: Made renderer and platform static for multifile projects
 	2.02: Added Decal destructor, optimised Pixel constructor
@@ -921,7 +921,7 @@ namespace olc
 		}
 		else
 		{
-			return pColData[abs(y%height)*width + abs(x%width)];
+			return pColData[std::abs(y%height)*width + std::abs(x%width)];
 		}
 	}
 
@@ -1435,7 +1435,7 @@ namespace olc
 		}
 
 		// Line is Funk-aye
-		dx1 = abs(dx); dy1 = abs(dy);
+		dx1 = std::abs(dx); dy1 = std::abs(dy);
 		px = 2 * dy1 - dx1;	py = 2 * dx1 - dy1;
 		if (dy1 <= dx1)
 		{

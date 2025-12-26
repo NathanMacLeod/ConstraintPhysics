@@ -63,7 +63,7 @@ public:
 
 				double extension_delta = ray_cast.hit_distance - current_extension;
 				double max_extension_delta_for_tick = max_extension_velocity * elapsed_time;
-				if (abs(extension_delta) > max_extension_delta_for_tick) {
+				if (std::abs(extension_delta) > max_extension_delta_for_tick) {
 					if (extension_delta > 0) extension_delta = max_extension_delta_for_tick;
 					else					 extension_delta = -max_extension_delta_for_tick;
 				}
@@ -98,8 +98,8 @@ public:
 				//friction
 				double forward_vel = rel_vel.dot(wheel_forward_dir);
 				double slide_angle = 0;
-				if (abs(forward_vel) > 0.000001) {
-					slide_angle = atan(abs(forward_vel / rel_vel.dot(wheel_side_dir)));
+				if (std::abs(forward_vel) > 0.000001) {
+					slide_angle = atan(std::abs(forward_vel / rel_vel.dot(wheel_side_dir)));
 				}
 				//printf("%f\n", slide_angle);
 				double friction_constant = max_friction_constant -(max_friction_constant -min_friction_constant) * slide_angle / (PI / 2);
@@ -141,7 +141,7 @@ public:
 			while (wheel_steer_angle < 0) wheel_steer_angle += 2 * PI;
 
 			double max_travel_for_tick = steer_rate * elapsed_time;
-			if (abs(wheel_steer_angle -target_steer_angle) <= max_travel_for_tick) {
+			if (std::abs(wheel_steer_angle -target_steer_angle) <= max_travel_for_tick) {
 				wheel_steer_angle = target_steer_angle;
 				return;
 			}
@@ -247,7 +247,7 @@ public:
 			double max_turn_angle = PI / 7;
 
 			mthz::Vec3 oriented_forward = car_r->getOrientation().applyRotation(mthz::Vec3(-1, 0, 0));
-			double forward_speed = abs(oriented_forward.dot(car_r->getVel()));
+			double forward_speed = std::abs(oriented_forward.dot(car_r->getVel()));
 			double max_turn_angle_for_speed = asin(sin(max_turn_angle) / (1 + forward_speed / 5));
 
 			double target_steer_angle;

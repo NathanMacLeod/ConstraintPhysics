@@ -37,7 +37,7 @@ namespace phyz {
 		double predicted_new_angle = motor_angular_position + relative_angular_velocity * step_time;
 
 		//use concrete orientations to eliminate drifting error
-		if (abs(compare_axis.dot(rot_axis)) > 0.999) {
+		if (std::abs(compare_axis.dot(rot_axis)) > 0.999) {
 			//doesnt work if compairson is perp to rotation plane. just give up.
 			return predicted_new_angle;
 		}
@@ -62,7 +62,7 @@ namespace phyz {
 			double corrected_angle_candidates[] = { n2PI + relative_angle - 2 * PI, n2PI + relative_angle, n2PI + relative_angle + 2 * PI };
 			double closest = std::numeric_limits<double>::infinity();
 			for (double c : corrected_angle_candidates) {
-				if (abs(predicted_new_angle - c) < abs(predicted_new_angle - closest))
+				if (std::abs(predicted_new_angle - c) < std::abs(predicted_new_angle - closest))
 					closest = c;
 			}
 
@@ -86,20 +86,20 @@ namespace phyz {
 			double ang_diff = motor_angular_position - target_position;
 			double target_dir = (ang_diff > 0) ? -1 : 1;
 			//account for fixed/unfixed potentially changing after constraint created
-			double vel_diff_respect_time = abs((rot_axis.dot(b1_ang_vel) - rot_axis.dot(b2_ang_vel)) - prev_velocity);
+			double vel_diff_respect_time = std::abs((rot_axis.dot(b1_ang_vel) - rot_axis.dot(b2_ang_vel)) - prev_velocity);
 
 			const double EPS = 0.0000001;
 
 			double inertia;
-			if (vel_diff_respect_time < EPS || abs(motor_constraint.impulse.v[0] < EPS)) {
+			if (vel_diff_respect_time < EPS || std::abs(motor_constraint.impulse.v[0] < EPS)) {
 				//avoid dividing by 0, just try a different way (not the most accurate which is why is not used for general method)
 				inertia = 1.0 / (rot_axis.dot(b1->getInvTensor() * rot_axis) + rot_axis.dot(b2->getInvTensor() * rot_axis));
 			}
 			else {
-				inertia = abs(motor_constraint.impulse.v[0]) / vel_diff_respect_time;
+				inertia = std::abs(motor_constraint.impulse.v[0]) / vel_diff_respect_time;
 			}
 
-			double returnval = target_dir * sqrt(2 * abs(ang_diff) * max_torque / inertia);
+			double returnval = target_dir * sqrt(2 * std::abs(ang_diff) * max_torque / inertia);
 			assert(!std::isinf(returnval));
 			return returnval;
 		}
@@ -143,20 +143,20 @@ namespace phyz {
 			double ang_diff = piston_pos - target_position;
 			double target_dir = (ang_diff > 0) ? -1 : 1;
 			//account for fixed/unfixed potentially changing after constraint created
-			double vel_diff_respect_time = abs((slide_axis.dot(b1->getVel()) - slide_axis.dot(b2->getVel())) - prev_velocity);
+			double vel_diff_respect_time = std::abs((slide_axis.dot(b1->getVel()) - slide_axis.dot(b2->getVel())) - prev_velocity);
 
 			const double EPS = 0.0000001;
 
 			double inertia;
-			if (vel_diff_respect_time < EPS || abs(piston_constraint.impulse.v[0] < EPS)) {
+			if (vel_diff_respect_time < EPS || std::abs(piston_constraint.impulse.v[0] < EPS)) {
 				//avoid dividing by 0, just try a different way (not the most accurate which is why is not used for general method)
 				inertia = 1.0 / (b1->getInvMass() + b2->getInvMass());
 			}
 			else {
-				inertia = abs(piston_constraint.impulse.v[0]) / vel_diff_respect_time;
+				inertia = std::abs(piston_constraint.impulse.v[0]) / vel_diff_respect_time;
 			}
 
-			double returnval = target_dir * sqrt(2 * abs(ang_diff) * max_force / inertia);
+			double returnval = target_dir * sqrt(2 * std::abs(ang_diff) * max_force / inertia);
 			assert(!std::isinf(returnval));
 			return returnval;
 		}
@@ -263,7 +263,7 @@ namespace phyz {
 		mthz::NVec<1> motor_starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : warm_start_coefficient * motor_constraint.impulse;
 		if (constraintIsActive()) {
 			motor_constraint = MotorConstraint(b1, b2, b1_hinge_axis, warm_start_coefficient * getConstraintTargetVelocityValue(b1_hinge_axis, b1->getAngVel(), b2->getAngVel(),
-				step_time), abs(max_torque * step_time), motor_angular_position, min_motor_position, max_motor_position, posCorrectCoeff(rot_correct_hardness, step_time), cfm.getCFMValue(global_cfm), motor_starting_impulse);
+				step_time), std::abs(max_torque * step_time), motor_angular_position, min_motor_position, max_motor_position, posCorrectCoeff(rot_correct_hardness, step_time), cfm.getCFMValue(global_cfm), motor_starting_impulse);
 		}
 		writePrevVel(b1_hinge_axis, b1->getAngVel(), b2->getAngVel());
 	}

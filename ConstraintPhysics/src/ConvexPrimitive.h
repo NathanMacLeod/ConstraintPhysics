@@ -36,6 +36,7 @@ namespace phyz {
 	enum ConvexGeometryType { POLYHEDRON, SPHERE, CYLINDER };
 	class ConvexGeometry {
 	public:
+		virtual ~ConvexGeometry() {}
 		virtual void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) = 0;
 		virtual AABB gen_AABB() const = 0;
 		virtual ConvexGeometryType getType() const = 0;
@@ -170,6 +171,46 @@ namespace phyz {
 		double height;
 	};
 
+	class Surface {
+	public:
+		Surface(const std::vector<uint32_t>& point_indexes, Polyhedron* poly, mthz::Vec3 interior_point, int32_t surfaceID = -1);
+		Surface(const Surface& s, Polyhedron* poly);
+		Surface();
+
+		uint32_t n_points() const;
+		mthz::Vec3 normal() const;
+		mthz::Vec3 getPointI(int i) const;
+		inline int32_t getSurfaceID() const { return surfaceID; }
+
+		std::vector<uint32_t> point_indexes;
+		friend class Polyhedron;
+	private:
+		void findNormalCalcInfo(const mthz::Vec3& normalish);
+		void setWindingAntiClockwise(const mthz::Vec3& normal);
+
+		Polyhedron* poly;
+		int normal_calc_index;
+		int surfaceID;
+		int normalDirection;
+	};
+
+	class Edge {
+	public:
+		Edge(int p1_indx, int p2_indx, Polyhedron* poly);
+		Edge(const Edge& e, Polyhedron* poly);
+		Edge();
+
+		mthz::Vec3 p1() const;
+		mthz::Vec3 p2() const;
+
+		int p1_indx;
+		int p2_indx;
+		friend class Polyhedron;
+	private:
+		Polyhedron* poly;
+
+	};
+
 	class Polyhedron : ConvexGeometry {
 	public:
 		Polyhedron() {}
@@ -211,46 +252,6 @@ namespace phyz {
 		std::vector<Surface> surfaces;
 		std::vector<Edge> edges;
 	public: mthz::Vec3 interior_point;
-	};
-
-	class Edge {
-	public:
-		Edge(int p1_indx, int p2_indx, Polyhedron* poly);
-		Edge(const Edge& e, Polyhedron* poly);
-		Edge();
-
-		inline mthz::Vec3 p1() const { return poly->points[p1_indx]; }
-		inline mthz::Vec3 p2() const { return poly->points[p2_indx]; }
-
-		int p1_indx;
-		int p2_indx;
-		friend class Polyhedron;
-	private:
-		Polyhedron* poly;
-		
-	};
-
-	class Surface {
-	public:
-		Surface(const std::vector<uint32_t>& point_indexes, Polyhedron* poly, mthz::Vec3 interior_point, int32_t surfaceID = -1);
-		Surface(const Surface& s, Polyhedron* poly);
-		Surface();
-
-		uint32_t n_points() const;
-		mthz::Vec3 normal() const;
-		mthz::Vec3 getPointI(int i) const;
-		inline int32_t getSurfaceID() const { return surfaceID; }
-
-		std::vector<uint32_t> point_indexes;
-		friend class Polyhedron;
-	private:
-		void findNormalCalcInfo(const mthz::Vec3& normalish);
-		void setWindingAntiClockwise(const mthz::Vec3& normal);
-
-		Polyhedron* poly;
-		int normal_calc_index;
-		int surfaceID;
-		int normalDirection;
 	};
 
 }

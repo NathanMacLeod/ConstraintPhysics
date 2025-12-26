@@ -7,7 +7,7 @@
 #include <iostream>
 #include "olcPixelGameEngine.h"
 #include <inttypes.h>
-#include <io.h>
+//#include <io.h>
 #include <fcntl.h>
 #include <cassert>
 #include <chrono>
@@ -76,7 +76,7 @@ private:
 	double read64(int fd) {
 		if (buffer_indx >= buffer_capacity) {
 			buffer_indx = 0;
-			buffer_capacity = _read(fd, buffer, sizeof(double) * BUFFER_SIZE) / sizeof(double);
+			buffer_capacity = read(fd, buffer, sizeof(double) * BUFFER_SIZE) / sizeof(double);
 			assert(buffer_capacity != 0);
 		}
 		return buffer[buffer_indx++];
@@ -90,7 +90,7 @@ private:
 	}
 
 	void flush(int fd) {
-		_write(fd, buffer, sizeof(double) * buffer_indx);
+		write(fd, buffer, sizeof(double) * buffer_indx);
 		buffer_indx = 0;
 	}
 
@@ -98,7 +98,7 @@ private:
 		int fd;
 		buffer_indx = 0;
 		buffer_capacity = 0;
-		_sopen_s(&fd, filename.c_str(), _O_BINARY | _O_RDONLY, _SH_DENYRW, _S_IREAD);
+		fd = open(filename.c_str(), O_RDONLY);
 
 		int progress_bar_width = 50;
 		ProgressBarState progress_bar_state{ INITIALIZING };
@@ -113,13 +113,13 @@ private:
 		}
 
 		render_progress_bar(1.0, progress_bar_width, true, progress_bar_state);
-		_close(fd);
+		close(fd);
 	}
 
 	void writeComputation(std::string filename, const std::vector<BodyHistory>& bodies, int n_frames) {
 		int fd;
 		buffer_indx = 0;
-		_sopen_s(&fd, filename.c_str(), _O_CREAT | _O_BINARY | _O_WRONLY, _SH_DENYRW, _S_IWRITE);
+		fd = open(filename.c_str(), O_CREAT);
 		for (int i = 0; i < n_frames; i++) {
 			for (const BodyHistory& b : bodies) {
 				PosState p = b.history[i];
@@ -128,7 +128,7 @@ private:
 			}
 		}
 		flush(fd);
-		_close(fd);
+		close(fd);
 	}
 
 public:
@@ -344,7 +344,7 @@ public:
 
 		printf("Checking for existing precomputation...\n");
 		char precompute_file[256];
-		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d_%c.txt", level_of_detail, toupper(parameters["shape"][0]));
+		sprintf(precompute_file, "resources/precomputations/precomputation_lod%d_%c.txt", level_of_detail, toupper(parameters["shape"][0]));
 		if (fileExists(precompute_file)) {
 			printf("File found. Loading...\n");
 			readComputation(precompute_file, &pre_bodies, n_frames);

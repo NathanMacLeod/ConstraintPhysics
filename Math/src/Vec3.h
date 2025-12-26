@@ -52,7 +52,7 @@ namespace mthz {
 
 		void getPerpendicularBasis(Vec3* u, Vec3* w) const {
 			mthz::Vec3 axis1 = mthz::Vec3(1, 0, 0), axis2 = mthz::Vec3(0, 1, 0); //two guesses for non parallel vectors, at least 1 not parallel
-			*u = (abs(this->dot(axis1)) < abs(this->dot(axis2))) ? this->cross(axis1).normalize() : this->cross(axis2).normalize();
+			*u = (std::abs(this->dot(axis1)) < std::abs(this->dot(axis2))) ? this->cross(axis1).normalize() : this->cross(axis2).normalize();
 			*w = this->cross(*u).normalize();
 		}
 

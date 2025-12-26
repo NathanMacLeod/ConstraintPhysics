@@ -800,7 +800,7 @@ namespace phyz {
 
 		for (unsigned int i : hit_candidates) {
 			const StaticMeshFace& tri = triangles[i];
-			if (abs(tri.normal.dot(ray_dir)) < 0.0000000001) {
+			if (std::abs(tri.normal.dot(ray_dir)) < 0.0000000001) {
 				continue;
 			}
 
