@@ -102,8 +102,8 @@ void main() {
 	int tex_index = int(g_tex_id);
 	//something going wrong here
 	if (false && g_tex_id != -1) {
-		vec4 tex_color = texture(u_textures[tex_index], g_tex_coords);
-		surface_color = vec3(tex_color[0], tex_color[1], tex_color[2]);
+		// vec4 tex_color = texture(u_textures[tex_index], g_tex_coords);
+		// surface_color = vec3(tex_color[0], tex_color[1], tex_color[2]);
 	}
 	else {
 		surface_color = (u_Asleep == 1) ? vec3(1.0, 0, 0) : g_Color;
