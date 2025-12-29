@@ -19,7 +19,6 @@ target_sources(demo PRIVATE
 target_link_libraries(demo
     PRIVATE
         OpenGL::GL
-        X11
         dl
         pthread
 )

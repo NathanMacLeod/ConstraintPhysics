@@ -4,7 +4,7 @@
 #include "Texture.h"
 
 #include <vector>
-#include <GL/glew.h>
+#include <glad/gl.h>
 
 /**************************************************************************
 * Most of the code in this file either comes from or is based

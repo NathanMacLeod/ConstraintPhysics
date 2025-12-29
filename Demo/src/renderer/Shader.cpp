@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <GL/glew.h>
+#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
 /**************************************************************************

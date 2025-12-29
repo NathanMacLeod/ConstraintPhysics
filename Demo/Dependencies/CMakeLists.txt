@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.23)
 
-
 target_include_directories(demo PRIVATE GLFW/include)
 target_include_directories(demo PRIVATE stb_image/include)
 
@@ -12,8 +11,10 @@ if (WIN32)
     target_include_directories(demo PRIVATE GLEW/include)
 elseif (UNIX)
     target_link_libraries(demo
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/GLEW/glew-2.3/lib/libGLEW.a
+        #PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/GLEW/glew-2.3/lib/libGLEW.a
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/GLFW/linux/libglfw3.a
     )
-    target_include_directories(demo PRIVATE GLEW/glew-2.3/include)
+    #target_include_directories(demo PRIVATE GLEW/glew-2.3/include)
+    target_include_directories(demo PRIVATE glad/include)
+   
 endif()

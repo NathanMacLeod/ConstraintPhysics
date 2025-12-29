@@ -1,7 +1,7 @@
-#define GLEW_STATIC
-#include <GL/glew.h>
-
 #include "Renderer.h"
+
+#define GLAD_GL_IMPLEMENTATION
+#include <glad/gl.h>
 
 #include <chrono>
 #include <cstdio>
@@ -27,7 +27,7 @@ namespace rndr {
         window_width = width;
         window_height = height;
         if (!glfwInit()) {
-            std::printf("glew init failed!\n");
+            std::printf("glfw init failed!\n");
             return -1;
         }
 
@@ -47,14 +47,21 @@ namespace rndr {
         for (int i = 0; i < N_KEYS; i++) { keys[i] = KeyState::KEY_UP; }
         glfwSetKeyCallback(window, keyEvent);
 
-        if (glewInit() != GLEW_OK) {
-            std::printf("glew init failed!\n");
+        int version = gladLoadGL(glfwGetProcAddress);
+        if (version == 0)
+        {
+            printf("Failed to initialize OpenGL context");
             return -1;
         }
 
 #ifndef NDEBUG
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(GLDebugMessageCallback, NULL);
+
+        printf("Vendor graphic card: %s\n", glGetString(GL_VENDOR));
+        printf("Renderer: %s\n", glGetString(GL_RENDERER));
+        printf("Version GL: %s\n", glGetString(GL_VERSION));
+        printf("Version GLSL: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 #endif
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
