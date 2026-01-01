@@ -317,8 +317,6 @@ namespace phyz {
 
 		auto t4 = std::chrono::system_clock::now();
 
-		maintainConstraintGraphApplyPoweredConstraints();
-
 		//order of elements in triggered_actions depends on order of thread execution, sorting to restore determenism
 		std::sort(triggered_actions.begin(), triggered_actions.end(), 
 			[](const TriggeredActionPair& p1, const TriggeredActionPair& p2) {
@@ -344,77 +342,85 @@ namespace phyz {
 
 		auto t5 = std::chrono::system_clock::now();
 
-		if (use_multithread && compute_holonomic_inverse_in_parallel && using_holonomic_system_solver()) {
-			std::vector<ThreadManager::JobStatus> compute_holonomic_inverses_status(active_data.island_systems.size());
+		for (int i = 0; i < sub_itr_count; i++) {
+			double sub_itr_duration = step_time / sub_itr_count;
 
-			int islands_with_holonomic_systems_count = 0;
+			bool is_first_sub_itr = i == 0;
+			bool is_last_sub_itr = i == sub_itr_count - 1;
+			maintainConstraintGraphApplyPoweredConstraints(is_first_sub_itr, is_last_sub_itr, sub_itr_duration);
 
-			thread_manager.enqueue_do_all_tasks<IslandConstraints>(n_threads, &active_data.island_systems,
-				[&](IslandConstraints island_system, int index) {
-					PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations, &compute_holonomic_inverses_status[index]);
+			if (use_multithread && compute_holonomic_inverse_in_parallel && using_holonomic_system_solver()) {
+				std::vector<ThreadManager::JobStatus> compute_holonomic_inverses_status(active_data.island_systems.size());
+
+				int islands_with_holonomic_systems_count = 0;
+
+				thread_manager.enqueue_do_all_tasks<IslandConstraints>(n_threads, &active_data.island_systems,
+					[&](IslandConstraints island_system, int index) {
+						PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations, &compute_holonomic_inverses_status[index]);
+					}
+				);
+				for (int i = 0; i < active_data.island_systems.size(); i++) {
+					IslandConstraints& island_system = active_data.island_systems[i];
+					if (island_system.systems.empty()) continue;
+
+					islands_with_holonomic_systems_count++;
+
+					int size = static_cast<int>(island_system.systems.size());
+					thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
+						[&, size, i](HolonomicSystem* h, int index) {
+							h->computeInverse(holonomic_block_solver_CFM);
+							auto donet = std::chrono::system_clock::now();
+							//printf("Compute inverse done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(donet - t5).count());
+						}, &compute_holonomic_inverses_status[i]
+							);
 				}
-			);
-			for (int i = 0; i < active_data.island_systems.size(); i++) {
-				IslandConstraints& island_system = active_data.island_systems[i];
-				if (island_system.systems.empty()) continue;
 
-				islands_with_holonomic_systems_count++;
-
-				int size = static_cast<int>(island_system.systems.size());
-				thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
-					[&, size, i](HolonomicSystem* h, int index) {
-						h->computeInverse(holonomic_block_solver_CFM);
-						auto donet = std::chrono::system_clock::now();
-						//printf("Compute inverse done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(donet - t5).count());
-					}, &compute_holonomic_inverses_status[i]
-						);
+				thread_manager.execute_jobs();
 			}
-
-			thread_manager.execute_jobs();
-		}
-		else if (use_multithread) {
-			thread_manager.do_all<IslandConstraints>(n_threads, active_data.island_systems,
-				[&](IslandConstraints island_system) {
+			else if (use_multithread) {
+				thread_manager.do_all<IslandConstraints>(n_threads, active_data.island_systems,
+					[&](IslandConstraints island_system) {
+						PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+					}
+				);
+			}
+			else {
+				for (IslandConstraints& island_system : active_data.island_systems) {
 					PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
 				}
-			);
-		}
-		else {
-			for (IslandConstraints& island_system : active_data.island_systems) {
-				PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+			}
+
+			auto update_positions = [&](RigidBody* b) {
+				if ((b->getMovementType() != RigidBody::FIXED) && !b->getAsleep()) {
+					b->prev_com = b->getCOM();
+					b->prev_orientation = b->getOrientation();
+
+					b->com += (b->vel + b->psuedo_vel) * sub_itr_duration;
+
+					if (b->ang_vel.magSqrd() != 0) {
+						bool no_gyro = is_internal_gyro_forces_disabled || b->getMovementType() == RigidBody::KINEMATIC;
+
+						b->rotateWhileApplyingGyroAccel(sub_itr_duration, angle_velocity_update_tick_count, no_gyro);
+						mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
+						b->orientation = mthz::Quaternion(sub_itr_duration * psuedo_rot.mag(), psuedo_rot) * b->orientation;
+					}
+
+					b->psuedo_vel = mthz::Vec3(0, 0, 0);
+					b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
+				}
+				};
+
+			if (use_multithread) {
+				thread_manager.do_all<RigidBody*>(n_threads, bodies, update_positions);
+			}
+			else {
+				for (RigidBody* b : bodies) {
+					update_positions(b);
+				}
 			}
 		}
 
 		auto t6 = std::chrono::system_clock::now();
-
-		auto update_positions = [&](RigidBody* b) {
-			if ((b->getMovementType() != RigidBody::FIXED) && !b->getAsleep()) {
-				b->prev_com = b->getCOM();
-				b->prev_orientation = b->getOrientation();
-
-				b->com += (b->vel + b->psuedo_vel) * step_time;
-
-				if (b->ang_vel.magSqrd() != 0) {
-					bool no_gyro = is_internal_gyro_forces_disabled || b->getMovementType() == RigidBody::KINEMATIC;
-
-					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count, no_gyro);
-					mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
-					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
-				}
-
-				b->psuedo_vel = mthz::Vec3(0, 0, 0);
-				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
-			}
-			};
-
-		if (use_multithread) {
-			thread_manager.do_all<RigidBody*>(n_threads, bodies, update_positions);
-		}
-		else {
-			for (RigidBody* b : bodies) {
-				update_positions(b);
-			}
-		}
 
 		auto update_geometry = [&](RigidBody* b) {
 			bool moveable = (b->getMovementType() != RigidBody::FIXED) && !b->getAsleep();
@@ -1236,8 +1242,8 @@ namespace phyz {
 		});
 	}
 
-	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints() {
-		if (using_holonomic_system_solver()) shatterFracturedHolonomicSystems();
+	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints(bool is_first_sub_itr, bool is_last_sub_itr, double delta_time) {
+		if (is_first_sub_itr && using_holonomic_system_solver()) shatterFracturedHolonomicSystems();
 
 		static int current_visit_tag_value = 0;
 		current_visit_tag_value++; //used to avoid visiting same constraint twice
@@ -1247,7 +1253,7 @@ namespace phyz {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
-				if (using_holonomic_system_solver()) maintainAllHolonomicSystemStuffRelatedToThisEdge(e);
+				if (is_first_sub_itr && using_holonomic_system_solver()) maintainAllHolonomicSystemStuffRelatedToThisEdge(e);
 
 				if (e->visited_tag == current_visit_tag_value)
 					continue; //skip
@@ -1264,8 +1270,8 @@ namespace phyz {
 					mthz::Vec3 dir = (distance != 0) ? (b2_pos - b1_pos).normalize() : mthz::Vec3(0, -1, 0);
 					double expand_force = s->stiffness * (distance - s->resting_length);
 
-					s->b1->applyImpulse(dir * expand_force * step_time, b1_pos);
-					s->b2->applyImpulse(-dir * expand_force * step_time, b2_pos);
+					s->b1->applyImpulse(dir * expand_force * delta_time, b1_pos);
+					s->b2->applyImpulse(-dir * expand_force * delta_time, b2_pos);
 
 					mthz::Vec3 rA = b1_pos - s->b1->getCOM();
 					mthz::Vec3 rB = b2_pos - s->b2->getCOM();
@@ -1276,7 +1282,7 @@ namespace phyz {
 
 					double velocity = s->b2->getVelOfPoint(b1_pos).dot(dir) - s->b1->getVelOfPoint(b2_pos).dot(dir);
 					double dampen = s->damping * velocity;
-					double max_dampen = velocity * velocity_sensitivity / step_time; //max brings to standstill, more would overshoot and push in the opposite direction
+					double max_dampen = velocity * velocity_sensitivity / delta_time; //max brings to standstill, more would overshoot and push in the opposite direction
 					if (velocity > 0 && dampen > max_dampen) {
 						dampen = max_dampen;
 					}
@@ -1284,8 +1290,8 @@ namespace phyz {
 						dampen = max_dampen;
 					}
 
-					s->b1->applyImpulse(dir * dampen * step_time, b1_pos);
-					s->b2->applyImpulse(-dir * dampen * step_time, b2_pos);
+					s->b1->applyImpulse(dir * dampen * delta_time, b1_pos);
+					s->b2->applyImpulse(-dir * dampen * delta_time, b2_pos);
 				}
 			}
 		}
@@ -1314,18 +1320,29 @@ namespace phyz {
 				//todo: move the memory update elsewhere
 				if (c->getId().getType() == ConstraintID::Type::CONTACT) {
 					Contact* cont = static_cast<Contact*>(c);
-					cont->memory_life--;
-					if (!cont->is_live_contact) { continue; } // no need to update solver constraints as they wont be used
+					bool update_not_needed = false;
+					if (!cont->is_live_contact) { update_not_needed = true; } // no need to update solver constraints as they wont be used
+
+					if (is_last_sub_itr) {
+						cont->memory_life--;
+						// set all constraints to innactive, during collission detection on the next tick
+						// we will re-evaluate which contacts are active or not.
+						cont->is_live_contact = false; 
+					}
+
+					if (update_not_needed) { continue; }
 				}
-				c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time, global_cfm, is_in_holonomic_system);
+				c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, delta_time, global_cfm, is_in_holonomic_system);
 			}
 
-			removeExpiredContactConstraints(e);
+			if (is_first_sub_itr) {
+				removeExpiredContactConstraints(e);
 
-			if (e->noConstraintsLeft()) {
-				to_delete_mutex.lock();
-				to_delete.push_back(e);
-				to_delete_mutex.unlock();
+				if (e->noConstraintsLeft()) {
+					to_delete_mutex.lock();
+					to_delete.push_back(e);
+					to_delete_mutex.unlock();
+				}
 			}
 		};
 
@@ -1476,7 +1493,6 @@ namespace phyz {
 						bool is_contact = c->getId().getType() == ConstraintID::Type::CONTACT;
 						if (is_contact && static_cast<Contact*>(c)->is_live_contact) {
 							c->addSolverConstraints(output->island_constraints);
-							static_cast<Contact*>(c)->is_live_contact = false;
 						}
 						else if(!is_contact && c->isSolverConstraint()) {
 							c->addSolverConstraints(output->island_constraints);

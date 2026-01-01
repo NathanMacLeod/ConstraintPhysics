@@ -74,7 +74,7 @@ namespace phyz {
 		std::vector<RigidBody*> getBodies();
 		unsigned int getNextBodyID();
 
-		void setPGSIterations(int n_vel, int n_pos, int n_holonomic = 3) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; pgsHolonomicIterations = n_holonomic; }
+		void setPGSIterations(int n_vel, int n_pos, int n_holonomic = 3) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; pgsHolonomicIterations = 0;/* n_holonomic;*/ }
 		void setSleepingEnabled(bool sleeping);
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
@@ -152,8 +152,8 @@ namespace phyz {
 
 		int pgsVelIterations = 1;
 		int pgsPosIterations = 1;
-		int sub_itr_count = 1;
-		int pgsHolonomicIterations = 1;
+		int sub_itr_count = 8;
+		int pgsHolonomicIterations = 0;// 1;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
 
 		BroadPhaseStructure broadphase = AABB_TREE;
@@ -172,7 +172,7 @@ namespace phyz {
 
 		struct ConstraintGraphNode; 
 		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
-		void maintainConstraintGraphApplyPoweredConstraints();
+		void maintainConstraintGraphApplyPoweredConstraints(bool is_first_sub_itr, bool is_last_sub_itr, double delta_time);
 		//void updateConstraints(std::vector<Constraint*> constraints);
 		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
