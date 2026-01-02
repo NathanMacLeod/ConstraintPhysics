@@ -140,6 +140,9 @@
     <ClInclude Include="src\Camera.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="src\Demos\PerformanceProfilingScenes.h">
+      <Filter>src\Demos</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\shaders\Basic.shader">
