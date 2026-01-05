@@ -20,7 +20,8 @@ public:
 		);
 
 		out["which_scene"] = pickParameterFromOptions(
-			"Options are the following:\n1) Box Pile - a bunch of cubes together \n\
+			"Options are the following:\n\
+1) Box Pile - a bunch of cubes together \n\
 2) Block Tower - circular tower of blocks\n\
 3) Ragdoll Pile - one big pile of ragdolls. note ragdolls behave a bit oddly currently since rotation limits for ball sockets haven't been implemented yet\n\
 4) Dispersed Ragdolls - 20 seperate piles of ragdolls\n\
@@ -34,7 +35,6 @@ Select which scene to run: ", { "1", "2", "3", "4"}
 		return {
 			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
 			ControlDescription{"UP, DOWN, LEFT, RIGHT", "Rotate the camera"},
-			ControlDescription{"I. K", "Raise / Lower scissor lift, if present"},
 			ControlDescription{"ESC", "Return to main menu"},
 		};
 	}
@@ -314,13 +314,12 @@ Select which scene to run: ", { "1", "2", "3", "4"}
 					}
 				}
 			});
-
-			if (fgetc(stdin)) {
-				exit = true;
-				run_thread.join();
-				manager->deselectCurrentScene();
-				return;
-			}
+			
+			fgetc(stdin);
+			exit = true;
+			run_thread.join();
+			manager->deselectCurrentScene();
+			return;
 		}
 		else {
 			bool lock_cam = false;

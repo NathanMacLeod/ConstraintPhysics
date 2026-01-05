@@ -644,8 +644,8 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->constraints_changed_flag = true;
-		else				   e->holonomic_system_scan_needed = true;
+		if (already_holonomic)   e->h->flagSystemHasChanged();
+		else				     e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(static_cast<PersistentConstraint*>(d));
 
@@ -673,7 +673,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->constraints_changed_flag = true;
+		if (already_holonomic) e->h->flagSystemHasChanged();
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(bs);
@@ -709,7 +709,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->constraints_changed_flag = true;
+		if (already_holonomic) e->h->flagSystemHasChanged();
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(h);
@@ -789,7 +789,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->constraints_changed_flag = true;
+		if (already_holonomic) e->h->flagSystemHasChanged();
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(s);
@@ -872,7 +872,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->constraints_changed_flag = true;
+		if (already_holonomic) e->h->flagSystemHasChanged();
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(s);
@@ -902,7 +902,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->constraints_changed_flag = true;
+		if (already_holonomic) e->h->flagSystemHasChanged();
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(w);
@@ -1245,8 +1245,8 @@ namespace phyz {
 	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints(bool is_first_sub_itr, bool is_last_sub_itr, double delta_time) {
 		if (is_first_sub_itr && using_holonomic_system_solver()) shatterFracturedHolonomicSystems();
 
-		static int current_visit_tag_value = 0;
-		current_visit_tag_value++; //used to avoid visiting same constraint twice
+		static int current_visit_edges_tag_value = 0;
+		current_visit_edges_tag_value++; //used to avoid visiting same constraint twice
 
 		//Spring forces are not included in the PGS solver, so in order for other constraints to be aware of their influence they must be applied before the target velocities of constraints are calculated
 		for (const auto& kv_pair : constraint_graph_nodes) {
@@ -1255,9 +1255,9 @@ namespace phyz {
 				SharedConstraintsEdge* e = n->constraints[i];
 				if (is_first_sub_itr && using_holonomic_system_solver()) maintainAllHolonomicSystemStuffRelatedToThisEdge(e);
 
-				if (e->visited_tag == current_visit_tag_value)
+				if (e->visited_tag == current_visit_edges_tag_value)
 					continue; //skip
-				e->visited_tag = current_visit_tag_value;
+				e->visited_tag = current_visit_edges_tag_value;
 
 				for (PersistentConstraint* c : e->constraints) {
 					if (c->getId().getType() != ConstraintID::Type::SPRING) continue;
@@ -1300,15 +1300,15 @@ namespace phyz {
 		std::mutex to_delete_mutex;
 		std::vector< SharedConstraintsEdge*> to_delete;
 
-		current_visit_tag_value++; //need to update this value again
+		current_visit_edges_tag_value++; //need to update this value again
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
 
-				if (e->visited_tag == current_visit_tag_value) 
+				if (e->visited_tag == current_visit_edges_tag_value) 
 					continue; //skip
-				e->visited_tag = current_visit_tag_value;
+				e->visited_tag = current_visit_edges_tag_value;
 
 				edges.push_back(e);
 			}
@@ -1422,7 +1422,7 @@ namespace phyz {
 			else {
 				//encountered_systems.size() > 1 case, need to merge all systems into one.
 				auto itr = encountered_systems.begin();
-				//nullptr cant appear twice in set
+				//pick one holonomic system to represent everything
 				HolonomicSystemNodes* non_null_system = (*itr == nullptr) ? *std::next(itr) : *itr; 
 
 				for (SharedConstraintsEdge* edge : holonomically_connected) {
@@ -1433,7 +1433,7 @@ namespace phyz {
 					edge->holonomic_system_scan_needed = false;
 				}
 				//sufficient to just set flag, will trigger update with new constraints added
-				non_null_system->constraints_changed_flag = true;
+				non_null_system->flagSystemHasChanged();
 
 				for (HolonomicSystemNodes* system : encountered_systems) {
 					if (system != nullptr && system != non_null_system) delete system;
@@ -1443,9 +1443,8 @@ namespace phyz {
 
 		if (e->h != nullptr && e->h->constraints_changed_flag) {
 			e->h->constraints_changed_flag = false;
-			e->h->recalculateSystem();
-		}
-		
+			e->h->revaluateSystem();
+		}	
 	}
 
 	PhysicsEngine::ActiveConstraintData PhysicsEngine::sleepOrSolveIslands() {
@@ -1520,6 +1519,24 @@ namespace phyz {
 
 		return out;
 	}
+
+	std::vector<PhysicsEngine::HolonomicSystemNodes*> PhysicsEngine::getAllHolonomicSystems() const {
+		std::set<HolonomicSystemNodes*> nodes;
+
+		for (const auto& kv_pair : constraint_graph_nodes) {
+			ConstraintGraphNode* n = kv_pair.second;
+			for (SharedConstraintsEdge* e : n->constraints) {
+				if (e->h != nullptr) nodes.insert(e->h);
+			}
+		}
+
+		return std::vector<HolonomicSystemNodes*>(nodes.begin(), nodes.end());
+	}
+
+	void PhysicsEngine::calculateHolonomicSystemInversesAsync(std::vector<PhysicsEngine::HolonomicSystemNodes*> nodes_to_calculate_for) {
+
+	}
+
 
 	CollisionTarget CollisionTarget::with(RigidBody* r) {
 		return CollisionTarget(false, r->getID());
@@ -1631,12 +1648,12 @@ namespace phyz {
 	}
 
 	PhysicsEngine::HolonomicSystemNodes::HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges) 
-		: member_edges(member_edges), constraints_changed_flag(false), edge_removed_flag(false)
+		: member_edges(member_edges), constraints_changed_flag(false), edge_removed_flag(false), inverse_calculation_invalidated_flag(false)
 	{
-		recalculateSystem();
+		revaluateSystem();
 	}
 
-	void PhysicsEngine::HolonomicSystemNodes::recalculateSystem() {
+	void PhysicsEngine::HolonomicSystemNodes::revaluateSystem() {
 		std::vector<Constraint*> constraints;
 		constraints.reserve(member_edges.size());
 

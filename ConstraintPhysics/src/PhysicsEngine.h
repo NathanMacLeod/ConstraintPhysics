@@ -74,7 +74,7 @@ namespace phyz {
 		std::vector<RigidBody*> getBodies();
 		unsigned int getNextBodyID();
 
-		void setPGSIterations(int n_vel, int n_pos, int n_holonomic = 3) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; pgsHolonomicIterations = 0;/* n_holonomic;*/ }
+		void setPGSIterations(int n_vel, int n_pos, int n_holonomic = 3) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; pgsHolonomicIterations = n_holonomic; }
 		void setSleepingEnabled(bool sleeping);
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
@@ -153,7 +153,7 @@ namespace phyz {
 		int pgsVelIterations = 1;
 		int pgsPosIterations = 1;
 		int sub_itr_count = 8;
-		int pgsHolonomicIterations = 0;// 1;
+		int pgsHolonomicIterations = 1;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
 
 		BroadPhaseStructure broadphase = AABB_TREE;
@@ -249,17 +249,23 @@ namespace phyz {
 
 		struct HolonomicSystemNodes {
 			HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges);
-			void recalculateSystem();
+			void revaluateSystem();
+
+			inline void flagSystemHasChanged() { constraints_changed_flag = true; inverse_calculation_invalidated_flag = true; }
 
 			bool constraints_changed_flag;
 			bool edge_removed_flag;
+			bool inverse_calculation_invalidated_flag;
 			std::vector<SharedConstraintsEdge*> member_edges;
 			HolonomicSystem system;
+			ThreadManager::JobStatus inverse_calculation_status;
 		};
 
 		std::vector<SharedConstraintsEdge*> getAllEdgesConnectedHolonomically(SharedConstraintsEdge* e);
 		void shatterFracturedHolonomicSystems();
 		void maintainAllHolonomicSystemStuffRelatedToThisEdge(SharedConstraintsEdge* e);
+		std::vector<HolonomicSystemNodes*> getAllHolonomicSystems() const;
+		void calculateHolonomicSystemInversesAsync(std::vector<HolonomicSystemNodes*> nodes_to_calculate_for);
 
 		struct ConstraintGraphNode {
 			ConstraintGraphNode(RigidBody* b) : b(b), constraints(std::vector<SharedConstraintsEdge*>()) {}

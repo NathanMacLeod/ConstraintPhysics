@@ -16,6 +16,9 @@
     <Filter Include="src\Demos">
       <UniqueIdentifier>{609d72ac-60ff-417a-b5c5-c44a62c8a5ff}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Demos\Tests">
+      <UniqueIdentifier>{305376fa-3d4e-40be-9f61-1589e9be0b45}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\renderer\Renderer.cpp">
@@ -32,9 +35,6 @@
     </ClCompile>
     <ClCompile Include="src\renderer\VertexArray.cpp">
       <Filter>src\renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\main_old.cpp">
-      <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\Mesh.cpp">
       <Filter>src</Filter>
@@ -141,6 +141,15 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="src\Demos\PerformanceProfilingScenes.h">
+      <Filter>src\Demos</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\Tests\Test.h">
+      <Filter>src\Demos\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\Tests\ThreadManagerTests.h">
+      <Filter>src\Demos\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\RunTests.h">
       <Filter>src\Demos</Filter>
     </ClInclude>
   </ItemGroup>
