@@ -307,7 +307,7 @@ namespace phyz {
 		};
 
 		if (use_multithread) {
-			thread_manager.do_all<Pair<RigidBody*>>(n_threads, possible_intersections, collision_detect);
+			thread_manager.await_do_all<Pair<RigidBody*>>(n_threads, &possible_intersections, collision_detect);
 		}
 		else {
 			for (const Pair<RigidBody*>& p : possible_intersections) {
@@ -354,11 +354,12 @@ namespace phyz {
 
 				int islands_with_holonomic_systems_count = 0;
 
-				thread_manager.enqueue_do_all_tasks<IslandConstraints>(n_threads, &active_data.island_systems,
-					[&](IslandConstraints island_system, int index) {
+				ThreadManager::JobStatus pgs_solve_job;
+				/*thread_manager.submit_do_all<IslandConstraints>(n_threads, &active_data.island_systems,
+					[&](IslandConstraints island_system) {
 						PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations, &compute_holonomic_inverses_status[index]);
-					}
-				);
+					}, &pgs_solve_job
+				);*/
 				for (int i = 0; i < active_data.island_systems.size(); i++) {
 					IslandConstraints& island_system = active_data.island_systems[i];
 					if (island_system.systems.empty()) continue;
@@ -366,8 +367,8 @@ namespace phyz {
 					islands_with_holonomic_systems_count++;
 
 					int size = static_cast<int>(island_system.systems.size());
-					thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
-						[&, size, i](HolonomicSystem* h, int index) {
+					thread_manager.submit_do_all<HolonomicSystem*>(n_threads, &island_system.systems,
+						[&, size, i](HolonomicSystem* h) {
 							h->computeInverse(holonomic_block_solver_CFM);
 							auto donet = std::chrono::system_clock::now();
 							//printf("Compute inverse done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(donet - t5).count());
@@ -375,10 +376,10 @@ namespace phyz {
 							);
 				}
 
-				thread_manager.execute_jobs();
+				pgs_solve_job.waitUntilDone();
 			}
 			else if (use_multithread) {
-				thread_manager.do_all<IslandConstraints>(n_threads, active_data.island_systems,
+				thread_manager.await_do_all<IslandConstraints>(n_threads, &active_data.island_systems,
 					[&](IslandConstraints island_system) {
 						PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
 					}
@@ -411,7 +412,7 @@ namespace phyz {
 				};
 
 			if (use_multithread) {
-				thread_manager.do_all<RigidBody*>(n_threads, bodies, update_positions);
+				thread_manager.await_do_all<RigidBody*>(n_threads, &bodies, update_positions);
 			}
 			else {
 				for (RigidBody* b : bodies) {
@@ -430,7 +431,7 @@ namespace phyz {
 			};
 
 		if (use_multithread) {
-			thread_manager.do_all<RigidBody*>(n_threads, bodies, update_geometry);
+			thread_manager.await_do_all<RigidBody*>(n_threads, &bodies, update_geometry);
 		}
 		else {
 			for (RigidBody* b : bodies) {
@@ -1347,7 +1348,7 @@ namespace phyz {
 		};
 
 		if (use_multithread) {
-			thread_manager.do_all<SharedConstraintsEdge*>(n_threads, edges, update_constraints_on_edge);
+			thread_manager.await_do_all<SharedConstraintsEdge*>(n_threads, &edges, update_constraints_on_edge);
 		}
 		else {
 			for (SharedConstraintsEdge* e : edges) {

@@ -620,7 +620,9 @@ public:
 				for (int i = 0; i < bodies.size(); i++) {
 					indexes[i] = i;
 				}
-				helper_threads.do_all<int>(properties.n_threads, indexes, setTransformedMatrix);
+				phyz::ThreadManager::JobStatus s;
+				helper_threads.submit_do_all<int>(properties.n_threads, &indexes, setTransformedMatrix, &s);
+				s.waitUntilDone();
 			}
 
 			for (Mesh& m : transformed_meshs) {

@@ -559,7 +559,9 @@ public:
 					}
 				}
 				else {
-					helper_threads.do_all<TransformablePhysBod>(properties.n_threads, bodies, setTransformedMatrix);
+					phyz::ThreadManager::JobStatus s;
+					helper_threads.submit_do_all<TransformablePhysBod>(properties.n_threads, &bodies, setTransformedMatrix, &s);
+					s.waitUntilDone();
 				}
 
 				rndr::clear(rndr::color(248 / 255.0f, 241 / 255.0f, 229 / 255.0f));
