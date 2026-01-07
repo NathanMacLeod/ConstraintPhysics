@@ -170,8 +170,12 @@ namespace phyz {
 		bool is_internal_gyro_forces_disabled = false;
 		bool friction_impulse_limit_enabled = false;
 
+		// used to visit every edge of the constraint graph exactly once.
+		int current_visit_constraint_graph_edges_tag_value = 0;
+
 		struct ConstraintGraphNode; 
 		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
+		void maintainHolonomicSystems();
 		void maintainConstraintGraphApplyPoweredConstraints(bool is_first_sub_itr, bool is_last_sub_itr, double delta_time);
 		//void updateConstraints(std::vector<Constraint*> constraints);
 		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
@@ -207,9 +211,14 @@ namespace phyz {
 		//constraint force mixing - softens constraints and makes more stable
 		double global_cfm = 0;// 0.025;
 
+		struct HolonomicInfo {
+			HolonomicSystem* system;
+			ThreadManager::JobStatus* async_inverse_calculation_status;
+		};
+
 		struct IslandConstraints {
 			std::vector<Constraint*> constraints;
-			std::vector<HolonomicSystem*> systems;
+			std::vector<HolonomicInfo> holonomic_blocks;
 		};
 
 		struct ActiveConstraintData {
