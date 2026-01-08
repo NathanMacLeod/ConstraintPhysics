@@ -9,13 +9,12 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
+	struct IslandConstraints;
 	void PGS_solve(
 		PhysicsEngine* pEngine, 
-		const std::vector<Constraint*>& constraints, 
-		const std::vector<HolonomicSystem*>& holonomic_systems,
+		IslandConstraints& constraints,
 		double holonomic_block_solver_CFM,
-		int n_itr_vel, int n_itr_pos, int n_itr_holonomic, 
-		ThreadManager::JobStatus* compute_inverse_status=nullptr
+		int n_itr_vel, int n_itr_pos, int n_itr_holonomic
 	);
 
 	class Constraint {

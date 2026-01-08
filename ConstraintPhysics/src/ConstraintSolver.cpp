@@ -95,7 +95,7 @@ namespace phyz {
 
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
 	//the first third of this video explains it pretty well: https://www.youtube.com/watch?v=P-WP1yMOkc4 (Improving an Iterative Physics Solver Using a Direct Method)
-	void PGS_solve(PhysicsEngine* pEngine, const std::vector<Constraint*>& constraints, const std::vector<HolonomicSystem*>& holonomic_systems, double holonomic_block_solver_CFM, int n_itr_vel, int n_itr_pos, int n_itr_holonomic, ThreadManager::JobStatus* compute_inverse_status) {
+	void PGS_solve(PhysicsEngine* pEngine, IslandConstraints& constraint_island, double holonomic_block_solver_CFM, int n_itr_vel, int n_itr_pos, int n_itr_holonomic) {
 		auto t0 = std::chrono::system_clock::now();
 		
 		struct VelPair {
@@ -106,7 +106,7 @@ namespace phyz {
 
 		std::unordered_map<RigidBody*, VelPair*> velocity_changes;
 
-		for (Constraint* c : constraints) {
+		for (Constraint* c : constraint_island.constraints) {
 
 			VelPair* vA = nullptr; VelPair* vB = nullptr;
 			if (velocity_changes.find(c->a) == velocity_changes.end()) {
@@ -130,14 +130,14 @@ namespace phyz {
 		}
 
 		//apply warm starting
-		for (Constraint* c : constraints) {
+		for (Constraint* c : constraint_island.constraints) {
 			if (c->constraintWarmStarted()) {
 				c->applyWarmStartVelocityChange();
 			}
 		}
 
 		//really need to refactor this into a class
-		int system_degree = get_total_island_degree(constraints);
+		int system_degree = get_total_island_degree(constraint_island.constraints);
 		std::vector<double> impulse_val_buff1(system_degree);
 		std::vector<double> impulse_val_buff2(system_degree);
 		std::vector<double> psuedo_impulse_val_buff1(system_degree);
@@ -148,15 +148,15 @@ namespace phyz {
 		std::vector<double>* old_psuedo_impulse_val_buff = &psuedo_impulse_val_buff1;
 		std::vector<double>* new_psuedo_impulse_val_buff = &psuedo_impulse_val_buff2;
 
-		write_all_impulses(constraints, old_impulse_val_buff, false);
-		write_all_impulses(constraints, old_psuedo_impulse_val_buff, true);
+		write_all_impulses(constraint_island.constraints, old_impulse_val_buff, false);
+		write_all_impulses(constraint_island.constraints, old_psuedo_impulse_val_buff, true);
 
 		for (int i = 0; i < n_itr_vel; i++) {
-			for (Constraint* c : constraints) {
+			for (Constraint* c : constraint_island.constraints) {
 				constraintStep(c, false);
 			}
 
-			bool converged = checkIfConverged(constraints, *old_impulse_val_buff, new_impulse_val_buff, false);
+			bool converged = checkIfConverged(constraint_island.constraints, *old_impulse_val_buff, new_impulse_val_buff, false);
 			std::vector<double>* tmp = old_impulse_val_buff;
 			old_impulse_val_buff = new_impulse_val_buff;
 			new_impulse_val_buff = tmp;
@@ -165,11 +165,11 @@ namespace phyz {
 		}
 
 		for (int i = 0; i < n_itr_pos; i++) {
-			for (Constraint* c : constraints) {
+			for (Constraint* c : constraint_island.constraints) {
 				if (c->needsPosCorrect()) constraintStep(c, true);
 			}
 
-			bool converged = checkIfConverged(constraints, *old_psuedo_impulse_val_buff, new_psuedo_impulse_val_buff, true);
+			bool converged = checkIfConverged(constraint_island.constraints, *old_psuedo_impulse_val_buff, new_psuedo_impulse_val_buff, true);
 			std::vector<double>* tmp = old_psuedo_impulse_val_buff;
 			old_psuedo_impulse_val_buff = new_psuedo_impulse_val_buff;
 			new_psuedo_impulse_val_buff = tmp;
@@ -180,31 +180,26 @@ namespace phyz {
 		auto t1 = std::chrono::system_clock::now();
 		//printf("PGS done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(t1 - t0).count());
 
-		if (holonomic_systems.size() > 0) {
-			bool holonomic_inverse_computed_in_parallel = compute_inverse_status != nullptr;
-			//If holonomic inverse is being computed in another thread, don't continue until it has finished
-			if (holonomic_inverse_computed_in_parallel) {
-				auto wait0 = std::chrono::system_clock::now();
-				compute_inverse_status->waitUntilDone();
-				auto wait1 = std::chrono::system_clock::now();
-				//printf("Waited %f milliseconds\n", 1000 * std::chrono::duration<float>(wait1 - wait0).count());
+		if (constraint_island.holonomic_blocks.size() > 0) {
+			auto wait0 = std::chrono::system_clock::now();
+			for (HolonomicInfo h : constraint_island.holonomic_blocks) {
+				// the async inverse calculation status can be set to nullptr. this means that the inverse was calculated
+				// synchronously, so we do not need to make sure that the computation was not yet done/
+				if (h.async_inverse_calculation_status != nullptr) { h.async_inverse_calculation_status->waitUntilDone(); }
 			}
-			else {
-				for (HolonomicSystem* h : holonomic_systems) {
-					h->computeInverse(holonomic_block_solver_CFM);
-				}
-			}
+			auto wait1 = std::chrono::system_clock::now();
+			//printf("Waited %f milliseconds\n", 1000 * std::chrono::duration<float>(wait1 - wait0).count());
 
 			//apply block solver solutions for holonomic systems
 			for (int i = 0; i < n_itr_holonomic; i++) {
 
-				for (HolonomicSystem* h : holonomic_systems) {
-					h->computeAndApplyImpulses(true);
-					h->computeAndApplyImpulses(false);
+				for (HolonomicInfo h : constraint_island.holonomic_blocks) {
+					h.system->computeAndApplyImpulses(true);
+					h.system->computeAndApplyImpulses(false);
 				}
 
 				// iterate over non-holonomic constraints again
-				for (Constraint* c : constraints) {
+				for (Constraint* c : constraint_island.constraints) {
 					if (c->is_in_holonomic_system) continue;
 
 					if (c->needsPosCorrect()) constraintStep(c, true);

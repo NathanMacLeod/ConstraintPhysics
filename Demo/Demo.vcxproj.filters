@@ -152,6 +152,12 @@
     <ClInclude Include="src\Demos\RunTests.h">
       <Filter>src\Demos</Filter>
     </ClInclude>
+    <ClInclude Include="src\Demos\Tests\CollisionTests.h">
+      <Filter>src\Demos\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\Tests\HolonomicBlockSolvingTests.h">
+      <Filter>src\Demos\Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\shaders\Basic.shader">

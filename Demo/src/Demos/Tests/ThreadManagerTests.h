@@ -7,8 +7,10 @@ class TestThreadManagerDoAll : public Test {
 public:
 	std::string getTestName() const override { return "ThreadManager::do_all"; }
 	bool canBeRunWithGraphics() const override { return false; }
-	TestExpectationStatus getTestExpectation() const { return TestExpectationStatus::REQUIRED; }
-	TestOutcome runWithGraphics() override { assert(false); return TestOutcome::FAILED; };
+	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
+	phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) override { return nullptr; }
+	TestOutcome tickTestOnePhysicsStep() override { assert(false); return TestOutcome::FAILED; }
+	void teardownTest() override {};
 	TestOutcome runWithoutGraphics() override {
 		phyz::ThreadManager tm;
 		int n_threads = 4;
@@ -41,10 +43,12 @@ public:
 
 class TestThreadManagerSubmit : public Test {
 public:
-	std::string getTestName() const override { return "ThreadManager::do_all"; }
+	std::string getTestName() const override { return "ThreadManager::submit"; }
 	bool canBeRunWithGraphics() const override { return false; }
-	TestExpectationStatus getTestExpectation() const { return TestExpectationStatus::REQUIRED; }
-	TestOutcome runWithGraphics() override { assert(false); return TestOutcome::FAILED; };
+	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
+	phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) override { return nullptr; }
+	TestOutcome tickTestOnePhysicsStep() override { assert(false); return TestOutcome::FAILED; }
+	void teardownTest() override {};
 	TestOutcome runWithoutGraphics() override {
 		phyz::ThreadManager tm;
 		int n_threads = 4;
@@ -63,10 +67,12 @@ public:
 
 class TestThreadManagerJobStatusWorksAsExpected: public Test {
 public:
-	std::string getTestName() const override { return "ThreadManager::do_all"; }
+	std::string getTestName() const override { return "ThreadManager::jobstatus dependencies"; }
 	bool canBeRunWithGraphics() const override { return false; }
-	TestExpectationStatus getTestExpectation() const { return TestExpectationStatus::REQUIRED; }
-	TestOutcome runWithGraphics() override { assert(false); return TestOutcome::FAILED; };
+	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
+	phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) override { return nullptr; }
+	TestOutcome tickTestOnePhysicsStep() override { assert(false); return TestOutcome::FAILED; }
+	void teardownTest() override {};
 	TestOutcome runWithoutGraphics() override {
 		phyz::ThreadManager tm;
 		int n_threads = 4;

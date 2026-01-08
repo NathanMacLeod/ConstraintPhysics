@@ -85,7 +85,7 @@ namespace phyz {
 		}
 
 		template <typename T, typename Func>
-		void submit_do_all(uint32_t n_threads, const std::vector<T>* in_vector, const Func& action, JobStatus* status) {
+		void submit_do_all(uint32_t n_threads, std::vector<T>* in_vector, const Func& action, JobStatus* status) {
 			if (in_vector->size() == 0) {
 				return;
 			}
@@ -117,7 +117,7 @@ namespace phyz {
 
 		// common pattern
 		template <typename T, typename Func>
-		inline void await_do_all(uint32_t n_threads, const std::vector<T>* in_vector, const Func& action) {
+		inline void await_do_all(uint32_t n_threads, std::vector<T>* in_vector, const Func& action) {
 			JobStatus s;
 			submit_do_all(n_threads, in_vector, action, &s);
 			s.waitUntilDone();

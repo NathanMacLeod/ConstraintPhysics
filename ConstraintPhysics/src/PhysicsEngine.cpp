@@ -351,45 +351,14 @@ namespace phyz {
 			bool is_last_sub_itr = i == sub_itr_count - 1;
 			maintainConstraintGraphApplyPoweredConstraints(is_first_sub_itr, is_last_sub_itr, sub_itr_duration);
 
-			if (use_multithread && compute_holonomic_inverse_in_parallel && using_holonomic_system_solver()) {
-				std::vector<ThreadManager::JobStatus> compute_holonomic_inverses_status(active_data.island_systems.size());
-
-				int islands_with_holonomic_systems_count = 0;
-
-				ThreadManager::JobStatus pgs_solve_job;
-				/*thread_manager.submit_do_all<IslandConstraints>(n_threads, &active_data.island_systems,
-					[&](IslandConstraints island_system) {
-						PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations, &compute_holonomic_inverses_status[index]);
-					}, &pgs_solve_job
-				);*/
-				for (int i = 0; i < active_data.island_systems.size(); i++) {
-					IslandConstraints& island_system = active_data.island_systems[i];
-					if (island_system.systems.empty()) continue;
-
-					islands_with_holonomic_systems_count++;
-
-					int size = static_cast<int>(island_system.systems.size());
-					thread_manager.submit_do_all<HolonomicSystem*>(n_threads, &island_system.systems,
-						[&, size, i](HolonomicSystem* h) {
-							h->computeInverse(holonomic_block_solver_CFM);
-							auto donet = std::chrono::system_clock::now();
-							//printf("Compute inverse done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(donet - t5).count());
-						}, &compute_holonomic_inverses_status[i]
-							);
-				}
-
-				pgs_solve_job.waitUntilDone();
-			}
-			else if (use_multithread) {
-				thread_manager.await_do_all<IslandConstraints>(n_threads, &active_data.island_systems,
-					[&](IslandConstraints island_system) {
-						PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
-					}
-				);
+			if (use_multithread) {
+				thread_manager.await_do_all(n_threads, &active_data.island_systems, [&, this](IslandConstraints& island_system) {
+					PGS_solve(this, island_system, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+				});
 			}
 			else {
 				for (IslandConstraints& island_system : active_data.island_systems) {
-					PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+					PGS_solve(this, island_system, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
 				}
 			}
 
@@ -647,7 +616,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic)   e->h->flagSystemHasChanged();
+		if (already_holonomic)   e->h->constraints_changed_flag = true;
 		else				     e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(static_cast<PersistentConstraint*>(d));
@@ -676,7 +645,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->flagSystemHasChanged();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(bs);
@@ -712,7 +681,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->flagSystemHasChanged();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(h);
@@ -792,7 +761,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->flagSystemHasChanged();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(s);
@@ -875,7 +844,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->flagSystemHasChanged();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(s);
@@ -905,7 +874,7 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->flagSystemHasChanged();
+		if (already_holonomic) e->h->constraints_changed_flag = true;
 		else				   e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(w);
@@ -1431,6 +1400,7 @@ namespace phyz {
 			else if (encountered_systems.size() == 1 && *encountered_systems.begin() == nullptr) {
 				//new system of nodes not belonging to any system
 				HolonomicSystemNodes* h = new HolonomicSystemNodes(holonomically_connected);
+				h->constraints_changed_flag = true; //set this to true so that we will evaluate and compute the inverse of this system at the end of this function
 				for (SharedConstraintsEdge* edge : holonomically_connected) {
 					edge->h = h;
 					edge->holonomic_system_scan_needed = false;
@@ -1450,7 +1420,7 @@ namespace phyz {
 					edge->holonomic_system_scan_needed = false;
 				}
 				//sufficient to just set flag, will trigger update with new constraints added
-				non_null_system->flagSystemHasChanged();
+				non_null_system->constraints_changed_flag = true;
 
 				for (HolonomicSystemNodes* system : encountered_systems) {
 					if (system != nullptr && system != non_null_system) delete system;
@@ -1465,6 +1435,9 @@ namespace phyz {
 			if (use_multithread) {
 				double cfm = holonomic_block_solver_CFM;
 				thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); }, &e->h->inverse_calculation_status);
+			}
+			else {
+				e->h->system.computeInverse(holonomic_block_solver_CFM);
 			}
 		}	
 	}
@@ -1512,8 +1485,11 @@ namespace phyz {
 							if (h.system == &e->h->system) { already_added = true; break; }
 						}
 
-						if (!already_added) { 
-							output->holonomic_blocks->push_back(HolonomicInfo{ &e->h->system, &e->h->inverse_calculation_status });
+						if (!already_added) {
+							// if we are not using multithreading to compute the inverse asynchronously, then just have nullptr instead.
+							// the solver will interperate this nullptr as meaning that the inverse will need to be computed.
+							ThreadManager::JobStatus* async_computation_status = (use_multithread)? &e->h->inverse_calculation_status : nullptr;
+							output->holonomic_blocks->push_back(HolonomicInfo{ &e->h->system, async_computation_status });
 						}
 					}
 
@@ -1677,10 +1653,8 @@ namespace phyz {
 	}
 
 	PhysicsEngine::HolonomicSystemNodes::HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges) 
-		: member_edges(member_edges), constraints_changed_flag(false), edge_removed_flag(false), inverse_calculation_invalidated_flag(true)
-	{
-		revaluateSystem();
-	}
+		: member_edges(member_edges), constraints_changed_flag(false), edge_removed_flag(false)
+	{}
 
 	void PhysicsEngine::HolonomicSystemNodes::revaluateSystem() {
 		std::vector<Constraint*> constraints;

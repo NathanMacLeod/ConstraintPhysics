@@ -32,7 +32,7 @@ namespace phyz {
 	};
 
 	typedef int ColActionID;
-	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifold)> ColAction;
+	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifolds)> ColAction;
 
 	struct RayHitInfo {
 		bool did_hit;
@@ -43,6 +43,16 @@ namespace phyz {
 	};
 
 	enum BroadPhaseStructure { NONE, OCTREE, AABB_TREE, TEST_COMPARE };
+
+	struct HolonomicInfo {
+		HolonomicSystem* system;
+		ThreadManager::JobStatus* async_inverse_calculation_status;
+	};
+
+	struct IslandConstraints {
+		std::vector<Constraint*> constraints;
+		std::vector<HolonomicInfo> holonomic_blocks;
+	};
 
 	class PhysicsEngine {
 	public:
@@ -164,7 +174,6 @@ namespace phyz {
 		double octree_minsize = 1;
 	
 		double holonomic_block_solver_CFM = 0.00001;
-		bool compute_holonomic_inverse_in_parallel = true;
 
 		int angle_velocity_update_tick_count = 4;
 		bool is_internal_gyro_forces_disabled = false;
@@ -211,16 +220,6 @@ namespace phyz {
 		//constraint force mixing - softens constraints and makes more stable
 		double global_cfm = 0;// 0.025;
 
-		struct HolonomicInfo {
-			HolonomicSystem* system;
-			ThreadManager::JobStatus* async_inverse_calculation_status;
-		};
-
-		struct IslandConstraints {
-			std::vector<Constraint*> constraints;
-			std::vector<HolonomicInfo> holonomic_blocks;
-		};
-
 		struct ActiveConstraintData {
 			std::vector<IslandConstraints> island_systems;
 		};
@@ -260,11 +259,8 @@ namespace phyz {
 			HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges);
 			void revaluateSystem();
 
-			inline void flagSystemHasChanged() { constraints_changed_flag = true; inverse_calculation_invalidated_flag = true; }
-
 			bool constraints_changed_flag;
 			bool edge_removed_flag;
-			bool inverse_calculation_invalidated_flag;
 			std::vector<SharedConstraintsEdge*> member_edges;
 			HolonomicSystem system;
 			ThreadManager::JobStatus inverse_calculation_status;
