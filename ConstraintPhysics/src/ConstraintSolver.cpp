@@ -9,8 +9,6 @@ namespace phyz {
 	template<int n>
 	static mthz::NMat<n, n> applyCFM(const mthz::NMat<n, n>& mat, double cfm);
 
-	static mthz::NVec<6> velAngToNVec(mthz::Vec3 vel, mthz::Vec3 ang_vel);
-
 	template<int n>
 	static void PGSConstraintStep(DegreedConstraint<n>* constraint, bool use_psuedo_values) {
 		mthz::NVec<6>* vel_a_change, *vel_b_change;
@@ -129,6 +127,11 @@ namespace phyz {
 			c->b_psuedo_velocity_change = &vB->psuedo_vel_change;
 		}
 
+		//set target constraint values
+		for (Constraint* c : constraint_island.constraints) {
+			c->findTargetConstraintValue();
+		}
+
 		//apply warm starting
 		for (Constraint* c : constraint_island.constraints) {
 			if (c->constraintWarmStarted()) {
@@ -180,7 +183,7 @@ namespace phyz {
 		auto t1 = std::chrono::system_clock::now();
 		//printf("PGS done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(t1 - t0).count());
 
-		if (constraint_island.holonomic_blocks.size() > 0) {
+		if (n_itr_holonomic > 0 && constraint_island.holonomic_blocks.size() > 0) {
 			auto wait0 = std::chrono::system_clock::now();
 			for (HolonomicInfo h : constraint_island.holonomic_blocks) {
 				// the async inverse calculation status can be set to nullptr. this means that the inverse was calculated
@@ -248,7 +251,7 @@ namespace phyz {
 	//*****CONTACT CONSTRAINT*******
 	//******************************
 	ContactConstraint::ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse, double cutoff_vel)
-		: DegreedConstraint<1>(a, b, warm_start_impulse), norm(norm), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM())
+		: DegreedConstraint<1>(a, b, warm_start_impulse), norm(norm), rA(contact_p - a->getCOM()), rB(contact_p - b->getCOM()), cutoff_vel(cutoff_vel), bounce(bounce)
 	{
 		rotDirA = a->getInvTensor() * norm.cross(rA);
 		rotDirB = b->getInvTensor() * norm.cross(rB);
@@ -268,9 +271,12 @@ namespace phyz {
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 
+		psuedo_target_val = mthz::NVec<1>{ pen_depth * pos_correct_hardness };
+	}
+
+	void ContactConstraint::findTargetConstraintValue() {
 		double current_val = getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())).v[0];
 		target_val = mthz::NVec<1>{ (current_val < -cutoff_vel) ? -(1 + bounce) * current_val : -current_val };
-		psuedo_target_val = mthz::NVec<1>{ pen_depth * pos_correct_hardness };
 	}
 
 	mthz::NVec<1> ContactConstraint::projectValidImpulse(mthz::NVec<1> impulse) {
@@ -332,8 +338,6 @@ namespace phyz {
 
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
-
-		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 	}
 
 	mthz::NVec<2> FrictionConstraint::projectValidImpulse(mthz::NVec<2> impulse) {
@@ -377,7 +381,6 @@ namespace phyz {
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 
-		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 		double error = diff.magSqrd() < 0.00001? target_distance : target_distance - diff.normalize().dot(diff);
 		psuedo_target_val = mthz::NVec<1>{ pos_correct_hardness * error };
 	}
@@ -410,7 +413,6 @@ namespace phyz {
 		mthz::Vec3 bp_vel = b->getVelOfPoint(socket_pos_a);
 		mthz::Vec3 vel_diff = ap_vel - bp_vel;
 
-		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 		mthz::Vec3 error = socket_pos_b - socket_pos_a;
 		psuedo_target_val = mthz::NVec<3>{ pos_correct_hardness * error.x, pos_correct_hardness * error.y, pos_correct_hardness * error.z };
 	}
@@ -496,7 +498,6 @@ namespace phyz {
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 
-		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 		{
 			mthz::Vec3 pos_correct = (hinge_pos_b - hinge_pos_a) * pos_correct_hardness;
 			double u_correct = u.dot(n) * rot_correct_hardness;
@@ -509,7 +510,7 @@ namespace phyz {
 	//*****MOTOR CONSTRAINT*********
 	//******************************
 	MotorConstraint::MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse)
-		: DegreedConstraint<1>(a, b, warm_start_impulse), motor_axis(motor_axis), max_torque_impulse(max_torque_impulse)
+		: DegreedConstraint<1>(a, b, warm_start_impulse), motor_axis(motor_axis), max_torque_impulse(max_torque_impulse), real_target_velocity(real_target_velocity)
 	{
 		double real_target_velocity;
 
@@ -539,9 +540,10 @@ namespace phyz {
 
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
+	}
 
+	void MotorConstraint::findTargetConstraintValue() {
 		double current_val = getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())).v[0];
-
 		target_val = mthz::NVec<1>{ real_target_velocity - current_val };
 	}
 
@@ -638,7 +640,6 @@ namespace phyz {
 			impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 		}
 
-		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 		{
 			double u_correct = -pos_error.dot(u) * pos_correct_hardness;
 			double w_correct = -pos_error.dot(w) * pos_correct_hardness;
@@ -657,7 +658,7 @@ namespace phyz {
 	//******PISTON CONSTRAINT*******
 	//******************************
 	PistonConstraint::PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis_a, double target_velocity, double max_impulse, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse)
-		: DegreedConstraint<1>(a, b, warm_start_impulse), slide_axis(slide_axis_a), max_impulse(max_impulse)
+		: DegreedConstraint<1>(a, b, warm_start_impulse), slide_axis(slide_axis_a), max_impulse(max_impulse), target_velocity(target_velocity)
 	{
 		mthz::Mat3 Ia_inv = a->getInvTensor();
 
@@ -675,8 +676,10 @@ namespace phyz {
 		impulse_to_b_velocity = bInvMass() * b_jacobian.transpose();
 
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
-		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
+		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();	
+	}
 
+	void PistonConstraint::findTargetConstraintValue() {
 		double current_val = getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())).v[0];
 		target_val = mthz::NVec<1>{ target_velocity - current_val };
 	}
@@ -719,9 +722,6 @@ namespace phyz {
 
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
-
-		double current_val = getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())).v[0];
-		target_val = mthz::NVec<1>{ -current_val };
 	}
 
 	mthz::NVec<1> SlideLimitConstraint::projectValidImpulse(mthz::NVec<1> impulse) {
@@ -805,7 +805,6 @@ namespace phyz {
 			impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 		}
 
-		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 		{
 			double u_correct = -u.dot(pos_diff) * pos_correct_hardness;
 			double w_correct = -w.dot(pos_diff) * pos_correct_hardness;
@@ -846,7 +845,6 @@ namespace phyz {
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 
-		target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
 		{
 			mthz::Vec3 pos_correct = (pos_b - pos_a) * pos_correct_hardness;
 

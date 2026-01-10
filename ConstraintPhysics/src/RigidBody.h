@@ -94,6 +94,7 @@ namespace phyz {
 		void alertWakingAction();
 
 		void rotateWhileApplyingGyroAccel(double fElapsedTime, int n_itr = 1, bool gyro_accel_disabled=false);
+		void updateInertiaTensor();
 		void updateGeometry();
 		void translateNoGeomUpdate(mthz::Vec3 v);
 		void rotateNoGeomUpdate(mthz::Quaternion q);

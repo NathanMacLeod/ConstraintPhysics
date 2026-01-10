@@ -351,14 +351,17 @@ namespace phyz {
 			bool is_last_sub_itr = i == sub_itr_count - 1;
 			maintainConstraintGraphApplyPoweredConstraints(is_first_sub_itr, is_last_sub_itr, sub_itr_duration);
 
+			// we only do holonomic block solving on the first iteration. after the positions are updated the inverse is not longer accurate
+			int holonomic_iterations = is_first_sub_itr ? pgsHolonomicIterations : 0; 
+
 			if (use_multithread) {
 				thread_manager.await_do_all(n_threads, &active_data.island_systems, [&, this](IslandConstraints& island_system) {
-					PGS_solve(this, island_system, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+					PGS_solve(this, island_system, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, holonomic_iterations);
 				});
 			}
 			else {
 				for (IslandConstraints& island_system : active_data.island_systems) {
-					PGS_solve(this, island_system, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+					PGS_solve(this, island_system, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, holonomic_iterations);
 				}
 			}
 
@@ -379,6 +382,8 @@ namespace phyz {
 
 					b->psuedo_vel = mthz::Vec3(0, 0, 0);
 					b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
+
+					b->updateInertiaTensor();
 				}
 				};
 
@@ -411,6 +416,9 @@ namespace phyz {
 		}
 
 		auto t7 = std::chrono::system_clock::now();
+
+		// triggering update of holonomic blocks asynchronously for the next timetep
+		calculateHolonomicSystemInversesAsync();
 
 		if (print_performance_data) {
 
@@ -1318,7 +1326,15 @@ namespace phyz {
 
 					if (update_not_needed) { continue; }
 				}
-				c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, delta_time, global_cfm, is_in_holonomic_system);
+
+				//Holonomic blocks are applied when solving on the first sub iteration. These inverses either triggered to run asynchronously
+				//at the end of the last physics tick, or right before this update in maintainHolonomicSystems in the case that they could not be calculated earlier.
+				//these inverses require the constraint to be already up to date, so we don't need to update it now.
+				bool skip_already_updated_holonomic_constraint = is_first_sub_itr && is_in_holonomic_system && c->isHolonomicConstraint();
+				
+				if (!skip_already_updated_holonomic_constraint) {
+					c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, delta_time, global_cfm, is_in_holonomic_system);
+				}
 			}
 
 			if (is_first_sub_itr) {
@@ -1432,6 +1448,14 @@ namespace phyz {
 			e->h->constraints_changed_flag = false;
 			e->h->revaluateSystem();
 			// we need to recalculate the inverse of the system again
+			// need to make sure the constraints are all initialized.
+			for (SharedConstraintsEdge* edge : e->h->member_edges) {
+				for (PersistentConstraint* c : edge->constraints) {
+					if (c->isHolonomicConstraint()) { 
+						c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time / sub_itr_count, global_cfm, true);
+					}
+				}
+			}
 			if (use_multithread) {
 				double cfm = holonomic_block_solver_CFM;
 				thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); }, &e->h->inverse_calculation_status);
@@ -1525,21 +1549,26 @@ namespace phyz {
 		return out;
 	}
 
-	std::vector<PhysicsEngine::HolonomicSystemNodes*> PhysicsEngine::getAllHolonomicSystems() const {
-		std::set<HolonomicSystemNodes*> nodes;
-
+	void PhysicsEngine::calculateHolonomicSystemInversesAsync() {
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (SharedConstraintsEdge* e : n->constraints) {
-				if (e->h != nullptr) nodes.insert(e->h);
+				if (e->h == nullptr) continue;
+				// we need to update all of the holonomic constraints first
+				for (PersistentConstraint* c : e->constraints) {
+					if (c->isHolonomicConstraint()) {
+						c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time / sub_itr_count, global_cfm, true);
+					}
+				}
+				if (use_multithread) {
+					double cfm = holonomic_block_solver_CFM;
+					thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); }, &e->h->inverse_calculation_status);
+				}
+				else {
+					e->h->system.computeInverse(holonomic_block_solver_CFM);
+				}
 			}
 		}
-
-		return std::vector<HolonomicSystemNodes*>(nodes.begin(), nodes.end());
-	}
-
-	void PhysicsEngine::calculateHolonomicSystemInversesAsync(std::vector<PhysicsEngine::HolonomicSystemNodes*> nodes_to_calculate_for) {
-
 	}
 
 

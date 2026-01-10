@@ -267,6 +267,17 @@ namespace phyz {
 		updateGeometry();
 	}
 
+	void RigidBody::updateInertiaTensor() {
+		orientation = orientation.normalize();
+		mthz::Mat3 rot = orientation.getRotMatrix();
+		mthz::Mat3 rot_conjugate = orientation.conjugate().getRotMatrix();
+
+		mthz::Mat3 reference_tensor_to_use = com_type == CUSTOM ? custom_com_referenceTensor : reference_tensor;
+		mthz::Mat3 reference_invTensor_to_use = com_type == CUSTOM ? custom_com_referenceInvTensor : reference_invTensor;
+		tensor = rot * reference_tensor_to_use * rot_conjugate;
+		invTensor = rot * reference_invTensor_to_use * rot_conjugate;
+	}
+
 	void RigidBody::updateGeometry() {
 
 		orientation = orientation.normalize();
@@ -275,11 +286,6 @@ namespace phyz {
 
 		extrapolated_com = com;
 		extrapolated_orientation = orientation;
-		
-		mthz::Mat3 reference_tensor_to_use = com_type == CUSTOM ? custom_com_referenceTensor : reference_tensor;
-		mthz::Mat3 reference_invTensor_to_use = com_type == CUSTOM ? custom_com_referenceInvTensor : reference_invTensor;
-		tensor = rot * reference_tensor_to_use * rot_conjugate;
-		invTensor = rot * reference_invTensor_to_use * rot_conjugate;
 		
 		if (geometry_type == CONVEX_UNION) {
 			for (int i = 0; i < reference_geometry.size(); i++) {

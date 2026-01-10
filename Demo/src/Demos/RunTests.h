@@ -12,6 +12,7 @@
 
 class UnitTestsRunner : public DemoScene {
 private:
+	bool paused;
 	std::vector<PhysBod> active_models;
 	
 	TestOutcome runTestWithGraphics(phyz::PhysicsEngine* test_pengine, std::unique_ptr<Test>& test) {
@@ -21,6 +22,8 @@ private:
 		// basic rendering stuff
 		mthz::Vec3 pos(0, 2, 10);
 		mthz::Quaternion orient;
+		// optional, test can choose if it wants a different camera
+		test->overrideCameraInitialPosition(&pos, &orient);
 		double mv_speed = 2;
 		double rot_speed = 1;
 
@@ -78,9 +81,22 @@ private:
 				orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
 			}
 
-			// actually advancing the test
-			phyz_time += fElapsedTime;
-			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+			if (rndr::getKeyPressed(GLFW_KEY_R)) {
+				return TestOutcome::RESET;
+			}
+			if (rndr::getKeyPressed(GLFW_KEY_P)) {
+				paused = !paused;
+			}
+
+			// running the test
+			if (!paused) {
+				phyz_time += fElapsedTime;
+				phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+			}
+			else if (rndr::getKeyPressed(GLFW_KEY_T)) {
+				phyz_time += timestep_duration; //advance exactly one frame
+			}
+
 			while (outcome == TestOutcome::STILL_RUNNING && phyz_time > timestep_duration) {
 				all_contact_points.clear();
 				phyz_time -= timestep_duration;
@@ -167,7 +183,9 @@ Select which scene to run: ", { "1" }
 		return {
 			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
 			ControlDescription{"UP, DOWN, LEFT, RIGHT", "Rotate the camera"},
-			ControlDescription{"I. K", "Raise / Lower scissor lift, if present"},
+			ControlDescription{"P", "Pause / Unpause the current test"},
+			ControlDescription{"T", "Advance the test one tick when paused"},
+			ControlDescription{"R", "Reset the current test"},
 			ControlDescription{"ESC", "Return to main menu"},
 		};
 	}
@@ -176,6 +194,7 @@ Select which scene to run: ", { "1" }
 		bool rendering_enabled = parameters["graphics_enabled"] == "y";
 
 		if (rendering_enabled) {
+			paused = false;
 			rndr::init(properties.window_width, properties.window_height, "Performance Demos");
 		}
 
@@ -209,12 +228,14 @@ Select which scene to run: ", { "1" }
 			}
 
 			auto t1 = std::chrono::system_clock::now();
-			phyz::PhysicsEngine* test_pengine = t->initTest(properties.n_threads, &active_models);
 			TestOutcome outcome;
-			if (rendering_enabled && t->canBeRunWithGraphics()) { outcome = runTestWithGraphics(test_pengine, t); }
-			else                                                { outcome = t->runWithoutGraphics(); }
-			t->teardownTest();
-			active_models.clear();
+			do {
+				phyz::PhysicsEngine* test_pengine = t->initTest(properties.n_threads, &active_models);
+				if (rendering_enabled && t->canBeRunWithGraphics()) { outcome = runTestWithGraphics(test_pengine, t); }
+				else { outcome = t->runWithoutGraphics(); }
+				t->teardownTest();
+				active_models.clear();
+			} while (outcome == TestOutcome::RESET);
 			auto t2 = std::chrono::system_clock::now();
 			float duration = std::chrono::duration<float, std::milli>(t2 - t1).count();
 

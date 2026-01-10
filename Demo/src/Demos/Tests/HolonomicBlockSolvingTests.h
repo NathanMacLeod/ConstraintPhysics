@@ -9,12 +9,11 @@ public:
 	std::string getTestName() const override { return "HolonomicBlockSolver::High mass Ratio Chain"; }
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
-	void overrideCameraInitialPosition(mthz::Vec3* cam_pos, mthz::Quaternion* cam_orient) const override { cam_pos->y = 100; cam_pos->z = 100; }
+	void overrideCameraInitialPosition(mthz::Vec3* cam_pos, mthz::Quaternion* cam_orient) const override { cam_pos->y = -40; cam_pos->z = 100; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
 		double tick_frequency = 60.0;
 		test_total_tick_duration = static_cast<uint32_t>(500 * tick_frequency);
 		test_current_tick_count = 0;
-
 
 		p = new phyz::PhysicsEngine();
 		if (n_threads > 0) {
@@ -22,7 +21,7 @@ public:
 		}
 		p->setStep_time(1.0 / tick_frequency);
 
-		mthz::Vec3 chain_pos(0, 130, 0);
+		mthz::Vec3 chain_pos(0, 0, 0);
 		double chain_width = 0.31;
 		double chain_height = 1;
 
@@ -60,7 +59,7 @@ public:
 
 		bodies->push_back({ fromGeometry(attach_box), attach_box_r });
 
-		ball_r->setVel(mthz::Vec3(0, 0, 7));
+		ball_r->setVel(mthz::Vec3(7, 0, 0));
 
 		p->addBallSocketConstraint(ball_r, previous_chain, final_chain_pos);
 		bodies->push_back({ fromGeometry(ball), ball_r });

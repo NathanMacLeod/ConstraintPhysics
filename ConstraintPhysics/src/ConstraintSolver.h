@@ -39,11 +39,14 @@ namespace phyz {
 		virtual bool needsPosCorrect() = 0;
 		virtual bool constraintWarmStarted() = 0;
 		virtual void applyWarmStartVelocityChange() = 0;
+		virtual void findTargetConstraintValue() = 0;
 	protected:
 		//these are pretty inefficient to multiply with, but nice for sanity checking
 		mthz::NMat<6, 6> aInvMass();
 		mthz::NMat<6, 6> bInvMass();
 	};
+
+	mthz::NVec<6> velAngToNVec(mthz::Vec3 vel, mthz::Vec3 ang_vel);
 
 	template<int n>
 	class DegreedConstraint : public Constraint {
@@ -60,7 +63,14 @@ namespace phyz {
 		virtual void computeAndApplyVelocityChange(mthz::NVec<n> impulse, mthz::NVec<6>* va, mthz::NVec<6>* vb) {
 			*va += impulse_to_a_velocity * impulse;
 			*vb += impulse_to_b_velocity * impulse;
+#ifndef NDEBUG
+			// just nice to be able to see this in the debugger
+			current_val = getConstraintValue(*va, *vb);
+#endif
 		}
+
+		// this just exists to allow computing most of the constraint in advance of when we know what the vel / ang velocity of the rigid body will be.
+		virtual void findTargetConstraintValue() { target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())); };
 
 		mthz::NVec<n> getConstraintValue(const mthz::NVec<6>& va, const mthz::NVec<6>& vb) {
 			return a_jacobian * va + b_jacobian * vb;
@@ -99,6 +109,10 @@ namespace phyz {
 
 		mthz::NVec<n> impulse;
 		mthz::NVec<n> psuedo_impulse;
+#ifndef NDEBUG
+		// just nice to be able to see this in the debugger
+		mthz::NVec<n> current_val;
+#endif
 		mthz::NVec<n> target_val;
 		mthz::NVec<n> psuedo_target_val;
 		mthz::NMat<n, 6> a_jacobian;
@@ -118,8 +132,11 @@ namespace phyz {
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return true; }
+		void findTargetConstraintValue() override;
 
 	private:
+		double bounce;
+		double cutoff_vel;
 		
 		mthz::Vec3 norm;
 		mthz::Vec3 rA;
@@ -232,6 +249,7 @@ namespace phyz {
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return rot_limit_status != NOT_EXCEEDED; }
+		void findTargetConstraintValue() override;
 
 	private:
 		enum LimitStatus { NOT_EXCEEDED = 0, BELOW_MIN, ABOVE_MAX };
@@ -241,6 +259,8 @@ namespace phyz {
 		mthz::Vec3 motor_axis;
 		mthz::Vec3 rotDirA;
 		mthz::Vec3 rotDirB;
+
+		double real_target_velocity;
 	};
 
 	class SliderConstraint : public DegreedConstraint<5> {
@@ -270,6 +290,7 @@ namespace phyz {
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return false; }
+		void findTargetConstraintValue() override;
 
 	private:
 
@@ -277,6 +298,8 @@ namespace phyz {
 		mthz::Vec3 rot_dir;
 		mthz::Vec3 pos_diff;
 		mthz::Vec3 slide_axis;
+
+		double target_velocity;
 	};
 
 	class SlideLimitConstraint : public DegreedConstraint<1> {

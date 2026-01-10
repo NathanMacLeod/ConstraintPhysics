@@ -4,11 +4,16 @@
 #include <memory>
 #include <functional>
 
-// required: run this test, and if it does not pass, we consider the entire test suite failed
-// xfail: run this test, but if it fails, we do not consider the entire test suite failed
-// skip: do not run this test
 enum TestExpectationStatus { REQUIRED, XFAIL, SKIP };
-enum TestOutcome { PASSED, XPASSED, XFAILED, FAILED, SKIPPED, STILL_RUNNING };
+enum TestOutcome { 
+	PASSED,        // test has finished and passed
+	XPASSED,       // test has passed, but we expected it to fail
+	XFAILED,       // test has failed, but this is expected
+	FAILED,        // test has finished and failed
+	SKIPPED,       // test was never run
+	STILL_RUNNING, // test is still running. only used when running interactively
+	RESET,         // user has requested to re-run the test. only used for running interactively
+};
 
 class Test {
 // interface representing a single test

@@ -162,7 +162,7 @@ namespace phyz {
 
 		int pgsVelIterations = 1;
 		int pgsPosIterations = 1;
-		int sub_itr_count = 8;
+		int sub_itr_count = 1;
 		int pgsHolonomicIterations = 1;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
 
@@ -269,8 +269,7 @@ namespace phyz {
 		std::vector<SharedConstraintsEdge*> getAllEdgesConnectedHolonomically(SharedConstraintsEdge* e);
 		void shatterFracturedHolonomicSystems();
 		void maintainAllHolonomicSystemStuffRelatedToThisEdge(SharedConstraintsEdge* e);
-		std::vector<HolonomicSystemNodes*> getAllHolonomicSystems() const;
-		void calculateHolonomicSystemInversesAsync(std::vector<HolonomicSystemNodes*> nodes_to_calculate_for);
+		void calculateHolonomicSystemInversesAsync();
 
 		struct ConstraintGraphNode {
 			ConstraintGraphNode(RigidBody* b) : b(b), constraints(std::vector<SharedConstraintsEdge*>()) {}
