@@ -224,8 +224,6 @@ Select which scene to run: ", { "1", "2", "3", "4"}
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(false);
 
-		p.setHolonomicSolverCFM(0.00001);
-
 		double timestep = 1 / 60.0;
 		p.setStep_time(timestep);
 

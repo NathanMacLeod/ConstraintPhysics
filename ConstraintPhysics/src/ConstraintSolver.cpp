@@ -93,7 +93,7 @@ namespace phyz {
 
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
 	//the first third of this video explains it pretty well: https://www.youtube.com/watch?v=P-WP1yMOkc4 (Improving an Iterative Physics Solver Using a Direct Method)
-	void PGS_solve(PhysicsEngine* pEngine, IslandConstraints& constraint_island, double holonomic_block_solver_CFM, int n_itr_vel, int n_itr_pos, int n_itr_holonomic) {
+	void PGS_solve(PhysicsEngine* pEngine, IslandConstraints& constraint_island, int n_itr_vel, int n_itr_pos, int n_itr_holonomic) {
 		auto t0 = std::chrono::system_clock::now();
 		
 		struct VelPair {
@@ -139,6 +139,12 @@ namespace phyz {
 			}
 		}
 
+#ifndef NDEBUG
+		for (Constraint* c : constraint_island.constraints) {
+			c->updateCurrentConstraintValue();
+		}
+#endif
+
 		//really need to refactor this into a class
 		int system_degree = get_total_island_degree(constraint_island.constraints);
 		std::vector<double> impulse_val_buff1(system_degree);
@@ -159,6 +165,12 @@ namespace phyz {
 				constraintStep(c, false);
 			}
 
+#ifndef NDEBUG
+			for (Constraint* c : constraint_island.constraints) {
+				c->updateCurrentConstraintValue();
+			}
+#endif
+
 			bool converged = checkIfConverged(constraint_island.constraints, *old_impulse_val_buff, new_impulse_val_buff, false);
 			std::vector<double>* tmp = old_impulse_val_buff;
 			old_impulse_val_buff = new_impulse_val_buff;
@@ -171,6 +183,12 @@ namespace phyz {
 			for (Constraint* c : constraint_island.constraints) {
 				if (c->needsPosCorrect()) constraintStep(c, true);
 			}
+
+#ifndef NDEBUG
+			for (Constraint* c : constraint_island.constraints) {
+				c->updateCurrentConstraintValue();
+			}
+#endif
 
 			bool converged = checkIfConverged(constraint_island.constraints, *old_psuedo_impulse_val_buff, new_psuedo_impulse_val_buff, true);
 			std::vector<double>* tmp = old_psuedo_impulse_val_buff;
@@ -201,6 +219,12 @@ namespace phyz {
 					h.system->computeAndApplyImpulses(false);
 				}
 
+#ifndef NDEBUG
+				for (Constraint* c : constraint_island.constraints) {
+					c->updateCurrentConstraintValue();
+				}
+#endif
+
 				// iterate over non-holonomic constraints again
 				for (Constraint* c : constraint_island.constraints) {
 					if (c->is_in_holonomic_system) continue;
@@ -208,6 +232,12 @@ namespace phyz {
 					if (c->needsPosCorrect()) constraintStep(c, true);
 					constraintStep(c, false);
 				}
+
+#ifndef NDEBUG
+				for (Constraint* c : constraint_island.constraints) {
+					c->updateCurrentConstraintValue();
+				}
+#endif
 			}
 		}
 

@@ -193,6 +193,81 @@ namespace phyz {
 		}
 	}
 
+	void HolonomicSystem::multInverseWithVector(std::vector<double>& v) {
+#ifndef NDEBUG
+		if (USE_GAUSS_ELIM_FOR_INVERSE) {
+			std::vector<double> correct_impulse(system_degree, 0);
+
+			for (int i = 0; i < system_degree; i++) {
+				for (int j = 0; j < system_degree; j++) {
+					correct_impulse[i] += v[j] * debug_inverse[j + system_degree * i];
+				}
+			}
+
+			v = correct_impulse;
+			return;
+		}
+#endif
+
+		//A^-1 = (L^-t)(D^-1)(L^-1) 
+		//Multiply by L inverse (inversion is as simple as making non diagonal blocks negative)
+		std::vector<double> multByLEffect(system_degree);
+		for (int col = 0; col + 1 < constraints.size(); col++) {
+			multByLEffect = std::vector<double>(system_degree, 0); //set to zero
+
+			for (int row = col + 1; row < constraints.size(); row++) {
+				int loc = getBlockBufferLocation(row, col);
+				if (loc == BLOCK_EMPTY) continue;
+
+				int block_width = constraints[col]->getDegree();
+				int block_height = constraints[row]->getDegree();
+				double* block_pos = buffer + loc;
+				int source_index = getVectorPos(col);
+				int write_index = getVectorPos(row);
+
+				multMatWithVec(block_width, block_height, &multByLEffect, write_index, v, source_index, block_pos);
+			}
+
+			for (int i = 0; i < system_degree; i++) {
+				v[i] -= multByLEffect[i];
+			}
+		}
+
+		//Multiply by D inverse
+		std::vector<double> multByDOut(system_degree);
+		for (int col = 0; col < constraints.size(); col++) {
+			int block_degree = constraints[col]->getDegree();
+			double* block_pos = buffer + getBlockBufferLocation(col, col);
+			int vec_index = getVectorPos(col);
+			multMatWithVec(block_degree, block_degree, &multByDOut, vec_index, v, vec_index, block_pos);
+		}
+		v = multByDOut;
+
+		//Multiply by L^-t
+
+		std::vector<double> multByLTEffect(6);
+		for (int col = static_cast<uint32_t>(constraints.size()) - 2; col >= 0; col--) {
+			multByLTEffect = std::vector<double>(6, 0);
+
+			for (int row = col + 1; row < constraints.size(); row++) {
+				int loc = getBlockBufferLocation(row, col);
+				if (loc == BLOCK_EMPTY) continue;
+
+				int block_width = constraints[col]->getDegree();
+				int block_height = constraints[row]->getDegree();
+				double* block_pos = buffer + loc;
+				int source_index = getVectorPos(row);
+
+				multMatTransposedWithVec(block_width, block_height, &multByLTEffect, 0, v, source_index, block_pos);
+			}
+
+			int write_pos = getVectorPos(col);
+			for (int i = 0; i < constraints[col]->getDegree(); i++) {
+				v[write_pos + i] -= multByLTEffect[i];
+			}
+		}
+	}
+
 	void HolonomicSystem::computeAndApplyImpulses(bool use_psuedo_values) {
 		//solving system d = A^-1(t - c)
 		//d: delta in impulses needed to satisfy all constraints
@@ -214,84 +289,8 @@ namespace phyz {
 			}
 		}
 		
-#ifndef NDEBUG
-		if (USE_GAUSS_ELIM_FOR_INVERSE) {
-			std::vector<double> correct_impulse(system_degree, 0);
-
-			for (int i = 0; i < system_degree; i++) {
-				for (int j = 0; j < system_degree; j++) {
-					correct_impulse[i] += delta[j] * debug_inverse[j + system_degree * i];
-				}
-			}
-
-			delta = correct_impulse;
-			goto ApplyImpulse;
-		}
-		{
-#endif
-
-		//A^-1 = (L^-t)(D^-1)(L^-1) 
-		//Multiply by L inverse (inversion is as simple as making non diagonal blocks negative)
-		std::vector<double> multByLEffect(system_degree);
-		for (int col = 0; col + 1 < constraints.size(); col++) {
-			multByLEffect = std::vector<double>(system_degree, 0); //set to zero
-
-			for (int row = col + 1; row < constraints.size(); row++) {
-				int loc = getBlockBufferLocation(row, col);
-				if (loc == BLOCK_EMPTY) continue;
-
-				int block_width = constraints[col]->getDegree();
-				int block_height = constraints[row]->getDegree();
-				double* block_pos = buffer + loc;
-				int source_index = getVectorPos(col);
-				int write_index = getVectorPos(row);
-
-				multMatWithVec(block_width, block_height, &multByLEffect, write_index, delta, source_index, block_pos);
-			}
-
-			for (int i = 0; i < system_degree; i++) {
-				delta[i] -= multByLEffect[i];
-			}
-		}
-
-		//Multiply by D inverse
-		std::vector<double> multByDOut(system_degree);
-		for (int col = 0; col < constraints.size(); col++) {
-			int block_degree = constraints[col]->getDegree();
-			double* block_pos = buffer + getBlockBufferLocation(col, col);
-			int vec_index = getVectorPos(col);
-			multMatWithVec(block_degree, block_degree, &multByDOut, vec_index, delta, vec_index, block_pos);
-		}
-		delta = multByDOut;
-
-		//Multiply by L^-t
-
-		std::vector<double> multByLTEffect(6);
-		for (int col = static_cast<uint32_t>(constraints.size()) - 2; col >= 0; col--) {
-			multByLTEffect = std::vector<double>(6, 0);
-
-			for (int row = col + 1; row < constraints.size(); row++) {
-				int loc = getBlockBufferLocation(row, col);
-				if (loc == BLOCK_EMPTY) continue;
-
-				int block_width = constraints[col]->getDegree();
-				int block_height = constraints[row]->getDegree();
-				double* block_pos = buffer + loc;
-				int source_index = getVectorPos(row);
-
-				multMatTransposedWithVec(block_width, block_height, &multByLTEffect, 0, delta, source_index, block_pos);
-			}
-
-			int write_pos = getVectorPos(col);
-			for (int i = 0; i < constraints[col]->getDegree(); i++) {
-				delta[write_pos + i] -= multByLTEffect[i];
-			}
-		}
-
-#ifndef NDEBUG
-		}
-		ApplyImpulse:
-#endif
+		// this function modifies delta to get the result after multiplication, rather than creating a new vector
+		multInverseWithVector(delta); 
 
 		//delta now equal to A^-1(t - c) = d, just need to store impulse and velocity changes now
 		for (int i = 0; i < constraints.size(); i++) {
@@ -307,7 +306,6 @@ namespace phyz {
 		}
 
 	}
-
 
 	int HolonomicSystem::getVectorPos(int constraint_row) {
 		assert(constraint_row >= 0 && constraint_row < constraints.size());
@@ -333,13 +331,13 @@ namespace phyz {
 		mthz::NMat<6, c2_degree>* b_c2interaction = nullptr;
 		if      (c1->a == c2->a) a_c2interaction = &c2->impulse_to_a_velocity;
 		else if (c1->a == c2->b) a_c2interaction = &c2->impulse_to_b_velocity;
-		else if (c1->b == c2->a) b_c2interaction = &c2->impulse_to_a_velocity; //else because c1 == c2 case handeled elsewhere
+		else if (c1->b == c2->a) b_c2interaction = &c2->impulse_to_a_velocity;
 		else if (c1->b == c2->b) b_c2interaction = &c2->impulse_to_b_velocity;
 		
 
-		if (a_c2interaction != nullptr) matMult(target, c1->a_jacobian, *a_c2interaction);
+		if      (a_c2interaction != nullptr) matMult(target, c1->a_jacobian, *a_c2interaction);
 		else if (b_c2interaction != nullptr) matMult(target, c1->b_jacobian, *b_c2interaction);
-		else memset(target, 0x00, c1_degree * c2_degree * sizeof(double));
+		else                                 memset(target, 0x00, c1_degree * c2_degree * sizeof(double));
 		//last case occurs when c1 and c2 dont have a direct interaction, but because of gaussian elimination
 		//the block will end up having a non-zero value.
 	}
@@ -425,8 +423,8 @@ namespace phyz {
 			}
 		}
 
-		//debugPrintBuffer("BLOCK_VIEW", false);
-		//debugPrintBuffer("COPIED VALUES");
+		debugPrintBuffer("BLOCK_VIEW", false);
+		debugPrintBuffer("COPIED VALUES");
 
 		//compute LDL
 		for (int col = 0; col < constraints.size(); col++) {
@@ -494,7 +492,61 @@ namespace phyz {
 			memcpy(target, diagonal_elem_buffer, blocks_total_size);
 		}
 
-		//debugPrintBuffer("DONE");
+		debugPrintBuffer("DONE");
+	}
+
+	bool HolonomicSystem::verifyInverse(double cfm) {
+		// This function just exists for use in unit tests. it doesn't have a functional purpose.
+		// If the inverse works properly, then (A^-1)(A) = I.
+
+		std::vector<double> a_buffer = std::vector<double>(system_degree * system_degree);
+		int row_offset = 0;
+		for (int row = 0; row < constraints.size(); row++) {
+			int col_offset = 0;
+			for (int col = 0; col < constraints.size(); col++) {
+
+				int block_width = constraints[col]->getDegree();
+				int block_height = constraints[row]->getDegree();
+				// temp buffer
+				std::vector<double> block(block_width * block_height);
+				computeBlockInitialValue(block.data(), constraints[row], constraints[col], cfm);
+
+				// move to a_buffer with row major ordering
+				for (int r = 0; r < block_height; r++) {
+					for (int c = 0; c < block_width; c++) {
+						a_buffer[c + col_offset + (r + row_offset) * system_degree] = block[c + r * block_width];
+					}
+				}
+
+				col_offset += constraints[col]->getDegree();
+			}
+			row_offset += constraints[row]->getDegree();
+		}
+
+		double diff = 0;
+
+		for (int i = 0; i < system_degree; i++) {
+			std::vector<double> column;
+			std::vector<double> expected;
+			for (int j = 0; j < system_degree; j++) {
+				expected.push_back(j == i ? 1.0 : 0.0);
+				column.push_back(a_buffer[i + system_degree * j]);
+			}
+
+			// this function modifies column to get the result after multiplication, rather than creating a new vector
+			multInverseWithVector(column);
+
+			// get diff
+			for (int j = 0; j < system_degree; j++) {
+				double d = expected[j] - column[j];
+				diff += d * d;
+			}
+		}
+
+		diff = sqrt(diff);
+
+		double error_tol = 0.00001;
+		return diff < error_tol;
 	}
 
 	int HolonomicSystem::getBlockBufferLocation(int block_row, int block_column) {

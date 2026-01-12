@@ -178,8 +178,6 @@ public:
 		}
 
 
-		p.setHolonomicSolverCFM(0.00001);
-
 		LDLDemoType demo_type;
 		std::string demo_response = parameters["which_demo"];
 		if      (demo_response == "1") demo_type = SCISSOR_LIFT;
@@ -426,10 +424,6 @@ public:
 
 				previous_panel = panel_r;
 				bodies.push_back({ fromGeometry(panel), panel_r });
-
-
-				//works well with a high CFM
-				p.setHolonomicSolverCFM(0.1);
 			}
 		}
 

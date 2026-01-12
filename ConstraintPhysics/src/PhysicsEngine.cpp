@@ -356,12 +356,12 @@ namespace phyz {
 
 			if (use_multithread) {
 				thread_manager.await_do_all(n_threads, &active_data.island_systems, [&, this](IslandConstraints& island_system) {
-					PGS_solve(this, island_system, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, holonomic_iterations);
+					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations);
 				});
 			}
 			else {
 				for (IslandConstraints& island_system : active_data.island_systems) {
-					PGS_solve(this, island_system, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, holonomic_iterations);
+					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations);
 				}
 			}
 
@@ -1123,10 +1123,6 @@ namespace phyz {
 		global_cfm = cfm;
 	}
 
-	void PhysicsEngine::setHolonomicSolverCFM(double cfm) {
-		holonomic_block_solver_CFM = cfm;
-	}
-
 	void PhysicsEngine::deleteWarmstartData(RigidBody* r) {
 		ConstraintGraphNode* n = constraint_graph_nodes[r->getID()];
 
@@ -1457,11 +1453,11 @@ namespace phyz {
 				}
 			}
 			if (use_multithread) {
-				double cfm = holonomic_block_solver_CFM;
+				double cfm = global_cfm;
 				thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); }, &e->h->inverse_calculation_status);
 			}
 			else {
-				e->h->system.computeInverse(holonomic_block_solver_CFM);
+				e->h->system.computeInverse(global_cfm);
 			}
 		}	
 	}
@@ -1561,11 +1557,11 @@ namespace phyz {
 					}
 				}
 				if (use_multithread) {
-					double cfm = holonomic_block_solver_CFM;
+					double cfm = global_cfm;
 					thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); }, &e->h->inverse_calculation_status);
 				}
 				else {
-					e->h->system.computeInverse(holonomic_block_solver_CFM);
+					e->h->system.computeInverse(global_cfm);
 				}
 			}
 		}

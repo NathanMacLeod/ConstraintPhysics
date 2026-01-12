@@ -13,7 +13,6 @@ namespace phyz {
 	void PGS_solve(
 		PhysicsEngine* pEngine, 
 		IslandConstraints& constraints,
-		double holonomic_block_solver_CFM,
 		int n_itr_vel, int n_itr_pos, int n_itr_holonomic
 	);
 
@@ -40,6 +39,10 @@ namespace phyz {
 		virtual bool constraintWarmStarted() = 0;
 		virtual void applyWarmStartVelocityChange() = 0;
 		virtual void findTargetConstraintValue() = 0;
+#ifndef NDEBUG
+		virtual void updateCurrentConstraintValue() = 0;
+#endif
+
 	protected:
 		//these are pretty inefficient to multiply with, but nice for sanity checking
 		mthz::NMat<6, 6> aInvMass();
@@ -63,14 +66,17 @@ namespace phyz {
 		virtual void computeAndApplyVelocityChange(mthz::NVec<n> impulse, mthz::NVec<6>* va, mthz::NVec<6>* vb) {
 			*va += impulse_to_a_velocity * impulse;
 			*vb += impulse_to_b_velocity * impulse;
-#ifndef NDEBUG
-			// just nice to be able to see this in the debugger
-			current_val = getConstraintValue(*va, *vb);
-#endif
 		}
 
 		// this just exists to allow computing most of the constraint in advance of when we know what the vel / ang velocity of the rigid body will be.
 		virtual void findTargetConstraintValue() { target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())); };
+
+#ifndef NDEBUG
+		void updateCurrentConstraintValue() {
+			current_val = getConstraintValue(*a_velocity_change, *b_velocity_change);
+			psuedo_val = getConstraintValue(*a_psuedo_velocity_change, *b_psuedo_velocity_change);
+		}
+#endif
 
 		mthz::NVec<n> getConstraintValue(const mthz::NVec<6>& va, const mthz::NVec<6>& vb) {
 			return a_jacobian * va + b_jacobian * vb;
@@ -112,6 +118,7 @@ namespace phyz {
 #ifndef NDEBUG
 		// just nice to be able to see this in the debugger
 		mthz::NVec<n> current_val;
+		mthz::NVec<n> psuedo_val;
 #endif
 		mthz::NVec<n> target_val;
 		mthz::NVec<n> psuedo_target_val;

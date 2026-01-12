@@ -14,12 +14,11 @@ namespace phyz {
 		void operator=(HolonomicSystem&& h);
 		void computeInverse(double cfm);
 		void computeAndApplyImpulses(bool use_psuedo_velocities);
+		bool verifyInverse(double cfm); // used in tests only, no functional purpose
 		inline uint32_t getDegree() { return system_degree; }
 		inline uint32_t getNumConstraints() { return static_cast<uint32_t>(constraints.size()); }
 
 		void debugPrintBuffer(std::string message="BUFFER CONTENT", bool print_val=true);
-
-
 		double* buffer;
 	private:
 		std::vector<Constraint*> constraints;
@@ -36,6 +35,7 @@ namespace phyz {
 		int getBlockBufferLocation(int block_row, int block_column);
 		int getBlockDiagonalElemBufferLocation(int block_row, int block_column);
 		int getVectorPos(int constraint_row);
+		void multInverseWithVector(std::vector<double>& v);
 
 #ifndef NDEBUG
 		bool USE_GAUSS_ELIM_FOR_INVERSE = false;

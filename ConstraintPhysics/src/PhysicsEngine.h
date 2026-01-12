@@ -96,7 +96,6 @@ namespace phyz {
 		void setWarmStartDisabled(bool b);
 		void setSleepParameters(double vel_sensitivity, double ang_vel_sensitivity, double aceleration_sensitivity, double sleep_assesment_time, int non_sleepy_tick_threshold);
 		void setGlobalConstraintForceMixing(double cfm);
-		void setHolonomicSolverCFM(double cfm);
 
 		//really only exists for debugging
 		void deleteWarmstartData(RigidBody* r);
@@ -172,8 +171,6 @@ namespace phyz {
 		mthz::Vec3 octree_center = mthz::Vec3(0, 0, 0);
 		double octree_size = 2000;
 		double octree_minsize = 1;
-	
-		double holonomic_block_solver_CFM = 0.00001;
 
 		int angle_velocity_update_tick_count = 4;
 		bool is_internal_gyro_forces_disabled = false;
@@ -218,7 +215,7 @@ namespace phyz {
 		std::mutex constraint_graph_lock;
 
 		//constraint force mixing - softens constraints and makes more stable
-		double global_cfm = 0;// 0.025;
+		double global_cfm = 0.0025;
 
 		struct ActiveConstraintData {
 			std::vector<IslandConstraints> island_systems;
