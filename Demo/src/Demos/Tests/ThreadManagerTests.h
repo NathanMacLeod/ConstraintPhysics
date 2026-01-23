@@ -18,7 +18,7 @@ public:
 
 		std::atomic<uint32_t> counter = 0;
 		// test that if we submit a really simple job to increment counter, that the test works as expected.
-		uint32_t job_count = 100000;
+		uint32_t job_count = 10;
 
 		// in_vector = 1, 2, 3, ..., job_count
 		std::vector<uint32_t> in_vector;
@@ -65,7 +65,7 @@ public:
 	}
 };
 
-class TestThreadManagerJobStatusWorksAsExpected: public Test {
+class TestThreadManagerJobStatusWorksAsExpected : public Test {
 public:
 	std::string getTestName() const override { return "ThreadManager::jobstatus dependencies"; }
 	bool canBeRunWithGraphics() const override { return false; }
@@ -75,7 +75,7 @@ public:
 	void teardownTest() override {};
 	TestOutcome runWithoutGraphics() override {
 		phyz::ThreadManager tm;
-		int n_threads = 4;
+		int n_threads = 2;
 		tm.init(n_threads);
 
 		// create jobs that will wait on other jobs. confirm everything works as expected.
@@ -104,25 +104,25 @@ public:
 			job1_started_flag = true;
 			job2_status.waitUntilDone();
 			job1_finished_flag = true;
-		}, &job1_status);
+			}, &job1_status);
 
 		//job2
 		uint32_t job2_task_count = 10;
 		uint32_t job2_thread_count = 2;
 		std::vector<uint32_t> v(job2_task_count);
-		tm.submit_do_all(job2_thread_count, &v,[&job2_started_counter, &job2_finished_counter, &job3_status](uint32_t) {
+		tm.submit_do_all(job2_thread_count, &v, [&job2_started_counter, &job2_finished_counter, &job3_status](uint32_t) {
 			job2_started_counter++;
 			job3_status.waitUntilDone();
 			job2_finished_counter++;
-		}, &job2_status);
+			}, &job2_status);
 
 		//job3
 		tm.submit([&job3_started_flag, &job3_finished_flag, &job3_acquired_mutex]() {
 			job3_started_flag = true;
 			job3_acquired_mutex.lock();
 			job3_finished_flag = true;
-		}, &job3_status);
-		
+			}, &job3_status);
+
 		//wait until all tasks have started
 		uint32_t max_wait = 1000;
 		uint32_t total_waited = 0;

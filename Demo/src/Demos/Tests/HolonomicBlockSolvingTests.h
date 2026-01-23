@@ -20,6 +20,7 @@ public:
 			p->enableMultithreading(n_threads);
 		}
 		p->setStep_time(1.0 / tick_frequency);
+		//p->setGlobalConstraintForceMixing(0.0025);
 
 		mthz::Vec3 chain_pos(0, 0, 0);
 		double chain_width = 0.31;

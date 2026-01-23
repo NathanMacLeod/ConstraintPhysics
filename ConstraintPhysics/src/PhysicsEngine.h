@@ -161,7 +161,7 @@ namespace phyz {
 
 		int pgsVelIterations = 1;
 		int pgsPosIterations = 1;
-		int sub_itr_count = 1;
+		int sub_itr_count = 8;
 		int pgsHolonomicIterations = 1;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
 
@@ -208,7 +208,7 @@ namespace phyz {
 		double accel_sleep_coeff = 0.044;
 
 		bool warm_start_disabled = false;
-		double warm_start_coefficient = 0.975;
+		double warm_start_coefficient = 1.0;
 
 		//Constraint Graph
 		std::unordered_map<unsigned int, ConstraintGraphNode*> constraint_graph_nodes;

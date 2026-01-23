@@ -423,8 +423,8 @@ namespace phyz {
 			}
 		}
 
-		debugPrintBuffer("BLOCK_VIEW", false);
-		debugPrintBuffer("COPIED VALUES");
+		//debugPrintBuffer("BLOCK_VIEW", false);
+		//debugPrintBuffer("COPIED VALUES");
 
 		//compute LDL
 		for (int col = 0; col < constraints.size(); col++) {
@@ -492,7 +492,7 @@ namespace phyz {
 			memcpy(target, diagonal_elem_buffer, blocks_total_size);
 		}
 
-		debugPrintBuffer("DONE");
+		//debugPrintBuffer("DONE");
 	}
 
 	bool HolonomicSystem::verifyInverse(double cfm) {

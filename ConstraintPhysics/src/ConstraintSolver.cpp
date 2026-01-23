@@ -132,6 +132,12 @@ namespace phyz {
 			c->findTargetConstraintValue();
 		}
 
+#ifndef NDEBUG
+		for (Constraint* c : constraint_island.constraints) {
+			c->updateCurrentConstraintValue();
+		}
+#endif
+
 		//apply warm starting
 		for (Constraint* c : constraint_island.constraints) {
 			if (c->constraintWarmStarted()) {
@@ -205,11 +211,11 @@ namespace phyz {
 			auto wait0 = std::chrono::system_clock::now();
 			for (HolonomicInfo h : constraint_island.holonomic_blocks) {
 				// the async inverse calculation status can be set to nullptr. this means that the inverse was calculated
-				// synchronously, so we do not need to make sure that the computation was not yet done/
+				// synchronously, so we do not need to make sure that the computation was not yet done
 				if (h.async_inverse_calculation_status != nullptr) { h.async_inverse_calculation_status->waitUntilDone(); }
 			}
 			auto wait1 = std::chrono::system_clock::now();
-			//printf("Waited %f milliseconds\n", 1000 * std::chrono::duration<float>(wait1 - wait0).count());
+			printf("Waited %f milliseconds\n", 1000 * std::chrono::duration<float>(wait1 - wait0).count());
 
 			//apply block solver solutions for holonomic systems
 			for (int i = 0; i < n_itr_holonomic; i++) {
@@ -542,8 +548,6 @@ namespace phyz {
 	MotorConstraint::MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse)
 		: DegreedConstraint<1>(a, b, warm_start_impulse), motor_axis(motor_axis), max_torque_impulse(max_torque_impulse), real_target_velocity(real_target_velocity)
 	{
-		double real_target_velocity;
-
 		if (current_angle > max_angle) {
 			psuedo_target_val = mthz::NVec<1>{ (max_angle - current_angle) * rot_correct_hardness };
 			real_target_velocity = std::min<double>(0, target_velocity);

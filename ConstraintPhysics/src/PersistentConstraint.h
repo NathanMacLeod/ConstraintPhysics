@@ -142,7 +142,7 @@ namespace phyz {
 
 	// todo: piston and motor used to be "child constraints" of other constraints. want to seperate them entirely for simplicity
 	struct Piston : public PersistentConstraint {
-		Piston(RigidBody* b1, RigidBody* b2, RigidBody::PKey b1_point_key, RigidBody::PKey b2_point_key, mthz::Vec3 b1_slide_axis_body_space, double min_pos, double max_pos, uint32_t id_value);
+		Piston(RigidBody* b1, RigidBody* b2, RigidBody::PKey b1_point_key, RigidBody::PKey b2_point_key, mthz::Vec3 b1_slide_axis_body_space, double min_pos, double max_pos, double pos_correct_hardness, uint32_t id_value);
 		double calculatePosition(mthz::Vec3 b1_pos, mthz::Vec3 b2_pos, mthz::Vec3 slide_axis);
 		double getPistonTargetVelocityValue(double piston_pos, mthz::Vec3 slide_axis, double step_time);
 		void writePrevVel(mthz::Vec3 slide_axis);
@@ -178,7 +178,7 @@ namespace phyz {
 	};
 
 	struct Motor : public PersistentConstraint {
-		Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle, uint32_t id_value);
+		Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle, double rot_correct_hardness, uint32_t id_value);
 		double calculatePosition(mthz::Vec3 rot_axis, mthz::Vec3 ang_vel_b1, mthz::Vec3 ang_vel_b2, double timestep);
 		double getConstraintTargetVelocityValue(mthz::Vec3 rot_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double step_time);
 		void writePrevVel(mthz::Vec3 rot_axis, mthz::Vec3 ang_vel_b1, mthz::Vec3 ang_vel_b2);

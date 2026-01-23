@@ -176,6 +176,7 @@ public:
 		else {
 			p.setPGSIterations(5, 2, 0);
 		}
+		p.setGlobalConstraintForceMixing(0.000025);
 
 
 		LDLDemoType demo_type;

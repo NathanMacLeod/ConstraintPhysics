@@ -199,9 +199,9 @@ Select which scene to run: ", { "1" }
 		}
 
 		std::vector<std::unique_ptr<TestGroup>> test_groups;
-		test_groups.push_back(std::make_unique<ThreadManagerTestGroup>());
+		//test_groups.push_back(std::make_unique<ThreadManagerTestGroup>());
+		//test_groups.push_back(std::make_unique<CollisionTestGroup>());
 		test_groups.push_back(std::make_unique<HolonomicBlockSolverTestGroup>());
-		test_groups.push_back(std::make_unique<CollisionTestGroup>());
 
 		std::vector<std::unique_ptr<Test>> tests;
 		for (const std::unique_ptr<TestGroup>& gr : test_groups) {

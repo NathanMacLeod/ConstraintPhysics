@@ -703,16 +703,19 @@ namespace phyz {
 
 		PersistentConstraint* base_constraint = getConstraint(base_constraint_id);
 		mthz::Vec3 b1_rot_axis_local, b2_rot_axis_local;
+		double rot_correct_hardness;
 
 		if (base_constraint->getId().getType() == ConstraintID::Type::HINGE) {
 			Hinge* h = static_cast<Hinge*>(base_constraint);
 			b1_rot_axis_local = h->b1_rot_axis_body_space;
 			b2_rot_axis_local = h->b2_rot_axis_body_space;
+			rot_correct_hardness = h->rot_correct_hardness;
 		}
 		else if (base_constraint->getId().getType() == ConstraintID::Type::SLIDING_HINGE) {
 			SlidingHinge* h = static_cast<SlidingHinge*>(base_constraint);
 			b1_rot_axis_local = h->b1_slide_axis_body_space;
 			b2_rot_axis_local = h->b2_slide_axis_body_space;
+			rot_correct_hardness = h->rot_correct_hardness;
 		}
 		else {
 			assert(false);
@@ -725,6 +728,7 @@ namespace phyz {
 			b2_rot_axis_local,
 			min_angle,
 			max_angle,
+			rot_correct_hardness,
 			uniqueID
 		);
 
@@ -783,18 +787,21 @@ namespace phyz {
 		PersistentConstraint* base_constraint = getConstraint(base_constraint_id);
 		RigidBody::PKey b1_pkey, b2_pkey;
 		mthz::Vec3 b1_slide_axis_local;
+		double pos_correct_hardness;
 
 		if (base_constraint->getId().getType() == ConstraintID::Type::SLIDER) {
 			Slider* s = static_cast<Slider*>(base_constraint);
 			b1_pkey = s->b1_point_key;
 			b2_pkey = s->b2_point_key;
 			b1_slide_axis_local = s->b1_slide_axis_body_space;
+			pos_correct_hardness = s->pos_correct_hardness;
 		}
 		else if (base_constraint->getId().getType() == ConstraintID::Type::SLIDING_HINGE) {
 			SlidingHinge* s = static_cast<SlidingHinge*>(base_constraint);
 			b1_pkey = s->b1_point_key;
 			b2_pkey = s->b2_point_key;
 			b1_slide_axis_local = s->b1_slide_axis_body_space;
+			pos_correct_hardness = s->pos_correct_hardness;
 		}
 		else {
 			assert(false);
@@ -808,6 +815,7 @@ namespace phyz {
 			b1_slide_axis_local,
 			negative_slide_limit,
 			positive_slide_limit,
+			pos_correct_hardness,
 			uniqueID
 		);
 
@@ -1546,10 +1554,14 @@ namespace phyz {
 	}
 
 	void PhysicsEngine::calculateHolonomicSystemInversesAsync() {
+		std::set<HolonomicSystemNodes*> visited;
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (SharedConstraintsEdge* e : n->constraints) {
 				if (e->h == nullptr) continue;
+				if (visited.find(e->h) != visited.end()) { continue; }
+				visited.insert(e->h);
+
 				// we need to update all of the holonomic constraints first
 				for (PersistentConstraint* c : e->constraints) {
 					if (c->isHolonomicConstraint()) {
@@ -1558,7 +1570,7 @@ namespace phyz {
 				}
 				if (use_multithread) {
 					double cfm = global_cfm;
-					thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); }, &e->h->inverse_calculation_status);
+					thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); printf("done!\n"); }, &e->h->inverse_calculation_status);
 				}
 				else {
 					e->h->system.computeInverse(global_cfm);

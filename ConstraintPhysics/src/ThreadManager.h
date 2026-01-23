@@ -26,14 +26,15 @@ namespace phyz {
 			void markDone() {
 				wait_lock.lock();
 				is_done = true;
+				wait_cv.notify_all(); //has to be inside the CV, after we unlock we don't know if this object will still exist
 				wait_lock.unlock();
-				wait_cv.notify_all();
 			}
 
-			void init(uint32_t n_threads, uint32_t n_tasks) {
+			void init(int worker_count) {
 				is_done = false;
 				next_task_index = 0;
 				task_completed_count = 0;
+				this->worker_count = worker_count;
 			}
 			
 			std::atomic_bool is_done = false;
@@ -42,6 +43,7 @@ namespace phyz {
 
 			std::atomic_int next_task_index;
 			std::atomic_int task_completed_count;
+			std::atomic_int worker_count;
 		};
 
 		~ThreadManager() {
@@ -59,6 +61,9 @@ namespace phyz {
 		}
 
 		void terminate_threads() {
+			const std::mutex& debugger_help_me = job_lock;
+			const std::mutex* what_the_fuck_is_happening = &job_lock;
+			const ThreadManager* this_was = this;
 			job_lock.lock();
 			terminated = true;
 			job_lock.unlock();
@@ -72,7 +77,7 @@ namespace phyz {
 
 		template<typename Func>
 		void submit(const Func& action, JobStatus* status) {
-			status->init(1, 1);
+			status->init(1);
 
 			job_lock.lock();
 			jobs.push_back([action, status]() {
@@ -91,8 +96,8 @@ namespace phyz {
 			}
 
 			uint32_t n_tasks = static_cast<uint32_t>(in_vector->size());
-			status->init(n_threads, n_tasks);
 			uint32_t jobs_for_task_set = std::min<uint32_t>(n_threads, n_tasks);
+			status->init(jobs_for_task_set);
 			
 			job_lock.lock();
 			for (uint32_t i = 0; i < jobs_for_task_set; i++) {
@@ -104,10 +109,12 @@ namespace phyz {
 
 						int completed_count = 1 + std::atomic_fetch_add(&status->task_completed_count, 1);// +1 to get value after adding
 						if (completed_count == in_vector->size()) {
+							while (status->worker_count > 1); //after we mark done, the main thread might delete status. we need to know no other thread will touch it after we call mark done
 							status->markDone();
+							return;
 						}
 					}
-
+					status->worker_count--;
 				});
 			}
 			job_lock.unlock();
@@ -118,6 +125,8 @@ namespace phyz {
 		// common pattern
 		template <typename T, typename Func>
 		inline void await_do_all(uint32_t n_threads, std::vector<T>* in_vector, const Func& action) {
+			if (in_vector->size() == 0) { return; }
+
 			JobStatus s;
 			submit_do_all(n_threads, in_vector, action, &s);
 			s.waitUntilDone();
@@ -132,6 +141,7 @@ namespace phyz {
 				await_jobs_cv->wait(lk, [&]() -> bool { return *terminated || jobs->size() > 0; });
 
 				if (*terminated) {
+					//printf("%d exiting\n", std::this_thread::get_id());
 					return;
 				}
 
@@ -143,6 +153,7 @@ namespace phyz {
 					f();
 				}
 			}
+			//printf("%d exiting\n", std::this_thread::get_id());
 		}
 
 		bool terminated = false;
@@ -150,11 +161,5 @@ namespace phyz {
 		std::vector<std::function<void()>> jobs;
 		std::mutex job_lock;
 		std::condition_variable await_jobs_cv;
-
-		int total_job_count;
-		std::mutex done_lock;
-		std::condition_variable done_cv;
-		std::atomic_int num_jobs_exited;
-		bool all_done;
 	};
 }
