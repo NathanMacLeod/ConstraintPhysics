@@ -75,7 +75,7 @@ public:
 	void teardownTest() override {};
 	TestOutcome runWithoutGraphics() override {
 		phyz::ThreadManager tm;
-		int n_threads = 2;
+		int n_threads = 4;
 		tm.init(n_threads);
 
 		// create jobs that will wait on other jobs. confirm everything works as expected.

@@ -159,10 +159,10 @@ namespace phyz {
 
 		unsigned int next_id = 1;
 
-		int pgsVelIterations = 1;
-		int pgsPosIterations = 1;
-		int sub_itr_count = 8;
-		int pgsHolonomicIterations = 1;
+		int pgsVelIterations = 8;
+		int pgsPosIterations = 8;
+		int sub_itr_count = 1;
+		int pgsHolonomicIterations = 0;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
 
 		BroadPhaseStructure broadphase = AABB_TREE;

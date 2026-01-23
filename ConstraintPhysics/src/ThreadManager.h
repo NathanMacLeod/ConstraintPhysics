@@ -33,7 +33,6 @@ namespace phyz {
 			void init(int worker_count) {
 				is_done = false;
 				next_task_index = 0;
-				task_completed_count = 0;
 				this->worker_count = worker_count;
 			}
 			
@@ -42,7 +41,6 @@ namespace phyz {
 			std::condition_variable wait_cv;
 
 			std::atomic_int next_task_index;
-			std::atomic_int task_completed_count;
 			std::atomic_int worker_count;
 		};
 
@@ -61,9 +59,6 @@ namespace phyz {
 		}
 
 		void terminate_threads() {
-			const std::mutex& debugger_help_me = job_lock;
-			const std::mutex* what_the_fuck_is_happening = &job_lock;
-			const ThreadManager* this_was = this;
 			job_lock.lock();
 			terminated = true;
 			job_lock.unlock();
@@ -106,15 +101,9 @@ namespace phyz {
 					int my_index = -1;
 					while ((my_index = std::atomic_fetch_add(&status->next_task_index, 1)) < in_vector->size()) {
 						action(in_vector->at(my_index));
-
-						int completed_count = 1 + std::atomic_fetch_add(&status->task_completed_count, 1);// +1 to get value after adding
-						if (completed_count == in_vector->size()) {
-							while (status->worker_count > 1); //after we mark done, the main thread might delete status. we need to know no other thread will touch it after we call mark done
-							status->markDone();
-							return;
-						}
 					}
-					status->worker_count--;
+					int worker_count_before_sub = std::atomic_fetch_sub(&status->worker_count, 1);
+					if (worker_count_before_sub == 1) { status->markDone(); } //last exiting worker signals main thread it can continue
 				});
 			}
 			job_lock.unlock();
@@ -141,7 +130,6 @@ namespace phyz {
 				await_jobs_cv->wait(lk, [&]() -> bool { return *terminated || jobs->size() > 0; });
 
 				if (*terminated) {
-					//printf("%d exiting\n", std::this_thread::get_id());
 					return;
 				}
 
@@ -153,7 +141,6 @@ namespace phyz {
 					f();
 				}
 			}
-			//printf("%d exiting\n", std::this_thread::get_id());
 		}
 
 		bool terminated = false;

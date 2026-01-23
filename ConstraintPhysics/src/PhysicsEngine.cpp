@@ -1570,7 +1570,7 @@ namespace phyz {
 				}
 				if (use_multithread) {
 					double cfm = global_cfm;
-					thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); printf("done!\n"); }, &e->h->inverse_calculation_status);
+					thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); }, &e->h->inverse_calculation_status);
 				}
 				else {
 					e->h->system.computeInverse(global_cfm);
