@@ -51,7 +51,7 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setPGSIterations(5, 2, 2);
+		//p.setPGSIterations(5, 2, 0);
 		p.setGlobalConstraintForceMixing(0.0001);
 		//p.setOctreeParams(100, 0.5);
 		//p.setWarmStartDisabled(true);

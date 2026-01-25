@@ -13,7 +13,8 @@ namespace phyz {
 	void PGS_solve(
 		PhysicsEngine* pEngine, 
 		IslandConstraints& constraints,
-		int n_itr_vel, int n_itr_pos, int n_itr_holonomic
+		int n_itr_vel, int n_itr_pos, int n_itr_holonomic,
+		float holonomic_warmstart_multiplier
 	);
 
 	class Constraint {
@@ -39,6 +40,7 @@ namespace phyz {
 		virtual bool constraintWarmStarted() = 0;
 		virtual void applyWarmStartVelocityChange() = 0;
 		virtual void findTargetConstraintValue() = 0;
+		virtual void addScaledHolonomicImpulseToNextWarmStart(float scalar) = 0;
 #ifndef NDEBUG
 		virtual void updateCurrentConstraintValue() = 0;
 #endif
@@ -54,7 +56,7 @@ namespace phyz {
 	template<int n>
 	class DegreedConstraint : public Constraint {
 	public:
-		DegreedConstraint() : impulse(mthz::NVec<n>{0.0}), psuedo_impulse(mthz::NVec<n>{0.0}) {}
+		DegreedConstraint() : impulse(mthz::NVec<n>{0.0}), psuedo_impulse(mthz::NVec<n>{0.0}), holonomic_solver_induced_impulse(mthz::NVec<n>{0.0}) {}
 		DegreedConstraint(RigidBody* a, RigidBody* b, mthz::NVec<n> impulse) : Constraint(a, b), impulse(impulse), psuedo_impulse(mthz::NVec<n>{0.0}) {}
 
 		virtual mthz::NVec<n> projectValidImpulse(mthz::NVec<n> impulse) { return impulse; }
@@ -70,6 +72,8 @@ namespace phyz {
 
 		// this just exists to allow computing most of the constraint in advance of when we know what the vel / ang velocity of the rigid body will be.
 		virtual void findTargetConstraintValue() { target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())); };
+
+		void addScaledHolonomicImpulseToNextWarmStart(float scalar) override { impulse += scalar * holonomic_solver_induced_impulse; }
 
 #ifndef NDEBUG
 		void updateCurrentConstraintValue() {
@@ -115,6 +119,11 @@ namespace phyz {
 
 		mthz::NVec<n> impulse;
 		mthz::NVec<n> psuedo_impulse;
+		// track the impulse from the holonomic solve seperatly from the GS generated impulses.
+		// on non-holonomic constraints, this term simply stays 0.
+		// for holonomic constraints, this allows warm starting from the holonomic solver induced impulse
+		// to be reduced by some factor. this is intended to reduce linearization error from being persisted accross substeps.
+		mthz::NVec<n> holonomic_solver_induced_impulse;
 #ifndef NDEBUG
 		// just nice to be able to see this in the debugger
 		mthz::NVec<n> current_val;

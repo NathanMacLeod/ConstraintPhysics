@@ -186,7 +186,7 @@ namespace phyz {
 		if (!impulse_change.isZero()) {
 			mthz::NVec<6>* vel_a_change = use_psuedo_values? constraint->a_psuedo_velocity_change : constraint->a_velocity_change;
 			mthz::NVec<6>* vel_b_change = use_psuedo_values? constraint->b_psuedo_velocity_change : constraint->b_velocity_change;
-			mthz::NVec<n>* accumulated_impulse = use_psuedo_values? &constraint->psuedo_impulse : &constraint->impulse;
+			mthz::NVec<n>* accumulated_impulse = use_psuedo_values? &constraint->psuedo_impulse : &constraint->holonomic_solver_induced_impulse;
 
 			constraint->computeAndApplyVelocityChange(impulse_change, vel_a_change, vel_b_change);
 			*accumulated_impulse += impulse_change;
@@ -289,7 +289,7 @@ namespace phyz {
 			}
 		}
 		
-		// this function modifies delta to get the result after multiplication, rather than creating a new vector
+		// modify delta in place to get the result after multiplying by A^-1
 		multInverseWithVector(delta); 
 
 		//delta now equal to A^-1(t - c) = d, just need to store impulse and velocity changes now

@@ -159,11 +159,14 @@ namespace phyz {
 
 		unsigned int next_id = 1;
 
-		int pgsVelIterations = 8;
-		int pgsPosIterations = 8;
-		int sub_itr_count = 1;
+		int pgsVelIterations = 1;
+		int pgsPosIterations = 1;
+		int sub_itr_count = 16;
 		int pgsHolonomicIterations = 0;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
+
+		//constraint force mixing - softens constraints and makes more stable
+		double global_cfm = 0.0000025;
 
 		BroadPhaseStructure broadphase = AABB_TREE;
 		double aabbtree_margin_size = 0.1;
@@ -213,9 +216,6 @@ namespace phyz {
 		//Constraint Graph
 		std::unordered_map<unsigned int, ConstraintGraphNode*> constraint_graph_nodes;
 		std::mutex constraint_graph_lock;
-
-		//constraint force mixing - softens constraints and makes more stable
-		double global_cfm = 0.0025;
 
 		struct ActiveConstraintData {
 			std::vector<IslandConstraints> island_systems;

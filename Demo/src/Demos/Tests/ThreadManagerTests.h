@@ -18,7 +18,7 @@ public:
 
 		std::atomic<uint32_t> counter = 0;
 		// test that if we submit a really simple job to increment counter, that the test works as expected.
-		uint32_t job_count = 10;
+		uint32_t job_count = 100000;
 
 		// in_vector = 1, 2, 3, ..., job_count
 		std::vector<uint32_t> in_vector;
@@ -104,7 +104,7 @@ public:
 			job1_started_flag = true;
 			job2_status.waitUntilDone();
 			job1_finished_flag = true;
-			}, &job1_status);
+		}, &job1_status);
 
 		//job2
 		uint32_t job2_task_count = 10;
@@ -114,14 +114,14 @@ public:
 			job2_started_counter++;
 			job3_status.waitUntilDone();
 			job2_finished_counter++;
-			}, &job2_status);
+		}, &job2_status);
 
 		//job3
 		tm.submit([&job3_started_flag, &job3_finished_flag, &job3_acquired_mutex]() {
 			job3_started_flag = true;
 			job3_acquired_mutex.lock();
 			job3_finished_flag = true;
-			}, &job3_status);
+		}, &job3_status);
 
 		//wait until all tasks have started
 		uint32_t max_wait = 1000;

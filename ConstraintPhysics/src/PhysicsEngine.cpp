@@ -86,7 +86,7 @@ namespace phyz {
 					}
 				}
 
-				b->vel += gravity * step_time;
+				//b->vel += gravity * step_time;
 			}
 		}
 
@@ -338,7 +338,9 @@ namespace phyz {
 			}
 		}
 
-		maintainHolonomicSystems();
+		if (using_holonomic_system_solver()) {
+			maintainHolonomicSystems();
+		}
 
 		ActiveConstraintData active_data = sleepOrSolveIslands();
 
@@ -347,8 +349,13 @@ namespace phyz {
 		for (int i = 0; i < sub_itr_count; i++) {
 			double sub_itr_duration = step_time / sub_itr_count;
 
+			for (RigidBody* b : bodies) {
+				b->vel += gravity * sub_itr_duration;
+			}
+
 			bool is_first_sub_itr = i == 0;
 			bool is_last_sub_itr = i == sub_itr_count - 1;
+			float holonomic_warmstart_reduction_factor = 0.0 / sub_itr_count;
 			maintainConstraintGraphApplyPoweredConstraints(is_first_sub_itr, is_last_sub_itr, sub_itr_duration);
 
 			// we only do holonomic block solving on the first iteration. after the positions are updated the inverse is not longer accurate
@@ -356,12 +363,12 @@ namespace phyz {
 
 			if (use_multithread) {
 				thread_manager.await_do_all(n_threads, &active_data.island_systems, [&, this](IslandConstraints& island_system) {
-					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations);
+					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations, holonomic_warmstart_reduction_factor);
 				});
 			}
 			else {
 				for (IslandConstraints& island_system : active_data.island_systems) {
-					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations);
+					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations, holonomic_warmstart_reduction_factor);
 				}
 			}
 
@@ -418,7 +425,9 @@ namespace phyz {
 		auto t7 = std::chrono::system_clock::now();
 
 		// triggering update of holonomic blocks asynchronously for the next timetep
-		calculateHolonomicSystemInversesAsync();
+		if (using_holonomic_system_solver()) {
+			calculateHolonomicSystemInversesAsync();
+		}
 
 		if (print_performance_data) {
 
@@ -1323,7 +1332,7 @@ namespace phyz {
 
 					if (is_last_sub_itr) {
 						cont->memory_life--;
-						// set all constraints to innactive, during collission detection on the next tick
+						// set all constraints to inactive, during collission detection on the next tick
 						// we will re-evaluate which contacts are active or not.
 						cont->is_live_contact = false; 
 					}
@@ -1334,7 +1343,7 @@ namespace phyz {
 				//Holonomic blocks are applied when solving on the first sub iteration. These inverses either triggered to run asynchronously
 				//at the end of the last physics tick, or right before this update in maintainHolonomicSystems in the case that they could not be calculated earlier.
 				//these inverses require the constraint to be already up to date, so we don't need to update it now.
-				bool skip_already_updated_holonomic_constraint = is_first_sub_itr && is_in_holonomic_system && c->isHolonomicConstraint();
+				bool skip_already_updated_holonomic_constraint = is_first_sub_itr && is_in_holonomic_system && using_holonomic_system_solver() && c->isHolonomicConstraint();
 				
 				if (!skip_already_updated_holonomic_constraint) {
 					c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, delta_time, global_cfm, is_in_holonomic_system);
@@ -1553,14 +1562,16 @@ namespace phyz {
 		return out;
 	}
 
+	//this function is a mess and badly needs to be rethought out
 	void PhysicsEngine::calculateHolonomicSystemInversesAsync() {
 		std::set<HolonomicSystemNodes*> visited;
+		std::set<SharedConstraintsEdge*> visited_edges;
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (SharedConstraintsEdge* e : n->constraints) {
 				if (e->h == nullptr) continue;
-				if (visited.find(e->h) != visited.end()) { continue; }
-				visited.insert(e->h);
+
+				if (visited_edges.find(e) != visited_edges.end()) { continue; }
 
 				// we need to update all of the holonomic constraints first
 				for (PersistentConstraint* c : e->constraints) {
@@ -1568,13 +1579,21 @@ namespace phyz {
 						c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time / sub_itr_count, global_cfm, true);
 					}
 				}
-				if (use_multithread) {
-					double cfm = global_cfm;
-					thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); }, &e->h->inverse_calculation_status);
-				}
-				else {
-					e->h->system.computeInverse(global_cfm);
-				}
+
+				visited_edges.insert(e);
+
+				if (visited.find(e->h) != visited.end()) { continue; }
+				visited.insert(e->h);
+			}
+		}
+
+		for (HolonomicSystemNodes* h : visited) {
+			if (use_multithread) {
+				double cfm = global_cfm;
+				thread_manager.submit([h, cfm]() { h->system.computeInverse(cfm); }, &h->inverse_calculation_status);
+			}
+			else {
+				h->system.computeInverse(global_cfm);
 			}
 		}
 	}

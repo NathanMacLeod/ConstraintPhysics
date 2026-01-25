@@ -18,18 +18,18 @@ public:
 			"Choose from one of the demos that demonstrate the advantages of the LDL-PGS solver: 1) Scissor lift, 2) High mass ratio, 3) Bridge: ", { "1", "2", "3" }
 		);
 
-		out["use_ldl"] = pickParameterFromOptions(
+		/*out["use_ldl"] = pickParameterFromOptions(
 			"Choose to run the demo using 1) Normal PGS solver; 2) LDL-PGS solver: ", { "1", "2" }
-		);
+		);*/
 
 		// for the high mass ratio demo with LDL, ask whether to use a stable or unstable tick rate
-		if (out["which_demo"] == "2" && out["use_ldl"] == "2") {
-			out["unstable_tickrate"] = pickParameterFromOptions("Choose to run the scene 1) high tick rate, so scene runs stable 2) low tick rate, to see the simulation fail: ", { "1", "2" });
-		}
-		else {
-			//default to high tick rate
-			out["unstable_tickrate"] = "1";
-		}
+		//if (out["which_demo"] == "2" && out["use_ldl"] == "2") {
+		//	out["unstable_tickrate"] = pickParameterFromOptions("Choose to run the scene 1) high tick rate, so scene runs stable 2) low tick rate, to see the simulation fail: ", { "1", "2" });
+		//}
+		//else {
+		//	//default to high tick rate
+		//	out["unstable_tickrate"] = "1";
+		//}
 
 		return out;
 	}
@@ -170,13 +170,16 @@ public:
 		phyz::PhysicsEngine p;
 		p.setSleepingEnabled(false);
 
-		if (parameters["use_ldl"] == "2") {
+		//p.setPGSIterations(5, 2, 1);
+		//p.setGlobalConstraintForceMixing(0.0000025);
+
+		/*if (parameters["use_ldl"] == "2") {
 			p.setPGSIterations(5, 2, 1);
 		}
 		else {
 			p.setPGSIterations(5, 2, 0);
 		}
-		p.setGlobalConstraintForceMixing(0.000025);
+		p.setGlobalConstraintForceMixing(0.000025);*/
 
 
 		LDLDemoType demo_type;
@@ -186,9 +189,9 @@ public:
 		else if (demo_response == "3") demo_type = BRIDGE;
 
 		double timestep = 1 / 60.0;
-		if (parameters["unstable_tickrate"] == "2") {
+		/*if (parameters["unstable_tickrate"] == "2") {
 			timestep = 1 / 120.0;
-		}
+		}*/
 		p.setStep_time(timestep);
 
 		bool lock_cam = false;

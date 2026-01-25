@@ -53,6 +53,8 @@ private:
 			}
 		);
 
+		//int tick_count = 0;
+
 		while (rndr::render_loop(&fElapsedTime)) {
 			// Listening to user input
 			if (rndr::getKeyDown(GLFW_KEY_W)) {
@@ -88,6 +90,10 @@ private:
 				paused = !paused;
 			}
 
+			/*if (tick_count == 55) {
+				paused = true;
+			}*/
+
 			// running the test
 			if (!paused) {
 				phyz_time += fElapsedTime;
@@ -98,6 +104,7 @@ private:
 			}
 
 			while (outcome == TestOutcome::STILL_RUNNING && phyz_time > timestep_duration) {
+//				printf("%d\n", tick_count++);
 				all_contact_points.clear();
 				phyz_time -= timestep_duration;
 				outcome = test->tickTestOnePhysicsStep();
