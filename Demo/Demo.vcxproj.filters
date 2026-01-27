@@ -54,6 +54,9 @@
     <ClCompile Include="src\ModelReader.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Demos\Common.cpp">
+      <Filter>src\Demos</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\renderer\Renderer.h">
@@ -157,6 +160,12 @@
     </ClInclude>
     <ClInclude Include="src\Demos\Tests\HolonomicBlockSolvingTests.h">
       <Filter>src\Demos\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\Tests\ConstraintTests.h">
+      <Filter>src\Demos\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\Common.h">
+      <Filter>src\Demos</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

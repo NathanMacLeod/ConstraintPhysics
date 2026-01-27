@@ -9,6 +9,7 @@
 #include "Tests/ThreadManagerTests.h"
 #include "Tests/CollisionTests.h"
 #include "Tests/HolonomicBlockSolvingTests.h"
+#include "Tests/ConstraintTests.h"
 
 class UnitTestsRunner : public DemoScene {
 private:
@@ -111,7 +112,7 @@ private:
 			}
 
 			// rendering
-			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));
+			rndr::clear(rndr::color(0.9f, 0.9f, 0.95f));
 			batch_array.flush();
 
 			mthz::Vec3 cam_pos = pos;
@@ -122,9 +123,9 @@ private:
 
 			float aspect_ratio = (float)properties.window_height / properties.window_width;
 			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 500.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
-			shader.setUniform3f("u_ambient_light", 0.4f, 0.4f, 0.4f);
+			shader.setUniform3f("u_ambient_light", 0.8f, 0.8f, 0.8f);
 			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
-			shader.setUniform3f("u_pointlight_col", 0.6f, 0.6f, 0.6f);
+			shader.setUniform3f("u_pointlight_col", 0.2f, 0.2f, 0.2f);
 			shader.setUniform1i("u_Asleep", false);
 
 			for (const PhysBod& b : active_models) {
@@ -206,8 +207,9 @@ Select which scene to run: ", { "1" }
 		}
 
 		std::vector<std::unique_ptr<TestGroup>> test_groups;
-		test_groups.push_back(std::make_unique<ThreadManagerTestGroup>());
 		test_groups.push_back(std::make_unique<HolonomicBlockSolverTestGroup>());
+		test_groups.push_back(std::make_unique<ConstraintTestsGroup>());
+		test_groups.push_back(std::make_unique<ThreadManagerTestGroup>());
 		test_groups.push_back(std::make_unique<CollisionTestGroup>());
 
 		std::vector<std::unique_ptr<Test>> tests;

@@ -200,7 +200,7 @@ namespace phyz {
 		mthz::Vec3 b2_pos = b2->getTrackedP(b2_point_key);
 		mthz::NVec<1> starting_impulse = warm_start_disabled ? mthz::NVec<1>{ 0.0} : warm_start_coefficient * constraint.impulse;
 		double pos_correct_coeff = posCorrectCoeff(pos_correct_hardness, step_time);
-		constraint = DistanceConstraint(b1, b2, b1_pos, b2_pos, target_distance, pos_correct_coeff, cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse);
+		constraint = DistanceConstraint(b1, b2, b1_pos, b2_pos, moving_distance_mode, target_distance, target_velocity, pos_correct_coeff, cfm.getCFMValue(global_cfm), is_in_holonomic_system, starting_impulse);
 	}
 
 	void BallSocket::updateSolverConstraints(bool warm_start_disabled, double warm_start_coefficient, double step_time, double global_cfm, bool is_in_holonomic_system) {

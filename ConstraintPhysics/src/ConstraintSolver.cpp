@@ -160,47 +160,6 @@ namespace phyz {
 		write_all_impulses(constraint_island.constraints, old_impulse_val_buff, false);
 		write_all_impulses(constraint_island.constraints, old_psuedo_impulse_val_buff, true);
 
-		for (int i = 0; i < n_itr_vel; i++) {
-			for (Constraint* c : constraint_island.constraints) {
-				constraintStep(c, false);
-			}
-
-#ifndef NDEBUG
-			for (Constraint* c : constraint_island.constraints) {
-				c->updateCurrentConstraintValue();
-			}
-#endif
-
-			bool converged = checkIfConverged(constraint_island.constraints, *old_impulse_val_buff, new_impulse_val_buff, false);
-			std::vector<double>* tmp = old_impulse_val_buff;
-			old_impulse_val_buff = new_impulse_val_buff;
-			new_impulse_val_buff = tmp;
-
-			if (converged) break;
-		}
-
-		for (int i = 0; i < n_itr_pos; i++) {
-			for (Constraint* c : constraint_island.constraints) {
-				if (c->needsPosCorrect()) constraintStep(c, true);
-			}
-
-#ifndef NDEBUG
-			for (Constraint* c : constraint_island.constraints) {
-				c->updateCurrentConstraintValue();
-			}
-#endif
-
-			bool converged = checkIfConverged(constraint_island.constraints, *old_psuedo_impulse_val_buff, new_psuedo_impulse_val_buff, true);
-			std::vector<double>* tmp = old_psuedo_impulse_val_buff;
-			old_psuedo_impulse_val_buff = new_psuedo_impulse_val_buff;
-			new_psuedo_impulse_val_buff = tmp;
-
-			if (converged) break;
-		}
-
-		auto t1 = std::chrono::system_clock::now();
-		//printf("PGS done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(t1 - t0).count());
-
 		if (n_itr_holonomic > 0 && constraint_island.holonomic_blocks.size() > 0) {
 			auto wait0 = std::chrono::system_clock::now();
 			for (HolonomicInfo h : constraint_island.holonomic_blocks) {
@@ -247,6 +206,47 @@ namespace phyz {
 				c->addScaledHolonomicImpulseToNextWarmStart(holonomic_warmstart_multiplier);
 			}
 		}
+
+		for (int i = 0; i < n_itr_vel; i++) {
+			for (Constraint* c : constraint_island.constraints) {
+				constraintStep(c, false);
+			}
+
+#ifndef NDEBUG
+			for (Constraint* c : constraint_island.constraints) {
+				c->updateCurrentConstraintValue();
+			}
+#endif
+
+			bool converged = checkIfConverged(constraint_island.constraints, *old_impulse_val_buff, new_impulse_val_buff, false);
+			std::vector<double>* tmp = old_impulse_val_buff;
+			old_impulse_val_buff = new_impulse_val_buff;
+			new_impulse_val_buff = tmp;
+
+			if (converged) break;
+		}
+
+		for (int i = 0; i < n_itr_pos; i++) {
+			for (Constraint* c : constraint_island.constraints) {
+				if (c->needsPosCorrect()) constraintStep(c, true);
+			}
+
+#ifndef NDEBUG
+			for (Constraint* c : constraint_island.constraints) {
+				c->updateCurrentConstraintValue();
+			}
+#endif
+
+			bool converged = checkIfConverged(constraint_island.constraints, *old_psuedo_impulse_val_buff, new_psuedo_impulse_val_buff, true);
+			std::vector<double>* tmp = old_psuedo_impulse_val_buff;
+			old_psuedo_impulse_val_buff = new_psuedo_impulse_val_buff;
+			new_psuedo_impulse_val_buff = tmp;
+
+			if (converged) break;
+		}
+
+		auto t1 = std::chrono::system_clock::now();
+		//printf("PGS done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(t1 - t0).count());
 
 		for (const auto& kv_pair : velocity_changes) {
 			RigidBody* b = kv_pair.first;
@@ -394,22 +394,23 @@ namespace phyz {
 	//******************************
 	//*****DISTANCE CONSTRAINT*****
 	//******************************
-	DistanceConstraint::DistanceConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 attach_pos_a, mthz::Vec3 attach_pos_b, double target_distance, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<1> warm_start_impulse)
-		: DegreedConstraint<1>(a, b, warm_start_impulse), rA(attach_pos_a - a->getCOM()), rB(attach_pos_b - b->getCOM())
+	DistanceConstraint::DistanceConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 attach_pos_a, mthz::Vec3 attach_pos_b, bool moving_mode, double target_distance, double target_velocity, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<1> warm_start_impulse)
+		: DegreedConstraint<1>(a, b, warm_start_impulse), rA(attach_pos_a - a->getCOM()), rB(attach_pos_b - b->getCOM()), moving_mode(moving_mode), target_velocity(target_velocity)
 	{
 		this->is_in_holonomic_system = is_in_holonomic_system;
 		//mthz::Mat3 inverse_inertia_mat3 = (mthz::Mat3::iden()*a->getInvMass() + mthz::Mat3::iden()*b->getInvMass() - mthz::Mat3::cross_mat(rA)*rotDirA - mthz::Mat3::cross_mat(rB)*rotDirB);
 		//inverse_inertia = applyCFM(Mat3tomthz::NMat33(inverse_inertia_mat3), constraint_force_mixing).inverse();
 
 		mthz::Vec3 diff = attach_pos_a - attach_pos_b;
-		mthz::NMat<1, 3> diff_dot = { diff.x, diff.y, diff.z };
+		diff_dir = diff.normalize();
+		mthz::NMat<1, 3> diff_dir_dot = { diff_dir.x, diff_dir.y, diff_dir.z };
 		mthz::NMat<3, 3> rA_skew = mthz::crossMat(rA);
 		mthz::NMat<3, 3> rB_skew = mthz::crossMat(rB);
 
-		a_jacobian.copyInto(diff_dot, 0, 0);
-		a_jacobian.copyInto(-diff_dot * rA_skew, 0, 3);
-		b_jacobian.copyInto(-diff_dot, 0, 0);
-		b_jacobian.copyInto(diff_dot * rB_skew, 0, 3);
+		a_jacobian.copyInto(diff_dir_dot, 0, 0);
+		a_jacobian.copyInto(-diff_dir_dot * rA_skew, 0, 3);
+		b_jacobian.copyInto(-diff_dir_dot, 0, 0);
+		b_jacobian.copyInto(diff_dir_dot * rB_skew, 0, 3);
 
 		impulse_to_a_velocity = aInvMass() * a_jacobian.transpose();
 		impulse_to_b_velocity = bInvMass() * b_jacobian.transpose();
@@ -418,8 +419,11 @@ namespace phyz {
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 
-		double error = diff.magSqrd() < 0.00001? target_distance : target_distance - diff.normalize().dot(diff);
-		psuedo_target_val = mthz::NVec<1>{ pos_correct_hardness * error };
+		if (!moving_mode) {
+			// use positional correction only if the constraint is not set to moving mode.
+			double error = diff.magSqrd() < 0.00001 ? target_distance : target_distance - diff.normalize().dot(diff);
+			psuedo_target_val = mthz::NVec<1>{ pos_correct_hardness * error };
+		}
 	}
 
 	//******************************

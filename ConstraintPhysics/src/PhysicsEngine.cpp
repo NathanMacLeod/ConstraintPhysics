@@ -346,16 +346,16 @@ namespace phyz {
 
 		auto t5 = std::chrono::system_clock::now();
 
-		for (int i = 0; i < sub_itr_count; i++) {
-			double sub_itr_duration = step_time / sub_itr_count;
+		for (int i = 0; i < substep_count; i++) {
+			double sub_itr_duration = step_time / substep_count;
 
 			for (RigidBody* b : bodies) {
 				b->vel += gravity * sub_itr_duration;
 			}
 
 			bool is_first_sub_itr = i == 0;
-			bool is_last_sub_itr = i == sub_itr_count - 1;
-			float holonomic_warmstart_reduction_factor = 0.0 / sub_itr_count;
+			bool is_last_sub_itr = i == substep_count - 1;
+			float holonomic_warmstart_reduction_factor = 0.0 / substep_count;
 			maintainConstraintGraphApplyPoweredConstraints(is_first_sub_itr, is_last_sub_itr, sub_itr_duration);
 
 			// we only do holonomic block solving on the first iteration. after the positions are updated the inverse is not longer accurate
@@ -1465,7 +1465,7 @@ namespace phyz {
 			for (SharedConstraintsEdge* edge : e->h->member_edges) {
 				for (PersistentConstraint* c : edge->constraints) {
 					if (c->isHolonomicConstraint()) { 
-						c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time / sub_itr_count, global_cfm, true);
+						c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time / substep_count, global_cfm, true);
 					}
 				}
 			}
@@ -1576,7 +1576,7 @@ namespace phyz {
 				// we need to update all of the holonomic constraints first
 				for (PersistentConstraint* c : e->constraints) {
 					if (c->isHolonomicConstraint()) {
-						c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time / sub_itr_count, global_cfm, true);
+						c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time / substep_count, global_cfm, true);
 					}
 				}
 
@@ -1649,6 +1649,20 @@ namespace phyz {
 		}
 	}
 
+	void PhysicsEngine::setDistanceConstraintToMoveAtTargetVelocity(ConstraintID id, double target_velocity) {
+		assert(id.getType() == ConstraintID::Type::DISTANCE);
+
+		PersistentConstraint* pc = getConstraint(id);
+		if (pc == nullptr) return;
+		Distance* d = static_cast<Distance*>(pc);
+
+		d->target_velocity = target_velocity;
+		d->target_distance = -1;
+		d->moving_distance_mode = true;
+		d->b1->alertWakingAction();
+		d->b2->alertWakingAction();
+	}
+
 	void PhysicsEngine::setDistanceConstraintTargetDistance(ConstraintID id, double target_distance) {
 		assert(target_distance > 0);
 		assert(id.getType() == ConstraintID::Type::DISTANCE);
@@ -1657,19 +1671,26 @@ namespace phyz {
 		if (pc == nullptr) return;
 		Distance* d = static_cast<Distance*>(pc);
 
+		d->target_velocity = -1;
 		d->target_distance = target_distance;
+		d->moving_distance_mode = false;
 		d->b1->alertWakingAction();
 		d->b2->alertWakingAction();
 	}
 
-	double PhysicsEngine::getDistanceConstraintTargetDistance(ConstraintID id) {
+	double PhysicsEngine::getDistanceConstraintCurrentDistance(ConstraintID id) {
 		assert(id.getType() == ConstraintID::Type::DISTANCE);
 
 		PersistentConstraint* pc = getConstraint(id);
 		if (pc == nullptr) return -1.0;
 		Distance* d = static_cast<Distance*>(pc);
 
-		return d->target_distance;
+		if (!d->moving_distance_mode) { return d->target_distance; }
+		else {
+			mthz::Vec3 p1 = d->b1->getTrackedP(d->b1_point_key);
+			mthz::Vec3 p2 = d->b2->getTrackedP(d->b2_point_key);
+			return (p1 - p2).mag();
+		}
 
 	}
 

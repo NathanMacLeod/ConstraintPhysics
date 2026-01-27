@@ -189,17 +189,25 @@ namespace phyz {
 	class DistanceConstraint : public DegreedConstraint<1> {
 	public:
 		DistanceConstraint() {}
-		DistanceConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 attach_pos_a, mthz::Vec3 attach_pos_b, double target_distance, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
+		DistanceConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 attach_pos_a, mthz::Vec3 attach_pos_b, bool moving_mode, double target_distance, double target_velocity, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
 
 		inline int getDegree() override { return 1; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
+		void findTargetConstraintValue() {
+			target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
+			if (moving_mode) { target_val.v[0] += target_velocity; }
+		};
 
 	private:
 		mthz::Vec3 rA;
 		mthz::Vec3 rB;
 		mthz::Mat3 rotDirA;
 		mthz::Mat3 rotDirB;
+
+		bool moving_mode;
+		double target_velocity;
+		mthz::Vec3 diff_dir;
 	};
 
 	class BallSocketConstraint : public DegreedConstraint<3> {

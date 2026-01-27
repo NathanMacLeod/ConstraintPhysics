@@ -2,6 +2,7 @@
 #include "DemoScene.h"
 #include "../Mesh.h"
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
+#include "Common.h"
 
 class LDLSolverDemos : public DemoScene {
 public:
@@ -43,121 +44,6 @@ public:
 		};
 	}
 
-	struct CreateScissorliftOut {
-		std::vector<phyz::RigidBody*> all_bodies;
-
-		phyz::RigidBody* top_front_right_rung_r;
-		mthz::Vec3 top_front_right_pos;
-		phyz::RigidBody* top_rear_right_rung_r;
-		mthz::Vec3 top_rear_right_pos;
-		phyz::RigidBody* top_front_left_rung_r;
-		mthz::Vec3 top_front_left_pos;
-		phyz::RigidBody* top_rear_left_rung_r;
-		mthz::Vec3 top_rear_left_pos;
-		phyz::RigidBody* bot_front_right_rung_r;
-		mthz::Vec3 bot_front_right_pos;
-		phyz::RigidBody* bot_rear_right_rung_r;
-		mthz::Vec3 bot_rear_right_pos;
-		phyz::RigidBody* bot_front_left_rung_r;
-		mthz::Vec3 bot_front_left_pos;
-		phyz::RigidBody* bot_rear_left_rung_r;
-		mthz::Vec3 bot_rear_left_pos;
-
-		mthz::Vec3 bot_left_middle_pos;
-		mthz::Vec3 bot_right_middle_pos;
-		mthz::Vec3 top_left_middle_pos;
-		mthz::Vec3 top_right_middle_pos;
-	};
-
-	CreateScissorliftOut createScissors(std::vector<PhysBod>* bodies, phyz::PhysicsEngine* p, mthz::Vec3 pos, double right_left_spacing, double rung_length, double rung_width, double rung_thickness, int num_levels) {
-		CreateScissorliftOut out;
-		
-		double hinge_dist_from_edge = rung_width / 2;
-		double rung_height = (rung_length - 2 * hinge_dist_from_edge) / sqrt(2);
-		phyz::ConvexUnionGeometry rung = phyz::ConvexUnionGeometry::box(mthz::Vec3(0, -hinge_dist_from_edge, -hinge_dist_from_edge), rung_thickness, rung_length, rung_width);
-		phyz::ConvexUnionGeometry rear_rung = rung.getRotated(mthz::Quaternion(PI / 4, mthz::Vec3(1, 0, 0)));
-		phyz::ConvexUnionGeometry front_rung = rung.getRotated(mthz::Quaternion(-PI / 4, mthz::Vec3(1, 0, 0)));
-
-		phyz::RigidBody* prev_rear_right_rung = nullptr;
-		phyz::RigidBody* prev_front_right_rung = nullptr;
-		phyz::RigidBody* prev_rear_left_rung = nullptr;
-		phyz::RigidBody* prev_front_left_rung = nullptr;
-
-		for (int i = 0; i < num_levels; i++) {
-
-			mthz::Vec3 elevation_change(0, rung_height * i, 0);
-
-			mthz::Vec3 rear_right_pos = pos + elevation_change;
-			phyz::ConvexUnionGeometry rear_right_rung = rear_rung.getTranslated(rear_right_pos);
-			mthz::Vec3 front_right_pos = pos + mthz::Vec3(rung_thickness, 0, rung_height) + elevation_change;
-			phyz::ConvexUnionGeometry front_right_rung = front_rung.getTranslated(front_right_pos);
-			mthz::Vec3 rear_left_pos = pos + mthz::Vec3(right_left_spacing - rung_thickness, 0, 0) + elevation_change;
-			phyz::ConvexUnionGeometry rear_left_rung = rear_rung.getTranslated(rear_left_pos);
-			mthz::Vec3 front_left_pos = pos + mthz::Vec3(right_left_spacing - 2 * rung_thickness, 0, rung_height) + elevation_change;
-			phyz::ConvexUnionGeometry front_left_rung = front_rung.getTranslated(front_left_pos);
-
-			phyz::RigidBody* rear_right_r = p->createRigidBody(rear_right_rung);
-			bodies->push_back({ fromGeometry(rear_right_rung), rear_right_r });
-			phyz::RigidBody* front_right_r = p->createRigidBody(front_right_rung);
-			bodies->push_back({ fromGeometry(front_right_rung), front_right_r });
-			phyz::RigidBody* rear_left_r = p->createRigidBody(rear_left_rung);
-			bodies->push_back({ fromGeometry(rear_left_rung), rear_left_r });
-			phyz::RigidBody* front_left_r = p->createRigidBody(front_left_rung);
-			bodies->push_back({ fromGeometry(front_left_rung), front_left_r });
-
-			out.all_bodies.push_back(rear_right_r);
-			out.all_bodies.push_back(front_right_r);
-			out.all_bodies.push_back(rear_left_r);
-			out.all_bodies.push_back(front_left_r);
-
-			mthz::Vec3 right_middle_attach_pos = rear_right_pos + mthz::Vec3(0, rung_height / 2.0, rung_height / 2.0);
-			mthz::Vec3 left_middle_attach_pos = rear_left_pos + mthz::Vec3(0, rung_height / 2.0, rung_height / 2.0);
-
-			p->addHingeConstraint(rear_right_r, front_right_r, right_middle_attach_pos, mthz::Vec3(1, 0, 0));
-			p->addHingeConstraint(rear_left_r, front_left_r, left_middle_attach_pos, mthz::Vec3(1, 0, 0));
-
-			if (i + 1 == num_levels) {
-				out.top_front_left_pos = rear_left_pos + mthz::Vec3(0, rung_height, 0);
-				out.top_front_left_rung_r = rear_left_r;
-				out.top_front_right_pos = rear_right_pos + mthz::Vec3(0, rung_height, 0);
-				out.top_front_right_rung_r = rear_right_r;
-				out.top_rear_left_pos = front_left_pos + mthz::Vec3(0, rung_height, 0);
-				out.top_rear_left_rung_r = front_left_r;
-				out.top_rear_right_pos = front_right_pos + mthz::Vec3(0, rung_height, 0);
-				out.top_rear_right_rung_r = front_right_r;
-
-				out.top_left_middle_pos = left_middle_attach_pos;
-				out.top_right_middle_pos = right_middle_attach_pos;
-			}
-			if (i == 0) {
-				out.bot_front_left_pos = front_left_pos;
-				out.bot_front_left_rung_r = front_left_r;
-				out.bot_front_right_pos = front_right_pos;
-				out.bot_front_right_rung_r = front_right_r;
-				out.bot_rear_left_pos = rear_left_pos;
-				out.bot_rear_left_rung_r = rear_left_r;
-				out.bot_rear_right_pos = rear_right_pos;
-				out.bot_rear_right_rung_r = rear_right_r;
-
-				out.bot_left_middle_pos = left_middle_attach_pos;
-				out.bot_right_middle_pos = right_middle_attach_pos;
-			}
-			else {
-				p->addHingeConstraint(prev_front_right_rung, rear_right_r, rear_right_pos, mthz::Vec3(1, 0, 0));
-				p->addHingeConstraint(prev_rear_right_rung, front_right_r, front_right_pos, mthz::Vec3(1, 0, 0));
-				p->addHingeConstraint(prev_front_left_rung, rear_left_r, rear_left_pos, mthz::Vec3(1, 0, 0));
-				p->addHingeConstraint(prev_rear_left_rung, front_left_r, front_left_pos, mthz::Vec3(1, 0, 0));
-			}
-
-			prev_front_right_rung = front_right_r;
-			prev_rear_right_rung = rear_right_r;
-			prev_front_left_rung = front_left_r;
-			prev_rear_left_rung = rear_left_r;
-		}
-
-		return out;
-	}
-
 	enum LDLDemoType { SCISSOR_LIFT, HIGH_MASS_RATIO, BRIDGE };
 
 	void run() override {
@@ -168,9 +54,9 @@ public:
 		}
 
 		phyz::PhysicsEngine p;
-		p.setSleepingEnabled(false);
-
+		//p.setSleepingEnabled(false);
 		//p.setPGSIterations(5, 2, 1);
+		//p.setSubstepCount(1);
 		//p.setGlobalConstraintForceMixing(0.0000025);
 
 		/*if (parameters["use_ldl"] == "2") {
@@ -211,144 +97,14 @@ public:
 		bodies.push_back({ m2, r2 });
 
 
-		double height_max = 4.45;
-		double height_min = 1;
-		double height_delta_vel = 1.5;
-		phyz::ConstraintID scissor_height_right;
-		phyz::ConstraintID scissor_height_left;
+		ScissorLiftConstruct scissor;
 		if (demo_type == SCISSOR_LIFT) {
 			//************************
 			//******Scissor Lift******
 			//************************
 			mthz::Vec3 scissor_lift_pos = mthz::Vec3(0, 2, 0);
 
-			double base_width = 1;
-			double base_length = 3;
-			double base_thickness = 0.1;
-			mthz::Vec3 base_position = scissor_lift_pos + mthz::Vec3(-base_width / 2.0, 0, -base_length / 2.0);
-			phyz::ConvexUnionGeometry base_bottom = phyz::ConvexUnionGeometry::box(base_position, base_width, base_thickness, base_length);
-
-			double base_side_height = 0.3;
-			mthz::Vec3 base_rear_wall_pos = base_position + mthz::Vec3(0, base_thickness, 0);
-			phyz::ConvexUnionGeometry base_rear_wall = phyz::ConvexUnionGeometry::box(base_rear_wall_pos, base_width, base_side_height, base_thickness);
-
-			mthz::Vec3 base_front_wall_pos = base_rear_wall_pos + mthz::Vec3(0, 0, base_length - base_thickness);
-			phyz::ConvexUnionGeometry base_front_wall = phyz::ConvexUnionGeometry::box(base_front_wall_pos, base_width, base_side_height, base_thickness);
-
-			mthz::Vec3 base_right_wall_pos = base_rear_wall_pos + mthz::Vec3(0, 0, base_thickness);
-			phyz::ConvexUnionGeometry base_right_wall = phyz::ConvexUnionGeometry::box(base_right_wall_pos, base_thickness, base_side_height, base_length - 2 * base_thickness);
-
-			mthz::Vec3 base_left_wall_pos = base_rear_wall_pos + mthz::Vec3(base_width - base_thickness, 0, base_thickness);
-			phyz::ConvexUnionGeometry base_left_wall = phyz::ConvexUnionGeometry::box(base_left_wall_pos, base_thickness, base_side_height, base_length - 2 * base_thickness);
-
-			phyz::ConvexUnionGeometry base_geom = { base_bottom, base_rear_wall, base_front_wall, base_right_wall, base_left_wall };
-
-			double wheel_radius = 0.3;
-			double wheel_thickness = 0.15;
-			double wheel_dist_off_bottom = 0.1;
-			double wheel_dist_off_front = 0.1;
-			phyz::ConvexUnionGeometry wheel = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), wheel_radius, wheel_thickness).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)));
-
-			mthz::Vec3 front_right_wheel_pos = base_position + mthz::Vec3(0, wheel_dist_off_bottom, base_length - wheel_dist_off_front);
-			phyz::ConvexUnionGeometry front_right_wheel = wheel.getTranslated(mthz::Vec3(front_right_wheel_pos));
-
-			mthz::Vec3 rear_right_wheel_pos = base_position + mthz::Vec3(0, wheel_dist_off_bottom, wheel_dist_off_front);
-			phyz::ConvexUnionGeometry rear_right_wheel = wheel.getTranslated(mthz::Vec3(rear_right_wheel_pos));
-
-			mthz::Vec3 front_left_wheel_pos = base_position + mthz::Vec3(base_width + wheel_thickness, wheel_dist_off_bottom, base_length - wheel_dist_off_front);
-			phyz::ConvexUnionGeometry front_left_wheel = wheel.getTranslated(mthz::Vec3(front_left_wheel_pos));
-
-			mthz::Vec3 rear_left_wheel_pos = base_position + mthz::Vec3(base_width + wheel_thickness, wheel_dist_off_bottom, wheel_dist_off_front);
-			phyz::ConvexUnionGeometry rear_left_wheel = wheel.getTranslated(mthz::Vec3(rear_left_wheel_pos));
-
-			double dist_from_rear = 0.33;
-			double dist_above_base = 0.1;
-			double scissor_thickness = 0.03;
-			CreateScissorliftOut scissor_out = createScissors(&bodies, &p, base_rear_wall_pos + mthz::Vec3(base_thickness, dist_above_base, dist_from_rear), base_width - 2 * base_thickness, 1, 0.1, scissor_thickness, 7);
-
-			double slider_width = 0.1;
-			mthz::Vec3 right_bottom_slider_pos = scissor_out.bot_front_right_pos + mthz::Vec3(-scissor_thickness, -slider_width / 2.0, -slider_width / 2.0);
-			phyz::ConvexUnionGeometry bottom_right_slider = phyz::ConvexUnionGeometry::box(right_bottom_slider_pos, scissor_thickness, slider_width, slider_width, phyz::Material::modified_density(1000));
-			phyz::ConvexUnionGeometry bottom_left_slider = bottom_right_slider.getTranslated(mthz::Vec3(base_width - scissor_thickness - 2 * base_thickness, 0, 0));
-			phyz::ConvexUnionGeometry bottom_slider = { bottom_right_slider, bottom_left_slider };
-
-			mthz::Vec3 right_top_slider_pos = scissor_out.top_front_right_pos + mthz::Vec3(0, -slider_width / 2.0, -slider_width / 2.0);
-			phyz::ConvexUnionGeometry top_right_slider = phyz::ConvexUnionGeometry::box(right_top_slider_pos, scissor_thickness, slider_width, slider_width, phyz::Material::modified_density(1000));
-			mthz::Vec3 left_top_slider_pos = right_top_slider_pos + mthz::Vec3(base_width - scissor_thickness - 2 * base_thickness, 0, 0);
-			phyz::ConvexUnionGeometry top_left_slider = phyz::ConvexUnionGeometry::box(left_top_slider_pos, scissor_thickness, slider_width, slider_width);
-			phyz::ConvexUnionGeometry top_slider = { top_right_slider, top_left_slider };
-
-			mthz::Vec3 platform_pos = mthz::Vec3(base_position.x, right_top_slider_pos.y + right_bottom_slider_pos.y - base_position.y - base_thickness, base_position.z);
-			phyz::ConvexUnionGeometry base_platform = phyz::ConvexUnionGeometry::box(platform_pos, base_width, base_thickness, base_length);
-
-			mthz::Vec3 platform_rear_wall_pos = platform_pos + mthz::Vec3(0, -base_side_height, 0);
-			phyz::ConvexUnionGeometry platform_rear_wall = phyz::ConvexUnionGeometry::box(platform_rear_wall_pos, base_width, base_side_height, base_thickness);
-
-			mthz::Vec3 platform_front_wall_pos = platform_rear_wall_pos + mthz::Vec3(0, 0, base_length - base_thickness);
-			phyz::ConvexUnionGeometry platform_front_wall = phyz::ConvexUnionGeometry::box(platform_front_wall_pos, base_width, base_side_height, base_thickness);
-
-			mthz::Vec3 platform_right_wall_pos = platform_rear_wall_pos + mthz::Vec3(0, 0, base_thickness);
-			phyz::ConvexUnionGeometry platform_right_wall = phyz::ConvexUnionGeometry::box(platform_right_wall_pos, base_thickness, base_side_height, base_length - 2 * base_thickness);
-
-			mthz::Vec3 platform_left_wall_pos = platform_rear_wall_pos + mthz::Vec3(base_width - base_thickness, 0, base_thickness);
-			phyz::ConvexUnionGeometry platform_left_wall = phyz::ConvexUnionGeometry::box(platform_left_wall_pos, base_thickness, base_side_height, base_length - 2 * base_thickness);
-
-			phyz::ConvexUnionGeometry platform_geom = { base_platform, platform_rear_wall, platform_front_wall, platform_right_wall, platform_left_wall };
-
-			phyz::RigidBody* base_r = p.createRigidBody(base_geom);
-			bodies.push_back({ fromGeometry(base_geom), base_r });
-			phyz::RigidBody* front_right_wheel_r = p.createRigidBody(front_right_wheel);
-			bodies.push_back({ fromGeometry(front_right_wheel), front_right_wheel_r });
-			phyz::RigidBody* rear_right_wheel_r = p.createRigidBody(rear_right_wheel);
-			bodies.push_back({ fromGeometry(rear_right_wheel), rear_right_wheel_r });
-			phyz::RigidBody* front_left_wheel_r = p.createRigidBody(front_left_wheel);
-			bodies.push_back({ fromGeometry(front_left_wheel), front_left_wheel_r });
-			phyz::RigidBody* rear_left_wheel_r = p.createRigidBody(rear_left_wheel);
-			bodies.push_back({ fromGeometry(rear_left_wheel), rear_left_wheel_r });
-			phyz::RigidBody* bottom_slider_r = p.createRigidBody(bottom_slider);
-			bodies.push_back({ fromGeometry(bottom_slider), bottom_slider_r });
-			phyz::RigidBody* top_slider_r = p.createRigidBody(top_slider);
-			bodies.push_back({ fromGeometry(top_slider), top_slider_r });
-			phyz::RigidBody* platform_r = p.createRigidBody(platform_geom);
-			bodies.push_back({ fromGeometry(platform_geom), platform_r });
-
-			double non_dist_pos_correct_strength = 600;
-			double inf = std::numeric_limits<double>::infinity();
-
-			p.addHingeConstraint(base_r, front_right_wheel_r, front_right_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-			p.addHingeConstraint(base_r, rear_right_wheel_r, rear_right_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-			p.addHingeConstraint(base_r, front_left_wheel_r, front_left_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-			p.addHingeConstraint(base_r, rear_left_wheel_r, rear_left_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-
-			p.addHingeConstraint(base_r, scissor_out.bot_rear_right_rung_r, scissor_out.bot_rear_right_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-			p.addHingeConstraint(base_r, scissor_out.bot_rear_left_rung_r, scissor_out.bot_rear_left_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-			p.addHingeConstraint(bottom_slider_r, scissor_out.bot_front_right_rung_r, scissor_out.bot_front_right_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
-			p.addHingeConstraint(bottom_slider_r, scissor_out.bot_front_left_rung_r, scissor_out.bot_front_left_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
-			p.addSliderConstraint(base_r, bottom_slider_r, bottom_slider_r->getCOM(), mthz::Vec3(0, 0, 1),  non_dist_pos_correct_strength);
-
-			p.addHingeConstraint(top_slider_r, scissor_out.top_rear_right_rung_r, scissor_out.top_front_right_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
-			p.addHingeConstraint(top_slider_r, scissor_out.top_rear_left_rung_r, scissor_out.top_front_left_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
-			p.addHingeConstraint(platform_r, scissor_out.top_front_right_rung_r, scissor_out.top_rear_right_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
-			p.addHingeConstraint(platform_r, scissor_out.top_front_left_rung_r, scissor_out.top_rear_left_pos, mthz::Vec3(1, 0, 0),  non_dist_pos_correct_strength);
-			p.addSliderConstraint(platform_r, top_slider_r, top_slider_r->getCOM(), mthz::Vec3(0, 0, 1),  non_dist_pos_correct_strength);
-
-			scissor_height_right = p.addDistanceConstraint(scissor_out.bot_rear_right_rung_r, scissor_out.top_rear_right_rung_r, scissor_out.bot_right_middle_pos, scissor_out.top_right_middle_pos);
-			scissor_height_left = p.addDistanceConstraint(scissor_out.bot_rear_left_rung_r, scissor_out.top_rear_left_rung_r, scissor_out.bot_left_middle_pos, scissor_out.top_left_middle_pos);
-
-			std::vector<phyz::RigidBody*> all_bodies = scissor_out.all_bodies;
-			all_bodies.push_back(base_r);
-			all_bodies.push_back(front_right_wheel_r);
-			all_bodies.push_back(rear_right_wheel_r);
-			all_bodies.push_back(front_left_wheel_r);
-			all_bodies.push_back(rear_left_wheel_r);
-			all_bodies.push_back(bottom_slider_r);
-			all_bodies.push_back(top_slider_r);
-			all_bodies.push_back(platform_r);
-
-			p.disallowCollisionSet(all_bodies);
-
-			//works well with a low CFM
-			//p.setHolonomicSolverCFM(0.000000001);
+			scissor = create_scissor_lift(&p, &bodies, scissor_lift_pos);
 		}
 		else if (demo_type == HIGH_MASS_RATIO) {
 			pos.x += 20;
@@ -479,18 +235,13 @@ public:
 				bodies.push_back({ fromGeometry(block), block_r });
 			}
 			if (demo_type == SCISSOR_LIFT && rndr::getKeyDown(GLFW_KEY_I)) {
-				double current_dist = p.getDistanceConstraintTargetDistance(scissor_height_right);
-				double target_height = std::min<double>(height_max, current_dist + height_delta_vel * fElapsedTime);
-
-				p.setDistanceConstraintTargetDistance(scissor_height_right, target_height);
-				p.setDistanceConstraintTargetDistance(scissor_height_left, target_height);
+				set_scissor_lift_movement_input(&p, &scissor, ScissorLiftConstruct::MovementState::RAISING);
 			}
 			else if (demo_type == SCISSOR_LIFT && rndr::getKeyDown(GLFW_KEY_K)) {
-				double current_dist = p.getDistanceConstraintTargetDistance(scissor_height_right);
-				double target_height = std::max<double>(height_min, current_dist - height_delta_vel * fElapsedTime);
-
-				p.setDistanceConstraintTargetDistance(scissor_height_right, target_height);
-				p.setDistanceConstraintTargetDistance(scissor_height_left, target_height);
+				set_scissor_lift_movement_input(&p, &scissor, ScissorLiftConstruct::MovementState::LOWERING);
+			}
+			else if (demo_type == SCISSOR_LIFT) {
+				set_scissor_lift_movement_input(&p, &scissor, ScissorLiftConstruct::MovementState::FIXED);
 			}
 
 			if (rndr::getKeyDown(GLFW_KEY_UP)) {

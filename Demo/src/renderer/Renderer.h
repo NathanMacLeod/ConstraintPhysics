@@ -27,6 +27,7 @@ namespace rndr {
 	int init(int width, int height, const std::string& name);
 	bool getKeyDown(int key);
 	bool getKeyPressed(int key);
+	bool getKeyReleased(int key);
 	int getWindowWidth();
 	int getWindowHeight();
 	MousePos getMousePosition();

@@ -87,8 +87,8 @@ namespace phyz {
 
 	struct Distance : public PersistentConstraint {
 		Distance(RigidBody* b1, RigidBody* b2, double target_distance, RigidBody::PKey b1_key, RigidBody::PKey b2_key, double pos_correct_strength, uint32_t id_value)
-			: PersistentConstraint(ConstraintID(ConstraintID::Type::DISTANCE, id_value), b1, b2), target_distance(target_distance), b1_point_key(b1_key), b2_point_key(b2_key),
-			  cfm(CFM{USE_GLOBAL}), pos_correct_hardness(pos_correct_strength), constraint(DistanceConstraint())
+			: PersistentConstraint(ConstraintID(ConstraintID::Type::DISTANCE, id_value), b1, b2), moving_distance_mode(false), target_distance(target_distance), target_velocity(0), 
+			b1_point_key(b1_key), b2_point_key(b2_key), cfm(CFM{USE_GLOBAL}), pos_correct_hardness(pos_correct_strength), constraint(DistanceConstraint())
 		{
 			//init b1, b2 ptr on constraint as holonomic logic needs it
 			constraint.a = b1;
@@ -97,6 +97,8 @@ namespace phyz {
 
 		DistanceConstraint constraint;
 		double target_distance;
+		double target_velocity;
+		bool moving_distance_mode;
 		RigidBody::PKey b1_point_key;
 		RigidBody::PKey b2_point_key;
 		CFM cfm;

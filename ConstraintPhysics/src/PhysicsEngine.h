@@ -85,6 +85,7 @@ namespace phyz {
 		unsigned int getNextBodyID();
 
 		void setPGSIterations(int n_vel, int n_pos, int n_holonomic = 3) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; pgsHolonomicIterations = n_holonomic; }
+		void setSubstepCount(int c) { substep_count = c; }
 		void setSleepingEnabled(bool sleeping);
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
@@ -146,7 +147,8 @@ namespace phyz {
 		double getPistonPosition(ConstraintID id);
 
 		void setDistanceConstraintTargetDistance(ConstraintID id, double target_distance);
-		double getDistanceConstraintTargetDistance(ConstraintID id);
+		void setDistanceConstraintToMoveAtTargetVelocity(ConstraintID id, double target_velocity);
+		double getDistanceConstraintCurrentDistance(ConstraintID id);
 
 		//just makes debugging easier
 		friend class DebugDemo;
@@ -159,10 +161,10 @@ namespace phyz {
 
 		unsigned int next_id = 1;
 
+		int substep_count = 5;
 		int pgsVelIterations = 1;
 		int pgsPosIterations = 1;
-		int sub_itr_count = 16;
-		int pgsHolonomicIterations = 0;
+		int pgsHolonomicIterations = 1;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
 
 		//constraint force mixing - softens constraints and makes more stable

@@ -11,7 +11,7 @@ namespace rndr {
     static std::chrono::time_point<std::chrono::system_clock> t_last;
     static int window_width, window_height;
     static GLFWwindow* window;
-    enum KeyState { KEY_PRESSED, KEY_DOWN, KEY_UP };
+    enum KeyState { KEY_PRESSED, KEY_RELEASED, KEY_DOWN, KEY_UP };
     static const int N_KEYS = 350;
     static KeyState keys[N_KEYS];
 
@@ -91,7 +91,7 @@ namespace rndr {
             return;
         }
         if (action == GLFW_RELEASE) {
-            keys[key] = KeyState::KEY_UP;
+            keys[key] = KeyState::KEY_RELEASED;
         }
         else if (action == GLFW_PRESS) {
             keys[key] = KeyState::KEY_PRESSED;
@@ -113,12 +113,22 @@ namespace rndr {
         if (key == -1 || key >= N_KEYS) {
             return false;
         }
-        return keys[key] != KeyState::KEY_UP;
+        return keys[key] == KeyState::KEY_DOWN || keys[key] == KeyState::KEY_PRESSED;
     }
 
     bool getKeyPressed(int key) {
         if (key >= 0 && key < N_KEYS && keys[key] == KeyState::KEY_PRESSED) {
             keys[key] = KeyState::KEY_DOWN;
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    bool getKeyReleased(int key) {
+        if (key >= 0 && key < N_KEYS && keys[key] == KeyState::KEY_RELEASED) {
+            keys[key] = KeyState::KEY_UP;
             return true;
         }
         else {

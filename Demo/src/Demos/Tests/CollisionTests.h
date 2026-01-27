@@ -84,7 +84,7 @@ private:
 
 class CollisionTestGroup : public TestGroup {
 public:
-	std::string getGroupName() const override { return "ThreadManager"; }
+	std::string getGroupName() const override { return "Collision"; }
 	std::vector<std::unique_ptr<Test>> getTests() const override {
 		std::vector<std::unique_ptr<Test>> out;
 		out.push_back(std::make_unique<TestBasicBoxAgainstGround>());
