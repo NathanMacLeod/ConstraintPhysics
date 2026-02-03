@@ -86,7 +86,7 @@ namespace phyz {
 					}
 				}
 
-				//b->vel += gravity * step_time;
+				b->vel += gravity * step_time;
 			}
 		}
 
@@ -349,13 +349,9 @@ namespace phyz {
 		for (int i = 0; i < substep_count; i++) {
 			double sub_itr_duration = step_time / substep_count;
 
-			for (RigidBody* b : bodies) {
-				b->vel += gravity * sub_itr_duration;
-			}
-
 			bool is_first_sub_itr = i == 0;
 			bool is_last_sub_itr = i == substep_count - 1;
-			float holonomic_warmstart_reduction_factor = 0.0 / substep_count;
+			float holonomic_warmstart_reduction_factor = 0.0;
 			maintainConstraintGraphApplyPoweredConstraints(is_first_sub_itr, is_last_sub_itr, sub_itr_duration);
 
 			// we only do holonomic block solving on the first iteration. after the positions are updated the inverse is not longer accurate
@@ -363,12 +359,12 @@ namespace phyz {
 
 			if (use_multithread) {
 				thread_manager.await_do_all(n_threads, &active_data.island_systems, [&, this](IslandConstraints& island_system) {
-					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations, holonomic_warmstart_reduction_factor);
+					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations, holonomic_warmstart_reduction_factor, excessive_linear_error_torque_threshold);
 				});
 			}
 			else {
 				for (IslandConstraints& island_system : active_data.island_systems) {
-					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations, holonomic_warmstart_reduction_factor);
+					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations, holonomic_warmstart_reduction_factor, excessive_linear_error_torque_threshold);
 				}
 			}
 
@@ -861,9 +857,6 @@ namespace phyz {
 			uniqueID
 		);
 
-		/*Piston(b1, b2, b1->getTrackedP(b1_point_key), b2->getTrackedP(b2_point_key), slide_axis, negative_slide_limit, positive_slide_limit),
-		Motor(b1, b2, b1_slider_axis_local, b2_slider_axis_local, min_angle, max_angle),*/
-
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
@@ -1022,8 +1015,6 @@ namespace phyz {
 				c->normal_local_b1 = norm_local_b1;
 				c->contact_pos_local_b1 = p_local_b1;
 				c->contact_pos_local_b2 = p_local_b2;
-				//c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, cfm.getCFMValue(global_cfm), contact_impulse, cutoff_vel);
-				//c->friction = FrictionConstraint(b1, b2, norm, p, friction, &c->contact, cfm.getCFMValue(global_cfm), friction_impulse, c->friction.u, c->friction.w, normal_impulse_limit);
 				c->memory_life = contact_life;
 				c->is_live_contact = true;
 				return;
@@ -1044,14 +1035,6 @@ namespace phyz {
 			magic,
 			contact_life
 		);
-		/*c->b1 = b1;
-		c->b2 = b2;
-		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, cfm.getCFMValue(global_cfm), mthz::NVec<1>{0.0}, cutoff_vel);
-		c->friction = FrictionConstraint(b1, b2, norm, p, kinetic_friction, &c->contact, cfm.getCFMValue(global_cfm));
-		c->magic = magic;
-		c->memory_life = contact_life;
-		c->is_live_contact = true;
-		c->cfm = cfm;*/
 
 		e->constraints.push_back(c);
 	}
@@ -1163,7 +1146,7 @@ namespace phyz {
 	}
 
 	//TODO make ang vel more sensitive
-	//average can be saved an adjusted per frame if necessary for performance
+	//average can be saved and adjusted per frame if necessary for performance
 	bool PhysicsEngine::bodySleepy(RigidBody* r) {
 		//not ideal as it prevents all other bodies in the same island from sleeping as well, but to make work otherwise would require a lot of reworking, and its a pretty niche use case
 		if (r->sleep_disabled) return false;	
@@ -1343,7 +1326,7 @@ namespace phyz {
 				//Holonomic blocks are applied when solving on the first sub iteration. These inverses either triggered to run asynchronously
 				//at the end of the last physics tick, or right before this update in maintainHolonomicSystems in the case that they could not be calculated earlier.
 				//these inverses require the constraint to be already up to date, so we don't need to update it now.
-				bool skip_already_updated_holonomic_constraint = is_first_sub_itr && is_in_holonomic_system && using_holonomic_system_solver() && c->isHolonomicConstraint();
+				bool skip_already_updated_holonomic_constraint = is_first_sub_itr && is_in_holonomic_system&& using_holonomic_system_solver() && c->isHolonomicConstraint();
 				
 				if (!skip_already_updated_holonomic_constraint) {
 					c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, delta_time, global_cfm, is_in_holonomic_system);
@@ -1551,10 +1534,6 @@ namespace phyz {
 				}
 			}
 			else if (island_constraints.constraints.size() > 0) {
-				/*printf("\nIsland Contains %d holonomic systems, %d constraints:\n", island_constraints.systems.size(), island_constraints.constraints.size());
-				for (HolonomicSystem* h : island_constraints.systems) {
-					printf("\tSystem of degree: %d composed of %d constraints\n", h->getDegree(), h->getNumConstraints());
-				}*/
 				out.island_systems.push_back(island_constraints);
 			}
 		}

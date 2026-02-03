@@ -55,9 +55,9 @@ public:
 
 		phyz::PhysicsEngine p;
 		//p.setSleepingEnabled(false);
-		//p.setPGSIterations(5, 2, 1);
-		//p.setSubstepCount(1);
-		//p.setGlobalConstraintForceMixing(0.0000025);
+		p.setPGSIterations(1, 1, 1);
+		p.setSubstepCount(16);
+		p.setGlobalConstraintForceMixing(0.0000001);
 
 		/*if (parameters["use_ldl"] == "2") {
 			p.setPGSIterations(5, 2, 1);
@@ -107,20 +107,20 @@ public:
 			scissor = create_scissor_lift(&p, &bodies, scissor_lift_pos);
 		}
 		else if (demo_type == HIGH_MASS_RATIO) {
-			pos.x += 20;
-			pos.y += 70;
+			pos.x += 160;
+			//pos.y += 70;
 			pos.y = 120;
 
-			mthz::Vec3 chain_pos(0, 130, 0);
+			mthz::Vec3 chain_pos(0, 230, 0);
 			double chain_width = 0.31;
-			double chain_height = 3;
+			double chain_height = 1;
 
 			double attach_box_size = 1;
 			phyz::ConvexUnionGeometry attach_box = phyz::ConvexUnionGeometry::box(chain_pos - mthz::Vec3(1, 1, 1) * attach_box_size / 2, attach_box_size, attach_box_size, attach_box_size);
 			phyz::ConvexUnionGeometry chain = phyz::ConvexUnionGeometry::box(mthz::Vec3(-chain_width / 2.0, 0, -chain_width / 2.0), chain_width, -chain_height, chain_width, phyz::Material::modified_density(2));
 
 			phyz::RigidBody* attach_box_r = p.createRigidBody(attach_box, phyz::RigidBody::FIXED);
-			int n_chain = 2;// 40;
+			int n_chain = 120;
 			phyz::RigidBody* previous_chain = nullptr;
 
 			for (int i = 0; i < n_chain; i++) {

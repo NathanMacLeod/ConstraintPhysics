@@ -119,7 +119,7 @@ namespace phyz {
 
 
 		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength = 1000);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 4000);
 
 		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
 
@@ -161,7 +161,7 @@ namespace phyz {
 
 		unsigned int next_id = 1;
 
-		int substep_count = 5;
+		int substep_count = 8;
 		int pgsVelIterations = 1;
 		int pgsPosIterations = 1;
 		int pgsHolonomicIterations = 1;
@@ -204,6 +204,7 @@ namespace phyz {
 		double cutoff_vel = 0;
 		int contact_life = 6;
 		double contact_pos_correct_hardness = 1000;
+		double excessive_linear_error_torque_threshold = 15;
 		bool sleeping_enabled = true;
 		double sleep_delay = 0.5;
 		int non_sleepy_tick_threshold = 3;

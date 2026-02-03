@@ -184,13 +184,40 @@ namespace phyz {
 		for (int i = 0; i < n; i++) impulse_change.v[i] = impulse_source[source_index + i];
 
 		if (!impulse_change.isZero()) {
-			mthz::NVec<6>* vel_a_change = use_psuedo_values? constraint->a_psuedo_velocity_change : constraint->a_velocity_change;
-			mthz::NVec<6>* vel_b_change = use_psuedo_values? constraint->b_psuedo_velocity_change : constraint->b_velocity_change;
-			mthz::NVec<n>* accumulated_impulse = use_psuedo_values? &constraint->psuedo_impulse : &constraint->holonomic_solver_induced_impulse;
-
+			mthz::NVec<6>* vel_a_change = use_psuedo_values ? constraint->a_psuedo_velocity_change : constraint->a_velocity_change;
+			mthz::NVec<6>* vel_b_change = use_psuedo_values ? constraint->b_psuedo_velocity_change : constraint->b_velocity_change;
+				
 			constraint->computeAndApplyVelocityChange(impulse_change, vel_a_change, vel_b_change);
+
+			mthz::NVec<n>* accumulated_impulse = use_psuedo_values ? &constraint->psuedo_impulse : &constraint->holonomic_solver_induced_impulse;
 			*accumulated_impulse += impulse_change;
 		}
+	}
+
+	template<int n>
+	static void testApplyForLinearlizationErrorCheck(DegreedConstraint<n>* constraint, const std::vector<double>& impulse_source, int source_index) {
+		mthz::NVec<n> impulse_change;
+		for (int i = 0; i < n; i++) impulse_change.v[i] = impulse_source[source_index + i];
+
+		if (impulse_change.isZero()) { return; }
+
+		mthz::NVec<6>* vel_a_change = constraint->a_linearization_error_detect;
+		mthz::NVec<6>* vel_b_change = constraint->b_linearization_error_detect;
+		constraint->computeAndApplyVelocityChange(impulse_change, vel_a_change, vel_b_change);
+	}
+
+	static bool checkForExcessiveLinearlizationError(Constraint* constraint, double excessive_linerization_error_threshold) {
+		mthz::NVec<6>* vel_a_change = constraint->a_linearization_error_detect;
+		mthz::NVec<6>* vel_b_change = constraint->b_linearization_error_detect;
+
+		// get the squared sum of all angular velocity components 
+		double r2 = 0;
+		//first 3 indices of the nvec are the linear velocity values, last 3 are the angular velocity values
+		for (int i = 3; i < 6; i++) {
+			r2 += vel_a_change->v[i] * vel_a_change->v[i] + vel_b_change->v[i] * vel_b_change->v[i];
+		}
+
+		return r2 > excessive_linerization_error_threshold * excessive_linerization_error_threshold;
 	}
 
 	void HolonomicSystem::multInverseWithVector(std::vector<double>& v) {
@@ -268,7 +295,7 @@ namespace phyz {
 		}
 	}
 
-	void HolonomicSystem::computeAndApplyImpulses(bool use_psuedo_values) {
+	void HolonomicSystem::computeAndApplyImpulses(bool use_psuedo_values, double excessive_linerization_error_threshold) {
 		//solving system d = A^-1(t - c)
 		//d: delta in impulses needed to satisfy all constraints
 		//A^1: inverse of the impulse to value matrix of this holonomic system
@@ -288,9 +315,30 @@ namespace phyz {
 			case 6: writeTargetDelta<6>((DegreedConstraint<6>*)constraints[i], &delta, pos, use_psuedo_values); break;
 			}
 		}
-		
+
 		// modify delta in place to get the result after multiplying by A^-1
-		multInverseWithVector(delta); 
+		multInverseWithVector(delta);
+
+		if (excessive_linerization_error_threshold > 0) {
+			// psuedo_impulses solve seems to somtimes create solutions with excessively linearization error. this is a 
+			// hack to detect and discard solutions with too much linearization error.
+			for (int i = 0; i < constraints.size(); i++) {
+				int pos = getVectorPos(i);
+
+				switch (constraints[i]->getDegree()) {
+				case 1: testApplyForLinearlizationErrorCheck<1>((DegreedConstraint<1>*)constraints[i], delta, pos); break;
+				case 2: testApplyForLinearlizationErrorCheck<2>((DegreedConstraint<2>*)constraints[i], delta, pos); break;
+				case 3: testApplyForLinearlizationErrorCheck<3>((DegreedConstraint<3>*)constraints[i], delta, pos); break;
+				case 4: testApplyForLinearlizationErrorCheck<4>((DegreedConstraint<4>*)constraints[i], delta, pos); break;
+				case 5: testApplyForLinearlizationErrorCheck<5>((DegreedConstraint<5>*)constraints[i], delta, pos); break;
+				case 6: testApplyForLinearlizationErrorCheck<6>((DegreedConstraint<6>*)constraints[i], delta, pos); break;
+				}
+			}
+			for (int i = 0; i < constraints.size(); i++) {
+				//discard bad solution
+				if (checkForExcessiveLinearlizationError(constraints[i], excessive_linerization_error_threshold)) { return; }
+			}
+		}
 
 		//delta now equal to A^-1(t - c) = d, just need to store impulse and velocity changes now
 		for (int i = 0; i < constraints.size(); i++) {
@@ -304,7 +352,6 @@ namespace phyz {
 			case 6: applyImpulseChange<6>((DegreedConstraint<6>*)constraints[i], delta, pos, use_psuedo_values); break;
 			}
 		}
-
 	}
 
 	int HolonomicSystem::getVectorPos(int constraint_row) {

@@ -25,6 +25,7 @@ CurrentState get_current_state(const std::initializer_list<StateWithDuration>& s
 // ~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 
 struct ScissorLiftConstruct {
+	phyz::RigidBody* top_platform;
 	phyz::ConstraintID left_distance_constraint;
 	phyz::ConstraintID right_distance_constraint;
 	float min_height, max_height;

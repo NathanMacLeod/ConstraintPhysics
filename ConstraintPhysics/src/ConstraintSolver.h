@@ -14,7 +14,8 @@ namespace phyz {
 		PhysicsEngine* pEngine, 
 		IslandConstraints& constraints,
 		int n_itr_vel, int n_itr_pos, int n_itr_holonomic,
-		float holonomic_warmstart_multiplier
+		float holonomic_warmstart_multiplier,
+		float excessive_linear_error_torque_threshold
 	);
 
 	class Constraint {
@@ -31,10 +32,13 @@ namespace phyz {
 		mthz::NVec<6>* b_velocity_change;
 		mthz::NVec<6>* b_psuedo_velocity_change;
 
+		mthz::NVec<6>* a_linearization_error_detect;
+		mthz::NVec<6>* b_linearization_error_detect;
+
 		virtual double getImpulseMag() = 0;
 		virtual double getPsuedoImpulseMag() = 0;
 		virtual double getNormOfCurrentValueFromTargetValue(bool for_psuedo_vel) = 0;
-		virtual int getDegree() = 0;
+		virtual int getDegree() const = 0;
 		virtual bool isInequalityConstraint() = 0;
 		virtual bool needsPosCorrect() = 0;
 		virtual bool constraintWarmStarted() = 0;
@@ -144,7 +148,7 @@ namespace phyz {
 		ContactConstraint() {}
 		ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse=mthz::NVec<1>{ 0.0 }, double cutoff_vel=0);
 		
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return true; }
@@ -166,7 +170,7 @@ namespace phyz {
 		FrictionConstraint() : normal_impulse(nullptr) {}
 		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, double constraint_force_mixing, mthz::NVec<2> warm_start_impulse = mthz::NVec<2>{ 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3(), double normal_impulse_limit = std::numeric_limits<double>::infinity());
 
-		inline int getDegree() override { return 2; }
+		inline int getDegree() const override { return 2; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<2> projectValidImpulse(mthz::NVec<2> impulse) override;
 		inline bool needsPosCorrect() override { return false; }
@@ -191,7 +195,7 @@ namespace phyz {
 		DistanceConstraint() {}
 		DistanceConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 attach_pos_a, mthz::Vec3 attach_pos_b, bool moving_mode, double target_distance, double target_velocity, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
 
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 		void findTargetConstraintValue() {
@@ -215,7 +219,7 @@ namespace phyz {
 		BallSocketConstraint() {}
 		BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<3> warm_start_impulse=mthz::NVec<3>{ 0.0 });
 		
-		inline int getDegree() override { return 3; }
+		inline int getDegree() const override { return 3; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -231,7 +235,7 @@ namespace phyz {
 		SlidingHingeConstraint() {}
 		SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<4> warm_start_impulse = mthz::NVec<4>{ 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
-		inline int getDegree() override { return 4; }
+		inline int getDegree() const override { return 4; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -250,7 +254,7 @@ namespace phyz {
 		HingeConstraint() {}
 		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<5> warm_start_impulse=mthz::NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u=mthz::Vec3(), mthz::Vec3 source_w=mthz::Vec3());
 
-		inline int getDegree() override { return 5; }
+		inline int getDegree() const override { return 5; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -269,7 +273,7 @@ namespace phyz {
 		MotorConstraint() {}
 		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
 
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return rot_limit_status != NOT_EXCEEDED; }
@@ -292,7 +296,7 @@ namespace phyz {
 		SliderConstraint() {}
 		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<5> warm_start_impulse = mthz::NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
-		inline int getDegree() override { return 5; }
+		inline int getDegree() const override { return 5; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -310,7 +314,7 @@ namespace phyz {
 		PistonConstraint() {}
 		PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_impulse, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
 
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return false; }
@@ -331,7 +335,7 @@ namespace phyz {
 		SlideLimitConstraint() {}
 		SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
 
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return true; }
@@ -350,7 +354,7 @@ namespace phyz {
 		WeldConstraint() {}
 		WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 a_attach_point, mthz::Vec3 b_attach_point, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<6> warm_start_impulse = mthz::NVec<6>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 });
 
-		inline int getDegree() override { return 6; }
+		inline int getDegree() const override { return 6; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -367,7 +371,7 @@ namespace phyz {
 		TestConstraint() {}
 		TestConstraint(RigidBody* a, RigidBody* b);
 
-		inline int getDegree() override { return 6; }
+		inline int getDegree() const override { return 6; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return false; }
 	};

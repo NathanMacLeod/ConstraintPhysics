@@ -31,13 +31,38 @@ namespace phyz {
 		mthz::NVec<n> delta = target_val - current_val;
 		//Apply projection on the accumulation, not the delta, to allow reversing overcorrection.
 		mthz::NVec<n> impulse_new = (*accumulated_impulse) + constraint->impulse_to_value_inverse * delta;
-		mthz::NVec<n> impulse_diff = constraint->isInequalityConstraint()? constraint->projectValidImpulse(impulse_new) - *accumulated_impulse
-																   : impulse_new - *accumulated_impulse;
+		mthz::NVec<n> impulse_diff = constraint->isInequalityConstraint() ? constraint->projectValidImpulse(impulse_new) - *accumulated_impulse
+			: impulse_new - *accumulated_impulse;
 		if (!impulse_diff.isZero()) {
 			constraint->computeAndApplyVelocityChange(impulse_diff, vel_a_change, vel_b_change);
 			*accumulated_impulse += impulse_diff;
 		}
 	}
+
+#ifndef NDEBUG
+	template<int n>
+	double targetToCurrentValueDifference(const DegreedConstraint<n>* d, bool pos_correct) {
+		mthz::NVec<n> diff = pos_correct? d->psuedo_target_val - d->psuedo_val : d->target_val - d->current_val;
+		return diff.magSqrd();
+	}
+
+	static double getDistanceOfCurrentValuesFromTargetValues(const IslandConstraints& constraint_island, bool pos_correct) {
+		double r2 = 0;
+
+		for (const Constraint* c : constraint_island.constraints) {
+			switch (c->getDegree()) {
+			case 1: r2 += targetToCurrentValueDifference<1>((DegreedConstraint<1>*)c, pos_correct); break;
+			case 2: r2 += targetToCurrentValueDifference<2>((DegreedConstraint<2>*)c, pos_correct); break;
+			case 3: r2 += targetToCurrentValueDifference<3>((DegreedConstraint<3>*)c, pos_correct); break;
+			case 4: r2 += targetToCurrentValueDifference<4>((DegreedConstraint<4>*)c, pos_correct); break;
+			case 5: r2 += targetToCurrentValueDifference<5>((DegreedConstraint<5>*)c, pos_correct); break;
+			case 6: r2 += targetToCurrentValueDifference<6>((DegreedConstraint<6>*)c, pos_correct); break;
+			}
+		}
+		
+		return r2;
+	}
+#endif
 
 	static void constraintStep(Constraint* c, bool pos_correct) {
 		switch (c->getDegree()) {
@@ -50,62 +75,22 @@ namespace phyz {
 		}
 	}
 
-	static int get_total_island_degree(const std::vector<Constraint*>& constraints) {
-		int sum = 0;
-		for (Constraint* c : constraints) sum += c->getDegree();
-		return sum;
-	}
-
-	template<int n>
-	static void add_impulses(std::vector<double>* add_to, DegreedConstraint<n>* c, int indx, bool psuedo_velocity) {
-		for (int i = 0; i < n; i++) {
-			if (psuedo_velocity) add_to->at(indx + i) = c->psuedo_impulse.v[i];
-			else				 add_to->at(indx + i) = c->impulse.v[i];
-		}
-	}
-
-	static void write_all_impulses(const std::vector<Constraint*>& constraints, std::vector<double>* out, bool psuedo_velocity) {
-		assert(out->size() == get_total_island_degree(constraints));
-		int indx = 0;
-
-		for (Constraint* c : constraints) {
-			switch (c->getDegree()) {
-			case 1: add_impulses(out, (DegreedConstraint<1>*)c, indx, psuedo_velocity); indx += 1; break;
-			case 2: add_impulses(out, (DegreedConstraint<2>*)c, indx, psuedo_velocity); indx += 2; break;
-			case 3: add_impulses(out, (DegreedConstraint<3>*)c, indx, psuedo_velocity); indx += 3; break;
-			case 4: add_impulses(out, (DegreedConstraint<4>*)c, indx, psuedo_velocity); indx += 4; break;
-			case 5: add_impulses(out, (DegreedConstraint<5>*)c, indx, psuedo_velocity); indx += 5; break;
-			case 6: add_impulses(out, (DegreedConstraint<6>*)c, indx, psuedo_velocity); indx += 6; break;
-			}
-		}
-	}
-
-	static bool checkIfConverged(const std::vector<Constraint*>& constraints, const std::vector<double>& old_impulses, std::vector<double>* new_impulses, bool psuedo_velocity) {
-		write_all_impulses(constraints, new_impulses, psuedo_velocity);
-
-		double total_delta = 0;
-		for (int i = 0; i < old_impulses.size(); i++) {
-			double di = new_impulses->at(i) - old_impulses[i];
-			total_delta += di * di;
-		}
-		return total_delta == 0;
-	}
-
 	//Projected Gauss-Seidel solver, see Iterative Dynamics with Temporal Coherence by Erin Catto 
 	//the first third of this video explains it pretty well: https://www.youtube.com/watch?v=P-WP1yMOkc4 (Improving an Iterative Physics Solver Using a Direct Method)
-	void PGS_solve(PhysicsEngine* pEngine, IslandConstraints& constraint_island, int n_itr_vel, int n_itr_pos, int n_itr_holonomic, float holonomic_warmstart_multiplier) {
+	void PGS_solve(PhysicsEngine* pEngine, IslandConstraints& constraint_island, int n_itr_vel, int n_itr_pos, int n_itr_holonomic, float holonomic_warmstart_multiplier, float excessive_linear_error_torque_threshold) {
 		auto t0 = std::chrono::system_clock::now();
 		
 		struct VelPair {
 			VelPair() : velocity_change({0.0}), psuedo_vel_change({0.0}) {} //initialize zeroed out
 			mthz::NVec<6> velocity_change;
 			mthz::NVec<6> psuedo_vel_change;
+
+			mthz::NVec<6> linearization_error_detect;
 		};
 
 		std::unordered_map<RigidBody*, VelPair*> velocity_changes;
 
 		for (Constraint* c : constraint_island.constraints) {
-
 			VelPair* vA = nullptr; VelPair* vB = nullptr;
 			if (velocity_changes.find(c->a) == velocity_changes.end()) {
 				vA = new VelPair();
@@ -125,6 +110,8 @@ namespace phyz {
 			c->a_psuedo_velocity_change = &vA->psuedo_vel_change;
 			c->b_velocity_change = &vB->velocity_change;
 			c->b_psuedo_velocity_change = &vB->psuedo_vel_change;
+			c->a_linearization_error_detect = &vA->linearization_error_detect;
+			c->b_linearization_error_detect = &vB->linearization_error_detect;
 		}
 
 		//set target constraint values
@@ -143,22 +130,35 @@ namespace phyz {
 		for (Constraint* c : constraint_island.constraints) {
 			c->updateCurrentConstraintValue();
 		}
+		auto a = getDistanceOfCurrentValuesFromTargetValues(constraint_island, true);
+		auto b = getDistanceOfCurrentValuesFromTargetValues(constraint_island, false);
 #endif
 
-		//really need to refactor this into a class
-		int system_degree = get_total_island_degree(constraint_island.constraints);
-		std::vector<double> impulse_val_buff1(system_degree);
-		std::vector<double> impulse_val_buff2(system_degree);
-		std::vector<double> psuedo_impulse_val_buff1(system_degree);
-		std::vector<double> psuedo_impulse_val_buff2(system_degree);
+		for (int i = 0; i < n_itr_vel; i++) {
+			for (Constraint* c : constraint_island.constraints) {
+				constraintStep(c, false);
+			}
 
-		std::vector<double>* old_impulse_val_buff = &impulse_val_buff1;
-		std::vector<double>* new_impulse_val_buff = &impulse_val_buff2;
-		std::vector<double>* old_psuedo_impulse_val_buff = &psuedo_impulse_val_buff1;
-		std::vector<double>* new_psuedo_impulse_val_buff = &psuedo_impulse_val_buff2;
+#ifndef NDEBUG
+			for (Constraint* c : constraint_island.constraints) {
+				c->updateCurrentConstraintValue();
+			}
+			b = getDistanceOfCurrentValuesFromTargetValues(constraint_island, false);
+#endif
+		}
 
-		write_all_impulses(constraint_island.constraints, old_impulse_val_buff, false);
-		write_all_impulses(constraint_island.constraints, old_psuedo_impulse_val_buff, true);
+		for (int i = 0; i < n_itr_pos; i++) {
+			for (Constraint* c : constraint_island.constraints) {
+				if (c->needsPosCorrect()) constraintStep(c, true);
+			}
+
+#ifndef NDEBUG
+			for (Constraint* c : constraint_island.constraints) {
+				c->updateCurrentConstraintValue();
+			}
+			a = getDistanceOfCurrentValuesFromTargetValues(constraint_island, true);
+#endif
+		}
 
 		if (n_itr_holonomic > 0 && constraint_island.holonomic_blocks.size() > 0) {
 			auto wait0 = std::chrono::system_clock::now();
@@ -174,28 +174,16 @@ namespace phyz {
 			for (int i = 0; i < n_itr_holonomic; i++) {
 
 				for (HolonomicInfo h : constraint_island.holonomic_blocks) {
-					h.system->computeAndApplyImpulses(true);
 					h.system->computeAndApplyImpulses(false);
+					h.system->computeAndApplyImpulses(true, excessive_linear_error_torque_threshold);
 				}
 
 #ifndef NDEBUG
 				for (Constraint* c : constraint_island.constraints) {
 					c->updateCurrentConstraintValue();
 				}
-#endif
-
-				// iterate over non-holonomic constraints again
-				for (Constraint* c : constraint_island.constraints) {
-					if (c->is_in_holonomic_system) continue;
-
-					if (c->needsPosCorrect()) constraintStep(c, true);
-					constraintStep(c, false);
-				}
-
-#ifndef NDEBUG
-				for (Constraint* c : constraint_island.constraints) {
-					c->updateCurrentConstraintValue();
-				}
+				a = getDistanceOfCurrentValuesFromTargetValues(constraint_island, true);
+				b = getDistanceOfCurrentValuesFromTargetValues(constraint_island, false);
 #endif
 			}
 
@@ -205,44 +193,6 @@ namespace phyz {
 
 				c->addScaledHolonomicImpulseToNextWarmStart(holonomic_warmstart_multiplier);
 			}
-		}
-
-		for (int i = 0; i < n_itr_vel; i++) {
-			for (Constraint* c : constraint_island.constraints) {
-				constraintStep(c, false);
-			}
-
-#ifndef NDEBUG
-			for (Constraint* c : constraint_island.constraints) {
-				c->updateCurrentConstraintValue();
-			}
-#endif
-
-			bool converged = checkIfConverged(constraint_island.constraints, *old_impulse_val_buff, new_impulse_val_buff, false);
-			std::vector<double>* tmp = old_impulse_val_buff;
-			old_impulse_val_buff = new_impulse_val_buff;
-			new_impulse_val_buff = tmp;
-
-			if (converged) break;
-		}
-
-		for (int i = 0; i < n_itr_pos; i++) {
-			for (Constraint* c : constraint_island.constraints) {
-				if (c->needsPosCorrect()) constraintStep(c, true);
-			}
-
-#ifndef NDEBUG
-			for (Constraint* c : constraint_island.constraints) {
-				c->updateCurrentConstraintValue();
-			}
-#endif
-
-			bool converged = checkIfConverged(constraint_island.constraints, *old_psuedo_impulse_val_buff, new_psuedo_impulse_val_buff, true);
-			std::vector<double>* tmp = old_psuedo_impulse_val_buff;
-			old_psuedo_impulse_val_buff = new_psuedo_impulse_val_buff;
-			new_psuedo_impulse_val_buff = tmp;
-
-			if (converged) break;
 		}
 
 		auto t1 = std::chrono::system_clock::now();
@@ -301,10 +251,9 @@ namespace phyz {
 			a_jacobian.copyInto(n_dot * rA_skew, 0, 3);
 			b_jacobian.copyInto(n_dot, 0, 0);
 			b_jacobian.copyInto(-n_dot * rB_skew, 0, 3);
-
-			impulse_to_a_velocity = aInvMass() * a_jacobian.transpose();
-			impulse_to_b_velocity = bInvMass() * b_jacobian.transpose();
 		}
+		impulse_to_a_velocity = aInvMass() * a_jacobian.transpose();
+		impulse_to_b_velocity = bInvMass() * b_jacobian.transpose();
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 
@@ -417,7 +366,6 @@ namespace phyz {
 
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
-		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 
 		if (!moving_mode) {
 			// use positional correction only if the constraint is not set to moving mode.
@@ -430,7 +378,7 @@ namespace phyz {
 	//****BALL SOCKET CONSTRAINT****
 	//******************************
 	BallSocketConstraint::BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<3> warm_start_impulse)
-		: DegreedConstraint<3>(a, b, warm_start_impulse), rA(socket_pos_a - a->getCOM()), rB(socket_pos_a - b->getCOM()), rotDirA(a->getInvTensor() * mthz::Mat3::cross_mat(rA)), rotDirB(b->getInvTensor() * mthz::Mat3::cross_mat(rB))
+		: DegreedConstraint<3>(a, b, warm_start_impulse), rA(socket_pos_a - a->getCOM()), rB(socket_pos_b - b->getCOM()), rotDirA(a->getInvTensor() * mthz::Mat3::cross_mat(rA)), rotDirB(b->getInvTensor() * mthz::Mat3::cross_mat(rB))
 	{
 		this->is_in_holonomic_system = is_in_holonomic_system;
 		//mthz::Mat3 inverse_inertia_mat3 = (mthz::Mat3::iden()*a->getInvMass() + mthz::Mat3::iden()*b->getInvMass() - mthz::Mat3::cross_mat(rA)*rotDirA - mthz::Mat3::cross_mat(rB)*rotDirB);
@@ -456,6 +404,10 @@ namespace phyz {
 
 		mthz::Vec3 error = socket_pos_b - socket_pos_a;
 		psuedo_target_val = mthz::NVec<3>{ pos_correct_hardness * error.x, pos_correct_hardness * error.y, pos_correct_hardness * error.z };
+		//printf("with lin: %f %f %f\n", psuedo_target_val.v[0], psuedo_target_val.v[1], psuedo_target_val.v[2]);
+		//pos_correct_hardness *= 0.1;
+		//psuedo_target_val = mthz::NVec<3>{ pos_correct_hardness * sqrt(m) * n.x, pos_correct_hardness * sqrt(m) * n.y, pos_correct_hardness * sqrt(m) * n.z };
+		//printf("with sqrt: %f %f %f\n", psuedo_target_val.v[0], psuedo_target_val.v[1], psuedo_target_val.v[2]);
 	}
 
 	

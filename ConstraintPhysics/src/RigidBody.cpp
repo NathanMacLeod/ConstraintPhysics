@@ -309,7 +309,6 @@ namespace phyz {
 				aabb = AABB::conformNewBasis(reference_aabb, u, v, w, origin);
 			}
 		}
-		
 	}
 
 	void RigidBody::translateNoGeomUpdate(mthz::Vec3 v) {

@@ -34,6 +34,7 @@ namespace phyz {
 		mthz::Mat3 getInvTensor() const;
 		bool getAsleep() const;
 		inline MovementType getMovementType() const { return movement_type; }
+		inline bool hasInfMass() const { return movement_type == phyz::RigidBody::MovementType::FIXED || movement_type == phyz::RigidBody::MovementType::KINEMATIC; }
 		inline bool getNoCollision() const { return no_collision; }
 		mthz::Vec3 getPos() const { return getTrackedP(origin_pkey); }
 		mthz::Vec3 getExtrapolatedPos() const { return getExtrapolatedTrackedP(origin_pkey); }

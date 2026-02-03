@@ -232,28 +232,28 @@ ScissorLiftConstruct create_scissor_lift(phyz::PhysicsEngine* p, std::vector<Phy
 	phyz::RigidBody* platform_r = p->createRigidBody(platform_geom);
 	body_dest->push_back({ fromGeometry(platform_geom, platform_color), platform_r });
 
-	double non_dist_pos_correct_strength = 600;
 	double inf = std::numeric_limits<double>::infinity();
 
-	p->addHingeConstraint(base_r, front_right_wheel_r, front_right_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addHingeConstraint(base_r, rear_right_wheel_r, rear_right_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addHingeConstraint(base_r, front_left_wheel_r, front_left_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addHingeConstraint(base_r, rear_left_wheel_r, rear_left_wheel_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
+	p->addHingeConstraint(base_r, front_right_wheel_r, front_right_wheel_pos, mthz::Vec3(1, 0, 0));
+	p->addHingeConstraint(base_r, rear_right_wheel_r, rear_right_wheel_pos, mthz::Vec3(1, 0, 0));
+	p->addHingeConstraint(base_r, front_left_wheel_r, front_left_wheel_pos, mthz::Vec3(1, 0, 0));
+	p->addHingeConstraint(base_r, rear_left_wheel_r, rear_left_wheel_pos, mthz::Vec3(1, 0, 0));
 
-	p->addHingeConstraint(base_r, scissor_out.bot_rear_right_rung_r, scissor_out.bot_rear_right_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addHingeConstraint(base_r, scissor_out.bot_rear_left_rung_r, scissor_out.bot_rear_left_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addHingeConstraint(bottom_slider_r, scissor_out.bot_front_right_rung_r, scissor_out.bot_front_right_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addHingeConstraint(bottom_slider_r, scissor_out.bot_front_left_rung_r, scissor_out.bot_front_left_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addSliderConstraint(base_r, bottom_slider_r, bottom_slider_r->getCOM(), mthz::Vec3(0, 0, 1), non_dist_pos_correct_strength);
+	p->addHingeConstraint(base_r, scissor_out.bot_rear_right_rung_r, scissor_out.bot_rear_right_pos, mthz::Vec3(1, 0, 0));
+	p->addHingeConstraint(base_r, scissor_out.bot_rear_left_rung_r, scissor_out.bot_rear_left_pos, mthz::Vec3(1, 0, 0));
+	p->addHingeConstraint(bottom_slider_r, scissor_out.bot_front_right_rung_r, scissor_out.bot_front_right_pos, mthz::Vec3(1, 0, 0));
+	p->addHingeConstraint(bottom_slider_r, scissor_out.bot_front_left_rung_r, scissor_out.bot_front_left_pos, mthz::Vec3(1, 0, 0));
+	p->addSliderConstraint(base_r, bottom_slider_r, bottom_slider_r->getCOM(), mthz::Vec3(0, 0, 1));
 
-	p->addHingeConstraint(top_slider_r, scissor_out.top_rear_right_rung_r, scissor_out.top_front_right_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addHingeConstraint(top_slider_r, scissor_out.top_rear_left_rung_r, scissor_out.top_front_left_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addHingeConstraint(platform_r, scissor_out.top_front_right_rung_r, scissor_out.top_rear_right_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addHingeConstraint(platform_r, scissor_out.top_front_left_rung_r, scissor_out.top_rear_left_pos, mthz::Vec3(1, 0, 0), non_dist_pos_correct_strength);
-	p->addSliderConstraint(platform_r, top_slider_r, top_slider_r->getCOM(), mthz::Vec3(0, 0, 1), non_dist_pos_correct_strength);
+	p->addHingeConstraint(top_slider_r, scissor_out.top_rear_right_rung_r, scissor_out.top_front_right_pos, mthz::Vec3(1, 0, 0));
+	p->addHingeConstraint(top_slider_r, scissor_out.top_rear_left_rung_r, scissor_out.top_front_left_pos, mthz::Vec3(1, 0, 0));
+	p->addHingeConstraint(platform_r, scissor_out.top_front_right_rung_r, scissor_out.top_rear_right_pos, mthz::Vec3(1, 0, 0));
+	p->addHingeConstraint(platform_r, scissor_out.top_front_left_rung_r, scissor_out.top_rear_left_pos, mthz::Vec3(1, 0, 0));
+	p->addSliderConstraint(platform_r, top_slider_r, top_slider_r->getCOM(), mthz::Vec3(0, 0, 1));
 
 	ScissorLiftConstruct out;
 
+	out.top_platform = platform_r;
 	out.right_distance_constraint = p->addDistanceConstraint(scissor_out.bot_rear_right_rung_r, scissor_out.top_rear_right_rung_r, scissor_out.bot_right_middle_pos, scissor_out.top_right_middle_pos);
 	out.left_distance_constraint = p->addDistanceConstraint(scissor_out.bot_rear_left_rung_r, scissor_out.top_rear_left_rung_r, scissor_out.bot_left_middle_pos, scissor_out.top_left_middle_pos);
 	out.state = ScissorLiftConstruct::MovementState::FIXED;
@@ -262,37 +262,43 @@ ScissorLiftConstruct create_scissor_lift(phyz::PhysicsEngine* p, std::vector<Phy
 	out.move_speed = 1.5;
 
 	return out;
-	//p->disallowCollisionSet(all_bodies);
 }
 
 
 void set_scissor_lift_movement_input(phyz::PhysicsEngine* p, ScissorLiftConstruct* s, ScissorLiftConstruct::MovementState desired_state) {
-	double current_dist = p->getDistanceConstraintCurrentDistance(s->left_distance_constraint);
+	double current_left_dist = p->getDistanceConstraintCurrentDistance(s->left_distance_constraint);
+	double current_right_dist = p->getDistanceConstraintCurrentDistance(s->right_distance_constraint);
+	double dist_diff = current_left_dist - current_right_dist;
+	double catchup_multiplier = 1 + 15 * abs(dist_diff);
+	double left_multipier, right_multiplier;
 
-	if ((desired_state == ScissorLiftConstruct::MovementState::RAISING && current_dist >= s->max_height) ||
-		(desired_state == ScissorLiftConstruct::MovementState::LOWERING && current_dist <= s->min_height)) {
+	if ((desired_state == ScissorLiftConstruct::MovementState::RAISING && current_left_dist >= s->max_height) ||
+		(desired_state == ScissorLiftConstruct::MovementState::LOWERING && current_left_dist <= s->min_height)) {
 		// we want to raise / lower, but it would move beyond the boundary. in this case we will just fix at the boundary value
 
-		if (s->state == ScissorLiftConstruct::MovementState::FIXED) { return; }
 		s->state = ScissorLiftConstruct::MovementState::FIXED;
 		float bound = (desired_state == ScissorLiftConstruct::MovementState::RAISING)? s->max_height : s->min_height;
 		p->setDistanceConstraintTargetDistance(s->right_distance_constraint, bound);
 		p->setDistanceConstraintTargetDistance(s->left_distance_constraint, bound);
 	}
-	else if (desired_state == ScissorLiftConstruct::MovementState::RAISING && s->state != ScissorLiftConstruct::MovementState::RAISING) {
+	else if (desired_state == ScissorLiftConstruct::MovementState::RAISING) {
 		s->state = ScissorLiftConstruct::MovementState::RAISING;
-		p->setDistanceConstraintToMoveAtTargetVelocity(s->right_distance_constraint, s->move_speed);
-		p->setDistanceConstraintToMoveAtTargetVelocity(s->left_distance_constraint, s->move_speed);
+		if (dist_diff < 0) { left_multipier = catchup_multiplier; right_multiplier = 1.0; }
+		else               { left_multipier = 1.0;                right_multiplier = catchup_multiplier; }
+		p->setDistanceConstraintToMoveAtTargetVelocity(s->right_distance_constraint, s->move_speed * right_multiplier);
+		p->setDistanceConstraintToMoveAtTargetVelocity(s->left_distance_constraint, s->move_speed * left_multipier);
 	}
-	else if (desired_state == ScissorLiftConstruct::MovementState::LOWERING && s->state != ScissorLiftConstruct::MovementState::LOWERING) {
+	else if (desired_state == ScissorLiftConstruct::MovementState::LOWERING) {
 		s->state = ScissorLiftConstruct::MovementState::LOWERING;
-		p->setDistanceConstraintToMoveAtTargetVelocity(s->right_distance_constraint, -s->move_speed);
-		p->setDistanceConstraintToMoveAtTargetVelocity(s->left_distance_constraint, -s->move_speed);
+		if (dist_diff < 0) { left_multipier = 1.0;                right_multiplier = catchup_multiplier; }
+		else               { left_multipier = catchup_multiplier; right_multiplier = 1.0; }
+		p->setDistanceConstraintToMoveAtTargetVelocity(s->right_distance_constraint, -s->move_speed * right_multiplier);
+		p->setDistanceConstraintToMoveAtTargetVelocity(s->left_distance_constraint, -s->move_speed * left_multipier);
 	}
-	else if (desired_state == ScissorLiftConstruct::MovementState::FIXED && s->state != ScissorLiftConstruct::MovementState::FIXED) {
+	else if (desired_state == ScissorLiftConstruct::MovementState::FIXED) {
 		//fixed
 		s->state = ScissorLiftConstruct::MovementState::FIXED;
-		p->setDistanceConstraintTargetDistance(s->right_distance_constraint, current_dist);
-		p->setDistanceConstraintTargetDistance(s->left_distance_constraint, current_dist);
+		p->setDistanceConstraintTargetDistance(s->right_distance_constraint, current_left_dist);
+		p->setDistanceConstraintTargetDistance(s->left_distance_constraint, current_left_dist);
 	}
 }

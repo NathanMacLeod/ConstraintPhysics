@@ -54,7 +54,7 @@ private:
 			}
 		);
 
-		//int tick_count = 0;
+		int tick_count = 0;
 
 		while (rndr::render_loop(&fElapsedTime)) {
 			// Listening to user input
@@ -91,9 +91,9 @@ private:
 				paused = !paused;
 			}
 
-			/*if (tick_count == 55) {
-				paused = true;
-			}*/
+			//if (tick_count == 565) {
+			//	paused = true;
+			//}
 
 			// running the test
 			if (!paused) {
@@ -105,7 +105,7 @@ private:
 			}
 
 			while (outcome == TestOutcome::STILL_RUNNING && phyz_time > timestep_duration) {
-//				printf("%d\n", tick_count++);
+				//printf("%d\n", tick_count++);
 				all_contact_points.clear();
 				phyz_time -= timestep_duration;
 				outcome = test->tickTestOnePhysicsStep();
@@ -207,10 +207,11 @@ Select which scene to run: ", { "1" }
 		}
 
 		std::vector<std::unique_ptr<TestGroup>> test_groups;
+		test_groups.push_back(std::make_unique<CollisionTestGroup>());
 		test_groups.push_back(std::make_unique<HolonomicBlockSolverTestGroup>());
 		test_groups.push_back(std::make_unique<ConstraintTestsGroup>());
 		test_groups.push_back(std::make_unique<ThreadManagerTestGroup>());
-		test_groups.push_back(std::make_unique<CollisionTestGroup>());
+		
 
 		std::vector<std::unique_ptr<Test>> tests;
 		for (const std::unique_ptr<TestGroup>& gr : test_groups) {

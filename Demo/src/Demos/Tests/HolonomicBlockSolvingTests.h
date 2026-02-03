@@ -13,7 +13,7 @@ public:
 	void overrideCameraInitialPosition(mthz::Vec3* cam_pos, mthz::Quaternion* cam_orient) const override { cam_pos->y = -40; cam_pos->z = 100; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
 		double tick_frequency = 60.0;
-		test_total_tick_duration = static_cast<uint32_t>(500 * tick_frequency);
+		test_total_tick_duration = static_cast<uint32_t>(30 * tick_frequency);
 		test_current_tick_count = 0;
 
 		p = new phyz::PhysicsEngine();
@@ -21,8 +21,11 @@ public:
 			p->enableMultithreading(n_threads);
 		}
 		p->setStep_time(1.0 / tick_frequency);
+		p->setPGSIterations(1, 1, 1);
+		p->setSubstepCount(24);
 
 		mthz::Vec3 chain_pos(0, 0, 0);
+		chain_fixture_position = chain_pos;
 		double chain_width = 0.31;
 		double chain_height = 1;
 
@@ -31,7 +34,8 @@ public:
 		phyz::ConvexUnionGeometry chain = phyz::ConvexUnionGeometry::box(mthz::Vec3(-chain_width / 2.0, 0, -chain_width / 2.0), chain_width, -chain_height, chain_width, phyz::Material::modified_density(2));
 
 		phyz::RigidBody* attach_box_r = p->createRigidBody(attach_box, phyz::RigidBody::FIXED);
-		int n_chain = 50;
+
+		int n_chain = 35;
 		phyz::RigidBody* previous_chain = nullptr;
 
 		for (int i = 0; i < n_chain; i++) {
@@ -56,11 +60,11 @@ public:
 		double ball_radius = 7;
 		mthz::Vec3 ball_pos = final_chain_pos + mthz::Vec3(0, -ball_radius, 0);
 		phyz::ConvexUnionGeometry ball = phyz::ConvexUnionGeometry::sphere(ball_pos, ball_radius, phyz::Material::modified_density(2));
-		phyz::RigidBody* ball_r = p->createRigidBody(ball);
+		ball_r = p->createRigidBody(ball);
 
 		bodies->push_back({ fromGeometry(attach_box), attach_box_r });
 
-		ball_r->setVel(mthz::Vec3(3, 25, 0));
+		ball_r->setVel(mthz::Vec3(25, 0, 0));
 
 		p->addBallSocketConstraint(ball_r, previous_chain, final_chain_pos);
 		bodies->push_back({ fromGeometry(ball), ball_r });
@@ -72,16 +76,22 @@ public:
 			p->timeStep();
 		}
 
+		//validate that the chain keeps the ball within a certain radius
+		double curr_dist = (chain_fixture_position - ball_r->getCOM()).mag();
+		double max_dist = 65.0;
+
 		test_current_tick_count++;
 
 		if (test_current_tick_count >= test_total_tick_duration) {
-			return TestOutcome::FAILED;
+			return TestOutcome::PASSED;
 		}
+		else if (curr_dist > max_dist) { return TestOutcome::FAILED; }
 		else { return TestOutcome::STILL_RUNNING; }
 	}
 	void teardownTest() override {
 		delete p;
 		p = nullptr;
+		ball_r = nullptr;
 	};
 	TestOutcome runWithoutGraphics() override {
 		TestOutcome outcome;
@@ -90,6 +100,9 @@ public:
 	}
 private:
 	phyz::PhysicsEngine* p;
+	phyz::RigidBody* ball_r;
+	mthz::Vec3 chain_fixture_position;
+	double d = 0;
 	uint32_t test_total_tick_duration;
 	uint32_t test_current_tick_count;
 };
@@ -109,6 +122,9 @@ public:
 			p->enableMultithreading(n_threads);
 		}
 		p->setStep_time(1.0 / tick_frequency);
+		p->setPGSIterations(1, 1, 1);
+		p->setSubstepCount(8);
+		p->setGlobalConstraintForceMixing(0.00000001);
 
 		// create ground plane
 		double ground_width = 100.0;
@@ -130,7 +146,7 @@ public:
 		CurrentState state = get_current_state({
 			StateWithDuration{"fixed", 3.0},
 			StateWithDuration{"shrink", 10.0},
-			StateWithDuration{"expand", 12.0},
+			StateWithDuration{"expand", 25.0},
 		}, t);
 
 		double expected_height = -1;
@@ -162,10 +178,13 @@ public:
 		test_current_tick_count++;
 
 		double allowed_height_diff = 0.01;
+		double allowed_tilt = 2; // degrees
+		double current_platform_rotation_from_up = 90 * acos(scissor.top_platform->getOrientation().applyRotation(mthz::Vec3(0, 1, 0)).dot(mthz::Vec3(0, 1, 0))) / PI;
 
 		if (state.final_state_has_elapsed) {
 			return TestOutcome::PASSED;
 		}
+		else if (current_platform_rotation_from_up > allowed_tilt) { return TestOutcome::FAILED; }
 		else if (!in_grace_period && abs(p->getDistanceConstraintCurrentDistance(scissor.left_distance_constraint) - expected_height) > allowed_height_diff) { return TestOutcome::FAILED; }
 		else if (!in_grace_period && abs(p->getDistanceConstraintCurrentDistance(scissor.right_distance_constraint) - expected_height) > allowed_height_diff) { return TestOutcome::FAILED; }
 		else { return TestOutcome::STILL_RUNNING; }
@@ -193,8 +212,8 @@ public:
 	std::string getGroupName() const override { return "HolonomicConstraints"; }
 	std::vector<std::unique_ptr<Test>> getTests() const override {
 		std::vector<std::unique_ptr<Test>> out;
-		out.push_back(std::make_unique<TestScissorLift>());
 		out.push_back(std::make_unique<TestHeavyWeightOnChain>());
+		out.push_back(std::make_unique<TestScissorLift>());
 		return out;
 	}
 };
