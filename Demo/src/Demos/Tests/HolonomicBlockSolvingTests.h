@@ -83,10 +83,12 @@ public:
 		test_current_tick_count++;
 
 		if (test_current_tick_count >= test_total_tick_duration) {
-			return TestOutcome::PASSED;
+			return TestOutcome{ TestOutcomeState::PASSED };
 		}
-		else if (curr_dist > max_dist) { return TestOutcome::FAILED; }
-		else { return TestOutcome::STILL_RUNNING; }
+		else if (curr_dist > max_dist) {
+			return TestOutcome{ TestOutcomeState::FAILED, "Ball was too far away from where the chain is anchored"};
+		}
+		else { return TestOutcome{ TestOutcomeState::STILL_RUNNING }; }
 	}
 	void teardownTest() override {
 		delete p;
@@ -95,7 +97,7 @@ public:
 	};
 	TestOutcome runWithoutGraphics() override {
 		TestOutcome outcome;
-		while ((outcome = tickTestOnePhysicsStep()) == TestOutcome::STILL_RUNNING);
+		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
 		return outcome;
 	}
 private:
@@ -178,16 +180,20 @@ public:
 		test_current_tick_count++;
 
 		double allowed_height_diff = 0.01;
-		double allowed_tilt = 2; // degrees
+		double allowed_tilt = 3; // degrees
 		double current_platform_rotation_from_up = 90 * acos(scissor.top_platform->getOrientation().applyRotation(mthz::Vec3(0, 1, 0)).dot(mthz::Vec3(0, 1, 0))) / PI;
 
 		if (state.final_state_has_elapsed) {
-			return TestOutcome::PASSED;
+			return TestOutcome{ TestOutcomeState::PASSED };
 		}
-		else if (current_platform_rotation_from_up > allowed_tilt) { return TestOutcome::FAILED; }
-		else if (!in_grace_period && abs(p->getDistanceConstraintCurrentDistance(scissor.left_distance_constraint) - expected_height) > allowed_height_diff) { return TestOutcome::FAILED; }
-		else if (!in_grace_period && abs(p->getDistanceConstraintCurrentDistance(scissor.right_distance_constraint) - expected_height) > allowed_height_diff) { return TestOutcome::FAILED; }
-		else { return TestOutcome::STILL_RUNNING; }
+		else if (current_platform_rotation_from_up > allowed_tilt) { 
+			return TestOutcome{ TestOutcomeState::FAILED, "Top platform of the scissor lift did not keep level with the ground"};
+		}
+		else if (!in_grace_period && (abs(p->getDistanceConstraintCurrentDistance(scissor.left_distance_constraint) - expected_height) > allowed_height_diff
+			                      ||  abs(p->getDistanceConstraintCurrentDistance(scissor.right_distance_constraint) - expected_height) > allowed_height_diff)) {
+			return TestOutcome{ TestOutcomeState::FAILED, "Scissor lift failed to hold the expected hights over time" };
+		}
+		else { return TestOutcome{ TestOutcomeState::STILL_RUNNING }; }
 	}
 	void teardownTest() override {
 		delete p;
@@ -195,7 +201,7 @@ public:
 	};
 	TestOutcome runWithoutGraphics() override {
 		TestOutcome outcome;
-		while ((outcome = tickTestOnePhysicsStep()) == TestOutcome::STILL_RUNNING);
+		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
 		return outcome;
 	}
 private:

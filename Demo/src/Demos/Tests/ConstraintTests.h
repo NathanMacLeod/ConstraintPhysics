@@ -87,12 +87,12 @@ public:
 
 		double allowed_error = 0.1;
 
-		if (state.final_state_has_elapsed) { return TestOutcome::PASSED; }
+		if (state.final_state_has_elapsed) { return TestOutcome{ TestOutcomeState::PASSED }; }
 		else if (abs(expected_distance - p->getDistanceConstraintCurrentDistance(dist_constraint)) > allowed_error) {
-			return TestOutcome::FAILED;
+			return TestOutcome{ TestOutcomeState::FAILED, "Distance constraint did not maintain the expected distances"};
 		}
 		else {
-			return TestOutcome::STILL_RUNNING;
+			return TestOutcome{ TestOutcomeState::STILL_RUNNING };
 		}
 	}
 	void teardownTest() override {
@@ -103,7 +103,7 @@ public:
 	};
 	TestOutcome runWithoutGraphics() override {
 		TestOutcome outcome;
-		while ((outcome = tickTestOnePhysicsStep()) == TestOutcome::STILL_RUNNING);
+		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
 		return outcome;
 	}
 private:

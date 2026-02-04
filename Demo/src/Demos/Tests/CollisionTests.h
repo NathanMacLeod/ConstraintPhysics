@@ -53,14 +53,26 @@ public:
 		test_current_tick_count++;
 
 		if (test_current_tick_count >= test_total_tick_duration) {
-			if (box_r->getVel().mag() > 0.00001)                    { return TestOutcome::FAILED; }
-			else if (box_r->getAngVel().mag() > 0.00001)            { return TestOutcome::FAILED; }
-			else if (abs(box_r->getCOM().y - box_size / 2.0) > 0.1) { return TestOutcome::FAILED; }
-			else if (!collision_occured)                            { return TestOutcome::FAILED; }
-			else if (!no_incorrect_manifolds)                       { return TestOutcome::FAILED; }
-			else                                                    { return TestOutcome::PASSED; }
+			if (box_r->getVel().mag() > 0.00001) {
+				return TestOutcome{ TestOutcomeState::FAILED, "Box had excessive linear velocity at the end of the simulation" };
+			}
+			else if (box_r->getAngVel().mag() > 0.00001) {
+				return TestOutcome{ TestOutcomeState::FAILED, "Box had excessive angular velocity at the end of the simulation" };
+			}
+			else if (abs(box_r->getCOM().y - box_size / 2.0) > 0.1) { 
+				return TestOutcome{ TestOutcomeState::FAILED, "Center of the box was not resting at the expected height" };
+			}
+			else if (!collision_occured) {
+				return TestOutcome{ TestOutcomeState::FAILED, "Failed to detect collision between the ground and the box" };
+			}
+			else if (!no_incorrect_manifolds) {
+				return TestOutcome{ TestOutcomeState::FAILED, "Generated collision manifolds were incorrect" };
+			}
+			else {
+				return TestOutcome{ TestOutcomeState::PASSED };
+			}
 		}
-		else { return TestOutcome::STILL_RUNNING; }
+		else { return TestOutcome{ TestOutcomeState::STILL_RUNNING }; }
 	}
 	void teardownTest() override { 
 		delete p;
@@ -69,7 +81,7 @@ public:
 	};
 	TestOutcome runWithoutGraphics() override {
 		TestOutcome outcome;
-		while((outcome = tickTestOnePhysicsStep()) == TestOutcome::STILL_RUNNING);
+		while((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
 		return outcome;
 	}
 private:

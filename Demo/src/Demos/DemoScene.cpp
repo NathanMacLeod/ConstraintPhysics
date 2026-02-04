@@ -123,6 +123,19 @@ std::string DemoScene::pickParameterFromOptions(const std::string& prompt, const
 	return askCustomParameterValue(prompt, response_valid, error_message);
 }
 
+std::string DemoScene::pickInteger(const std::string& prompt, int min, int max) {
+	auto response_valid = [=](std::string userin) -> bool {
+		try {
+			int input_int = std::stoi(userin);
+			return min <= input_int && input_int <= max;
+		}
+		catch (std::invalid_argument) { return false; }
+	};
+
+	std::string error_message = std::format("Invalid input. Input must be an integer between {} and {}\n", min, max);
+	return askCustomParameterValue(prompt, response_valid, error_message);
+}
+
 std::string DemoScene::askCustomParameterValue(const std::string& prompt, std::function<bool(std::string)> response_valid, const std::string& incorrect_response_message) {
 	printf("%s", prompt.c_str());
 

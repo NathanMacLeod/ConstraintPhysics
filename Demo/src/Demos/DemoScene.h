@@ -54,6 +54,7 @@ protected:
 
 	//helper functions for parameter questions
 	static std::string pickParameterFromOptions(const std::string& prompt, const std::vector<std::string>& options);
+	static std::string pickInteger(const std::string& prompt, int min=std::numeric_limits<int>::min(), int max=std::numeric_limits<int>::max());
 	static std::string askCustomParameterValue(const std::string& propmt, std::function<bool(std::string)> response_valid, const std::string& incorrect_response_message);
 	static bool caseIndefferentStringEquals(const std::string& s1, const std::string& s2);
 

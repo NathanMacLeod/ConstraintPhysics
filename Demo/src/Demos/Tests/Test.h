@@ -5,7 +5,7 @@
 #include <functional>
 
 enum TestExpectationStatus { REQUIRED, XFAIL, SKIP };
-enum TestOutcome { 
+enum TestOutcomeState { 
 	PASSED,        // test has finished and passed
 	XPASSED,       // test has passed, but we expected it to fail
 	XFAILED,       // test has failed, but this is expected
@@ -13,6 +13,10 @@ enum TestOutcome {
 	SKIPPED,       // test was never run
 	STILL_RUNNING, // test is still running. only used when running interactively
 	RESET,         // user has requested to re-run the test. only used for running interactively
+};
+struct TestOutcome {
+	TestOutcomeState state;
+	std::string reason; // optional explanation of why the outcome occured. most commonly an explanation of why the test failed.
 };
 
 class Test {

@@ -15,9 +15,10 @@ class UnitTestsRunner : public DemoScene {
 private:
 	bool paused;
 	std::vector<PhysBod> active_models;
+	std::vector<std::unique_ptr<TestGroup>> test_groups;
 	
 	TestOutcome runTestWithGraphics(phyz::PhysicsEngine* test_pengine, std::unique_ptr<Test>& test) {
-		TestOutcome outcome = TestOutcome::STILL_RUNNING;
+		TestOutcome outcome = TestOutcome{ TestOutcomeState::STILL_RUNNING };
 
 		assert(test_pengine != nullptr); // cant think of a need for a non-physics based right now.
 		// basic rendering stuff
@@ -85,7 +86,7 @@ private:
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_R)) {
-				return TestOutcome::RESET;
+				return TestOutcome{ TestOutcomeState::RESET };
 			}
 			if (rndr::getKeyPressed(GLFW_KEY_P)) {
 				paused = !paused;
@@ -104,7 +105,7 @@ private:
 				phyz_time += timestep_duration; //advance exactly one frame
 			}
 
-			while (outcome == TestOutcome::STILL_RUNNING && phyz_time > timestep_duration) {
+			while (outcome.state == TestOutcomeState::STILL_RUNNING && phyz_time > timestep_duration) {
 				//printf("%d\n", tick_count++);
 				all_contact_points.clear();
 				phyz_time -= timestep_duration;
@@ -162,27 +163,55 @@ private:
 
 			rndr::draw(batch_array, shader);
 
-			if (outcome != TestOutcome::STILL_RUNNING) { return outcome; }
+			if (outcome.state != TestOutcomeState::STILL_RUNNING) { return outcome; }
 		}
 	}
 
 public:
-	UnitTestsRunner(DemoManager* manager, DemoProperties properties) : DemoScene(manager, properties) {}
+	UnitTestsRunner(DemoManager* manager, DemoProperties properties) : DemoScene(manager, properties), paused(false) {
+		test_groups.push_back(std::make_unique<CollisionTestGroup>());
+		test_groups.push_back(std::make_unique<HolonomicBlockSolverTestGroup>());
+		test_groups.push_back(std::make_unique<ConstraintTestsGroup>());
+		test_groups.push_back(std::make_unique<ThreadManagerTestGroup>());
+	}
 
 	~UnitTestsRunner() override {}
 
 	std::map<std::string, std::string> askParameters() override {
 		std::map<std::string, std::string> out;
 
+		// pick whether to run all test groups, or choose a specific one.
+		std::string test_groups_options = "The available test groups are the following:\n";
+		for (int i = 0; i <= test_groups.size(); i++) {
+			std::string option_name = (i == test_groups.size()) ? "Run All Groups" : test_groups[i]->getGroupName();
+			test_groups_options += std::format("({}) {}\n", i, option_name);
+		}
+		test_groups_options += "\n";
+
+		out["selected_test_group"] = pickInteger(
+			test_groups_options + "Choose to run one, or all of the above tests: ", 0, test_groups.size()
+		);
+		
+		// if only running a specific test group, also choose to all tests in the group, or only a specific test
+		int selected_indx = std::stoi(out["selected_test_group"]);
+		if (selected_indx != test_groups.size()) {
+			std::string test_options = "The available tests in the selected group are the following:\n";
+			const std::unique_ptr<TestGroup>& selected_grp = test_groups[selected_indx];
+			for (int i = 0; i <= selected_grp->getTests().size(); i++) {
+				std::string option_name = (i == selected_grp->getTests().size()) ? "Run All Tests" : selected_grp->getTests()[i]->getTestName();
+				test_options += std::format("({}) {}\n", i, option_name);
+			}
+			test_options += "\n";
+
+			out["selected_tests"] = pickInteger(
+				test_options + "Choose to run one, or all of the above tests: ", 0, selected_grp->getTests().size()
+			);
+		}
+
+		// choose whether to run in interactive mode with graphics
 		out["graphics_enabled"] = pickParameterFromOptions(
 			"Choose whether to run with or without graphics enabled (y/n): ", { "y", "n" }
 		);
-
-		/*out["which_scene"] = pickParameterFromOptions(
-			"Select the suite of tests to run.\n\
-1) All - run all tests\n\
-Select which scene to run: ", { "1" }
-);*/
 
 		return out;
 	}
@@ -205,25 +234,35 @@ Select which scene to run: ", { "1" }
 			paused = false;
 			rndr::init(properties.window_width, properties.window_height, "Performance Demos");
 		}
-
-		std::vector<std::unique_ptr<TestGroup>> test_groups;
-		test_groups.push_back(std::make_unique<CollisionTestGroup>());
-		test_groups.push_back(std::make_unique<HolonomicBlockSolverTestGroup>());
-		test_groups.push_back(std::make_unique<ConstraintTestsGroup>());
-		test_groups.push_back(std::make_unique<ThreadManagerTestGroup>());
 		
-
 		std::vector<std::unique_ptr<Test>> tests;
-		for (const std::unique_ptr<TestGroup>& gr : test_groups) {
-			for (std::unique_ptr<Test>& t : gr->getTests()) {
-				tests.push_back(std::move(t));
+		int selected_test_group_index = std::stoi(parameters["selected_test_group"]);
+		if (selected_test_group_index == test_groups.size()) {
+			// user selected to run all groups
+			for (const std::unique_ptr<TestGroup>& gr : test_groups) {
+				for (std::unique_ptr<Test>& t : gr->getTests()) {
+					tests.push_back(std::move(t));
+				}
 			}
 		}
+		else {
+			const std::unique_ptr<TestGroup>& selected_grp = test_groups[selected_test_group_index];
+			int selected_test_index = std::stoi(parameters["selected_tests"]);
+			if (selected_test_index == selected_grp->getTests().size()) {
+				//user selected to run all tests in group
+				for (std::unique_ptr<Test>& t : selected_grp->getTests()) {
+					tests.push_back(std::move(t));
+				}
+			}
+			else {
+				tests.push_back(std::move(selected_grp->getTests()[selected_test_index]));
+			}
+		}	
 		
 		printf("Collected %d tests...\n", static_cast<uint32_t>(tests.size()));
 
 		std::vector<std::string> passed_tests;
-		std::vector<std::string> failed_tests;
+		std::vector<std::pair<std::string, std::string>> failed_tests;
 		std::vector<std::string> xpassed_tests;
 		std::vector<std::string> xfailed_tests;
 		std::vector<std::string> skipped_tests;
@@ -245,7 +284,7 @@ Select which scene to run: ", { "1" }
 				else { outcome = t->runWithoutGraphics(); }
 				t->teardownTest();
 				active_models.clear();
-			} while (outcome == TestOutcome::RESET);
+			} while (outcome.state == TestOutcomeState::RESET);
 			auto t2 = std::chrono::system_clock::now();
 			float duration = std::chrono::duration<float, std::milli>(t2 - t1).count();
 
@@ -254,21 +293,21 @@ Select which scene to run: ", { "1" }
 			const char* START_YELLOW_TEXT = "\x1B[33m";
 			const char* END_TEXT_COLORING = "\033[0m";
 
-			if (outcome == PASSED && t->getTestExpectation() == TestExpectationStatus::XFAIL) {
+			if (outcome.state == PASSED && t->getTestExpectation() == TestExpectationStatus::XFAIL) {
 				printf("(%s): %sXPASSED%s | duration %fms\n", test_name.c_str(), START_GREEN_TEXT, END_TEXT_COLORING, duration);
 				xpassed_tests.push_back(test_name);
 			}
-			else if (outcome == PASSED) {
+			else if (outcome.state == PASSED) {
 				printf("(%s): %sPASSED%s | duration %fms\n", test_name.c_str(), START_GREEN_TEXT, END_TEXT_COLORING, duration);
 				passed_tests.push_back(test_name);
 			}
-			else if (outcome == FAILED && t->getTestExpectation() == TestExpectationStatus::XFAIL) {
+			else if (outcome.state == FAILED && t->getTestExpectation() == TestExpectationStatus::XFAIL) {
 				printf("(%s): %sXFAILED%s | duration %fms\n", test_name.c_str(), START_YELLOW_TEXT, END_TEXT_COLORING, duration);
 				xfailed_tests.push_back(test_name);
 			}
-			else if (outcome == FAILED) {
+			else if (outcome.state == FAILED) {
 				printf("(%s): %sFAILED%s | duration %fms\n", test_name.c_str(), START_RED_TEXT, END_TEXT_COLORING, duration);
-				failed_tests.push_back(test_name);
+				failed_tests.push_back(std::pair(test_name, outcome.reason));
 			}
 		}
 
@@ -283,7 +322,10 @@ Select which scene to run: ", { "1" }
 
 		if (failed_tests.size() > 0) {
 			printf("\n----Failed-Tests----\n");
-			for (const std::string& test_name : failed_tests) { printf("%s\n", test_name.c_str()); }
+			for (const std::pair<std::string, std::string>& test : failed_tests) { 
+				printf("%s\n", test.first.c_str()); //print failed test name
+				if (test.second != "") { printf("\t%s\n", test.second.c_str()); } //print reason, if there is one.
+			}
 		}
 
 		printf("\nPress enter to exit.\n");

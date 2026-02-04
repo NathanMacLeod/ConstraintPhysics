@@ -9,7 +9,7 @@ public:
 	bool canBeRunWithGraphics() const override { return false; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) override { return nullptr; }
-	TestOutcome tickTestOnePhysicsStep() override { assert(false); return TestOutcome::FAILED; }
+	TestOutcome tickTestOnePhysicsStep() override { assert(false); return TestOutcome{ TestOutcomeState::FAILED }; }
 	void teardownTest() override {};
 	TestOutcome runWithoutGraphics() override {
 		phyz::ThreadManager tm;
@@ -30,14 +30,18 @@ public:
 		status.waitUntilDone();
 
 		uint32_t expected_value = (job_count * (job_count + 1)) / 2;
-		if (counter != expected_value) { return TestOutcome::FAILED; }
+		if (counter != expected_value) { 
+			return TestOutcome{ TestOutcomeState::FAILED, "Counter did not match expected value after running submit_do_all" };
+		}
 
 		// do it one more time using await_do_all
 		counter = 0;
 		tm.await_do_all(n_threads, &in_vector, [&counter](uint32_t num) { counter += num; });
 
-		if (counter != expected_value) { return TestOutcome::FAILED; }
-		return TestOutcome::PASSED;
+		if (counter != expected_value) { 
+			return TestOutcome{ TestOutcomeState::FAILED, "Counter did not match expected value after running await_do_all" };
+		}
+		return TestOutcome{ TestOutcomeState::PASSED };
 	}
 };
 
@@ -47,7 +51,7 @@ public:
 	bool canBeRunWithGraphics() const override { return false; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) override { return nullptr; }
-	TestOutcome tickTestOnePhysicsStep() override { assert(false); return TestOutcome::FAILED; }
+	TestOutcome tickTestOnePhysicsStep() override { assert(false); return TestOutcome{ TestOutcomeState::FAILED }; }
 	void teardownTest() override {};
 	TestOutcome runWithoutGraphics() override {
 		phyz::ThreadManager tm;
@@ -60,8 +64,8 @@ public:
 		tm.submit([&flag]() { flag = true; }, &status);
 		status.waitUntilDone();
 
-		if (flag) { return TestOutcome::PASSED; }
-		else { return TestOutcome::FAILED; }
+		if (flag) { return TestOutcome{ TestOutcomeState::PASSED }; }
+		else { return TestOutcome{ TestOutcomeState::FAILED, "flag was not set"}; }
 	}
 };
 
@@ -71,7 +75,7 @@ public:
 	bool canBeRunWithGraphics() const override { return false; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) override { return nullptr; }
-	TestOutcome tickTestOnePhysicsStep() override { assert(false); return TestOutcome::FAILED; }
+	TestOutcome tickTestOnePhysicsStep() override { assert(false); return TestOutcome{ TestOutcomeState::FAILED }; }
 	void teardownTest() override {};
 	TestOutcome runWithoutGraphics() override {
 		phyz::ThreadManager tm;
@@ -133,9 +137,11 @@ public:
 		}
 
 		// this is the state everything should get stuck at.
-		if (!job1_started_flag) { return TestOutcome::FAILED; }
-		if (!job3_started_flag) { return TestOutcome::FAILED; }
-		if (job2_started_counter != job2_thread_count) { return TestOutcome::FAILED; }
+		if (!job1_started_flag) { return TestOutcome{ TestOutcomeState::FAILED, "job1_started_flag was not set" }; }
+		if (!job3_started_flag) { return TestOutcome{ TestOutcomeState::FAILED, "job3_started_flag was not set" }; }
+		if (job2_started_counter != job2_thread_count) { 
+			return TestOutcome{ TestOutcomeState::FAILED, "job2 had the wrong number of tasks started"};
+		}
 
 		job3_acquired_mutex.unlock();
 
@@ -144,11 +150,13 @@ public:
 		job2_status.waitUntilDone();
 		job1_status.waitUntilDone();
 
-		if (!job1_finished_flag) { return TestOutcome::FAILED; }
-		if (!job3_finished_flag) { return TestOutcome::FAILED; }
-		if (job2_finished_counter != job2_task_count) { return TestOutcome::FAILED; }
+		if (!job1_finished_flag) { return TestOutcome{ TestOutcomeState::FAILED, "job1_finished_flag was not set" }; }
+		if (!job3_finished_flag) { return TestOutcome{ TestOutcomeState::FAILED, "job3_finished_flag was not set" }; }
+		if (job2_finished_counter != job2_task_count) { 
+			return TestOutcome{ TestOutcomeState::FAILED, "job2_finished_counter did not match job2_task_count" };
+		}
 
-		return TestOutcome::PASSED;
+		return TestOutcome{ TestOutcomeState::PASSED };
 	}
 };
 
