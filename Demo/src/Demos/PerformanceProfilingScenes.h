@@ -217,11 +217,10 @@ Select which scene to run: ", { "1", "2", "3", "4"}
 			rndr::init(properties.window_width, properties.window_height, "Performance Demos");
 		}
 
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
-
 		phyz::PhysicsEngine p;
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
 		p.setSleepingEnabled(false);
 
 		double timestep = 1 / 60.0;

@@ -11,7 +11,7 @@ public:
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
-		tick_frequency = 60.0;
+		tick_frequency = 60.0f;
 		test_current_tick_count = 0;
 
 
@@ -49,15 +49,15 @@ public:
 	TestOutcome tickTestOnePhysicsStep() override {
 		test_current_tick_count++;
 
-		double t = test_current_tick_count / tick_frequency;
+		float t = test_current_tick_count / tick_frequency;
 		double expected_distance;
 
 		CurrentState state = get_current_state({
-			StateWithDuration{"sit_still", 1.0},
-			StateWithDuration{"expand", 1.0},
-			StateWithDuration{"sit_expanded", 1.0},
-			StateWithDuration{"shrink", 1.0},
-			StateWithDuration{"sit_shrunken", 1.0},
+			StateWithDuration{"sit_still", 1.0f},
+			StateWithDuration{"expand", 1.0f},
+			StateWithDuration{"sit_expanded", 1.0f},
+			StateWithDuration{"shrink", 1.0f},
+			StateWithDuration{"sit_shrunken", 1.0f},
 		}, t);
 
 		// switch between moving, fixing, and shrinking the distance depending on the time interval
@@ -115,7 +115,7 @@ private:
 	double box_size;
 	bool collision_occured;
 	bool no_incorrect_manifolds;
-	double tick_frequency;
+	float tick_frequency;
 	double starting_distance;
 };
 

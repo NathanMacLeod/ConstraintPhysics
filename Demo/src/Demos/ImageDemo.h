@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <cassert>
 #include <chrono>
+#include <filesystem>
 
 class ImageDemo : public DemoScene {
 private:
@@ -191,11 +192,10 @@ public:
 
 		int level_of_detail = atoi(parameters["level_of_detail"].c_str());
 
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
-
 		phyz::PhysicsEngine p;
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
 		p.setSleepingEnabled(false);
 		p.setPGSIterations(45, 35);
 		p.setAABBTreeMarginSize(0.05);
@@ -346,7 +346,7 @@ public:
 		char precompute_file[256];
 		sprintf_s(precompute_file, "resources/precomputations/precomputation_lod%d_%c.txt", level_of_detail, toupper(parameters["shape"][0]));
 		if (fileExists(precompute_file)) {
-			printf("File found. Loading...\n");
+			printf("File found at %s. Loading...\n", precompute_file);
 			readComputation(precompute_file, &pre_bodies, n_frames);
 			for (const BodyHistory& b : pre_bodies) {
 				b.r->setOrientation(b.history.back().orient);

@@ -39,6 +39,7 @@ namespace phyz {
 		virtual void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) = 0;
 		virtual AABB gen_AABB() const = 0;
 		virtual ConvexGeometryType getType() const = 0;
+		virtual ~ConvexGeometry() {}
 	};
 
 	struct RayQueryReturn {

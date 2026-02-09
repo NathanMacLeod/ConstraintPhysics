@@ -12,11 +12,6 @@ static const double FLAT_ENOUGH = cos(PI * 0.1 / 180.0);
 
 namespace phyz {
 
-	int PhysicsEngine::n_threads = 0;
-	ThreadManager PhysicsEngine::thread_manager;
-	bool PhysicsEngine::use_multithread = false;
-	bool PhysicsEngine::print_performance_data = false;
-
 	void PhysicsEngine::enableMultithreading(int n_threads) {
 		assert(n_threads >= 1);
 		PhysicsEngine::n_threads = n_threads;
@@ -34,6 +29,7 @@ namespace phyz {
 	}
 
 	PhysicsEngine::~PhysicsEngine() {
+		thread_manager.terminate_threads();
 		for (RigidBody* b : bodies) {
 			delete constraint_graph_nodes[b->getID()];
 			delete b;
@@ -1541,7 +1537,6 @@ namespace phyz {
 		return out;
 	}
 
-	//this function is a mess and badly needs to be rethought out
 	void PhysicsEngine::calculateHolonomicSystemInversesAsync() {
 		std::set<HolonomicSystemNodes*> visited;
 		std::set<SharedConstraintsEdge*> visited_edges;
@@ -1569,7 +1564,7 @@ namespace phyz {
 		for (HolonomicSystemNodes* h : visited) {
 			if (use_multithread) {
 				double cfm = global_cfm;
-				thread_manager.submit([h, cfm]() { h->system.computeInverse(cfm); }, &h->inverse_calculation_status);
+				thread_manager.submit([h, cfm, this]() { h->system.computeInverse(cfm); }, &h->inverse_calculation_status);
 			}
 			else {
 				h->system.computeInverse(global_cfm);
@@ -1864,8 +1859,8 @@ namespace phyz {
 		n2->constraints.erase(std::remove(n2->constraints.begin(), n2->constraints.end(), this));
 		if (h != nullptr) {
 			h->member_edges.erase(std::remove(h->member_edges.begin(), h->member_edges.end(), this));
-			if (h->member_edges.size() == 1) h->member_edges[0]->h = nullptr; //clean up the straggler, if it exists
-			if (h->member_edges.size() <= 1) delete h;
+			if (h->member_edges.size() == 1) { h->member_edges[0]->h = nullptr; } //clean up the straggler, if it exists
+			if (h->member_edges.size() <= 1) { delete h; }
 		}
 		for (PersistentConstraint* c : constraints) delete c;
 	}

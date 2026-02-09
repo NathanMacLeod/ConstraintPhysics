@@ -25,11 +25,11 @@ public:
 	void run() override {
 
 		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
 
 		phyz::PhysicsEngine p;
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
 		p.setSleepingEnabled(true);
 		p.setGlobalConstraintForceMixing(0.01);
 		//p.setPrintPerformanceData(true);

@@ -49,12 +49,11 @@ public:
 	void run() override {
 
 		rndr::init(properties.window_width, properties.window_height, "LDL Solver Demo");
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
 
 		phyz::PhysicsEngine p;
-		//p.setSleepingEnabled(false);
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
 		p.setPGSIterations(1, 1, 1);
 		p.setSubstepCount(16);
 		p.setGlobalConstraintForceMixing(0.0000001);

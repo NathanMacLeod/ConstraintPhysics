@@ -15,9 +15,6 @@ namespace phyz {
 		public:
 			bool isDone() { return is_done; }
 			void waitUntilDone() {
-				if (is_done) {
-					return;
-				}
 				std::unique_lock<std::mutex> lk(wait_lock);
 				wait_cv.wait(lk, [&]() -> bool { return is_done; });
 			}

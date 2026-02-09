@@ -22,6 +22,10 @@ CurrentState get_current_state(const std::initializer_list<StateWithDuration>& s
 		current_time -= s.duration;
 		i++;
 	}
+
+	// we should never hit this
+	assert(false);
+	return CurrentState{};
 }
 
 // ~=~=~=~=~=~=~=~=~=~=~=~=~=~=
@@ -52,12 +56,12 @@ struct CreateScissorliftOut {
 	mthz::Vec3 top_right_middle_pos;
 };
 
-static CreateScissorliftOut createScissors(std::vector<PhysBod>* bodies, phyz::PhysicsEngine* p, mthz::Vec3 pos, double right_left_spacing, double rung_length, double rung_width, double rung_thickness, int num_levels) {
+static CreateScissorliftOut createScissors(std::vector<PhysBod>* bodies, phyz::PhysicsEngine* p, mthz::Vec3 pos, float right_left_spacing, float rung_length, float rung_width, float rung_thickness, int num_levels) {
 	CreateScissorliftOut out;
 
-	double hinge_dist_from_edge = rung_width / 2;
-	double rung_height = (rung_length - 2 * hinge_dist_from_edge) / sqrt(2);
-	color rung_color = { 0.4, 0.4, 0.1 };
+	float hinge_dist_from_edge = rung_width / 2;
+	float rung_height = (rung_length - 2.0f * hinge_dist_from_edge) / sqrt(2.0f);
+	color rung_color = { 0.4f, 0.4f, 0.1f };
 	phyz::ConvexUnionGeometry rung = phyz::ConvexUnionGeometry::box(mthz::Vec3(0, -hinge_dist_from_edge, -hinge_dist_from_edge), rung_thickness, rung_length, rung_width);
 	phyz::ConvexUnionGeometry rear_rung = rung.getRotated(mthz::Quaternion(PI / 4, mthz::Vec3(1, 0, 0)));
 	phyz::ConvexUnionGeometry front_rung = rung.getRotated(mthz::Quaternion(-PI / 4, mthz::Vec3(1, 0, 0)));
@@ -138,14 +142,14 @@ static CreateScissorliftOut createScissors(std::vector<PhysBod>* bodies, phyz::P
 }
 
 ScissorLiftConstruct create_scissor_lift(phyz::PhysicsEngine* p, std::vector<PhysBod>* body_dest, mthz::Vec3 scissor_lift_pos) {
-	double base_width = 1;
-	double base_length = 3;
-	double base_thickness = 0.1;
+	float base_width = 1.0f;
+	float base_length = 3.0f;
+	float base_thickness = 0.1f;
 	mthz::Vec3 base_position = scissor_lift_pos + mthz::Vec3(-base_width / 2.0, 0, -base_length / 2.0);
 	phyz::ConvexUnionGeometry base_bottom = phyz::ConvexUnionGeometry::box(base_position, base_width, base_thickness, base_length);
 
-	double base_side_height = 0.3;
-	color base_color = { 0.5, 0.1, 0.1 };
+	float base_side_height = 0.3f;
+	color base_color = { 0.5f, 0.1f, 0.1f };
 	mthz::Vec3 base_rear_wall_pos = base_position + mthz::Vec3(0, base_thickness, 0);
 	phyz::ConvexUnionGeometry base_rear_wall = phyz::ConvexUnionGeometry::box(base_rear_wall_pos, base_width, base_side_height, base_thickness);
 
@@ -160,11 +164,11 @@ ScissorLiftConstruct create_scissor_lift(phyz::PhysicsEngine* p, std::vector<Phy
 
 	phyz::ConvexUnionGeometry base_geom = { base_bottom, base_rear_wall, base_front_wall, base_right_wall, base_left_wall };
 
-	double wheel_radius = 0.3;
-	double wheel_thickness = 0.15;
-	double wheel_dist_off_bottom = 0.1;
-	double wheel_dist_off_front = 0.1;
-	color wheel_color = { 0.1, 0.1, 0.1 };
+	float wheel_radius = 0.3f;
+	float wheel_thickness = 0.15f;
+	float wheel_dist_off_bottom = 0.1f;
+	float wheel_dist_off_front = 0.1f;
+	color wheel_color = { 0.1f, 0.1f, 0.1f };
 	phyz::ConvexUnionGeometry wheel = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), wheel_radius, wheel_thickness).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)));
 
 	mthz::Vec3 front_right_wheel_pos = base_position + mthz::Vec3(0, wheel_dist_off_bottom, base_length - wheel_dist_off_front);
@@ -179,13 +183,13 @@ ScissorLiftConstruct create_scissor_lift(phyz::PhysicsEngine* p, std::vector<Phy
 	mthz::Vec3 rear_left_wheel_pos = base_position + mthz::Vec3(base_width + wheel_thickness, wheel_dist_off_bottom, wheel_dist_off_front);
 	phyz::ConvexUnionGeometry rear_left_wheel = wheel.getTranslated(mthz::Vec3(rear_left_wheel_pos));
 
-	double dist_from_rear = 0.33;
-	double dist_above_base = 0.1;
-	double scissor_thickness = 0.03;
-	CreateScissorliftOut scissor_out = createScissors(body_dest, p, base_rear_wall_pos + mthz::Vec3(base_thickness, dist_above_base, dist_from_rear), base_width - 2 * base_thickness, 1, 0.1, scissor_thickness, 7);
+	float dist_from_rear = 0.33f;
+	float dist_above_base = 0.1f;
+	float scissor_thickness = 0.03f;
+	CreateScissorliftOut scissor_out = createScissors(body_dest, p, base_rear_wall_pos + mthz::Vec3(base_thickness, dist_above_base, dist_from_rear), base_width - 2.0f * base_thickness, 1.0f, 0.1f, scissor_thickness, 7);
 
-	double slider_width = 0.1;
-	color sider_color = { 0.6, 0.6, 0.6 };
+	float slider_width = 0.1f;
+	color sider_color = { 0.6f, 0.6f, 0.6f };
 	mthz::Vec3 right_bottom_slider_pos = scissor_out.bot_front_right_pos + mthz::Vec3(-scissor_thickness, -slider_width / 2.0, -slider_width / 2.0);
 	phyz::ConvexUnionGeometry bottom_right_slider = phyz::ConvexUnionGeometry::box(right_bottom_slider_pos, scissor_thickness, slider_width, slider_width, phyz::Material::modified_density(1000));
 	phyz::ConvexUnionGeometry bottom_left_slider = bottom_right_slider.getTranslated(mthz::Vec3(base_width - scissor_thickness - 2 * base_thickness, 0, 0));
@@ -197,7 +201,7 @@ ScissorLiftConstruct create_scissor_lift(phyz::PhysicsEngine* p, std::vector<Phy
 	phyz::ConvexUnionGeometry top_left_slider = phyz::ConvexUnionGeometry::box(left_top_slider_pos, scissor_thickness, slider_width, slider_width);
 	phyz::ConvexUnionGeometry top_slider = { top_right_slider, top_left_slider };
 
-	color platform_color = { 0.1, 0.6, 0.1 };
+	color platform_color = { 0.1f, 0.6f, 0.1f };
 	mthz::Vec3 platform_pos = mthz::Vec3(base_position.x, right_top_slider_pos.y + right_bottom_slider_pos.y - base_position.y - base_thickness, base_position.z);
 	phyz::ConvexUnionGeometry base_platform = phyz::ConvexUnionGeometry::box(platform_pos, base_width, base_thickness, base_length);
 
@@ -257,20 +261,20 @@ ScissorLiftConstruct create_scissor_lift(phyz::PhysicsEngine* p, std::vector<Phy
 	out.right_distance_constraint = p->addDistanceConstraint(scissor_out.bot_rear_right_rung_r, scissor_out.top_rear_right_rung_r, scissor_out.bot_right_middle_pos, scissor_out.top_right_middle_pos);
 	out.left_distance_constraint = p->addDistanceConstraint(scissor_out.bot_rear_left_rung_r, scissor_out.top_rear_left_rung_r, scissor_out.bot_left_middle_pos, scissor_out.top_left_middle_pos);
 	out.state = ScissorLiftConstruct::MovementState::FIXED;
-	out.max_height = 4.45;
-	out.min_height = 0.7;
-	out.move_speed = 1.5;
+	out.max_height = 4.45f;
+	out.min_height = 0.7f;
+	out.move_speed = 1.5f;
 
 	return out;
 }
 
 
 void set_scissor_lift_movement_input(phyz::PhysicsEngine* p, ScissorLiftConstruct* s, ScissorLiftConstruct::MovementState desired_state) {
-	double current_left_dist = p->getDistanceConstraintCurrentDistance(s->left_distance_constraint);
-	double current_right_dist = p->getDistanceConstraintCurrentDistance(s->right_distance_constraint);
-	double dist_diff = current_left_dist - current_right_dist;
-	double catchup_multiplier = 1 + 15 * abs(dist_diff);
-	double left_multipier, right_multiplier;
+	float current_left_dist = static_cast<float>(p->getDistanceConstraintCurrentDistance(s->left_distance_constraint));
+	float current_right_dist = static_cast<float>(p->getDistanceConstraintCurrentDistance(s->right_distance_constraint));
+	float dist_diff = current_left_dist - current_right_dist;
+	float catchup_multiplier = 1.0f + 15.0f * abs(dist_diff);
+	float left_multipier, right_multiplier;
 
 	if ((desired_state == ScissorLiftConstruct::MovementState::RAISING && current_left_dist >= s->max_height) ||
 		(desired_state == ScissorLiftConstruct::MovementState::LOWERING && current_left_dist <= s->min_height)) {

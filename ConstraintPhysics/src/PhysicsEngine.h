@@ -61,9 +61,9 @@ namespace phyz {
 	public:
 		~PhysicsEngine();
 
-		static void enableMultithreading(int n_threads);
-		static void disableMultithreading();
-		static void setPrintPerformanceData(bool print_data);
+		void enableMultithreading(int n_threads);
+		void disableMultithreading();
+		void setPrintPerformanceData(bool print_data);
 
 		void timeStep();
 		void extrapolateObjectPositions(double time_elapsed);
@@ -157,10 +157,10 @@ namespace phyz {
 		friend class DebugDemo;
 	private:
 
-		static int n_threads;
-		static ThreadManager thread_manager;
-		static bool use_multithread;
-		static bool print_performance_data;
+		int n_threads = 0;
+		ThreadManager thread_manager;
+		bool use_multithread = false;
+		bool print_performance_data = false;
 
 		unsigned int next_id = 1;
 
@@ -207,7 +207,7 @@ namespace phyz {
 		double cutoff_vel = 0;
 		int contact_life = 6;
 		double contact_pos_correct_hardness = 1000;
-		double excessive_linear_error_torque_threshold = 15;
+		float excessive_linear_error_torque_threshold = 15;
 		bool sleeping_enabled = true;
 		double sleep_delay = 0.5;
 		int non_sleepy_tick_threshold = 3;

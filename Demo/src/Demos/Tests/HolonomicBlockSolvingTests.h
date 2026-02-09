@@ -115,7 +115,7 @@ public:
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }	
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
-		tick_frequency = 60.0;
+		tick_frequency = 60.0f;
 		test_total_tick_duration = static_cast<uint32_t>(500 * tick_frequency);
 		test_current_tick_count = 0;
 
@@ -133,7 +133,7 @@ public:
 		double ground_thickness = 0.5;
 		phyz::ConvexUnionGeometry ground_geom = phyz::ConvexUnionGeometry::box(mthz::Vec3(-ground_width / 2.0, -ground_thickness, -ground_width / 2.0), ground_width, ground_thickness, ground_width);
 		phyz::RigidBody* ground_r = p->createRigidBody(ground_geom, phyz::RigidBody::MovementType::FIXED);
-		bodies->push_back(PhysBod{ fromGeometry(ground_geom, color{0.4, 0.4, 0.4}), ground_r});
+		bodies->push_back(PhysBod{ fromGeometry(ground_geom, color{0.4f, 0.4f, 0.4f}), ground_r});
 
 		scissor = create_scissor_lift(p, bodies, mthz::Vec3(0, 0, 0));
 		starting_height = p->getDistanceConstraintCurrentDistance(scissor.left_distance_constraint);
@@ -143,12 +143,12 @@ public:
 	TestOutcome tickTestOnePhysicsStep() override {
 		test_current_tick_count++;
 
-		double t = test_current_tick_count / tick_frequency;
+		float t = test_current_tick_count / tick_frequency;
 
 		CurrentState state = get_current_state({
-			StateWithDuration{"fixed", 3.0},
-			StateWithDuration{"shrink", 10.0},
-			StateWithDuration{"expand", 25.0},
+			StateWithDuration{"fixed", 3.0f},
+			StateWithDuration{"shrink", 10.0f},
+			StateWithDuration{"expand", 25.0f},
 		}, t);
 
 		double expected_height = -1;
@@ -205,7 +205,7 @@ public:
 		return outcome;
 	}
 private:
-	double tick_frequency;
+	float tick_frequency;
 	phyz::PhysicsEngine* p;
 	ScissorLiftConstruct scissor;
 	double starting_height;

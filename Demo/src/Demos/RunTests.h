@@ -165,6 +165,10 @@ private:
 
 			if (outcome.state != TestOutcomeState::STILL_RUNNING) { return outcome; }
 		}
+
+		// we should never actually hit this
+		assert(false);
+		return outcome;
 	}
 
 public:
@@ -189,7 +193,7 @@ public:
 		test_groups_options += "\n";
 
 		out["selected_test_group"] = pickInteger(
-			test_groups_options + "Choose to run one, or all of the above tests: ", 0, test_groups.size()
+			test_groups_options + "Choose to run one, or all of the above tests: ", 0, static_cast<int>(test_groups.size())
 		);
 		
 		// if only running a specific test group, also choose to all tests in the group, or only a specific test
@@ -204,7 +208,7 @@ public:
 			test_options += "\n";
 
 			out["selected_tests"] = pickInteger(
-				test_options + "Choose to run one, or all of the above tests: ", 0, selected_grp->getTests().size()
+				test_options + "Choose to run one, or all of the above tests: ", 0, static_cast<int>(selected_grp->getTests().size())
 			);
 		}
 
@@ -268,6 +272,7 @@ public:
 		std::vector<std::string> skipped_tests;
 
 
+		
 		for (std::unique_ptr<Test>& t : tests) {
 			std::string test_name = t->getTestName();
 			if (t->getTestExpectation() == TestExpectationStatus::SKIP) {
@@ -317,16 +322,17 @@ public:
 
 		printf("\n=~=~=~=~=~=~=Summary=~=~=~=~=~=~=\n");
 		printf("Passed: %d\nFailed: %d\nXPassed: %d\nXFailed: %d\nSkipped: %d\n",
-				static_cast<uint32_t>(passed_tests.size()), static_cast<uint32_t>(failed_tests.size()), static_cast<uint32_t>(xpassed_tests.size()),
-				static_cast<uint32_t>(xfailed_tests.size()), static_cast<uint32_t>(skipped_tests.size()));
+			static_cast<uint32_t>(passed_tests.size()), static_cast<uint32_t>(failed_tests.size()), static_cast<uint32_t>(xpassed_tests.size()),
+			static_cast<uint32_t>(xfailed_tests.size()), static_cast<uint32_t>(skipped_tests.size()));
 
 		if (failed_tests.size() > 0) {
 			printf("\n----Failed-Tests----\n");
-			for (const std::pair<std::string, std::string>& test : failed_tests) { 
+			for (const std::pair<std::string, std::string>& test : failed_tests) {
 				printf("%s\n", test.first.c_str()); //print failed test name
 				if (test.second != "") { printf("\t%s\n", test.second.c_str()); } //print reason, if there is one.
 			}
 		}
+		
 
 		printf("\nPress enter to exit.\n");
 		fgetc(stdin);

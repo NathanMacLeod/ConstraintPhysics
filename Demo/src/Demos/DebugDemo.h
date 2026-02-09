@@ -44,11 +44,11 @@ public:
 
 	void run() override {
 		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
 
 		phyz::PhysicsEngine p;
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
 		p.setPGSIterations(1, 1);
 		p.setGlobalConstraintForceMixing(0.001);
 
@@ -67,9 +67,6 @@ public:
 
 
 		rndr::init(properties.window_width, properties.window_height, "Car Demo");
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
 
 		//************************
 		//*******BASE PLATE*******

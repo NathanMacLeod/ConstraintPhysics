@@ -93,7 +93,6 @@ DemoScene::DemoScene(DemoManager* manager, DemoProperties properties) : manager(
 
 DemoScene::~DemoScene() {
 	rndr::terminate();
-	phyz::PhysicsEngine::disableMultithreading();
 }
 
 bool DemoScene::caseIndefferentStringEquals(const std::string& s1, const std::string& s2) {
