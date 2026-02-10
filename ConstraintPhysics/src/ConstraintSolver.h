@@ -9,13 +9,13 @@ namespace phyz {
 
 	class Constraint;
 	class PhysicsEngine;
+	struct IslandConstraints;
 	void PGS_solve(
 		PhysicsEngine* pEngine, 
-		const std::vector<Constraint*>& constraints, 
-		const std::vector<HolonomicSystem*>& holonomic_systems,
-		double holonomic_block_solver_CFM,
-		int n_itr_vel, int n_itr_pos, int n_itr_holonomic, 
-		ThreadManager::JobStatus* compute_inverse_status=nullptr
+		IslandConstraints& constraints,
+		int n_itr_vel, int n_itr_pos, int n_itr_holonomic,
+		float holonomic_warmstart_multiplier,
+		float excessive_linear_error_torque_threshold
 	);
 
 	class Constraint {
@@ -32,24 +32,35 @@ namespace phyz {
 		mthz::NVec<6>* b_velocity_change;
 		mthz::NVec<6>* b_psuedo_velocity_change;
 
+		mthz::NVec<6>* a_linearization_error_detect;
+		mthz::NVec<6>* b_linearization_error_detect;
+
 		virtual double getImpulseMag() = 0;
 		virtual double getPsuedoImpulseMag() = 0;
 		virtual double getNormOfCurrentValueFromTargetValue(bool for_psuedo_vel) = 0;
-		virtual int getDegree() = 0;
+		virtual int getDegree() const = 0;
 		virtual bool isInequalityConstraint() = 0;
 		virtual bool needsPosCorrect() = 0;
 		virtual bool constraintWarmStarted() = 0;
 		virtual void applyWarmStartVelocityChange() = 0;
+		virtual void findTargetConstraintValue() = 0;
+		virtual void addScaledHolonomicImpulseToNextWarmStart(float scalar) = 0;
+#ifndef NDEBUG
+		virtual void updateCurrentConstraintValue() = 0;
+#endif
+
 	protected:
 		//these are pretty inefficient to multiply with, but nice for sanity checking
 		mthz::NMat<6, 6> aInvMass();
 		mthz::NMat<6, 6> bInvMass();
 	};
 
+	mthz::NVec<6> velAngToNVec(mthz::Vec3 vel, mthz::Vec3 ang_vel);
+
 	template<int n>
 	class DegreedConstraint : public Constraint {
 	public:
-		DegreedConstraint() : impulse(mthz::NVec<n>{0.0}), psuedo_impulse(mthz::NVec<n>{0.0}) {}
+		DegreedConstraint() : impulse(mthz::NVec<n>{0.0}), psuedo_impulse(mthz::NVec<n>{0.0}), holonomic_solver_induced_impulse(mthz::NVec<n>{0.0}) {}
 		DegreedConstraint(RigidBody* a, RigidBody* b, mthz::NVec<n> impulse) : Constraint(a, b), impulse(impulse), psuedo_impulse(mthz::NVec<n>{0.0}) {}
 
 		virtual mthz::NVec<n> projectValidImpulse(mthz::NVec<n> impulse) { return impulse; }
@@ -62,6 +73,18 @@ namespace phyz {
 			*va += impulse_to_a_velocity * impulse;
 			*vb += impulse_to_b_velocity * impulse;
 		}
+
+		// this just exists to allow computing most of the constraint in advance of when we know what the vel / ang velocity of the rigid body will be.
+		virtual void findTargetConstraintValue() { target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel())); };
+
+		void addScaledHolonomicImpulseToNextWarmStart(float scalar) override { impulse += scalar * holonomic_solver_induced_impulse; }
+
+#ifndef NDEBUG
+		void updateCurrentConstraintValue() {
+			current_val = getConstraintValue(*a_velocity_change, *b_velocity_change);
+			psuedo_val = getConstraintValue(*a_psuedo_velocity_change, *b_psuedo_velocity_change);
+		}
+#endif
 
 		mthz::NVec<n> getConstraintValue(const mthz::NVec<6>& va, const mthz::NVec<6>& vb) {
 			return a_jacobian * va + b_jacobian * vb;
@@ -100,6 +123,16 @@ namespace phyz {
 
 		mthz::NVec<n> impulse;
 		mthz::NVec<n> psuedo_impulse;
+		// track the impulse from the holonomic solve seperatly from the GS generated impulses.
+		// on non-holonomic constraints, this term simply stays 0.
+		// for holonomic constraints, this allows warm starting from the holonomic solver induced impulse
+		// to be reduced by some factor. this is intended to reduce linearization error from being persisted accross substeps.
+		mthz::NVec<n> holonomic_solver_induced_impulse;
+#ifndef NDEBUG
+		// just nice to be able to see this in the debugger
+		mthz::NVec<n> current_val;
+		mthz::NVec<n> psuedo_val;
+#endif
 		mthz::NVec<n> target_val;
 		mthz::NVec<n> psuedo_target_val;
 		mthz::NMat<n, 6> a_jacobian;
@@ -115,12 +148,15 @@ namespace phyz {
 		ContactConstraint() {}
 		ContactConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double bounce, double pen_depth, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse=mthz::NVec<1>{ 0.0 }, double cutoff_vel=0);
 		
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return true; }
+		void findTargetConstraintValue() override;
 
 	private:
+		double bounce;
+		double cutoff_vel;
 		
 		mthz::Vec3 norm;
 		mthz::Vec3 rA;
@@ -134,7 +170,7 @@ namespace phyz {
 		FrictionConstraint() : normal_impulse(nullptr) {}
 		FrictionConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 norm, mthz::Vec3 contact_p, double coeff_friction, ContactConstraint* normal, double constraint_force_mixing, mthz::NVec<2> warm_start_impulse = mthz::NVec<2>{ 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3(), double normal_impulse_limit = std::numeric_limits<double>::infinity());
 
-		inline int getDegree() override { return 2; }
+		inline int getDegree() const override { return 2; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<2> projectValidImpulse(mthz::NVec<2> impulse) override;
 		inline bool needsPosCorrect() override { return false; }
@@ -157,17 +193,25 @@ namespace phyz {
 	class DistanceConstraint : public DegreedConstraint<1> {
 	public:
 		DistanceConstraint() {}
-		DistanceConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 attach_pos_a, mthz::Vec3 attach_pos_b, double target_distance, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
+		DistanceConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 attach_pos_a, mthz::Vec3 attach_pos_b, bool moving_mode, double target_distance, double target_velocity, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
 
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
+		void findTargetConstraintValue() {
+			target_val = -getConstraintValue(velAngToNVec(a->getVel(), a->getAngVel()), velAngToNVec(b->getVel(), b->getAngVel()));
+			if (moving_mode) { target_val.v[0] += target_velocity; }
+		};
 
 	private:
 		mthz::Vec3 rA;
 		mthz::Vec3 rB;
 		mthz::Mat3 rotDirA;
 		mthz::Mat3 rotDirB;
+
+		bool moving_mode;
+		double target_velocity;
+		mthz::Vec3 diff_dir;
 	};
 
 	class BallSocketConstraint : public DegreedConstraint<3> {
@@ -175,7 +219,7 @@ namespace phyz {
 		BallSocketConstraint() {}
 		BallSocketConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 socket_pos_a, mthz::Vec3 socket_pos_b, double pos_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<3> warm_start_impulse=mthz::NVec<3>{ 0.0 });
 		
-		inline int getDegree() override { return 3; }
+		inline int getDegree() const override { return 3; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -191,7 +235,7 @@ namespace phyz {
 		SlidingHingeConstraint() {}
 		SlidingHingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<4> warm_start_impulse = mthz::NVec<4>{ 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
-		inline int getDegree() override { return 4; }
+		inline int getDegree() const override { return 4; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -210,7 +254,7 @@ namespace phyz {
 		HingeConstraint() {}
 		HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<5> warm_start_impulse=mthz::NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u=mthz::Vec3(), mthz::Vec3 source_w=mthz::Vec3());
 
-		inline int getDegree() override { return 5; }
+		inline int getDegree() const override { return 5; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -229,10 +273,11 @@ namespace phyz {
 		MotorConstraint() {}
 		MotorConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 motor_axis, double target_velocity, double max_torque_impulse, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
 
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return rot_limit_status != NOT_EXCEEDED; }
+		void findTargetConstraintValue() override;
 
 	private:
 		enum LimitStatus { NOT_EXCEEDED = 0, BELOW_MIN, ABOVE_MAX };
@@ -242,6 +287,8 @@ namespace phyz {
 		mthz::Vec3 motor_axis;
 		mthz::Vec3 rotDirA;
 		mthz::Vec3 rotDirB;
+
+		double real_target_velocity;
 	};
 
 	class SliderConstraint : public DegreedConstraint<5> {
@@ -249,7 +296,7 @@ namespace phyz {
 		SliderConstraint() {}
 		SliderConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slider_point_a, mthz::Vec3 slider_point_b, mthz::Vec3 slider_axis_a, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<5> warm_start_impulse = mthz::NVec<5>{ 0.0, 0.0, 0.0, 0.0, 0.0 }, mthz::Vec3 source_u = mthz::Vec3(), mthz::Vec3 source_w = mthz::Vec3());
 
-		inline int getDegree() override { return 5; }
+		inline int getDegree() const override { return 5; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -267,10 +314,11 @@ namespace phyz {
 		PistonConstraint() {}
 		PistonConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double target_velocity, double max_impulse, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
 
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return false; }
+		void findTargetConstraintValue() override;
 
 	private:
 
@@ -278,6 +326,8 @@ namespace phyz {
 		mthz::Vec3 rot_dir;
 		mthz::Vec3 pos_diff;
 		mthz::Vec3 slide_axis;
+
+		double target_velocity;
 	};
 
 	class SlideLimitConstraint : public DegreedConstraint<1> {
@@ -285,7 +335,7 @@ namespace phyz {
 		SlideLimitConstraint() {}
 		SlideLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 slide_axis, double slide_position, double positive_slide_limit, double negative_slide_limit, double pos_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
 
-		inline int getDegree() override { return 1; }
+		inline int getDegree() const override { return 1; }
 		inline bool isInequalityConstraint() override { return true; }
 		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
 		inline bool needsPosCorrect() override { return true; }
@@ -304,7 +354,7 @@ namespace phyz {
 		WeldConstraint() {}
 		WeldConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 a_attach_point, mthz::Vec3 b_attach_point, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<6> warm_start_impulse = mthz::NVec<6>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 });
 
-		inline int getDegree() override { return 6; }
+		inline int getDegree() const override { return 6; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return true; }
 
@@ -321,7 +371,7 @@ namespace phyz {
 		TestConstraint() {}
 		TestConstraint(RigidBody* a, RigidBody* b);
 
-		inline int getDegree() override { return 6; }
+		inline int getDegree() const override { return 6; }
 		inline bool isInequalityConstraint() override { return false; }
 		inline bool needsPosCorrect() override { return false; }
 	};

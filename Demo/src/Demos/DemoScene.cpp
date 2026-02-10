@@ -93,7 +93,6 @@ DemoScene::DemoScene(DemoManager* manager, DemoProperties properties) : manager(
 
 DemoScene::~DemoScene() {
 	rndr::terminate();
-	phyz::PhysicsEngine::disableMultithreading();
 }
 
 bool DemoScene::caseIndefferentStringEquals(const std::string& s1, const std::string& s2) {
@@ -120,6 +119,19 @@ std::string DemoScene::pickParameterFromOptions(const std::string& prompt, const
 		else						error_message += std::format("{}: ", options[i]);
 	}
 
+	return askCustomParameterValue(prompt, response_valid, error_message);
+}
+
+std::string DemoScene::pickInteger(const std::string& prompt, int min, int max) {
+	auto response_valid = [=](std::string userin) -> bool {
+		try {
+			int input_int = std::stoi(userin);
+			return min <= input_int && input_int <= max;
+		}
+		catch (std::invalid_argument) { return false; }
+	};
+
+	std::string error_message = std::format("Invalid input. Input must be an integer between {} and {}\n", min, max);
 	return askCustomParameterValue(prompt, response_valid, error_message);
 }
 

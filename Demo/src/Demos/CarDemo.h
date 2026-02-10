@@ -46,12 +46,12 @@ public:
 	void run() override {
 
 		rndr::init(properties.window_width, properties.window_height, "Car Demo");
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
 
 		phyz::PhysicsEngine p;
-		p.setPGSIterations(20, 10, 2);
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
+		//p.setPGSIterations(5, 2, 0);
 		p.setGlobalConstraintForceMixing(0.0001);
 		//p.setOctreeParams(100, 0.5);
 		//p.setWarmStartDisabled(true);

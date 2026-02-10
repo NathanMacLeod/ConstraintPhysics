@@ -18,6 +18,7 @@ public:
 		for (int i = 0; i < n_layers; i++) {
 			double theta_offset = i * dtheta / 2;
 			for (double theta = 0; theta < 2 * PI; theta += dtheta) {
+				if (theta != 0) { continue; }
 				mthz::Quaternion rotation(theta + theta_offset, mthz::Vec3(0, 1, 0));
 
 				mthz::Vec3 block_pos = pos + mthz::Vec3(0.0, block_dim.y * i, 0.0) + rotation.applyRotation(mthz::Vec3(radius, 0, 0));
@@ -43,11 +44,11 @@ public:
 
 	void run() override {
 		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
 
 		phyz::PhysicsEngine p;
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
 		p.setPGSIterations(1, 1);
 		p.setGlobalConstraintForceMixing(0.001);
 
@@ -66,9 +67,6 @@ public:
 
 
 		rndr::init(properties.window_width, properties.window_height, "Car Demo");
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
 
 		//************************
 		//*******BASE PLATE*******
@@ -86,7 +84,7 @@ public:
 		//*****************
 		double radius = 4;
 		mthz::Vec3 block_dim(1, 1, 2);
-		addBrickRing(&p, &bodies, block_dim, radius, 12, mthz::Vec3(0, -4, -22), 8);
+		addBrickRing(&p, &bodies, block_dim, radius, 12, mthz::Vec3(0, -4, -22), 2);
 
 		/*for (mthz::Vec3& v : grid.points) {
 			v.y += 0.01 * 2 * (0.5 - frand());

@@ -12,6 +12,9 @@
 #include <mutex>
 #include "PersistentConstraint.h"
 
+#define DEFAULT_JOINT_POS_CORRECTION_STIFFNESS 15000
+#define DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS 15000
+
 class DebugDemo;
 
 namespace phyz {
@@ -32,7 +35,7 @@ namespace phyz {
 	};
 
 	typedef int ColActionID;
-	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifold)> ColAction;
+	typedef std::function<void(RigidBody* b1, RigidBody* b2, const std::vector<Manifold>& manifolds)> ColAction;
 
 	struct RayHitInfo {
 		bool did_hit;
@@ -44,13 +47,23 @@ namespace phyz {
 
 	enum BroadPhaseStructure { NONE, OCTREE, AABB_TREE, TEST_COMPARE };
 
+	struct HolonomicInfo {
+		HolonomicSystem* system;
+		ThreadManager::JobStatus* async_inverse_calculation_status;
+	};
+
+	struct IslandConstraints {
+		std::vector<Constraint*> constraints;
+		std::vector<HolonomicInfo> holonomic_blocks;
+	};
+
 	class PhysicsEngine {
 	public:
 		~PhysicsEngine();
 
-		static void enableMultithreading(int n_threads);
-		static void disableMultithreading();
-		static void setPrintPerformanceData(bool print_data);
+		void enableMultithreading(int n_threads);
+		void disableMultithreading();
+		void setPrintPerformanceData(bool print_data);
 
 		void timeStep();
 		void extrapolateObjectPositions(double time_elapsed);
@@ -74,7 +87,8 @@ namespace phyz {
 		std::vector<RigidBody*> getBodies();
 		unsigned int getNextBodyID();
 
-		void setPGSIterations(int n_vel, int n_pos, int n_holonomic = 3) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; pgsHolonomicIterations = n_holonomic; }
+		void setPGSIterations(int n_vel, int n_pos, int n_holonomic = 1) { pgsVelIterations = n_vel; pgsPosIterations = n_pos; pgsHolonomicIterations = n_holonomic; }
+		void setSubstepCount(int c) { substep_count = c; }
 		void setSleepingEnabled(bool sleeping);
 		void setStep_time(double d);
 		void setGravity(const mthz::Vec3& v);
@@ -86,7 +100,6 @@ namespace phyz {
 		void setWarmStartDisabled(bool b);
 		void setSleepParameters(double vel_sensitivity, double ang_vel_sensitivity, double aceleration_sensitivity, double sleep_assesment_time, int non_sleepy_tick_threshold);
 		void setGlobalConstraintForceMixing(double cfm);
-		void setHolonomicSolverCFM(double cfm);
 
 		//really only exists for debugging
 		void deleteWarmstartData(RigidBody* r);
@@ -97,26 +110,26 @@ namespace phyz {
 		ColActionID registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action);
 		void removeCollisionAction(ColActionID action_key);
 
-		ConstraintID addDistanceConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double target_distance=-1, double pos_correct_strength=1000);
-		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength = 1000);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addDistanceConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double target_distance=-1, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
+		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 		ConstraintID addMotorConstraint(ConstraintID base_constraint, double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
-		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 		ConstraintID addPistonConstraint(ConstraintID base_constraint, double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity());
-		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
-		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_point_local, mthz::Vec3 b2_attach_point_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_point_local, mthz::Vec3 b2_attach_point_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
 
-		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength = 1000);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
-		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
-		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
 		ConstraintID addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length = -1);
-		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strength = 1000, double rot_correct_strength = 1000);
+		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
 		void setConstraintUseCustomCFM(ConstraintID id, double custom_cfm);
 		void setConstraintUseGlobalCFM(ConstraintID id);
@@ -137,24 +150,28 @@ namespace phyz {
 		double getPistonPosition(ConstraintID id);
 
 		void setDistanceConstraintTargetDistance(ConstraintID id, double target_distance);
-		double getDistanceConstraintTargetDistance(ConstraintID id);
+		void setDistanceConstraintToMoveAtTargetVelocity(ConstraintID id, double target_velocity);
+		double getDistanceConstraintCurrentDistance(ConstraintID id);
 
 		//just makes debugging easier
 		friend class DebugDemo;
 	private:
 
-		static int n_threads;
-		static ThreadManager thread_manager;
-		static bool use_multithread;
-		static bool print_performance_data;
+		int n_threads = 0;
+		ThreadManager thread_manager;
+		bool use_multithread = false;
+		bool print_performance_data = false;
 
 		unsigned int next_id = 1;
 
+		int substep_count = 8;
 		int pgsVelIterations = 1;
 		int pgsPosIterations = 1;
-		int sub_itr_count = 1;
 		int pgsHolonomicIterations = 1;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
+
+		//constraint force mixing - softens constraints and makes more stable
+		double global_cfm = 0.0000025;
 
 		BroadPhaseStructure broadphase = AABB_TREE;
 		double aabbtree_margin_size = 0.1;
@@ -162,17 +179,18 @@ namespace phyz {
 		mthz::Vec3 octree_center = mthz::Vec3(0, 0, 0);
 		double octree_size = 2000;
 		double octree_minsize = 1;
-	
-		double holonomic_block_solver_CFM = 0.00001;
-		bool compute_holonomic_inverse_in_parallel = true;
 
 		int angle_velocity_update_tick_count = 4;
 		bool is_internal_gyro_forces_disabled = false;
 		bool friction_impulse_limit_enabled = false;
 
+		// used to visit every edge of the constraint graph exactly once.
+		int current_visit_constraint_graph_edges_tag_value = 0;
+
 		struct ConstraintGraphNode; 
 		void addContact(ConstraintGraphNode* n1, ConstraintGraphNode* n2, mthz::Vec3 p, mthz::Vec3 norm, const MagicID& magic, double bounce, double static_friction, double kinetic_friction, int n_points, double pen_depth, double hardness);
-		void maintainConstraintGraphApplyPoweredConstraints();
+		void maintainHolonomicSystems();
+		void maintainConstraintGraphApplyPoweredConstraints(bool is_first_sub_itr, bool is_last_sub_itr, double delta_time);
 		//void updateConstraints(std::vector<Constraint*> constraints);
 		void bfsVisitAll(ConstraintGraphNode* curr, std::set<ConstraintGraphNode*>* visited, void* in, std::function<void(ConstraintGraphNode* curr, void* in)> action);
 		inline double getCutoffVel(double step_time, const mthz::Vec3& gravity) { return 2 * gravity.mag() * step_time; }
@@ -189,6 +207,7 @@ namespace phyz {
 		double cutoff_vel = 0;
 		int contact_life = 6;
 		double contact_pos_correct_hardness = 1000;
+		float excessive_linear_error_torque_threshold = 15;
 		bool sleeping_enabled = true;
 		double sleep_delay = 0.5;
 		int non_sleepy_tick_threshold = 3;
@@ -198,19 +217,11 @@ namespace phyz {
 		double accel_sleep_coeff = 0.044;
 
 		bool warm_start_disabled = false;
-		double warm_start_coefficient = 0.975;
+		double warm_start_coefficient = 1.0;
 
 		//Constraint Graph
 		std::unordered_map<unsigned int, ConstraintGraphNode*> constraint_graph_nodes;
 		std::mutex constraint_graph_lock;
-
-		//constraint force mixing - softens constraints and makes more stable
-		double global_cfm = 0;// 0.025;
-
-		struct IslandConstraints {
-			std::vector<Constraint*> constraints;
-			std::vector<HolonomicSystem*> systems;
-		};
 
 		struct ActiveConstraintData {
 			std::vector<IslandConstraints> island_systems;
@@ -249,17 +260,19 @@ namespace phyz {
 
 		struct HolonomicSystemNodes {
 			HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges);
-			void recalculateSystem();
+			void revaluateSystem();
 
 			bool constraints_changed_flag;
 			bool edge_removed_flag;
 			std::vector<SharedConstraintsEdge*> member_edges;
 			HolonomicSystem system;
+			ThreadManager::JobStatus inverse_calculation_status;
 		};
 
 		std::vector<SharedConstraintsEdge*> getAllEdgesConnectedHolonomically(SharedConstraintsEdge* e);
 		void shatterFracturedHolonomicSystems();
 		void maintainAllHolonomicSystemStuffRelatedToThisEdge(SharedConstraintsEdge* e);
+		void calculateHolonomicSystemInversesAsync();
 
 		struct ConstraintGraphNode {
 			ConstraintGraphNode(RigidBody* b) : b(b), constraints(std::vector<SharedConstraintsEdge*>()) {}

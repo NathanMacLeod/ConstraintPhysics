@@ -41,7 +41,8 @@ public:
 			bodies->push_back({ fromGeometry(connecting_link), connecting_link_r });
 			all_links_r->push_back(connecting_link_r);
 
-			p->addHingeConstraint(connecting_link_r, prev_link_r, prev_link_attach_point, mthz::Vec3(1.0, 0, 0));
+			double softened_pos_correction = 1000;
+			p->addHingeConstraint(connecting_link_r, prev_link_r, prev_link_attach_point, mthz::Vec3(1.0, 0, 0), softened_pos_correction, softened_pos_correction);
 
 			mthz::Vec3 intermediate_joint_pos = prev_link_attach_point + mthz::Vec3(0, -link_dist, 0);
 
@@ -50,7 +51,8 @@ public:
 			bodies->push_back({ fromGeometry(open_link),open_link_r });
 			all_links_r->push_back(open_link_r);
 
-			p->addHingeConstraint(connecting_link_r, open_link_r, intermediate_joint_pos, mthz::Vec3(1.0, 0, 0));
+			
+			p->addHingeConstraint(connecting_link_r, open_link_r, intermediate_joint_pos, mthz::Vec3(1.0, 0, 0), softened_pos_correction, softened_pos_correction);
 
 			prev_link_r = open_link_r;
 			prev_link_attach_point = intermediate_joint_pos + mthz::Vec3(0, -link_dist, 0);
@@ -79,14 +81,13 @@ public:
 	void run() override {
 
 		rndr::init(properties.window_width, properties.window_height, "Wrecking Ball Demo");
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
 
 		phyz::PhysicsEngine p;
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
 		p.setSleepingEnabled(true);
-		//p.setPGSIterations(6, 2, 1);
-		double timestep = 1 / 240.0;
+		double timestep = 1 / 160.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
 

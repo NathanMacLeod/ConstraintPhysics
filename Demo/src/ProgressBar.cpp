@@ -13,7 +13,7 @@ ProgressBarState render_progress_bar(double percent, int width, bool done, Progr
 	if (prev_state.use_status != IN_USE || time_since_last_render > force_update_time || (force_update_time == std::numeric_limits<float>::infinity() && current_percent_int != prev_state.current_percent_int) || done) {
 		out.last_render_time = now;
 		//clear any previous characters
-		printf("%200s\r", "");
+		printf("\33[2K\r");
 
 		//render loading animation
 		if (prev_state.use_status != UNUSED && !done && show_animation) {
@@ -43,8 +43,8 @@ ProgressBarState render_progress_bar(double percent, int width, bool done, Progr
 				//compare to oldest data point in comparison history
 				int comparison_indx = std::min<int>(prev_state.current_percent_int, COMPLETION_PROJECTION_HISTORY_SIZE - 1);
 
-				double time_elapsed = std::chrono::duration<double>(now - prev_state.prev_percent_history[comparison_indx]).count();
-				double percents_computed_since = 100 * percent - prev_state.current_percent_int + comparison_indx / 100.0;
+				double time_elapsed = std::chrono::duration<double>(now - prev_state.progress_history_window_times[comparison_indx]).count();
+				double percents_computed_since = percent - prev_state.progress_history_window_percent_done[comparison_indx] / 100.0;
 
 				double time_remaining = (1.0 - percent) * time_elapsed / percents_computed_since; //time per percent * percent remaining
 
@@ -80,9 +80,11 @@ ProgressBarState render_progress_bar(double percent, int width, bool done, Progr
 	if (new_percent_reached) {
 		//drop oldest history point, add new one
 		for (int i = 1; i < COMPLETION_PROJECTION_HISTORY_SIZE; i++) {
-			out.prev_percent_history[i] = prev_state.prev_percent_history[i - 1];
+			out.progress_history_window_percent_done[i] = prev_state.progress_history_window_percent_done[i - 1];
+			out.progress_history_window_times[i] = prev_state.progress_history_window_times[i - 1];
 		}
-		out.prev_percent_history[0] = now;
+		out.progress_history_window_percent_done[0] = current_percent_int;
+		out.progress_history_window_times[0] = now;
 	}
 
 	return out;

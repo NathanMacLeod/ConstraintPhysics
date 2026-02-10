@@ -87,8 +87,8 @@ namespace phyz {
 
 	struct Distance : public PersistentConstraint {
 		Distance(RigidBody* b1, RigidBody* b2, double target_distance, RigidBody::PKey b1_key, RigidBody::PKey b2_key, double pos_correct_strength, uint32_t id_value)
-			: PersistentConstraint(ConstraintID(ConstraintID::Type::DISTANCE, id_value), b1, b2), target_distance(target_distance), b1_point_key(b1_key), b2_point_key(b2_key),
-			  cfm(CFM{USE_GLOBAL}), pos_correct_hardness(pos_correct_strength), constraint(DistanceConstraint())
+			: PersistentConstraint(ConstraintID(ConstraintID::Type::DISTANCE, id_value), b1, b2), moving_distance_mode(false), target_distance(target_distance), target_velocity(0), 
+			b1_point_key(b1_key), b2_point_key(b2_key), cfm(CFM{USE_GLOBAL}), pos_correct_hardness(pos_correct_strength), constraint(DistanceConstraint())
 		{
 			//init b1, b2 ptr on constraint as holonomic logic needs it
 			constraint.a = b1;
@@ -97,6 +97,8 @@ namespace phyz {
 
 		DistanceConstraint constraint;
 		double target_distance;
+		double target_velocity;
+		bool moving_distance_mode;
 		RigidBody::PKey b1_point_key;
 		RigidBody::PKey b2_point_key;
 		CFM cfm;
@@ -142,7 +144,7 @@ namespace phyz {
 
 	// todo: piston and motor used to be "child constraints" of other constraints. want to seperate them entirely for simplicity
 	struct Piston : public PersistentConstraint {
-		Piston(RigidBody* b1, RigidBody* b2, RigidBody::PKey b1_point_key, RigidBody::PKey b2_point_key, mthz::Vec3 b1_slide_axis_body_space, double min_pos, double max_pos, uint32_t id_value);
+		Piston(RigidBody* b1, RigidBody* b2, RigidBody::PKey b1_point_key, RigidBody::PKey b2_point_key, mthz::Vec3 b1_slide_axis_body_space, double min_pos, double max_pos, double pos_correct_hardness, uint32_t id_value);
 		double calculatePosition(mthz::Vec3 b1_pos, mthz::Vec3 b2_pos, mthz::Vec3 slide_axis);
 		double getPistonTargetVelocityValue(double piston_pos, mthz::Vec3 slide_axis, double step_time);
 		void writePrevVel(mthz::Vec3 slide_axis);
@@ -178,7 +180,7 @@ namespace phyz {
 	};
 
 	struct Motor : public PersistentConstraint {
-		Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle, uint32_t id_value);
+		Motor(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double min_angle, double max_angle, double rot_correct_hardness, uint32_t id_value);
 		double calculatePosition(mthz::Vec3 rot_axis, mthz::Vec3 ang_vel_b1, mthz::Vec3 ang_vel_b2, double timestep);
 		double getConstraintTargetVelocityValue(mthz::Vec3 rot_axis, mthz::Vec3 b1_ang_vel, mthz::Vec3 b2_ang_vel, double step_time);
 		void writePrevVel(mthz::Vec3 rot_axis, mthz::Vec3 ang_vel_b1, mthz::Vec3 ang_vel_b2);

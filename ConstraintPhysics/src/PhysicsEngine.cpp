@@ -12,11 +12,6 @@ static const double FLAT_ENOUGH = cos(PI * 0.1 / 180.0);
 
 namespace phyz {
 
-	int PhysicsEngine::n_threads = 0;
-	ThreadManager PhysicsEngine::thread_manager;
-	bool PhysicsEngine::use_multithread = false;
-	bool PhysicsEngine::print_performance_data = false;
-
 	void PhysicsEngine::enableMultithreading(int n_threads) {
 		assert(n_threads >= 1);
 		PhysicsEngine::n_threads = n_threads;
@@ -34,6 +29,7 @@ namespace phyz {
 	}
 
 	PhysicsEngine::~PhysicsEngine() {
+		thread_manager.terminate_threads();
 		for (RigidBody* b : bodies) {
 			delete constraint_graph_nodes[b->getID()];
 			delete b;
@@ -307,7 +303,7 @@ namespace phyz {
 		};
 
 		if (use_multithread) {
-			thread_manager.do_all<Pair<RigidBody*>>(n_threads, possible_intersections, collision_detect);
+			thread_manager.await_do_all<Pair<RigidBody*>>(n_threads, &possible_intersections, collision_detect);
 		}
 		else {
 			for (const Pair<RigidBody*>& p : possible_intersections) {
@@ -316,8 +312,6 @@ namespace phyz {
 		}
 
 		auto t4 = std::chrono::system_clock::now();
-
-		maintainConstraintGraphApplyPoweredConstraints();
 
 		//order of elements in triggered_actions depends on order of thread execution, sorting to restore determenism
 		std::sort(triggered_actions.begin(), triggered_actions.end(), 
@@ -340,81 +334,69 @@ namespace phyz {
 			}
 		}
 
+		if (using_holonomic_system_solver()) {
+			maintainHolonomicSystems();
+		}
+
 		ActiveConstraintData active_data = sleepOrSolveIslands();
 
 		auto t5 = std::chrono::system_clock::now();
 
-		if (use_multithread && compute_holonomic_inverse_in_parallel && using_holonomic_system_solver()) {
-			std::vector<ThreadManager::JobStatus> compute_holonomic_inverses_status(active_data.island_systems.size());
+		for (int i = 0; i < substep_count; i++) {
+			double sub_itr_duration = step_time / substep_count;
 
-			int islands_with_holonomic_systems_count = 0;
+			bool is_first_sub_itr = i == 0;
+			bool is_last_sub_itr = i == substep_count - 1;
+			float holonomic_warmstart_reduction_factor = 0.0;
+			maintainConstraintGraphApplyPoweredConstraints(is_first_sub_itr, is_last_sub_itr, sub_itr_duration);
 
-			thread_manager.enqueue_do_all_tasks<IslandConstraints>(n_threads, &active_data.island_systems,
-				[&](IslandConstraints island_system, int index) {
-					PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations, &compute_holonomic_inverses_status[index]);
+			// we only do holonomic block solving on the first iteration. after the positions are updated the inverse is not longer accurate
+			int holonomic_iterations = is_first_sub_itr ? pgsHolonomicIterations : 0; 
+
+			if (use_multithread) {
+				thread_manager.await_do_all(n_threads, &active_data.island_systems, [&, this](IslandConstraints& island_system) {
+					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations, holonomic_warmstart_reduction_factor, excessive_linear_error_torque_threshold);
+				});
+			}
+			else {
+				for (IslandConstraints& island_system : active_data.island_systems) {
+					PGS_solve(this, island_system, pgsVelIterations, pgsPosIterations, holonomic_iterations, holonomic_warmstart_reduction_factor, excessive_linear_error_torque_threshold);
 				}
-			);
-			for (int i = 0; i < active_data.island_systems.size(); i++) {
-				IslandConstraints& island_system = active_data.island_systems[i];
-				if (island_system.systems.empty()) continue;
-
-				islands_with_holonomic_systems_count++;
-
-				int size = static_cast<int>(island_system.systems.size());
-				thread_manager.enqueue_do_all_tasks<HolonomicSystem*>(n_threads, &island_system.systems,
-					[&, size, i](HolonomicSystem* h, int index) {
-						h->computeInverse(holonomic_block_solver_CFM);
-						auto donet = std::chrono::system_clock::now();
-						//printf("Compute inverse done. Took %f milliseconds\n", 1000 * std::chrono::duration<float>(donet - t5).count());
-					}, &compute_holonomic_inverses_status[i]
-						);
 			}
 
-			thread_manager.execute_jobs();
-		}
-		else if (use_multithread) {
-			thread_manager.do_all<IslandConstraints>(n_threads, active_data.island_systems,
-				[&](IslandConstraints island_system) {
-					PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+			auto update_positions = [&](RigidBody* b) {
+				if ((b->getMovementType() != RigidBody::FIXED) && !b->getAsleep()) {
+					b->prev_com = b->getCOM();
+					b->prev_orientation = b->getOrientation();
+
+					b->com += (b->vel + b->psuedo_vel) * sub_itr_duration;
+
+					if (b->ang_vel.magSqrd() != 0) {
+						bool no_gyro = is_internal_gyro_forces_disabled || b->getMovementType() == RigidBody::KINEMATIC;
+
+						b->rotateWhileApplyingGyroAccel(sub_itr_duration, angle_velocity_update_tick_count, no_gyro);
+						mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
+						b->orientation = mthz::Quaternion(sub_itr_duration * psuedo_rot.mag(), psuedo_rot) * b->orientation;
+					}
+
+					b->psuedo_vel = mthz::Vec3(0, 0, 0);
+					b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
+
+					b->updateInertiaTensor();
 				}
-			);
-		}
-		else {
-			for (IslandConstraints& island_system : active_data.island_systems) {
-				PGS_solve(this, island_system.constraints, island_system.systems, holonomic_block_solver_CFM, pgsVelIterations, pgsPosIterations, pgsHolonomicIterations);
+				};
+
+			if (use_multithread) {
+				thread_manager.await_do_all<RigidBody*>(n_threads, &bodies, update_positions);
+			}
+			else {
+				for (RigidBody* b : bodies) {
+					update_positions(b);
+				}
 			}
 		}
 
 		auto t6 = std::chrono::system_clock::now();
-
-		auto update_positions = [&](RigidBody* b) {
-			if ((b->getMovementType() != RigidBody::FIXED) && !b->getAsleep()) {
-				b->prev_com = b->getCOM();
-				b->prev_orientation = b->getOrientation();
-
-				b->com += (b->vel + b->psuedo_vel) * step_time;
-
-				if (b->ang_vel.magSqrd() != 0) {
-					bool no_gyro = is_internal_gyro_forces_disabled || b->getMovementType() == RigidBody::KINEMATIC;
-
-					b->rotateWhileApplyingGyroAccel(step_time, angle_velocity_update_tick_count, no_gyro);
-					mthz::Vec3 psuedo_rot = b->psuedo_ang_vel;
-					b->orientation = mthz::Quaternion(step_time * psuedo_rot.mag(), psuedo_rot) * b->orientation;
-				}
-
-				b->psuedo_vel = mthz::Vec3(0, 0, 0);
-				b->psuedo_ang_vel = mthz::Vec3(0, 0, 0);
-			}
-			};
-
-		if (use_multithread) {
-			thread_manager.do_all<RigidBody*>(n_threads, bodies, update_positions);
-		}
-		else {
-			for (RigidBody* b : bodies) {
-				update_positions(b);
-			}
-		}
 
 		auto update_geometry = [&](RigidBody* b) {
 			bool moveable = (b->getMovementType() != RigidBody::FIXED) && !b->getAsleep();
@@ -424,7 +406,7 @@ namespace phyz {
 			};
 
 		if (use_multithread) {
-			thread_manager.do_all<RigidBody*>(n_threads, bodies, update_geometry);
+			thread_manager.await_do_all<RigidBody*>(n_threads, &bodies, update_geometry);
 		}
 		else {
 			for (RigidBody* b : bodies) {
@@ -433,6 +415,11 @@ namespace phyz {
 		}
 
 		auto t7 = std::chrono::system_clock::now();
+
+		// triggering update of holonomic blocks asynchronously for the next timetep
+		if (using_holonomic_system_solver()) {
+			calculateHolonomicSystemInversesAsync();
+		}
 
 		if (print_performance_data) {
 
@@ -638,8 +625,8 @@ namespace phyz {
 		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
 
 		bool already_holonomic = e->hasHolonomicConstraint();
-		if (already_holonomic) e->h->constraints_changed_flag = true;
-		else				   e->holonomic_system_scan_needed = true;
+		if (already_holonomic)   e->h->constraints_changed_flag = true;
+		else				     e->holonomic_system_scan_needed = true;
 
 		e->constraints.push_back(static_cast<PersistentConstraint*>(d));
 
@@ -717,16 +704,19 @@ namespace phyz {
 
 		PersistentConstraint* base_constraint = getConstraint(base_constraint_id);
 		mthz::Vec3 b1_rot_axis_local, b2_rot_axis_local;
+		double rot_correct_hardness;
 
 		if (base_constraint->getId().getType() == ConstraintID::Type::HINGE) {
 			Hinge* h = static_cast<Hinge*>(base_constraint);
 			b1_rot_axis_local = h->b1_rot_axis_body_space;
 			b2_rot_axis_local = h->b2_rot_axis_body_space;
+			rot_correct_hardness = h->rot_correct_hardness;
 		}
 		else if (base_constraint->getId().getType() == ConstraintID::Type::SLIDING_HINGE) {
 			SlidingHinge* h = static_cast<SlidingHinge*>(base_constraint);
 			b1_rot_axis_local = h->b1_slide_axis_body_space;
 			b2_rot_axis_local = h->b2_slide_axis_body_space;
+			rot_correct_hardness = h->rot_correct_hardness;
 		}
 		else {
 			assert(false);
@@ -739,6 +729,7 @@ namespace phyz {
 			b2_rot_axis_local,
 			min_angle,
 			max_angle,
+			rot_correct_hardness,
 			uniqueID
 		);
 
@@ -797,18 +788,21 @@ namespace phyz {
 		PersistentConstraint* base_constraint = getConstraint(base_constraint_id);
 		RigidBody::PKey b1_pkey, b2_pkey;
 		mthz::Vec3 b1_slide_axis_local;
+		double pos_correct_hardness;
 
 		if (base_constraint->getId().getType() == ConstraintID::Type::SLIDER) {
 			Slider* s = static_cast<Slider*>(base_constraint);
 			b1_pkey = s->b1_point_key;
 			b2_pkey = s->b2_point_key;
 			b1_slide_axis_local = s->b1_slide_axis_body_space;
+			pos_correct_hardness = s->pos_correct_hardness;
 		}
 		else if (base_constraint->getId().getType() == ConstraintID::Type::SLIDING_HINGE) {
 			SlidingHinge* s = static_cast<SlidingHinge*>(base_constraint);
 			b1_pkey = s->b1_point_key;
 			b2_pkey = s->b2_point_key;
 			b1_slide_axis_local = s->b1_slide_axis_body_space;
+			pos_correct_hardness = s->pos_correct_hardness;
 		}
 		else {
 			assert(false);
@@ -822,6 +816,7 @@ namespace phyz {
 			b1_slide_axis_local,
 			negative_slide_limit,
 			positive_slide_limit,
+			pos_correct_hardness,
 			uniqueID
 		);
 
@@ -857,9 +852,6 @@ namespace phyz {
 			rot_correct_strength,
 			uniqueID
 		);
-
-		/*Piston(b1, b2, b1->getTrackedP(b1_point_key), b2->getTrackedP(b2_point_key), slide_axis, negative_slide_limit, positive_slide_limit),
-		Motor(b1, b2, b1_slider_axis_local, b2_slider_axis_local, min_angle, max_angle),*/
 
 		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
 		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
@@ -1019,8 +1011,6 @@ namespace phyz {
 				c->normal_local_b1 = norm_local_b1;
 				c->contact_pos_local_b1 = p_local_b1;
 				c->contact_pos_local_b2 = p_local_b2;
-				//c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, cfm.getCFMValue(global_cfm), contact_impulse, cutoff_vel);
-				//c->friction = FrictionConstraint(b1, b2, norm, p, friction, &c->contact, cfm.getCFMValue(global_cfm), friction_impulse, c->friction.u, c->friction.w, normal_impulse_limit);
 				c->memory_life = contact_life;
 				c->is_live_contact = true;
 				return;
@@ -1041,14 +1031,6 @@ namespace phyz {
 			magic,
 			contact_life
 		);
-		/*c->b1 = b1;
-		c->b2 = b2;
-		c->contact = ContactConstraint(b1, b2, norm, p, bounce, pen_depth, hardness, cfm.getCFMValue(global_cfm), mthz::NVec<1>{0.0}, cutoff_vel);
-		c->friction = FrictionConstraint(b1, b2, norm, p, kinetic_friction, &c->contact, cfm.getCFMValue(global_cfm));
-		c->magic = magic;
-		c->memory_life = contact_life;
-		c->is_live_contact = true;
-		c->cfm = cfm;*/
 
 		e->constraints.push_back(c);
 	}
@@ -1137,10 +1119,6 @@ namespace phyz {
 		global_cfm = cfm;
 	}
 
-	void PhysicsEngine::setHolonomicSolverCFM(double cfm) {
-		holonomic_block_solver_CFM = cfm;
-	}
-
 	void PhysicsEngine::deleteWarmstartData(RigidBody* r) {
 		ConstraintGraphNode* n = constraint_graph_nodes[r->getID()];
 
@@ -1164,7 +1142,7 @@ namespace phyz {
 	}
 
 	//TODO make ang vel more sensitive
-	//average can be saved an adjusted per frame if necessary for performance
+	//average can be saved and adjusted per frame if necessary for performance
 	bool PhysicsEngine::bodySleepy(RigidBody* r) {
 		//not ideal as it prevents all other bodies in the same island from sleeping as well, but to make work otherwise would require a lot of reworking, and its a pretty niche use case
 		if (r->sleep_disabled) return false;	
@@ -1236,22 +1214,36 @@ namespace phyz {
 		});
 	}
 
-	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints() {
+	void PhysicsEngine::maintainHolonomicSystems() {
 		if (using_holonomic_system_solver()) shatterFracturedHolonomicSystems();
 
-		static int current_visit_tag_value = 0;
-		current_visit_tag_value++; //used to avoid visiting same constraint twice
-
-		//Spring forces are not included in the PGS solver, so in order for other constraints to be aware of their influence they must be applied before the target velocities of constraints are calculated
+		current_visit_constraint_graph_edges_tag_value++; //used to avoid visiting same constraint twice
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
 				if (using_holonomic_system_solver()) maintainAllHolonomicSystemStuffRelatedToThisEdge(e);
 
-				if (e->visited_tag == current_visit_tag_value)
+				if (e->visited_tag == current_visit_constraint_graph_edges_tag_value)
 					continue; //skip
-				e->visited_tag = current_visit_tag_value;
+				e->visited_tag = current_visit_constraint_graph_edges_tag_value;
+			}
+		}
+	}
+
+	void PhysicsEngine::maintainConstraintGraphApplyPoweredConstraints(bool is_first_sub_itr, bool is_last_sub_itr, double delta_time) {
+
+		current_visit_constraint_graph_edges_tag_value++; //used to avoid visiting same constraint twice
+
+		//Spring forces are not included in the PGS solver, so in order for other constraints to be aware of their influence they must be applied before the target velocities of constraints are calculated
+		for (const auto& kv_pair : constraint_graph_nodes) {
+			ConstraintGraphNode* n = kv_pair.second;
+			for (auto i = 0; i < n->constraints.size(); i++) {
+				SharedConstraintsEdge* e = n->constraints[i];
+
+				if (e->visited_tag == current_visit_constraint_graph_edges_tag_value)
+					continue; //skip
+				e->visited_tag = current_visit_constraint_graph_edges_tag_value;
 
 				for (PersistentConstraint* c : e->constraints) {
 					if (c->getId().getType() != ConstraintID::Type::SPRING) continue;
@@ -1264,8 +1256,8 @@ namespace phyz {
 					mthz::Vec3 dir = (distance != 0) ? (b2_pos - b1_pos).normalize() : mthz::Vec3(0, -1, 0);
 					double expand_force = s->stiffness * (distance - s->resting_length);
 
-					s->b1->applyImpulse(dir * expand_force * step_time, b1_pos);
-					s->b2->applyImpulse(-dir * expand_force * step_time, b2_pos);
+					s->b1->applyImpulse(dir * expand_force * delta_time, b1_pos);
+					s->b2->applyImpulse(-dir * expand_force * delta_time, b2_pos);
 
 					mthz::Vec3 rA = b1_pos - s->b1->getCOM();
 					mthz::Vec3 rB = b2_pos - s->b2->getCOM();
@@ -1276,7 +1268,7 @@ namespace phyz {
 
 					double velocity = s->b2->getVelOfPoint(b1_pos).dot(dir) - s->b1->getVelOfPoint(b2_pos).dot(dir);
 					double dampen = s->damping * velocity;
-					double max_dampen = velocity * velocity_sensitivity / step_time; //max brings to standstill, more would overshoot and push in the opposite direction
+					double max_dampen = velocity * velocity_sensitivity / delta_time; //max brings to standstill, more would overshoot and push in the opposite direction
 					if (velocity > 0 && dampen > max_dampen) {
 						dampen = max_dampen;
 					}
@@ -1284,8 +1276,8 @@ namespace phyz {
 						dampen = max_dampen;
 					}
 
-					s->b1->applyImpulse(dir * dampen * step_time, b1_pos);
-					s->b2->applyImpulse(-dir * dampen * step_time, b2_pos);
+					s->b1->applyImpulse(dir * dampen * delta_time, b1_pos);
+					s->b2->applyImpulse(-dir * dampen * delta_time, b2_pos);
 				}
 			}
 		}
@@ -1294,15 +1286,15 @@ namespace phyz {
 		std::mutex to_delete_mutex;
 		std::vector< SharedConstraintsEdge*> to_delete;
 
-		current_visit_tag_value++; //need to update this value again
+		current_visit_constraint_graph_edges_tag_value++; //need to update this value again
 		for (const auto& kv_pair : constraint_graph_nodes) {
 			ConstraintGraphNode* n = kv_pair.second;
 			for (auto i = 0; i < n->constraints.size(); i++) {
 				SharedConstraintsEdge* e = n->constraints[i];
 
-				if (e->visited_tag == current_visit_tag_value) 
+				if (e->visited_tag == current_visit_constraint_graph_edges_tag_value) 
 					continue; //skip
-				e->visited_tag = current_visit_tag_value;
+				e->visited_tag = current_visit_constraint_graph_edges_tag_value;
 
 				edges.push_back(e);
 			}
@@ -1314,23 +1306,42 @@ namespace phyz {
 				//todo: move the memory update elsewhere
 				if (c->getId().getType() == ConstraintID::Type::CONTACT) {
 					Contact* cont = static_cast<Contact*>(c);
-					cont->memory_life--;
-					if (!cont->is_live_contact) { continue; } // no need to update solver constraints as they wont be used
+					bool update_not_needed = false;
+					if (!cont->is_live_contact) { update_not_needed = true; } // no need to update solver constraints as they wont be used
+
+					if (is_last_sub_itr) {
+						cont->memory_life--;
+						// set all constraints to inactive, during collission detection on the next tick
+						// we will re-evaluate which contacts are active or not.
+						cont->is_live_contact = false; 
+					}
+
+					if (update_not_needed) { continue; }
 				}
-				c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time, global_cfm, is_in_holonomic_system);
+
+				//Holonomic blocks are applied when solving on the first sub iteration. These inverses either triggered to run asynchronously
+				//at the end of the last physics tick, or right before this update in maintainHolonomicSystems in the case that they could not be calculated earlier.
+				//these inverses require the constraint to be already up to date, so we don't need to update it now.
+				bool skip_already_updated_holonomic_constraint = is_first_sub_itr && is_in_holonomic_system&& using_holonomic_system_solver() && c->isHolonomicConstraint();
+				
+				if (!skip_already_updated_holonomic_constraint) {
+					c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, delta_time, global_cfm, is_in_holonomic_system);
+				}
 			}
 
-			removeExpiredContactConstraints(e);
+			if (is_first_sub_itr) {
+				removeExpiredContactConstraints(e);
 
-			if (e->noConstraintsLeft()) {
-				to_delete_mutex.lock();
-				to_delete.push_back(e);
-				to_delete_mutex.unlock();
+				if (e->noConstraintsLeft()) {
+					to_delete_mutex.lock();
+					to_delete.push_back(e);
+					to_delete_mutex.unlock();
+				}
 			}
 		};
 
 		if (use_multithread) {
-			thread_manager.do_all<SharedConstraintsEdge*>(n_threads, edges, update_constraints_on_edge);
+			thread_manager.await_do_all<SharedConstraintsEdge*>(n_threads, &edges, update_constraints_on_edge);
 		}
 		else {
 			for (SharedConstraintsEdge* e : edges) {
@@ -1397,6 +1408,7 @@ namespace phyz {
 			else if (encountered_systems.size() == 1 && *encountered_systems.begin() == nullptr) {
 				//new system of nodes not belonging to any system
 				HolonomicSystemNodes* h = new HolonomicSystemNodes(holonomically_connected);
+				h->constraints_changed_flag = true; //set this to true so that we will evaluate and compute the inverse of this system at the end of this function
 				for (SharedConstraintsEdge* edge : holonomically_connected) {
 					edge->h = h;
 					edge->holonomic_system_scan_needed = false;
@@ -1405,7 +1417,7 @@ namespace phyz {
 			else {
 				//encountered_systems.size() > 1 case, need to merge all systems into one.
 				auto itr = encountered_systems.begin();
-				//nullptr cant appear twice in set
+				//pick one holonomic system to represent everything
 				HolonomicSystemNodes* non_null_system = (*itr == nullptr) ? *std::next(itr) : *itr; 
 
 				for (SharedConstraintsEdge* edge : holonomically_connected) {
@@ -1426,9 +1438,24 @@ namespace phyz {
 
 		if (e->h != nullptr && e->h->constraints_changed_flag) {
 			e->h->constraints_changed_flag = false;
-			e->h->recalculateSystem();
-		}
-		
+			e->h->revaluateSystem();
+			// we need to recalculate the inverse of the system again
+			// need to make sure the constraints are all initialized.
+			for (SharedConstraintsEdge* edge : e->h->member_edges) {
+				for (PersistentConstraint* c : edge->constraints) {
+					if (c->isHolonomicConstraint()) { 
+						c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time / substep_count, global_cfm, true);
+					}
+				}
+			}
+			if (use_multithread) {
+				double cfm = global_cfm;
+				thread_manager.submit([e, cfm]() { e->h->system.computeInverse(cfm); }, &e->h->inverse_calculation_status);
+			}
+			else {
+				e->h->system.computeInverse(global_cfm);
+			}
+		}	
 	}
 
 	PhysicsEngine::ActiveConstraintData PhysicsEngine::sleepOrSolveIslands() {
@@ -1449,18 +1476,18 @@ namespace phyz {
 
 			struct InStruct {
 				bool* all_ready_to_sleep;
-				std::vector<HolonomicSystem*>* island_systems;
+				std::vector<HolonomicInfo>* holonomic_blocks;
 				std::vector<Constraint*>* island_constraints;
 				std::vector<RigidBody*>* island_bodies;
 			};
 			
-			InStruct in = { &all_ready_to_sleep, &island_constraints.systems, &island_constraints.constraints, &island_bodies };
+			InStruct in = { &all_ready_to_sleep, &island_constraints.holonomic_blocks, &island_constraints.constraints, &island_bodies };
 			int new_contact_life = this->contact_life;
 			bfsVisitAll(n, &visited, (void*)&in, [&visited, new_contact_life, this](ConstraintGraphNode* curr, void* in) {
 				InStruct* output = (InStruct*)in;
 
 				bool interacting_with_kinematic = false;
-				
+
 				output->island_bodies->push_back(curr->b);
 				for (SharedConstraintsEdge* e : curr->constraints) {
 					ConstraintGraphNode* n = e->other(curr);
@@ -1468,15 +1495,24 @@ namespace phyz {
 					if (n->b->getMovementType() == RigidBody::KINEMATIC) interacting_with_kinematic = true;
 					if (curr->b->getAsleep() && (n->b->getAsleep() || n->b->getMovementType() == RigidBody::FIXED) || visited.find(n) != visited.end()) continue;
 
-					if (using_holonomic_system_solver() && e->h != nullptr && std::find(output->island_systems->begin(), output->island_systems->end(), &e->h->system) == output->island_systems->end()) {
-						output->island_systems->push_back(&e->h->system);
+					if (using_holonomic_system_solver() && e->h != nullptr) {
+						bool already_added = false;
+						for (const HolonomicInfo& h : *output->holonomic_blocks) {
+							if (h.system == &e->h->system) { already_added = true; break; }
+						}
+
+						if (!already_added) {
+							// if we are not using multithreading to compute the inverse asynchronously, then just have nullptr instead.
+							// the solver will interperate this nullptr as meaning that the inverse will need to be computed.
+							ThreadManager::JobStatus* async_computation_status = (use_multithread)? &e->h->inverse_calculation_status : nullptr;
+							output->holonomic_blocks->push_back(HolonomicInfo{ &e->h->system, async_computation_status });
+						}
 					}
 
 					for (PersistentConstraint* c : e->constraints) {
 						bool is_contact = c->getId().getType() == ConstraintID::Type::CONTACT;
 						if (is_contact && static_cast<Contact*>(c)->is_live_contact) {
 							c->addSolverConstraints(output->island_constraints);
-							static_cast<Contact*>(c)->is_live_contact = false;
 						}
 						else if(!is_contact && c->isSolverConstraint()) {
 							c->addSolverConstraints(output->island_constraints);
@@ -1494,16 +1530,48 @@ namespace phyz {
 				}
 			}
 			else if (island_constraints.constraints.size() > 0) {
-				/*printf("\nIsland Contains %d holonomic systems, %d constraints:\n", island_constraints.systems.size(), island_constraints.constraints.size());
-				for (HolonomicSystem* h : island_constraints.systems) {
-					printf("\tSystem of degree: %d composed of %d constraints\n", h->getDegree(), h->getNumConstraints());
-				}*/
 				out.island_systems.push_back(island_constraints);
 			}
 		}
 
 		return out;
 	}
+
+	void PhysicsEngine::calculateHolonomicSystemInversesAsync() {
+		std::set<HolonomicSystemNodes*> visited;
+		std::set<SharedConstraintsEdge*> visited_edges;
+		for (const auto& kv_pair : constraint_graph_nodes) {
+			ConstraintGraphNode* n = kv_pair.second;
+			for (SharedConstraintsEdge* e : n->constraints) {
+				if (e->h == nullptr) continue;
+
+				if (visited_edges.find(e) != visited_edges.end()) { continue; }
+
+				// we need to update all of the holonomic constraints first
+				for (PersistentConstraint* c : e->constraints) {
+					if (c->isHolonomicConstraint()) {
+						c->updateSolverConstraints(warm_start_disabled, warm_start_coefficient, step_time / substep_count, global_cfm, true);
+					}
+				}
+
+				visited_edges.insert(e);
+
+				if (visited.find(e->h) != visited.end()) { continue; }
+				visited.insert(e->h);
+			}
+		}
+
+		for (HolonomicSystemNodes* h : visited) {
+			if (use_multithread) {
+				double cfm = global_cfm;
+				thread_manager.submit([h, cfm, this]() { h->system.computeInverse(cfm); }, &h->inverse_calculation_status);
+			}
+			else {
+				h->system.computeInverse(global_cfm);
+			}
+		}
+	}
+
 
 	CollisionTarget CollisionTarget::with(RigidBody* r) {
 		return CollisionTarget(false, r->getID());
@@ -1555,6 +1623,20 @@ namespace phyz {
 		}
 	}
 
+	void PhysicsEngine::setDistanceConstraintToMoveAtTargetVelocity(ConstraintID id, double target_velocity) {
+		assert(id.getType() == ConstraintID::Type::DISTANCE);
+
+		PersistentConstraint* pc = getConstraint(id);
+		if (pc == nullptr) return;
+		Distance* d = static_cast<Distance*>(pc);
+
+		d->target_velocity = target_velocity;
+		d->target_distance = -1;
+		d->moving_distance_mode = true;
+		d->b1->alertWakingAction();
+		d->b2->alertWakingAction();
+	}
+
 	void PhysicsEngine::setDistanceConstraintTargetDistance(ConstraintID id, double target_distance) {
 		assert(target_distance > 0);
 		assert(id.getType() == ConstraintID::Type::DISTANCE);
@@ -1563,19 +1645,26 @@ namespace phyz {
 		if (pc == nullptr) return;
 		Distance* d = static_cast<Distance*>(pc);
 
+		d->target_velocity = -1;
 		d->target_distance = target_distance;
+		d->moving_distance_mode = false;
 		d->b1->alertWakingAction();
 		d->b2->alertWakingAction();
 	}
 
-	double PhysicsEngine::getDistanceConstraintTargetDistance(ConstraintID id) {
+	double PhysicsEngine::getDistanceConstraintCurrentDistance(ConstraintID id) {
 		assert(id.getType() == ConstraintID::Type::DISTANCE);
 
 		PersistentConstraint* pc = getConstraint(id);
 		if (pc == nullptr) return -1.0;
 		Distance* d = static_cast<Distance*>(pc);
 
-		return d->target_distance;
+		if (!d->moving_distance_mode) { return d->target_distance; }
+		else {
+			mthz::Vec3 p1 = d->b1->getTrackedP(d->b1_point_key);
+			mthz::Vec3 p2 = d->b2->getTrackedP(d->b2_point_key);
+			return (p1 - p2).mag();
+		}
 
 	}
 
@@ -1616,22 +1705,15 @@ namespace phyz {
 
 	PhysicsEngine::HolonomicSystemNodes::HolonomicSystemNodes(std::vector<SharedConstraintsEdge*> member_edges) 
 		: member_edges(member_edges), constraints_changed_flag(false), edge_removed_flag(false)
-	{
-		recalculateSystem();
-	}
+	{}
 
-	void PhysicsEngine::HolonomicSystemNodes::recalculateSystem() {
+	void PhysicsEngine::HolonomicSystemNodes::revaluateSystem() {
 		std::vector<Constraint*> constraints;
 		constraints.reserve(member_edges.size());
 
-		//capturing only one since multiple on the same body somewhat redundant
-		//doing in order of least degrees of freedom to most, since it is more likely to be subset in terms of what motion is constrained
 		for (SharedConstraintsEdge* e : member_edges) {
-			//b1 and b2 values need to be passed in. Other values are not yet initialized.
 			for (PersistentConstraint* c : e->constraints) {
 				if (c->isHolonomicConstraint()) {
-					//c->constraint.a = c->b1;
-					//c->constraint.b = c->b2;
 					c->addSolverConstraints(&constraints);
 				}
 			}
@@ -1777,8 +1859,8 @@ namespace phyz {
 		n2->constraints.erase(std::remove(n2->constraints.begin(), n2->constraints.end(), this));
 		if (h != nullptr) {
 			h->member_edges.erase(std::remove(h->member_edges.begin(), h->member_edges.end(), this));
-			if (h->member_edges.size() == 1) h->member_edges[0]->h = nullptr; //clean up the straggler, if it exists
-			if (h->member_edges.size() <= 1) delete h;
+			if (h->member_edges.size() == 1) { h->member_edges[0]->h = nullptr; } //clean up the straggler, if it exists
+			if (h->member_edges.size() <= 1) { delete h; }
 		}
 		for (PersistentConstraint* c : constraints) delete c;
 	}

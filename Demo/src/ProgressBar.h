@@ -11,7 +11,8 @@ struct ProgressBarState {
 
 	std::chrono::system_clock::time_point start_time;
 	std::chrono::system_clock::time_point last_render_time;
-	std::chrono::system_clock::time_point prev_percent_history[COMPLETION_PROJECTION_HISTORY_SIZE];
+	std::chrono::system_clock::time_point progress_history_window_times[COMPLETION_PROJECTION_HISTORY_SIZE];
+	int progress_history_window_percent_done[COMPLETION_PROJECTION_HISTORY_SIZE];
 
 	int current_percent_int;
 	int animation_state;

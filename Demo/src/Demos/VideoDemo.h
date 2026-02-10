@@ -137,16 +137,15 @@ public:
 
 		bool run_in_test_mode = caseIndefferentStringEquals(parameters["whole_or_test_mode"], "T");
 
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
-
 		phyz::ThreadManager helper_threads;
 		if (properties.n_threads != 0) {
 			helper_threads.init(properties.n_threads);
 		}
 
 		phyz::PhysicsEngine p;
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
 		p.setSleepingEnabled(false); //never going to happen anyway
 		p.setPGSIterations(3, 1);
 		std::string precomputation_file = run_in_test_mode? "resources/precomputations/bad_apple_test.txt" : "resources/precomputations/bad_apple_colors.txt";
@@ -559,7 +558,9 @@ public:
 					}
 				}
 				else {
-					helper_threads.do_all<TransformablePhysBod>(properties.n_threads, bodies, setTransformedMatrix);
+					phyz::ThreadManager::JobStatus s;
+					helper_threads.submit_do_all<TransformablePhysBod>(properties.n_threads, &bodies, setTransformedMatrix, &s);
+					s.waitUntilDone();
 				}
 
 				rndr::clear(rndr::color(248 / 255.0f, 241 / 255.0f, 229 / 255.0f));

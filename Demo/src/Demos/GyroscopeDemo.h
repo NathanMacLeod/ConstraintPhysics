@@ -11,6 +11,17 @@ public:
 
 	}
 
+	std::map<std::string, std::string> askParameters() override {
+		std::map<std::string, std::string> out;
+
+		out["gyro_enabled"] = pickParameterFromOptions(
+			"For comparison, choose whether to run with gyroscopic forces enabled (y, default) or disabled (n). (y/n): ",
+			{ "y", "n" }
+		);
+
+		return out;
+	}
+
 	std::vector<ControlDescription> controls() override {
 		return {
 			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
@@ -24,13 +35,12 @@ public:
 	void run() override {
 
 		rndr::init(properties.window_width, properties.window_height, "Angular Momentum Demo");
-		if (properties.n_threads != 0) {
-			phyz::PhysicsEngine::enableMultithreading(properties.n_threads);
-		}
 
 		phyz::PhysicsEngine p;
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
 		p.setSleepingEnabled(true);
-		p.setPGSIterations(600, 600);
 
 		bool lock_cam = true;
 
@@ -107,11 +117,10 @@ public:
 		double rot_speed = 1;
 
 		double phyz_time = 0;
-		double timestep = 1 / 6000.0;
+		double timestep = 1 / 240.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
-		p.setAngleVelUpdateTickCount(30);
-		//p.setInternalGyroscopicForcesDisabled(true);
+		p.setInternalGyroscopicForcesDisabled(parameters["gyro_enabled"] != "y");
 
 		bool b_down = false;
 

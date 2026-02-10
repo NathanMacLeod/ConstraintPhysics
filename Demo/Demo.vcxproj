@@ -135,9 +135,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Dependencies\stb_image\stb_image.cpp" />
+    <ClCompile Include="src\Demos\Common.cpp" />
     <ClCompile Include="src\Demos\DemoScene.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\main_old.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
     <ClCompile Include="src\ModelReader.cpp" />
     <ClCompile Include="src\ProgressBar.cpp" />
@@ -160,6 +160,7 @@
     <ClInclude Include="src\Demos\AngularMomentumDemo.h" />
     <ClInclude Include="src\Demos\CarDemo.h" />
     <ClInclude Include="src\Demos\ColActionDemo.h" />
+    <ClInclude Include="src\Demos\Common.h" />
     <ClInclude Include="src\Demos\DebugDemo.h" />
     <ClInclude Include="src\Demos\DemoScene.h" />
     <ClInclude Include="src\Demos\DzhanibekovDemo.h" />
@@ -172,7 +173,13 @@
     <ClInclude Include="src\Demos\NewtonsCradleDemo.h" />
     <ClInclude Include="src\Demos\olcPixelGameEngine.h" />
     <ClInclude Include="src\Demos\LDLSolverDemos.h" />
+    <ClInclude Include="src\Demos\RunTests.h" />
     <ClInclude Include="src\Demos\StanfordArmadillo.h" />
+    <ClInclude Include="src\Demos\Tests\CollisionTests.h" />
+    <ClInclude Include="src\Demos\Tests\ConstraintTests.h" />
+    <ClInclude Include="src\Demos\Tests\HolonomicBlockSolvingTests.h" />
+    <ClInclude Include="src\Demos\Tests\Test.h" />
+    <ClInclude Include="src\Demos\Tests\ThreadManagerTests.h" />
     <ClInclude Include="src\Demos\TrebuchetDemo.h" />
     <ClInclude Include="src\Demos\VideoDemo.h" />
     <ClInclude Include="src\Demos\WreckingBallDemo.h" />

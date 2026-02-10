@@ -184,16 +184,118 @@ namespace phyz {
 		for (int i = 0; i < n; i++) impulse_change.v[i] = impulse_source[source_index + i];
 
 		if (!impulse_change.isZero()) {
-			mthz::NVec<6>* vel_a_change = use_psuedo_values? constraint->a_psuedo_velocity_change : constraint->a_velocity_change;
-			mthz::NVec<6>* vel_b_change = use_psuedo_values? constraint->b_psuedo_velocity_change : constraint->b_velocity_change;
-			mthz::NVec<n>* accumulated_impulse = use_psuedo_values? &constraint->psuedo_impulse : &constraint->impulse;
-
+			mthz::NVec<6>* vel_a_change = use_psuedo_values ? constraint->a_psuedo_velocity_change : constraint->a_velocity_change;
+			mthz::NVec<6>* vel_b_change = use_psuedo_values ? constraint->b_psuedo_velocity_change : constraint->b_velocity_change;
+				
 			constraint->computeAndApplyVelocityChange(impulse_change, vel_a_change, vel_b_change);
+
+			mthz::NVec<n>* accumulated_impulse = use_psuedo_values ? &constraint->psuedo_impulse : &constraint->holonomic_solver_induced_impulse;
 			*accumulated_impulse += impulse_change;
 		}
 	}
 
-	void HolonomicSystem::computeAndApplyImpulses(bool use_psuedo_values) {
+	template<int n>
+	static void testApplyForLinearlizationErrorCheck(DegreedConstraint<n>* constraint, const std::vector<double>& impulse_source, int source_index) {
+		mthz::NVec<n> impulse_change;
+		for (int i = 0; i < n; i++) impulse_change.v[i] = impulse_source[source_index + i];
+
+		if (impulse_change.isZero()) { return; }
+
+		mthz::NVec<6>* vel_a_change = constraint->a_linearization_error_detect;
+		mthz::NVec<6>* vel_b_change = constraint->b_linearization_error_detect;
+		constraint->computeAndApplyVelocityChange(impulse_change, vel_a_change, vel_b_change);
+	}
+
+	static bool checkForExcessiveLinearlizationError(Constraint* constraint, double excessive_linerization_error_threshold) {
+		mthz::NVec<6>* vel_a_change = constraint->a_linearization_error_detect;
+		mthz::NVec<6>* vel_b_change = constraint->b_linearization_error_detect;
+
+		// get the squared sum of all angular velocity components 
+		double r2 = 0;
+		//first 3 indices of the nvec are the linear velocity values, last 3 are the angular velocity values
+		for (int i = 3; i < 6; i++) {
+			r2 += vel_a_change->v[i] * vel_a_change->v[i] + vel_b_change->v[i] * vel_b_change->v[i];
+		}
+
+		return r2 > excessive_linerization_error_threshold * excessive_linerization_error_threshold;
+	}
+
+	void HolonomicSystem::multInverseWithVector(std::vector<double>& v) {
+#ifndef NDEBUG
+		if (USE_GAUSS_ELIM_FOR_INVERSE) {
+			std::vector<double> correct_impulse(system_degree, 0);
+
+			for (int i = 0; i < system_degree; i++) {
+				for (int j = 0; j < system_degree; j++) {
+					correct_impulse[i] += v[j] * debug_inverse[j + system_degree * i];
+				}
+			}
+
+			v = correct_impulse;
+			return;
+		}
+#endif
+
+		//A^-1 = (L^-t)(D^-1)(L^-1) 
+		//Multiply by L inverse (inversion is as simple as making non diagonal blocks negative)
+		std::vector<double> multByLEffect(system_degree);
+		for (int col = 0; col + 1 < constraints.size(); col++) {
+			multByLEffect = std::vector<double>(system_degree, 0); //set to zero
+
+			for (int row = col + 1; row < constraints.size(); row++) {
+				int loc = getBlockBufferLocation(row, col);
+				if (loc == BLOCK_EMPTY) continue;
+
+				int block_width = constraints[col]->getDegree();
+				int block_height = constraints[row]->getDegree();
+				double* block_pos = buffer + loc;
+				int source_index = getVectorPos(col);
+				int write_index = getVectorPos(row);
+
+				multMatWithVec(block_width, block_height, &multByLEffect, write_index, v, source_index, block_pos);
+			}
+
+			for (int i = 0; i < system_degree; i++) {
+				v[i] -= multByLEffect[i];
+			}
+		}
+
+		//Multiply by D inverse
+		std::vector<double> multByDOut(system_degree);
+		for (int col = 0; col < constraints.size(); col++) {
+			int block_degree = constraints[col]->getDegree();
+			double* block_pos = buffer + getBlockBufferLocation(col, col);
+			int vec_index = getVectorPos(col);
+			multMatWithVec(block_degree, block_degree, &multByDOut, vec_index, v, vec_index, block_pos);
+		}
+		v = multByDOut;
+
+		//Multiply by L^-t
+
+		std::vector<double> multByLTEffect(6);
+		for (int col = static_cast<uint32_t>(constraints.size()) - 2; col >= 0; col--) {
+			multByLTEffect = std::vector<double>(6, 0);
+
+			for (int row = col + 1; row < constraints.size(); row++) {
+				int loc = getBlockBufferLocation(row, col);
+				if (loc == BLOCK_EMPTY) continue;
+
+				int block_width = constraints[col]->getDegree();
+				int block_height = constraints[row]->getDegree();
+				double* block_pos = buffer + loc;
+				int source_index = getVectorPos(row);
+
+				multMatTransposedWithVec(block_width, block_height, &multByLTEffect, 0, v, source_index, block_pos);
+			}
+
+			int write_pos = getVectorPos(col);
+			for (int i = 0; i < constraints[col]->getDegree(); i++) {
+				v[write_pos + i] -= multByLTEffect[i];
+			}
+		}
+	}
+
+	void HolonomicSystem::computeAndApplyImpulses(bool use_psuedo_values, double excessive_linerization_error_threshold) {
 		//solving system d = A^-1(t - c)
 		//d: delta in impulses needed to satisfy all constraints
 		//A^1: inverse of the impulse to value matrix of this holonomic system
@@ -213,85 +315,30 @@ namespace phyz {
 			case 6: writeTargetDelta<6>((DegreedConstraint<6>*)constraints[i], &delta, pos, use_psuedo_values); break;
 			}
 		}
-		
-#ifndef NDEBUG
-		if (USE_GAUSS_ELIM_FOR_INVERSE) {
-			std::vector<double> correct_impulse(system_degree, 0);
 
-			for (int i = 0; i < system_degree; i++) {
-				for (int j = 0; j < system_degree; j++) {
-					correct_impulse[i] += delta[j] * debug_inverse[j + system_degree * i];
+		// modify delta in place to get the result after multiplying by A^-1
+		multInverseWithVector(delta);
+
+		if (excessive_linerization_error_threshold > 0) {
+			// psuedo_impulses solve seems to somtimes create solutions with excessively linearization error. this is a 
+			// hack to detect and discard solutions with too much linearization error.
+			for (int i = 0; i < constraints.size(); i++) {
+				int pos = getVectorPos(i);
+
+				switch (constraints[i]->getDegree()) {
+				case 1: testApplyForLinearlizationErrorCheck<1>((DegreedConstraint<1>*)constraints[i], delta, pos); break;
+				case 2: testApplyForLinearlizationErrorCheck<2>((DegreedConstraint<2>*)constraints[i], delta, pos); break;
+				case 3: testApplyForLinearlizationErrorCheck<3>((DegreedConstraint<3>*)constraints[i], delta, pos); break;
+				case 4: testApplyForLinearlizationErrorCheck<4>((DegreedConstraint<4>*)constraints[i], delta, pos); break;
+				case 5: testApplyForLinearlizationErrorCheck<5>((DegreedConstraint<5>*)constraints[i], delta, pos); break;
+				case 6: testApplyForLinearlizationErrorCheck<6>((DegreedConstraint<6>*)constraints[i], delta, pos); break;
 				}
 			}
-
-			delta = correct_impulse;
-			goto ApplyImpulse;
-		}
-		{
-#endif
-
-		//A^-1 = (L^-t)(D^-1)(L^-1) 
-		//Multiply by L inverse (inversion is as simple as making non diagonal blocks negative)
-		std::vector<double> multByLEffect(system_degree);
-		for (int col = 0; col + 1 < constraints.size(); col++) {
-			multByLEffect = std::vector<double>(system_degree, 0); //set to zero
-
-			for (int row = col + 1; row < constraints.size(); row++) {
-				int loc = getBlockBufferLocation(row, col);
-				if (loc == BLOCK_EMPTY) continue;
-
-				int block_width = constraints[col]->getDegree();
-				int block_height = constraints[row]->getDegree();
-				double* block_pos = buffer + loc;
-				int source_index = getVectorPos(col);
-				int write_index = getVectorPos(row);
-
-				multMatWithVec(block_width, block_height, &multByLEffect, write_index, delta, source_index, block_pos);
-			}
-
-			for (int i = 0; i < system_degree; i++) {
-				delta[i] -= multByLEffect[i];
+			for (int i = 0; i < constraints.size(); i++) {
+				//discard bad solution
+				if (checkForExcessiveLinearlizationError(constraints[i], excessive_linerization_error_threshold)) { return; }
 			}
 		}
-
-		//Multiply by D inverse
-		std::vector<double> multByDOut(system_degree);
-		for (int col = 0; col < constraints.size(); col++) {
-			int block_degree = constraints[col]->getDegree();
-			double* block_pos = buffer + getBlockBufferLocation(col, col);
-			int vec_index = getVectorPos(col);
-			multMatWithVec(block_degree, block_degree, &multByDOut, vec_index, delta, vec_index, block_pos);
-		}
-		delta = multByDOut;
-
-		//Multiply by L^-t
-
-		std::vector<double> multByLTEffect(6);
-		for (int col = static_cast<uint32_t>(constraints.size()) - 2; col >= 0; col--) {
-			multByLTEffect = std::vector<double>(6, 0);
-
-			for (int row = col + 1; row < constraints.size(); row++) {
-				int loc = getBlockBufferLocation(row, col);
-				if (loc == BLOCK_EMPTY) continue;
-
-				int block_width = constraints[col]->getDegree();
-				int block_height = constraints[row]->getDegree();
-				double* block_pos = buffer + loc;
-				int source_index = getVectorPos(row);
-
-				multMatTransposedWithVec(block_width, block_height, &multByLTEffect, 0, delta, source_index, block_pos);
-			}
-
-			int write_pos = getVectorPos(col);
-			for (int i = 0; i < constraints[col]->getDegree(); i++) {
-				delta[write_pos + i] -= multByLTEffect[i];
-			}
-		}
-
-#ifndef NDEBUG
-		}
-		ApplyImpulse:
-#endif
 
 		//delta now equal to A^-1(t - c) = d, just need to store impulse and velocity changes now
 		for (int i = 0; i < constraints.size(); i++) {
@@ -305,9 +352,7 @@ namespace phyz {
 			case 6: applyImpulseChange<6>((DegreedConstraint<6>*)constraints[i], delta, pos, use_psuedo_values); break;
 			}
 		}
-
 	}
-
 
 	int HolonomicSystem::getVectorPos(int constraint_row) {
 		assert(constraint_row >= 0 && constraint_row < constraints.size());
@@ -333,13 +378,13 @@ namespace phyz {
 		mthz::NMat<6, c2_degree>* b_c2interaction = nullptr;
 		if      (c1->a == c2->a) a_c2interaction = &c2->impulse_to_a_velocity;
 		else if (c1->a == c2->b) a_c2interaction = &c2->impulse_to_b_velocity;
-		else if (c1->b == c2->a) b_c2interaction = &c2->impulse_to_a_velocity; //else because c1 == c2 case handeled elsewhere
+		else if (c1->b == c2->a) b_c2interaction = &c2->impulse_to_a_velocity;
 		else if (c1->b == c2->b) b_c2interaction = &c2->impulse_to_b_velocity;
 		
 
-		if (a_c2interaction != nullptr) matMult(target, c1->a_jacobian, *a_c2interaction);
+		if      (a_c2interaction != nullptr) matMult(target, c1->a_jacobian, *a_c2interaction);
 		else if (b_c2interaction != nullptr) matMult(target, c1->b_jacobian, *b_c2interaction);
-		else memset(target, 0x00, c1_degree * c2_degree * sizeof(double));
+		else                                 memset(target, 0x00, c1_degree * c2_degree * sizeof(double));
 		//last case occurs when c1 and c2 dont have a direct interaction, but because of gaussian elimination
 		//the block will end up having a non-zero value.
 	}
@@ -495,6 +540,60 @@ namespace phyz {
 		}
 
 		//debugPrintBuffer("DONE");
+	}
+
+	bool HolonomicSystem::verifyInverse(double cfm) {
+		// This function just exists for use in unit tests. it doesn't have a functional purpose.
+		// If the inverse works properly, then (A^-1)(A) = I.
+
+		std::vector<double> a_buffer = std::vector<double>(system_degree * system_degree);
+		int row_offset = 0;
+		for (int row = 0; row < constraints.size(); row++) {
+			int col_offset = 0;
+			for (int col = 0; col < constraints.size(); col++) {
+
+				int block_width = constraints[col]->getDegree();
+				int block_height = constraints[row]->getDegree();
+				// temp buffer
+				std::vector<double> block(block_width * block_height);
+				computeBlockInitialValue(block.data(), constraints[row], constraints[col], cfm);
+
+				// move to a_buffer with row major ordering
+				for (int r = 0; r < block_height; r++) {
+					for (int c = 0; c < block_width; c++) {
+						a_buffer[c + col_offset + (r + row_offset) * system_degree] = block[c + r * block_width];
+					}
+				}
+
+				col_offset += constraints[col]->getDegree();
+			}
+			row_offset += constraints[row]->getDegree();
+		}
+
+		double diff = 0;
+
+		for (int i = 0; i < system_degree; i++) {
+			std::vector<double> column;
+			std::vector<double> expected;
+			for (int j = 0; j < system_degree; j++) {
+				expected.push_back(j == i ? 1.0 : 0.0);
+				column.push_back(a_buffer[i + system_degree * j]);
+			}
+
+			// this function modifies column to get the result after multiplication, rather than creating a new vector
+			multInverseWithVector(column);
+
+			// get diff
+			for (int j = 0; j < system_degree; j++) {
+				double d = expected[j] - column[j];
+				diff += d * d;
+			}
+		}
+
+		diff = sqrt(diff);
+
+		double error_tol = 0.00001;
+		return diff < error_tol;
 	}
 
 	int HolonomicSystem::getBlockBufferLocation(int block_row, int block_column) {
