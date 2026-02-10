@@ -404,10 +404,6 @@ namespace phyz {
 
 		mthz::Vec3 error = socket_pos_b - socket_pos_a;
 		psuedo_target_val = mthz::NVec<3>{ pos_correct_hardness * error.x, pos_correct_hardness * error.y, pos_correct_hardness * error.z };
-		//printf("with lin: %f %f %f\n", psuedo_target_val.v[0], psuedo_target_val.v[1], psuedo_target_val.v[2]);
-		//pos_correct_hardness *= 0.1;
-		//psuedo_target_val = mthz::NVec<3>{ pos_correct_hardness * sqrt(m) * n.x, pos_correct_hardness * sqrt(m) * n.y, pos_correct_hardness * sqrt(m) * n.z };
-		//printf("with sqrt: %f %f %f\n", psuedo_target_val.v[0], psuedo_target_val.v[1], psuedo_target_val.v[2]);
 	}
 
 	

@@ -19,18 +19,9 @@ public:
 			"Choose from one of the demos that demonstrate the advantages of the LDL-PGS solver: 1) Scissor lift, 2) High mass ratio, 3) Bridge: ", { "1", "2", "3" }
 		);
 
-		/*out["use_ldl"] = pickParameterFromOptions(
+		out["use_ldl"] = pickParameterFromOptions(
 			"Choose to run the demo using 1) Normal PGS solver; 2) LDL-PGS solver: ", { "1", "2" }
-		);*/
-
-		// for the high mass ratio demo with LDL, ask whether to use a stable or unstable tick rate
-		//if (out["which_demo"] == "2" && out["use_ldl"] == "2") {
-		//	out["unstable_tickrate"] = pickParameterFromOptions("Choose to run the scene 1) high tick rate, so scene runs stable 2) low tick rate, to see the simulation fail: ", { "1", "2" });
-		//}
-		//else {
-		//	//default to high tick rate
-		//	out["unstable_tickrate"] = "1";
-		//}
+		);
 
 		return out;
 	}
@@ -54,17 +45,13 @@ public:
 		if (properties.n_threads != 0) {
 			p.enableMultithreading(properties.n_threads);
 		}
-		p.setPGSIterations(1, 1, 1);
 		p.setSubstepCount(16);
-		p.setGlobalConstraintForceMixing(0.0000001);
-
-		/*if (parameters["use_ldl"] == "2") {
-			p.setPGSIterations(5, 2, 1);
+		if (parameters["use_ldl"] == "2") {
+			p.setPGSIterations(1, 1, 1);
 		}
 		else {
-			p.setPGSIterations(5, 2, 0);
+			p.setPGSIterations(1, 1, 0);
 		}
-		p.setGlobalConstraintForceMixing(0.000025);*/
 
 
 		LDLDemoType demo_type;
@@ -74,9 +61,6 @@ public:
 		else if (demo_response == "3") demo_type = BRIDGE;
 
 		double timestep = 1 / 60.0;
-		/*if (parameters["unstable_tickrate"] == "2") {
-			timestep = 1 / 120.0;
-		}*/
 		p.setStep_time(timestep);
 
 		bool lock_cam = false;
@@ -106,11 +90,10 @@ public:
 			scissor = create_scissor_lift(&p, &bodies, scissor_lift_pos);
 		}
 		else if (demo_type == HIGH_MASS_RATIO) {
-			pos.x += 160;
-			//pos.y += 70;
+			pos.x += 50;
 			pos.y = 120;
 
-			mthz::Vec3 chain_pos(0, 230, 0);
+			mthz::Vec3 chain_pos(0, 150, 0);
 			double chain_width = 0.31;
 			double chain_height = 1;
 
@@ -119,7 +102,7 @@ public:
 			phyz::ConvexUnionGeometry chain = phyz::ConvexUnionGeometry::box(mthz::Vec3(-chain_width / 2.0, 0, -chain_width / 2.0), chain_width, -chain_height, chain_width, phyz::Material::modified_density(2));
 
 			phyz::RigidBody* attach_box_r = p.createRigidBody(attach_box, phyz::RigidBody::FIXED);
-			int n_chain = 120;
+			int n_chain = 20;
 			phyz::RigidBody* previous_chain = nullptr;
 
 			for (int i = 0; i < n_chain; i++) {
@@ -148,13 +131,10 @@ public:
 
 			bodies.push_back({ fromGeometry(attach_box), attach_box_r });
 
-			ball_r->setVel(mthz::Vec3(0, 0, 7));
+			ball_r->setVel(mthz::Vec3(0, 0, 15));
 
 			p.addBallSocketConstraint(ball_r, previous_chain, final_chain_pos);
 			bodies.push_back({ fromGeometry(ball), ball_r });
-
-			//works well with a low CFM
-			//p.setHolonomicSolverCFM(0);
 		}
 		else {
 			pos.y += 30;
@@ -185,9 +165,6 @@ public:
 				bodies.push_back({ fromGeometry(panel), panel_r });
 			}
 		}
-
-		//p.setPistonTargetVelocity(scissor_slider, slider_force, 0);
-		//printf("current_pos: %f\n", p.getPistonPosition(scissor_slider));
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
