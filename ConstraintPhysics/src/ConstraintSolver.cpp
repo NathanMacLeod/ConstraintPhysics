@@ -257,6 +257,8 @@ namespace phyz {
 		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
 		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
 
+		//double slop = 0.01; //goal is to leave interpenetration of amount slop
+		//double sloppified_pen_depth = std::max<double>(0.0, pen_depth - slop);
 		psuedo_target_val = mthz::NVec<1>{ pen_depth * pos_correct_hardness };
 	}
 

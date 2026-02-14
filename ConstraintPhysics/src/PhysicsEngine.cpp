@@ -46,7 +46,7 @@ namespace phyz {
 	static float dfs_time = 0;
 	static float pgs_time = 0;
 	static float update_time = 0;
-	static int i = 0;
+	static int total_ticks = 0;
 	void PhysicsEngine::timeStep() {
 
 		//printf("\n======NEW TIMESTEP=====\n");
@@ -189,6 +189,7 @@ namespace phyz {
 								continue;
 							}
 
+							//printf("total ticks: %d\n", total_ticks);
 							Manifold man = detectCollision(c1, c2);
 
 							//no collision signified by pen_depth <= 0
@@ -290,7 +291,7 @@ namespace phyz {
 							TriggeredActionPair pair_action_info = { b1, b2, std::vector<Manifold>(), thispair_actions };
 							for (int i = 0; i < manifolds.size(); i++) {
 								if (!merged[i]) {
-									pair_action_info.manifolds.push_back(manifolds[i]);
+									pair_action_info.manifolds.push_back(man);
 								}
 							}
 							action_mutex.lock();
@@ -430,7 +431,7 @@ namespace phyz {
 			pgs_time += std::chrono::duration<float>(t6 - t5).count();
 			update_time += std::chrono::duration<float>(t7 - t6).count();
 
-			if (i++ % 1000 == 0) {
+			if (total_ticks++ % 1000 == 0) {
 				float total = maintain_time + broadphase_time + sat_time + dfs_time + pgs_time + update_time;
 				printf("total time: %f, maintain: %f, broadphase: %f, sat: %f, dfs: %f, pgs: %f, update: %f\n", total, maintain_time / total, broadphase_time / total, sat_time / total, dfs_time / total, pgs_time / total, update_time / total);
 				maintain_time = 0;

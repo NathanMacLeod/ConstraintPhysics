@@ -395,37 +395,99 @@ namespace phyz {
 		return ClipEvaluationPoint{ intersection_pos, perserved_source_id, m, edge_can_be_skipped_when_clipping };
 	}
 
-	std::vector<ClipEvaluationPoint> getClipEvaluatinPolyAfterClippingEdge(const std::vector<ClipEvaluationPoint>& c, mthz::NVec<2> clip_maintain_side, mthz::NVec<2> clipping_edge_sample_point, int32_t clipping_edge_id, bool flip_magics) {
+	enum ClipResult {
+		BOTH_CLIPPED, P1_EXACTLY_ON_EDGE_P2_CLIPPED, P2_EXACTLY_ON_EDGE_P1_CLIPPED, NEITHER_CLIPPED, ONLY_P1_CLIPPED, ONLY_P2_CLIPPED
+	};
+
+	ClipResult checkSegment(double p1_v, double p2_v, double clip_v) {
+		if (p1_v >= clip_v && p2_v >= clip_v) { return NEITHER_CLIPPED; }
+		if (p1_v == clip_v && p2_v < clip_v) { return P1_EXACTLY_ON_EDGE_P2_CLIPPED; }
+		if (p1_v < clip_v && p2_v == clip_v) { return P2_EXACTLY_ON_EDGE_P1_CLIPPED; }
+		if (p1_v < clip_v && p2_v >= clip_v)  { return ONLY_P1_CLIPPED; }
+		if (p1_v >= clip_v && p2_v < clip_v)  { return ONLY_P2_CLIPPED; }
+		                                        return BOTH_CLIPPED;
+	}
+
+	std::vector<ClipEvaluationPoint> getClipEvaluatinPolyAfterClippingByEdge(const std::vector<ClipEvaluationPoint>& c, mthz::NVec<2> clip_maintain_side, mthz::NVec<2> clipping_edge_sample_point, int32_t clipping_edge_id, bool flip_magics) {
 		std::vector<ClipEvaluationPoint> out;
-		for (int i = 0; i < c.size(); i++) {
-			ClipEvaluationPoint p1 = c[i];
-			ClipEvaluationPoint p2 = c[(i + 1) % c.size()];
 
-			double p1_v = p1.pos.dot(clip_maintain_side); //todo used cached value of previous p2_v
-			double p2_v = p2.pos.dot(clip_maintain_side);
-			double samp_v = clipping_edge_sample_point.dot(clip_maintain_side);
+		double clip_v = clipping_edge_sample_point.dot(clip_maintain_side);
 
-			if (p1_v >= samp_v && p2_v >= samp_v) {
-				//both p1, p2 are not clipped case
-				out.push_back(p1);
+		if (c.size() >= 3) {
+			//polygon case
+			int i = 0;
+			double p1_v, p2_v;
+			ClipEvaluationPoint p1, p2;
+			for (int i = 0; i < c.size(); i++) {
+				if (i > 0) {
+					// we computed these last iteration, no need to check again.
+					p1_v = p2_v;
+					p1 = p2;
+				}
+				else {
+					// can't use last itr calc as it doesn't exist
+					p1 = c[0];
+					p1_v = p1.pos.dot(clip_maintain_side);
+				}
+				p2 = c[(i + 1) % c.size()];
+				p2_v = p2.pos.dot(clip_maintain_side);
+
+				ClipResult r = checkSegment(p1_v, p2_v, clip_v);
+
+				if (r == NEITHER_CLIPPED || r == P1_EXACTLY_ON_EDGE_P2_CLIPPED) {
+					// p1 is preserved. adding p2 or not is handled in the next iteration
+					out.push_back(p1);
+				}
+				else if (r == ONLY_P2_CLIPPED) {
+					// p1 is preserved. add the clipped second point. p2 should be discarded in the next iteration.
+					out.push_back(p1);
+					out.push_back(getEdgeIntersectionWithClippingEdge(p1, p2, clip_maintain_side, clipping_edge_sample_point, clipping_edge_id, flip_magics));
+				}
+				else if (r == P2_EXACTLY_ON_EDGE_P1_CLIPPED) {
+					// elminate p1 by not adding anything. no need to find intersection as it would duplicate p2. next iteration should add p2.
+				}
+				else if (r == ONLY_P1_CLIPPED) {
+					// add the new value after clipping p2. the next iteration should add p2 to preserve it.
+					out.push_back(getEdgeIntersectionWithClippingEdge(p1, p2, clip_maintain_side, clipping_edge_sample_point, clipping_edge_id, flip_magics));
+				}
+				//else case: both p1 and p2 are eliminated. next iteration should not add p2.
 			}
-			else if (p1_v == samp_v && p2_v < samp_v) {
-				//p1 on the edge, p2_is clipped
-				out.push_back(p1);
-			}
-			else if (p1_v > samp_v && p2_v < samp_v) {
-				//intersection case where p1 is preserved
-				out.push_back(p1);
-				out.push_back(getEdgeIntersectionWithClippingEdge(p1, p2, clip_maintain_side, clipping_edge_sample_point, clipping_edge_id, flip_magics));
-			}
-			else if (p1_v < samp_v && p2_v > samp_v) {
-				//intersection case where p1 is discarded
-				out.push_back(getEdgeIntersectionWithClippingEdge(p1, p2, clip_maintain_side, clipping_edge_sample_point, clipping_edge_id, flip_magics));
-			}
-			//else case: both p1 and p2 are eliminated
+
+			return out;
 		}
-
-		return out;
+		else if (c.size() == 2){
+			//line case
+			double p1_v = c[0].pos.dot(clip_maintain_side);
+			double p2_v = c[1].pos.dot(clip_maintain_side);
+			ClipResult r = checkSegment(p1_v, p2_v, clip_v);
+			if (r == NEITHER_CLIPPED) {
+				return c;
+			}
+			if (r == P1_EXACTLY_ON_EDGE_P2_CLIPPED) {
+				out = { c[0] };
+				return out;
+			}
+			if (r == P2_EXACTLY_ON_EDGE_P1_CLIPPED) {
+				out = { c[1] };
+				return out;
+			}
+			if (r == ONLY_P1_CLIPPED) {
+				out = { getEdgeIntersectionWithClippingEdge(c[0], c[1], clip_maintain_side, clipping_edge_sample_point, clipping_edge_id, flip_magics), c[1]};
+				return out;
+			}
+			if (r == ONLY_P2_CLIPPED) {
+				out = { c[0], getEdgeIntersectionWithClippingEdge(c[0], c[1], clip_maintain_side, clipping_edge_sample_point, clipping_edge_id, flip_magics) };
+				return out;
+			}
+			// both clipped case
+			return out;
+		}
+		else {
+			//single point case
+			double p1_v = c[0].pos.dot(clip_maintain_side);
+			if (p1_v >= clip_v) { return c; } //single point preserved
+			return out;                       //single point discarded
+		}
 	}
 
 	std::vector<ClipEvaluationPoint> clipC1ByAllEdgesOfC2(std::vector<ClipEvaluationPoint> c1, const std::vector<ClipEvaluationPoint>& c2, bool flip_magics) {
@@ -436,7 +498,8 @@ namespace phyz {
 			ClipEvaluationPoint e2 = c2[(i + 1) % c2.size()];
 			mthz::NVec<2> clip_dir = getInDirOfEdge(e1.pos, e2.pos);
 			int32_t edge_id = getEdgeID(e1.source_id, e2.source_id);
-			c1 = getClipEvaluatinPolyAfterClippingEdge(c1, clip_dir, e1.pos, edge_id, flip_magics);
+			c1 = getClipEvaluatinPolyAfterClippingByEdge(c1, clip_dir, e1.pos, edge_id, flip_magics);
+			if (c1.size() == 0) { return c1; } //nothing left to clip
 		}
 		return c1;
 	}

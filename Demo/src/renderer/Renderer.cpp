@@ -14,12 +14,15 @@ namespace rndr {
     enum KeyState { KEY_PRESSED, KEY_RELEASED, KEY_DOWN, KEY_UP };
     static const int N_KEYS = 350;
     static KeyState keys[N_KEYS];
+    static const int N_MB = 64;
+    static KeyState mouse_buttons[N_MB];
 
         void APIENTRY GLDebugMessageCallback(GLenum source, GLenum type, GLuint id,
             GLenum severity, GLsizei length,
             const GLchar* msg, const void* data);
 
     static void keyEvent(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void mouseButtonEvent(GLFWwindow* window, int button, int action, int mods);
 
     static bool first_tick;
 
@@ -46,6 +49,7 @@ namespace rndr {
         glfwMakeContextCurrent(window);
         for (int i = 0; i < N_KEYS; i++) { keys[i] = KeyState::KEY_UP; }
         glfwSetKeyCallback(window, keyEvent);
+        glfwSetMouseButtonCallback(window, mouseButtonEvent);
 
         if (glewInit() != GLEW_OK) {
             std::printf("glew init failed!\n");
@@ -98,6 +102,18 @@ namespace rndr {
         }
     }
 
+    static void mouseButtonEvent(GLFWwindow* window, int button, int action, int mods) {
+        if (button == -1 || button >= N_MB) {
+            return;
+        }
+        if (action == GLFW_RELEASE) {
+            mouse_buttons[button] = KeyState::KEY_RELEASED;
+        }
+        else if (action == GLFW_PRESS) {
+            mouse_buttons[button] = KeyState::KEY_PRESSED;
+        }
+    }
+
     void lockMouse() {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
@@ -129,6 +145,35 @@ namespace rndr {
     bool getKeyReleased(int key) {
         if (key >= 0 && key < N_KEYS && keys[key] == KeyState::KEY_RELEASED) {
             keys[key] = KeyState::KEY_UP;
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    bool getMouseButtonDown(int key) {
+        if (key >= 0 && key < N_MB) {
+            return mouse_buttons[key] == KeyState::KEY_DOWN || mouse_buttons[key] == KeyState::KEY_PRESSED;
+        }
+        else {
+            return false;
+        }
+    }
+
+    bool getMouseButtonPressed(int key) {
+        if (key >= 0 && key < N_MB && mouse_buttons[key] == KeyState::KEY_PRESSED) {
+            mouse_buttons[key] = KeyState::KEY_DOWN;
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    bool getMouseButtonReleased(int key) {
+        if (key >= 0 && key < N_MB && mouse_buttons[key] == KeyState::KEY_RELEASED) {
+            mouse_buttons[key] = KeyState::KEY_UP;
             return true;
         }
         else {
