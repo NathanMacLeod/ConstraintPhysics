@@ -5,7 +5,7 @@
 
 class TestThreadManagerDoAll : public Test {
 public:
-	std::string getTestName() const override { return "ThreadManager::do_all"; }
+	std::string getTestName() const override { return "do_all"; }
 	bool canBeRunWithGraphics() const override { return false; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) override { return nullptr; }
@@ -47,7 +47,7 @@ public:
 
 class TestThreadManagerSubmit : public Test {
 public:
-	std::string getTestName() const override { return "ThreadManager::submit"; }
+	std::string getTestName() const override { return "submit"; }
 	bool canBeRunWithGraphics() const override { return false; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) override { return nullptr; }
@@ -71,7 +71,7 @@ public:
 
 class TestThreadManagerJobStatusWorksAsExpected : public Test {
 public:
-	std::string getTestName() const override { return "ThreadManager::jobstatus dependencies"; }
+	std::string getTestName() const override { return "Jobstatus Dependencies"; }
 	bool canBeRunWithGraphics() const override { return false; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) override { return nullptr; }

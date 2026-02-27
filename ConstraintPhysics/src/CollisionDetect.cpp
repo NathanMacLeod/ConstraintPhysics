@@ -37,7 +37,7 @@ namespace phyz {
 		return out;
 	}
 
-	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat);
+	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat, int surfaceid1, int surfaceid2);
 	static Manifold detectSphereSphere(const Sphere& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
 	static Manifold detectCylinderCylinder(const Cylinder& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat);
 	static Manifold SAT_PolySphere(const Polyhedron& a, int a_id, const Material& a_mat, const Sphere& b, int b_id, const Material& b_mat);
@@ -47,12 +47,12 @@ namespace phyz {
 	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 	static std::vector<Manifold> SAT_CylinderMesh(const Cylinder& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 
-	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b) {
+	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b, int surfaceid1, int surfaceid2) {
 		switch (a.getType()) {
 		case POLYHEDRON:
 			switch (b.getType()) {
 			case POLYHEDRON:
-				return SAT_PolyPoly((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Polyhedron&)*b.getGeometry(), b.getID(), b.material);
+				return SAT_PolyPoly((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Polyhedron&)*b.getGeometry(), b.getID(), b.material, surfaceid1, surfaceid2);
 			case SPHERE:
 				return SAT_PolySphere((const Polyhedron&)*a.getGeometry(), a.getID(), a.material, (const Sphere&)*b.getGeometry(), b.getID(), b.material);
 			case CYLINDER:
@@ -182,7 +182,10 @@ namespace phyz {
 		return out;
 	}
 
-	static ContactArea findContactArea(const Polyhedron& c, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
+	static ContactArea findContactArea(const Polyhedron& c, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w, int surfaceid1=-1, int surfaceid2=-1) {
+		// at this point SAT has given us the contact normal direction n, and a single point that is part of this objects collision area.
+		// we want to figure out what other features are involved in this contact- either a whole face that includes p, an edge that includes p,
+		// or maybe just p itself.
 
 		int best_surface_index = -1;
 		double best_surface_tolerance = 1.0;
@@ -194,6 +197,8 @@ namespace phyz {
 				best_surface_index = surface_index;
 			}
 		}
+		//double tol = (c.getSurfaces()[best_surface_index].getSurfaceID() == surfaceid1 || c.getSurfaces()[best_surface_index].getSurfaceID() == surfaceid2) ? PREVIOUS_FEATURE_BIASED_COS_TOL : COS_TOL;
+		//if (tol == COS_TOL) { printf("using normal tol\n"); } else { printf("using cached tol\n"); }
 		if (best_surface_tolerance <= COS_TOL) {
 			return projectFace(c.getSurfaces()[best_surface_index], u, w);
 		}
@@ -401,8 +406,8 @@ namespace phyz {
 
 	ClipResult checkSegment(double p1_v, double p2_v, double clip_v) {
 		if (p1_v >= clip_v && p2_v >= clip_v) { return NEITHER_CLIPPED; }
-		if (p1_v == clip_v && p2_v < clip_v) { return P1_EXACTLY_ON_EDGE_P2_CLIPPED; }
-		if (p1_v < clip_v && p2_v == clip_v) { return P2_EXACTLY_ON_EDGE_P1_CLIPPED; }
+		if (p1_v == clip_v && p2_v < clip_v)  { return P1_EXACTLY_ON_EDGE_P2_CLIPPED; }
+		if (p1_v < clip_v && p2_v == clip_v)  { return P2_EXACTLY_ON_EDGE_P1_CLIPPED; }
 		if (p1_v < clip_v && p2_v >= clip_v)  { return ONLY_P1_CLIPPED; }
 		if (p1_v >= clip_v && p2_v < clip_v)  { return ONLY_P2_CLIPPED; }
 		                                        return BOTH_CLIPPED;
@@ -623,7 +628,7 @@ namespace phyz {
 		}
 	}
 
-	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat) {
+	static Manifold SAT_PolyPoly(const Polyhedron& a, int a_id, const Material& a_mat, const Polyhedron& b, int b_id, const Material& b_mat, int surfaceid1, int surfaceid2) {
 		Manifold out;
 		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
@@ -705,8 +710,15 @@ namespace phyz {
 
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
-		ContactArea a_contact = findContactArea(a, norm, a_maxP, min_pen.a_maxPID, u, w);
-		ContactArea b_contact = findContactArea(b, (-1) * norm, b_maxP, min_pen.b_maxPID, u, w);
+		// switching to arrays on the stack rather than std::vector as the main data type would probably speed this up a lot.
+		// TODO when trying to optimize this
+		ContactArea a_contact = findContactArea(a, norm, a_maxP, min_pen.a_maxPID, u, w, surfaceid1, surfaceid2);
+		ContactArea b_contact = findContactArea(b, (-1) * norm, b_maxP, min_pen.b_maxPID, u, w, surfaceid1, surfaceid2);
+
+		if (a_contact.origin == FACE) { out.surfaceid1 = a_contact.surfaceID; }
+		else                          { out.surfaceid1 = -1; }
+		if (b_contact.origin == FACE) { out.surfaceid2 = b_contact.surfaceID; }
+		else                          { out.surfaceid2 = -1; }
 
 		std::vector<ProjectedContactPoint> manifold_pool = clipContacts(a_contact, b_contact);
 		assert(manifold_pool.size() > 0);
@@ -1833,7 +1845,7 @@ namespace phyz {
 	}
 
 	Manifold merge_manifold(const Manifold& m1, const Manifold& m2) {
-		Manifold out = { std::vector<ContactP>(m1.points.size() + m2.points.size()), mthz::Vec3(), std::max<double>(m1.max_pen_depth, m2.max_pen_depth)};
+		Manifold out = { std::vector<ContactP>(m1.points.size() + m2.points.size()), mthz::Vec3(), std::max<double>(m1.max_pen_depth, m2.max_pen_depth), m1.surfaceid1, m1.surfaceid2};
 		out.normal = (m1.normal + m2.normal).normalize();
 
 		for (int i = 0; i < m1.points.size(); i++) {
@@ -1851,7 +1863,7 @@ namespace phyz {
 		if (new_size >= m.points.size()) {
 			return m;
 		}
-		Manifold out = { std::vector<ContactP>(new_size), m.normal, 0 };
+		Manifold out = { std::vector<ContactP>(new_size), m.normal, 0, m.surfaceid1, m.surfaceid2 };
 		std::vector<bool> p_available(m.points.size(), true);
 
 		mthz::Vec3 u, w;

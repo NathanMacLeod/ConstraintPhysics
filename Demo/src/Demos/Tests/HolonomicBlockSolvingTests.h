@@ -7,7 +7,7 @@
 
 class TestHeavyWeightOnChain : public Test {
 public:
-	std::string getTestName() const override { return "HolonomicBlockSolver::High mass Ratio Chain"; }
+	std::string getTestName() const override { return "High mass Ratio Chain"; }
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	void overrideCameraInitialPosition(mthz::Vec3* cam_pos, mthz::Quaternion* cam_orient) const override { cam_pos->y = -40; cam_pos->z = 100; }

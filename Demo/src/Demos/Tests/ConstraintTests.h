@@ -7,7 +7,7 @@
 
 class TestDistanceConstraint : public Test {
 public:
-	std::string getTestName() const override { return "distance constraint"; }
+	std::string getTestName() const override { return "Distance Constraint"; }
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
@@ -119,12 +119,90 @@ private:
 	double starting_distance;
 };
 
+class TestConeConstraint : public Test {
+public:
+	std::string getTestName() const override { return "Cone Constraint"; }
+	bool canBeRunWithGraphics() const override { return true; }
+	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
+	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		tick_frequency = 60.0f;
+		test_current_tick_count = 0;
+
+		p = new phyz::PhysicsEngine();
+		if (n_threads > 0) {
+			p->enableMultithreading(n_threads);
+		}
+		p->setStep_time(1.0 / tick_frequency);
+
+		// kinematic sphere
+		phyz::ConvexUnionGeometry kinem_body_geom = phyz::ConvexUnionGeometry::sphere(mthz::Vec3(0, 0, 0), 0.5);
+		kinem_body_r = p->createRigidBody(kinem_body_geom, phyz::RigidBody::KINEMATIC);
+		bodies->push_back(PhysBod{ fromGeometry(kinem_body_geom), kinem_body_r });
+
+		// pole attached under the fixed sphere
+		double pole_height = 3;
+		phyz::ConvexUnionGeometry swinging_pole_geom = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(0, -pole_height, 0), 0.1, pole_height);
+		swinging_pole_r = p->createRigidBody(swinging_pole_geom, phyz::RigidBody::DYNAMIC);
+		bodies->push_back(PhysBod{ fromGeometry(swinging_pole_geom), swinging_pole_r });
+
+		// add ball socket constraint
+		p->addBallSocketConstraint(kinem_body_r, swinging_pole_r, mthz::Vec3(0, 0, 0));
+
+		// add cone rotation limit constraint
+		p->addConeLimitConstraint(kinem_body_r, swinging_pole_r, mthz::Vec3(0, -1, 0), PI / 4.0);
+		return p;
+	}
+	TestOutcome tickTestOnePhysicsStep() override {
+		test_current_tick_count++;
+		float t = test_current_tick_count / tick_frequency;
+
+		// generate oscillating psuedo-random motion for the kinematic sphere along the xz plane, biased towards the origin
+		mthz::Vec3 kinematic_vel;
+		double max_unbiased_speed = 8.0;
+		std::vector<int> frequencies = { 1, -2, 3, -5, 7, -11 };
+		for (int freq : frequencies) {
+			double rand_direction_theta = t * freq;
+			kinematic_vel += mthz::Vec3(cos(rand_direction_theta), 0, sin(rand_direction_theta)) * max_unbiased_speed / frequencies.size();
+		}
+
+		double origin_bias_strength = 0.1;
+		kinematic_vel += origin_bias_strength * (mthz::Vec3(0, 0, 0) - kinem_body_r->getCOM());
+
+		if (true) {
+			kinem_body_r->setVel(kinematic_vel);
+			p->timeStep();
+		}
+
+		
+		double expected_distance;
+		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
+	}
+	void teardownTest() override {
+		delete p;
+		p = nullptr;
+		kinem_body_r = nullptr;
+		swinging_pole_r = nullptr;
+	};
+	TestOutcome runWithoutGraphics() override {
+		TestOutcome outcome;
+		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
+		return outcome;
+	}
+private:
+	phyz::PhysicsEngine* p;
+	phyz::RigidBody* kinem_body_r;
+	phyz::RigidBody* swinging_pole_r;
+	uint32_t test_current_tick_count;
+	float tick_frequency;
+};
+
 class ConstraintTestsGroup : public TestGroup {
 public:
 	std::string getGroupName() const override { return "Constraints"; }
 	std::vector<std::unique_ptr<Test>> getTests() const override {
 		std::vector<std::unique_ptr<Test>> out;
 		out.push_back(std::make_unique<TestDistanceConstraint>());
+		out.push_back(std::make_unique<TestConeConstraint>());
 		return out;
 	}
 };

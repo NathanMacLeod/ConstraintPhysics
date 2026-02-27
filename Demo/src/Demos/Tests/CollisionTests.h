@@ -6,7 +6,7 @@
 
 class TestBasicBoxAgainstGround : public Test {
 public:
-	std::string getTestName() const override { return "Collision::box v ground"; }
+	std::string getTestName() const override { return "Box vs Ground"; }
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {

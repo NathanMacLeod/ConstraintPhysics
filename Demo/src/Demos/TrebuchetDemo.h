@@ -2,6 +2,7 @@
 #include "DemoScene.h"
 #include "../Mesh.h"
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
+#include "Common.h"
 
 class TrebuchetDemo : public DemoScene {
 public:
@@ -20,6 +21,16 @@ public:
 			ControlDescription{"T", "Reset tower"},
 			ControlDescription{"ESC", "Return to main menu"},
 		};
+	}
+
+	void resetTrebuchetPositions(const std::vector<phyz::RigidBody*>& trebuchet_bodies, const std::vector<mthz::Vec3>& body_positions, const std::vector<mthz::Quaternion>& body_orientations) {
+		for (int i = 0; i < trebuchet_bodies.size(); i++) {
+			phyz::RigidBody* tb = trebuchet_bodies[i];
+			tb->setVel(mthz::Vec3(0, 0, 0));
+			tb->setAngVel(mthz::Vec3(0, 0, 0));
+			tb->setToPosition(body_positions[i]);
+			tb->setOrientation(body_orientations[i]);
+		}
 	}
 
 	void generateChain(phyz::PhysicsEngine* p, mthz::Vec3 start_pos, int n_links, double link_length, double link_width, std::vector<PhysBod>* bodies, phyz::RigidBody** first_link_out, phyz::RigidBody** final_link_out, mthz::Vec3* final_link_attach_p_out, std::vector<phyz::RigidBody*>* all_links_r ) {
@@ -89,32 +100,21 @@ public:
 		p.setSleepingEnabled(true);
 		double timestep = 1 / 160.0;
 		p.setStep_time(timestep);
-		p.setGravity(mthz::Vec3(0, -6.0, 0));
 
 		bool lock_cam = true;
 
 		std::vector<PhysBod> bodies;
 
 		//************************
-		//*******BASE PLATE*******
-		//************************
-		double s = 200;
-		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
-		Mesh m2 = fromGeometry(geom2);
-		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
-		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
-		bodies.push_back({ m2, r2 });
-
-		//************************
 		//****TREBUCHET FRAME*****
 		//************************
 		mthz::Vec3 trebuchet_pos = mthz::Vec3(0, 0, 0);
 		double arm_channel_width = 0.575;
-		double rail_width = 0.25;
-		double rail_length = 5;
-		double rail_height = 2.5;
+		double rail_width = 0.35;
+		double rail_length = 6;
+		double rail_height = 4.75;
 		double drop_channel_width = 0.15;
-		double drop_channel_height = 5;
+		double drop_channel_height = 8;
 		double drop_channel_support_width = 0.33;
 
 		mthz::Vec3 channel_beam1_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0 + rail_width, 0, -drop_channel_width / 2.0 - drop_channel_support_width);
@@ -135,16 +135,16 @@ public:
 
 		double each_rail_length = (rail_length - drop_channel_width) / 2.0;
 		mthz::Vec3 rail1_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0, rail_height - rail_width, -rail_length / 2.0);
-		phyz::ConvexUnionGeometry rail1 = phyz::ConvexUnionGeometry::box(rail1_pos, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry rail1 = phyz::ConvexUnionGeometry::box(rail1_pos, rail_width, rail_width, rail_length);
 
 		mthz::Vec3 rail2_pos = trebuchet_pos + mthz::Vec3(arm_channel_width / 2.0, rail_height - rail_width, drop_channel_width / 2.0);
-		phyz::ConvexUnionGeometry rail2 = phyz::ConvexUnionGeometry::box(rail2_pos, rail_width, rail_width, each_rail_length);
+		//phyz::ConvexUnionGeometry rail2 = phyz::ConvexUnionGeometry::box(rail2_pos, rail_width, rail_width, each_rail_length);
 
 		mthz::Vec3 rail3_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width, rail_height - rail_width, -rail_length / 2.0);
-		phyz::ConvexUnionGeometry rail3 = phyz::ConvexUnionGeometry::box(rail3_pos, rail_width, rail_width, each_rail_length);
+		phyz::ConvexUnionGeometry rail3 = phyz::ConvexUnionGeometry::box(rail3_pos, rail_width, rail_width, rail_length);
 
 		mthz::Vec3 rail4_pos = trebuchet_pos + mthz::Vec3(-arm_channel_width / 2.0 - rail_width, rail_height - rail_width, drop_channel_width / 2.0);
-		phyz::ConvexUnionGeometry rail4 = phyz::ConvexUnionGeometry::box(rail4_pos, rail_width, rail_width, each_rail_length);
+		//phyz::ConvexUnionGeometry rail4 = phyz::ConvexUnionGeometry::box(rail4_pos, rail_width, rail_width, each_rail_length);
 
 		phyz::ConvexUnionGeometry arm_rest_box = phyz::ConvexUnionGeometry::box(rail3_pos + mthz::Vec3(rail_width, 0, 0), arm_channel_width, rail_width, rail_width);
 
@@ -197,7 +197,7 @@ public:
 		double weight_height = drop_channel_height - weight_axle_radius;
 		double weight_axle_excess = 0.05;
 
-		phyz::Material weight_material = phyz::Material::modified_density(6);
+		phyz::Material weight_material = phyz::Material::modified_density(24);
 
 		double weight_dist = arm_channel_width/2.0 + (rail_width + drop_channel_support_width + weight_gap);
 		double weight_axle_length = 2 * (weight_dist + weight_thickness + weight_axle_excess);
@@ -225,14 +225,14 @@ public:
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), release_pin2_pos);
 
 
-		double trebuchet_arm_length = 5.75;
+		double trebuchet_arm_length = 8.25;
 		double trebuchet_arm_height = 0.3;
 		double trebuchet_arm_thickness = 0.3;
 
 		mthz::Vec3 trebuchet_arm_pos = weight_center + mthz::Vec3(-trebuchet_arm_thickness / 2.0, -trebuchet_arm_height / 2.0, -trebuchet_arm_length + trebuchet_arm_height / 2.0);
 		phyz::ConvexUnionGeometry trebuchet_main_arm = phyz::ConvexUnionGeometry::box(trebuchet_arm_pos, trebuchet_arm_thickness, trebuchet_arm_height, trebuchet_arm_length);
 
-		double roller_distance = 2;
+		double roller_distance = 3;
 		double roller_axle_excess = 0.05;
 		double roller_axle_radius = 0.06;
 		double roller_gap_to_arm = 0.01;
@@ -244,7 +244,7 @@ public:
 		phyz::ConvexUnionGeometry roller_axle = phyz::ConvexUnionGeometry::cylinder(roller_center_position + mthz::Vec3(0, -roller_axle_length / 2.0, 0), roller_axle_radius, roller_axle_length)
 			.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), roller_center_position);
 
-		double roller_radius = 0.25;
+		double roller_radius = 0.5;
 		double roller_length = arm_channel_width / 2.0 + rail_width - roller_gap_to_wall - roller_gap_to_arm - trebuchet_arm_thickness / 2.0;
 
 		phyz::ConvexUnionGeometry roller_wheel1 = phyz::ConvexUnionGeometry::cylinder(roller_center_position + mthz::Vec3(0, trebuchet_arm_thickness/2.0 + roller_gap_to_arm, 0), roller_radius, roller_length)
@@ -266,7 +266,7 @@ public:
 		
 		double hook_width = 0.1;
 		double hook_length = 0.4;
-		double hook_angle = 0;
+		double hook_angle = 40 * PI / 180.0;
 		phyz::ConvexUnionGeometry hook = phyz::ConvexUnionGeometry::box(hook_position + mthz::Vec3(-hook_width / 2.0, -hook_penetration, -hook_width / 2.0), hook_width, hook_length + hook_penetration, hook_width)
 			.getRotated(mthz::Quaternion(-PI / 2.0 + hook_angle, mthz::Vec3(1, 0, 0)), hook_position);
 
@@ -275,7 +275,7 @@ public:
 		double chain_sepr_dist = 0.6;
 		double chain_width = 0.15;
 		double chain_link_length = 0.29;
-		int n_links = 7;
+		int n_links = 11;
 		mthz::Vec3 chain1_pos = hook_position + mthz::Vec3(0, -chain_start_dist, -chain_arm_gap);
 		mthz::Vec3 chain2_pos = chain1_pos + mthz::Vec3(0, 0, chain_sepr_dist);
 
@@ -292,7 +292,7 @@ public:
 
 		double chain1_loop_gap = 0.2;
 		double chain1_loop_size = hook_width + chain1_loop_gap;
-		double chain1_base_dist = hook_position.y - chain1_pos.y - (chain1_loop_size + chain1_loop_gap) / 2.0;
+		double chain1_base_dist = hook_position.y + 0.1 - chain1_pos.y - (chain1_loop_size + chain1_loop_gap) / 2.0;
 		phyz::ConvexUnionGeometry chain1_loop = generateChainLoop(chain1_pos, chain_width, chain1_loop_size, chain1_loop_size, chain1_base_dist);
 
 		double chain2_loop_width = trebuchet_arm_thickness + 0.05;
@@ -315,9 +315,9 @@ public:
 		mthz::Vec3 bucket_pos = bucket_clip1_pos + mthz::Vec3(-bucket_width / 2.0 + bucket_clip_width / 2.0, -bucket_depth + bucket_clip_width, bucket_clip_length);
 
 		double projectile_radius = 1.2 * bucket_width/2.0;
-		phyz::Material projectile_material = phyz::Material::modified_density(0.2);
+		phyz::Material projectile_material = phyz::Material::modified_density(6.0);
 		mthz::Vec3 projectile_position = mthz::Vec3(chain1_final_link_pos.x, chain1_final_link_pos.y + projectile_radius - bucket_depth + bucket_wall_thickness, 0.5 * (chain1_final_link_pos.z + chain2_final_link_pos.z));
-		phyz::ConvexUnionGeometry projectile = phyz::ConvexUnionGeometry::sphere(projectile_position, projectile_radius);
+		phyz::ConvexUnionGeometry projectile = phyz::ConvexUnionGeometry::sphere(projectile_position, projectile_radius, projectile_material);
 
 		phyz::ConvexUnionGeometry bucket_floor = phyz::ConvexUnionGeometry::box(bucket_pos, bucket_width, bucket_wall_thickness, bucket_width);
 		phyz::ConvexUnionGeometry bucket_wall1 = phyz::ConvexUnionGeometry::box(bucket_pos + mthz::Vec3(0, bucket_wall_thickness, 0), bucket_width, bucket_depth - bucket_wall_thickness, bucket_wall_thickness);
@@ -328,8 +328,11 @@ public:
 		std::vector<phyz::RigidBody*> trebuchet_bodies;
 
 		phyz::ConvexUnionGeometry trebuchet_frame = { channel_beam1, channel_beam2, channel_beam3, channel_beam4, drop_channel_cap1, drop_channel_cap2, 
-			rail1, rail2, rail3, rail4, bot_rail1, bot_rail2, bot_rail3, bot_rail4, arm_rest_box, leg1, leg2, leg3, leg4, support1, support2, support3, support4 };
+			bot_rail1, bot_rail2, bot_rail3, bot_rail4, leg1, leg2, leg3, leg4, support1, support2, support3, support4 };
 		phyz::RigidBody* trebuchet_frame_r = p.createRigidBody(trebuchet_frame, phyz::RigidBody::FIXED);
+
+		phyz::ConvexUnionGeometry trebuchet_rails = { rail1, rail3 };
+		phyz::RigidBody* trebuchet_rails_r = p.createRigidBody(trebuchet_rails, phyz::RigidBody::FIXED);
 
 		phyz::ConvexUnionGeometry release_pins = { release_pin1, release_pin2 };
 		phyz::RigidBody* release_pins_r = p.createRigidBody(release_pins);
@@ -351,7 +354,10 @@ public:
 
 		phyz::RigidBody* projectile_r = p.createRigidBody(projectile);
 
+		p.disallowCollision(trebuchet_rails_r, weight_r);
+
 		bodies.push_back({ fromGeometry(trebuchet_frame), trebuchet_frame_r });
+		bodies.push_back({ fromGeometry(trebuchet_rails), trebuchet_rails_r });
 		bodies.push_back({ fromGeometry(weight), weight_r });
 		bodies.push_back({ fromGeometry(release_pins), release_pins_r });
 		bodies.push_back({ fromGeometry(trebuchet_arm), trebuchet_arm_r });
@@ -360,12 +366,14 @@ public:
 		bodies.push_back({ fromGeometry(chain2_loop), chain2_loop_r });
 		bodies.push_back({ fromGeometry(bucket), bucket_r });
 		bodies.push_back({ fromGeometry(projectile), projectile_r });
+		
 
 		phyz::ConstraintID release = p.addPistonConstraint(
 			p.addSliderConstraint(trebuchet_frame_r, release_pins_r, release_pins_r->getCOM(), mthz::Vec3(0, 0, -1)),
 			0, 2 * release_pin_excess + drop_channel_width + drop_channel_support_width
 		);
-		p.setPiston(release, 10, -1);
+		double release_pin_max_force = 1000;
+		p.setPiston(release, release_pin_max_force, -1);
 
 		p.addHingeConstraint(trebuchet_arm_r, weight_r, weight_center, mthz::Vec3(1, 0, 0));
 
@@ -381,86 +389,61 @@ public:
 		phyz::ConstraintID hook_weld = p.addWeldConstraint(chain1_loop_r, trebuchet_arm_r, hook_position);
 		phyz::ConstraintID projectile_weld = p.addWeldConstraint(bucket_r, projectile_r, projectile_position);
 
-		mthz::Vec3 initial_bucket_force(0, 0.01, 0.55);
-		bucket_r->applyForce(initial_bucket_force);
+		/*mthz::Vec3 slide_proj_under_trebuchet_start_vel(0, 2, 6);
+		mthz::Vec3 slide_proj_under_trebuchet_start_ang_vel(0, 0, 0);
+		projectile_r->setVel(slide_proj_under_trebuchet_start_vel);
+		projectile_r->setAngVel(slide_proj_under_trebuchet_start_ang_vel);*/
 
-		trebuchet_bodies = { trebuchet_frame_r, release_pins_r, weight_r, trebuchet_arm_r, roller_r, chain1_loop_r, chain2_loop_r, bucket_r, projectile_r };
+		trebuchet_bodies = { trebuchet_frame_r, trebuchet_rails_r, release_pins_r, weight_r, trebuchet_arm_r, roller_r, chain1_loop_r, chain2_loop_r, bucket_r, projectile_r };
 		for (phyz::RigidBody* l_r : all_links_r) { trebuchet_bodies.push_back(l_r); }
+
+		// we want the trebuchets starting position to be with the sling slid all the way forward under the trebuchet. to do this, we will tug on the chain with no gravity & no ground for a bit,
+		// then record what the positions look like.
+		int min_tick = 1000; // need to wait long enough for things to stabilize
+		int max_tick = 3000; // dont expect to hit this, but don't want to get stuck in an infinite loop either
+		double flat_chain_measurement_threshold = 0.1; // in practice the chain tends to osscilate. our termination condition will be when the chain is relativly flat,
+		                                               // which we measure as the difference in the y cooridnate of the projectile and one of the chains loops connecting it to the arm.
+		p.setGravity(mthz::Vec3(0, 0, 0));
+		for (int t = 0; t < max_tick; t++) {
+			projectile_r->applyForce(mthz::Vec3(0.0, 0, 0.002));
+			p.timeStep();
+
+			double projectile_height = projectile_r->getCOM().y;
+			double chain_start_height = chain1_loop_r->getCOM().y;
+			if (t >= min_tick && abs(projectile_height - chain_start_height) < flat_chain_measurement_threshold) {
+				break;
+			}
+		}
+		p.setGravity(mthz::Vec3(0, -6.0, 0));
+
+		//recording the start positions / orientations
+		std::vector<mthz::Vec3> trebuchet_start_positions;
+		std::vector<mthz::Quaternion> trebuchet_start_orientations;
+		for (int i = 0; i < trebuchet_bodies.size(); i++) {
+			phyz::RigidBody* tb = trebuchet_bodies[i];
+			trebuchet_start_positions.push_back(tb->getPos());
+			trebuchet_start_orientations.push_back(tb->getOrientation());
+		}
+		resetTrebuchetPositions(trebuchet_bodies, trebuchet_start_positions, trebuchet_start_orientations);
+
+
+		//************************
+		//*******BASE PLATE*******
+		//************************
+		double s = 200;
+		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
+		Mesh m2 = fromGeometry(geom2);
+		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
+		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
+		bodies.push_back({ m2, r2 });
 
 
 		//*************
 		//****TOWER****
 		//*************
-		std::vector<phyz::RigidBody*> tower_bodies;
-
-		if (true) {
-			mthz::Vec3 tower_pos(0, 0, 50);
-			double tower_width = 4;
-			double tower_story_height = 1.25;
-			double floor_height = 0.25;
-			double pillar_width = 0.3;
-			int n_stories = 4;
-			phyz::Material tower_material = phyz::Material::modified_density(0.05);
-			phyz::ConvexUnionGeometry pillar = phyz::ConvexUnionGeometry::box(mthz::Vec3(), pillar_width, tower_story_height, pillar_width, tower_material);
-			phyz::ConvexUnionGeometry floor_plate = phyz::ConvexUnionGeometry::box(mthz::Vec3(), tower_width / 2.0, floor_height, tower_width / 2.0, tower_material);
-
-
-
-			for (int i = 0; i < n_stories; i++) {
-				mthz::Vec3 story_pos = tower_pos + mthz::Vec3(0, i * (floor_height + tower_story_height), 0);
-				phyz::ConvexUnionGeometry pillar1 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, -tower_width / 2.0));
-				phyz::ConvexUnionGeometry pillar2 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -tower_width / 2.0));
-				phyz::ConvexUnionGeometry pillar3 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -tower_width / 2.0));
-				phyz::ConvexUnionGeometry pillar4 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, -pillar_width / 2.0));
-				phyz::ConvexUnionGeometry pillar5 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, -pillar_width / 2.0));
-				phyz::ConvexUnionGeometry pillar6 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, -pillar_width / 2.0));
-				phyz::ConvexUnionGeometry pillar7 = pillar.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, 0, tower_width / 2.0 - pillar_width));
-				phyz::ConvexUnionGeometry pillar8 = pillar.getTranslated(story_pos + mthz::Vec3(-pillar_width / 2.0, 0, tower_width / 2.0 - pillar_width));
-				phyz::ConvexUnionGeometry pillar9 = pillar.getTranslated(story_pos + mthz::Vec3(tower_width / 2.0 - pillar_width, 0, tower_width / 2.0 - pillar_width));
-
-				phyz::ConvexUnionGeometry floor_plate1 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, -tower_width / 2.0));
-				phyz::ConvexUnionGeometry floor_plate2 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, -tower_width / 2.0));
-				phyz::ConvexUnionGeometry floor_plate3 = floor_plate.getTranslated(story_pos + mthz::Vec3(-tower_width / 2.0, tower_story_height, 0));
-				phyz::ConvexUnionGeometry floor_plate4 = floor_plate.getTranslated(story_pos + mthz::Vec3(0, tower_story_height, 0));
-
-				phyz::RigidBody* pillar1_r = p.createRigidBody(pillar1);
-				phyz::RigidBody* pillar2_r = p.createRigidBody(pillar2);
-				phyz::RigidBody* pillar3_r = p.createRigidBody(pillar3);
-				phyz::RigidBody* pillar4_r = p.createRigidBody(pillar4);
-				phyz::RigidBody* pillar5_r = p.createRigidBody(pillar5);
-				phyz::RigidBody* pillar6_r = p.createRigidBody(pillar6);
-				phyz::RigidBody* pillar7_r = p.createRigidBody(pillar7);
-				phyz::RigidBody* pillar8_r = p.createRigidBody(pillar8);
-				phyz::RigidBody* pillar9_r = p.createRigidBody(pillar9);
-
-				phyz::RigidBody* floor_plate1_r = p.createRigidBody(floor_plate1);
-				phyz::RigidBody* floor_plate2_r = p.createRigidBody(floor_plate2);
-				phyz::RigidBody* floor_plate3_r = p.createRigidBody(floor_plate3);
-				phyz::RigidBody* floor_plate4_r = p.createRigidBody(floor_plate4);
-
-				std::vector<phyz::RigidBody*> new_bodies = {
-					pillar1_r, pillar2_r, pillar3_r, pillar4_r, pillar5_r, pillar6_r, pillar7_r, pillar8_r, pillar9_r,
-					floor_plate1_r, floor_plate2_r, floor_plate3_r, floor_plate4_r
-				};
-
-				tower_bodies.insert(tower_bodies.end(), new_bodies.begin(), new_bodies.end());
-
-				bodies.push_back({ fromGeometry(pillar1), pillar1_r });
-				bodies.push_back({ fromGeometry(pillar2), pillar2_r });
-				bodies.push_back({ fromGeometry(pillar3), pillar3_r });
-				bodies.push_back({ fromGeometry(pillar4), pillar4_r });
-				bodies.push_back({ fromGeometry(pillar5), pillar5_r });
-				bodies.push_back({ fromGeometry(pillar6), pillar6_r });
-				bodies.push_back({ fromGeometry(pillar7), pillar7_r });
-				bodies.push_back({ fromGeometry(pillar8), pillar8_r });
-				bodies.push_back({ fromGeometry(pillar9), pillar9_r });
-
-				bodies.push_back({ fromGeometry(floor_plate1), floor_plate1_r });
-				bodies.push_back({ fromGeometry(floor_plate2), floor_plate2_r });
-				bodies.push_back({ fromGeometry(floor_plate3), floor_plate3_r });
-				bodies.push_back({ fromGeometry(floor_plate4), floor_plate4_r });
-			}
-		}
+		double radius = 1;
+		mthz::Vec3 block_dim(0.5, 0.5, 1);
+		std::vector<phyz::RigidBody*> tower_bodies = createCircularTower(&p, &bodies, block_dim, radius, 6, mthz::Vec3(0, 0, 80), 24);
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
@@ -475,6 +458,8 @@ public:
 		double rot_speed = 1;
 
 		double phyz_time = 0;
+
+		int tick = 0;
 
 		while (rndr::render_loop(&fElapsedTime)) {
 
@@ -507,7 +492,7 @@ public:
 			t += fElapsedTime;
 
 			if (rndr::getKeyDown(GLFW_KEY_F)) {
-				p.setPiston(release, 30, 2);
+				p.setPiston(release, release_pin_max_force, 2);
 
 				if (!weld_removed) {
 					weld_removed = true;
@@ -518,13 +503,7 @@ public:
 
 			//reset trebuchet
 			if (rndr::getKeyDown(GLFW_KEY_R)) {
-				for (phyz::RigidBody* r : trebuchet_bodies) {
-					r->setOrientation(mthz::Quaternion());
-					r->setToPosition(mthz::Vec3());
-					r->setAngVel(mthz::Vec3());
-					r->setVel(mthz::Vec3());
-					p.deleteWarmstartData(r);
-				}
+				resetTrebuchetPositions(trebuchet_bodies, trebuchet_start_positions, trebuchet_start_orientations);
 
 				p.setPiston(release, 10, -1);
 
@@ -536,9 +515,8 @@ public:
 				hook_weld = p.addWeldConstraint(chain1_loop_r, trebuchet_arm_r, hook_position);
 				projectile_weld = p.addWeldConstraint(bucket_r, projectile_r, projectile_position);
 					
-
-				bucket_r->applyForce(initial_bucket_force);
-				
+				//projectile_r->setVel(slide_proj_under_trebuchet_start_vel);
+				//projectile_r->setAngVel(slide_proj_under_trebuchet_start_ang_vel);
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_T)) {
@@ -575,7 +553,7 @@ public:
 			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
 
 			float aspect_ratio = (float)properties.window_height / properties.window_width;
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 550.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 1000.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
 			shader.setUniform3f("u_ambient_light", 0.4f, 0.4f, 0.4f);
 			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
 			shader.setUniform3f("u_pointlight_col", 0.6f, 0.6f, 0.6f);

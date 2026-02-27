@@ -2,6 +2,7 @@
 #include "DemoScene.h"
 #include "../Mesh.h"
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
+#include "Common.h"
 
 class DebugDemo : public DemoScene {
 public:
@@ -9,25 +10,6 @@ public:
 
 	~DebugDemo() override {
 
-	}
-
-	static void addBrickRing(phyz::PhysicsEngine* p, std::vector<PhysBod>* bodies, mthz::Vec3 block_dim, double radius, double n_blocks, mthz::Vec3 pos, int n_layers) {
-		phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::box(mthz::Vec3(0.0, 0.0, -block_dim.z / 2.0), block_dim.x, block_dim.y, block_dim.z);
-
-		double dtheta = 2 * PI / n_blocks;
-		for (int i = 0; i < n_layers; i++) {
-			double theta_offset = i * dtheta / 2;
-			for (double theta = 0; theta < 2 * PI; theta += dtheta) {
-				mthz::Quaternion rotation(theta + theta_offset, mthz::Vec3(0, 1, 0));
-
-				mthz::Vec3 block_pos = pos + mthz::Vec3(0.0, block_dim.y * i, 0.0) + rotation.applyRotation(mthz::Vec3(radius, 0, 0));
-
-				phyz::ConvexUnionGeometry block_oriented = block.getRotated(rotation).getTranslated(block_pos);
-				phyz::RigidBody* r = p->createRigidBody(block_oriented);
-				Mesh m = { fromGeometry(block_oriented) };
-				bodies->push_back(PhysBod{ m, r });
-			}
-		}
 	}
 
 	std::vector<ControlDescription> controls() override {
@@ -69,19 +51,18 @@ public:
 		//*******BASE PLATE*******
 		//************************
 		double s = 100;
-		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -1, -s / 2), s, 2, s);
+		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
-		r2->translateSoCOMAtPosition(mthz::Vec3(0, -5, 0));
 		bodies.push_back({ m2, r2 });
 
 		//*****************
 		//****OBSTACLES****
 		//*****************
-		double radius = 4;
+		double radius = 3.5;
 		mthz::Vec3 block_dim(1, 1, 2);
-		addBrickRing(&p, &bodies, block_dim, radius, 12, mthz::Vec3(0, -4, -22), 16);
+		createCircularTower(&p, &bodies, block_dim, radius, 10, mthz::Vec3(0, 0, -22), 40);
 
 		/*for (mthz::Vec3& v : grid.points) {
 			v.y += 0.01 * 2 * (0.5 - frand());
@@ -150,7 +131,7 @@ public:
 			}
 		);
 
-		mthz::Vec3 pos(0, 2, 0);
+		mthz::Vec3 pos(0, 42, 0);
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
@@ -160,11 +141,13 @@ public:
 		float fElapsedTime;
 
 		mthz::Quaternion orient;
-		double mv_speed = 2;
+		double mv_speed = 6;
 		//double rot_speed = 1;
 
 		double phyz_time = 0;
 		double timestep = 1 / 60.0;
+		p.setPGSIterations(4, 1, 1);
+		p.setSubstepCount(8);
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
 
@@ -297,7 +280,7 @@ public:
 
 			if (!paused) {
 				phyz_time += fElapsedTime;
-				phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+				phyz_time = std::min<double>(phyz_time, 1.0);
 			}
 			while (!single_step_mode && phyz_time > timestep) {
 				all_contact_points.clear();

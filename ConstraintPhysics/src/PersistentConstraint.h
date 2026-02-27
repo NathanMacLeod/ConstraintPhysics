@@ -7,7 +7,7 @@ namespace phyz {
 
 	//todo: refactor this to just typedef a uint32_t. its weird to have both type and id value in this class. also very weird for contacts that use magic id instead
 	struct ConstraintID {
-		enum Type { INVALID, CONTACT, DISTANCE, BALL, HINGE, SLIDER, PISTON, MOTOR, SPRING, SLIDING_HINGE, WELD };
+		enum Type { INVALID, CONTACT, DISTANCE, BALL, CONE, HINGE, SLIDER, PISTON, MOTOR, SPRING, SLIDING_HINGE, WELD };
 
 		ConstraintID() : uniqueID(-1), type(INVALID) {}
 		ConstraintID(Type type, uint32_t id) : type(type), uniqueID(id) {}
@@ -140,6 +140,35 @@ namespace phyz {
 		inline bool isPoweredConstraint() const override { return false; }
 		inline void setPoweredConstraintMode(PoweredConstraitMode new_mode) override { assert(false); }
 		inline void clearWarmstartData() override { constraint.impulse = mthz::NVec<3>{ 0.0 }; };
+	};
+
+	struct ConeRotationLimit : public PersistentConstraint {
+		// in global coordinates, unit vectors b1_allignment_axis and b2_global_allignment_axis are restricted to not deviate beyond the specified angle.
+		// angle being acos(b1_allignment_axis dot b2_global_allignment_aixs)
+		ConeRotationLimit(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_allign_axis_local, mthz::Vec3 b2_allign_axis_local, double max_rotation_angle, double rot_correction_hardness, uint32_t id_value)
+			: PersistentConstraint(ConstraintID(ConstraintID::Type::CONE, id_value), b1, b2), b1_allignment_axis_local(b1_allign_axis_local), b2_allignment_axis_local(b2_allign_axis_local),
+			  max_rotation_angle(max_rotation_angle), rot_correct_hardness(rot_correction_hardness), cfm(CFM{ USE_GLOBAL }), constraint(ConeLimitConstraint()), is_inactive(true)
+		{
+			assert(max_rotation_angle < PI); // not supported.
+		}
+
+		ConeLimitConstraint constraint;
+		mthz::Vec3 b1_allignment_axis_local;
+		mthz::Vec3 b2_allignment_axis_local;
+		double max_rotation_angle;
+		CFM cfm;
+		double rot_correct_hardness;
+		bool is_inactive;
+
+		inline bool isSolverConstraint() const override { return true; }
+		void updateSolverConstraints(bool warm_start_disabled, double warm_start_coefficient, double step_time, double global_cfm, bool is_in_holonomic_system) override;
+		inline void addSolverConstraints(std::vector<Constraint*>* accumulator) override { if (!is_inactive) { accumulator->push_back(&constraint); } }
+		inline void setCFM(CFM new_cfm) override { cfm = new_cfm; }
+		inline bool isCFMConfigurable() const override { return true; }
+		inline bool isHolonomicConstraint() const override { return false; }
+		inline bool isPoweredConstraint() const override { return false; }
+		inline void setPoweredConstraintMode(PoweredConstraitMode new_mode) override { assert(false); }
+		inline void clearWarmstartData() override { constraint.impulse = mthz::NVec<1>{ 0.0 }; };
 	};
 
 	// todo: piston and motor used to be "child constraints" of other constraints. want to seperate them entirely for simplicity

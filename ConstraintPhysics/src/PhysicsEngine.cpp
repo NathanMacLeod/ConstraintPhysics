@@ -189,8 +189,27 @@ namespace phyz {
 								continue;
 							}
 
-							//printf("total ticks: %d\n", total_ticks);
-							Manifold man = detectCollision(c1, c2);
+							/*if (total_ticks >= 76 && ((b1->getID() == 104 && b2->getID() == 116) || (b2->getID() == 104 && b1->getID() == 116))) {
+								printf("total ticks: %d\n", total_ticks);
+							}*/
+
+							int surface1id, surface2id;
+							{
+								ConstraintGraphNode* lock_first, * lock_second;
+								lock_first = constraint_graph_nodes[b1->getID()];
+								lock_second = constraint_graph_nodes[b2->getID()];
+								SharedConstraintsEdge* e = lock_first->getEdgeToMightBeNull(lock_second);
+								if (e != nullptr) {
+									surface1id = e->cached_surfaceid1;
+									surface2id = e->cached_surfaceid2;
+								}
+								else {
+									surface1id = -1;
+									surface2id = -1;
+								}
+							}
+
+							Manifold man = detectCollision(c1, c2, surface1id, surface2id);
 
 							//no collision signified by pen_depth <= 0
 							if (man.max_pen_depth > 0) {
@@ -265,6 +284,9 @@ namespace phyz {
 
 						lock_first->mutex.lock();
 						lock_second->mutex.lock();
+						SharedConstraintsEdge* e = lock_first->getOrCreateEdgeTo(lock_second);
+						e->cached_surfaceid1 = man.surfaceid1;
+						e->cached_surfaceid2 = man.surfaceid2;
 						for (int i = 0; i < man.points.size(); i++) {
 							const ContactP& p = man.points[i];
 							addContact(lock_first, lock_second, p.pos, man.normal, p.magicID, p.restitution, p.static_friction_coeff, p.kinetic_friction_coeff, static_cast<uint32_t>(man.points.size()), p.pen_depth, contact_pos_correct_hardness);
@@ -895,6 +917,32 @@ namespace phyz {
 		e->constraints.push_back(w);
 		constraint_map[uniqueID] = e;
 		return ConstraintID{ ConstraintID::WELD, uniqueID };
+	}
+
+	ConstraintID PhysicsEngine::addConeLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 cone_direction_local, double max_angle, double rot_correct_strength) {
+		return addConeLimitConstraint(b1, b2, cone_direction_local, cone_direction_local, max_angle, rot_correct_strength);
+	}
+
+	ConstraintID PhysicsEngine::addConeLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 cone_direction_b1_local, mthz::Vec3 cone_direction_b2_local, double max_angle, double rot_correct_strength) {
+		disallowCollision(b1, b2);
+		uint32_t uniqueID = nextConstraintID++;
+
+		ConeRotationLimit* w = new ConeRotationLimit(
+			b1, b2,
+			cone_direction_b1_local,
+			cone_direction_b2_local,
+			max_angle,
+			rot_correct_strength,
+			uniqueID
+		);
+
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
+		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		e->constraints.push_back(w);
+		constraint_map[uniqueID] = e;
+		return ConstraintID{ ConstraintID::CONE, uniqueID };
 	}
 
 	ConstraintID PhysicsEngine::addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length) {
@@ -1886,7 +1934,17 @@ namespace phyz {
 		n2->insertNewEdge(c);
 		return c;
 	}
-	
+
+	PhysicsEngine::SharedConstraintsEdge* PhysicsEngine::ConstraintGraphNode::getEdgeToMightBeNull(ConstraintGraphNode* n2) {
+
+		for (SharedConstraintsEdge* c : constraints) {
+			if (c->other(this) == n2) {
+				return c;
+			}
+		}
+
+		return nullptr;
+	}
 
 	void PhysicsEngine::ConstraintGraphNode::insertNewEdge(SharedConstraintsEdge* e) {
 		unsigned int other_constraint_id = e->other(this)->b->getID();

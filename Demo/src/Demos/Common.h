@@ -38,3 +38,7 @@ ScissorLiftConstruct create_scissor_lift(phyz::PhysicsEngine* p, std::vector<Phy
 void set_scissor_lift_movement_input(phyz::PhysicsEngine* p, ScissorLiftConstruct* s, ScissorLiftConstruct::MovementState desired_state);
 
 
+// ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+// ~=~=~=~=Circular Tower~=~=~=~=
+// ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+std::vector<phyz::RigidBody*> createCircularTower(phyz::PhysicsEngine* p, std::vector<PhysBod>* body_dest, mthz::Vec3 block_dim, double radius, double n_blocks_per_layer, mthz::Vec3 pos, int n_layers);
