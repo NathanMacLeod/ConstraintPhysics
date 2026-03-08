@@ -123,6 +123,9 @@ namespace phyz {
 		ConstraintID addConeLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_local_cone_direction, mthz::Vec3 b2_local_cone_direction, double max_angle, double rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 		ConstraintID addConeLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 cone_center_direction, double max_angle, double rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
+		ConstraintID addTwistLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_twist_direction, mthz::Vec3 b2_twist_direction, double min_angle, double max_angle, double rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addTwistLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 twist_direction, double min_angle, double max_angle, double rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+
 		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
 		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 

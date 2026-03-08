@@ -11,6 +11,7 @@ namespace phyz {
 
 	static int next_id;
 	
+	//todo: rewrite this all to just use polymorphism
 	ConvexPrimitive::ConvexPrimitive(const ConvexPrimitive& c)
 		: material(c.material), type(c.type), id(next_id++)
 	{
@@ -20,6 +21,9 @@ namespace phyz {
 			break;
 		case SPHERE:
 			geometry = (ConvexGeometry*)new Sphere((const Sphere&)*c.geometry);
+			break;
+		case CAPSULE:
+			geometry = (ConvexGeometry*)new Capsule((const Capsule&)*c.geometry);
 			break;
 		case CYLINDER:
 			geometry = (ConvexGeometry*)new Cylinder((const Cylinder &) * c.geometry);
@@ -37,6 +41,9 @@ namespace phyz {
 		case SPHERE:
 			geometry = (ConvexGeometry*)new Sphere((const Sphere&)geometry_primitive);
 			break;
+		case CAPSULE:
+			geometry = (ConvexGeometry*)new Capsule((const Capsule&)geometry_primitive);
+			break;
 		case CYLINDER:
 			geometry = (ConvexGeometry*)new Cylinder((const Cylinder&)geometry_primitive);
 			break;
@@ -51,6 +58,9 @@ namespace phyz {
 			break;
 		case SPHERE:
 			*(Sphere*)copy.geometry = ((Sphere*)geometry)->getRotated(q, pivot_point);
+			break;
+		case CAPSULE:
+			*(Capsule*)copy.geometry = ((Capsule*)geometry)->getRotated(q, pivot_point);
 			break;
 		case CYLINDER:
 			*(Cylinder*)copy.geometry = ((Cylinder*)geometry)->getRotated(q, pivot_point);
@@ -69,6 +79,9 @@ namespace phyz {
 		case SPHERE:
 			*(Sphere*)copy.geometry = ((Sphere*)geometry)->getTranslated(t);
 			break;
+		case CAPSULE:
+			*(Capsule*)copy.geometry = ((Capsule*)geometry)->getTranslated(t);
+			break;
 		case CYLINDER:
 			*(Cylinder*)copy.geometry = ((Cylinder*)geometry)->getTranslated(t);
 			break;
@@ -86,6 +99,9 @@ namespace phyz {
 		case SPHERE:
 			*(Sphere*)copy.geometry = ((Sphere*)geometry)->getScaled(d, center_of_dialtion);
 			break;
+		case CAPSULE:
+			*(Capsule*)copy.geometry = ((Capsule*)geometry)->getScaled(d, center_of_dialtion);
+			break;
 		case CYLINDER:
 			*(Cylinder*)copy.geometry = ((Cylinder*)geometry)->getScaled(d, center_of_dialtion);
 			break;
@@ -94,10 +110,103 @@ namespace phyz {
 		return copy;
 	}
 
+	static RayQueryReturn testRayAgainstCylinderSide(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir, mthz::Vec3 cylinder_center, double radius, double height, mthz::Vec3 height_axis) {
+		// first, compute at what parametric value t the ray is exactly radius distance away from the height axis.
+		// r_0 <- ray_origin
+		// h_0 <- cylinder_center
+		// h   <- cylinder_axis
+		// r   <- ray_dir
+		// r(t) = r_0 + rt
+		// (r(t) - h_0) can be decomposed into a component parallel to height axis, and a perpendicular part.
+		// perpendicular_part(t) would be (r(t) - h_0) - h(h.dot((r(t) - h_0))
+		// 
+		// solving for t
+		// radius^2 = || perpendicular_part(t) ||^2
+		//          = || (r_0 + rt - h_0) - h(h.dot(r_0 + rt - h_0)) ||^2
+		//          = || t(r - h(h.dot(r))) + r_0 - h_0 - h(h.dot(r_0) - h.dot(h_0)) ||^2
+		//                 \__let be u___/   \_____________let be w________________/
+		//          = || tu + w ||^2
+		//          = t^2(u.dot(u)) + 2t(u.dot(w)) + (w.dot(w))
+		//        0 =  t^2(u.dot(u)) + t(2u.dot(w)) + (w.dot(w)) - radius^2
+		//                 \__a__/       \___b___/    \_________c_________/
+		
+		mthz::Vec3 u = ray_dir - height_axis * height_axis.dot(ray_dir);
+		mthz::Vec3 w = ray_origin - cylinder_center - height_axis * (height_axis.dot(ray_origin) - height_axis.dot(cylinder_center));
+		double a = u.x*u.x + u.y*u.y + u.z*u.z;
+		double b = 2*(u.x*w.x + u.y*w.y + u.z*w.z);
+		double c = w.x*w.x + w.y*w.y + w.z*w.z - radius*radius;
+		
+		double t;
+		double radical = b*b - 4*a*c;
+		if (radical < 0) { 
+			return { false }; //ray doesnt intersect
+		}
+		else if (radical == 0) {
+			t = -0.5 * b / a;
+
+			if (t < 0) return { false }; //intersection occurs behind origin
+		}
+		else {
+			double t1 = (-b + sqrt(radical)) / (2 * a);
+			double t2 = (-b - sqrt(radical)) / (2 * a);
+
+			if (t1 < 0 && t2 < 0) return { false }; //intersection occurs behind origin
+			else if (t1 < 0) t = t2;
+			else if (t2 < 0) t = t1;
+			else t = std::min<double>(t1, t2);
+		}
+
+		mthz::Vec3 hit_p = ray_origin + t * ray_dir;
+		// our earlier quadratic assumed an infinitely long cylinder. now we verify we actually intersected along the height axis
+		double x = (hit_p - cylinder_center).dot(height_axis);
+		if (abs(x) > height / 2.0) {
+			return { false };
+		}
+
+		mthz::Vec3 norm = ((hit_p - cylinder_center) - height_axis * x).normalize();
+		return RayQueryReturn{ true, hit_p, norm, t };
+	}
+
+	static RayQueryReturn testRayAgainstSphere(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir, mthz::Vec3 center, double radius) {
+		assert(abs(1 - ray_dir.mag()) < 0.0001); //should be unit length
+
+		mthz::Vec3 rel_org = ray_origin - center;
+		//solve quadratic
+		double a = ray_dir.magSqrd();
+		double b = 2 * rel_org.dot(ray_dir);
+		double c = rel_org.magSqrd() - radius * radius;
+
+		double t;
+
+		double radical = b * b - 4 * a * c;
+		if (radical < 0) {
+			return { false }; //ray doesnt intersect circle
+		}
+		else if (radical == 0) {
+			t = -0.5 * b / a;
+
+			if (t < 0) return { false }; //intersection occurs behind origin
+		}
+		else {
+			double t1 = (-b + sqrt(radical)) / (2 * a);
+			double t2 = (-b - sqrt(radical)) / (2 * a);
+
+			if (t1 < 0 && t2 < 0) return { false }; //intersection occurs behind origin
+			else if (t1 < 0) t = t2;
+			else if (t2 < 0) t = t1;
+			else t = std::min<double>(t1, t2);
+		}
+
+		mthz::Vec3 hit_p = ray_origin + t * ray_dir;
+		mthz::Vec3 norm = (hit_p - center).normalize();
+		return RayQueryReturn{ true, hit_p, norm, t };
+	}
+
 	RayQueryReturn ConvexPrimitive::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
 		switch (type) {
 		case POLYHEDRON:	return ((Polyhedron*)geometry)->testRayIntersection(ray_origin, ray_dir);
 		case SPHERE:		return ((Sphere*)geometry)->testRayIntersection(ray_origin, ray_dir);
+		case CAPSULE:		return ((Capsule*)geometry)->testRayIntersection(ray_origin, ray_dir);
 		case CYLINDER:		return ((Cylinder*)geometry)->testRayIntersection(ray_origin, ray_dir);
 		}
 
@@ -197,51 +306,12 @@ namespace phyz {
 	}
 
 	RayQueryReturn Cylinder::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
-		RayQueryReturn out = { false };
-		mthz::Vec3 height_axis = getHeightAxis();
-		mthz::Vec3 u, v;
-		height_axis.getPerpendicularBasis(&u, &v);
-
-		double org_u = u.dot(ray_origin);
-		double org_v = v.dot(ray_origin);
-		double center_u = u.dot(center);
-		double center_v = v.dot(center);
-		double dir_u = u.dot(ray_dir);
-		double dir_v = v.dot(ray_dir);
-
-		bool ray_parralel_to_side = dir_u * dir_u + dir_v * dir_v < 0.000000001;
-		if (!ray_parralel_to_side) {
-			//check for intersection with the side. First treat like a circle and check for intersection, then verify it intersects at the correct height;
-			//solve quadratic ax^2 + bx + c = 0;
-			double a = dir_u * dir_u + dir_v * dir_v;
-			double b = 2 * (dir_u * org_u + dir_v * org_v - dir_u * center_u - dir_v * center_v);
-			double c = (org_u - center_u) * (org_u - center_u) + (org_v - center_v) * (org_v - center_v) - radius * radius;
-
-			double radical = b * b - 4 * a * c;
-			if (radical < 0) goto exit_side_test; //radical < 0 means no intersection occurs
-
-			double t1 = (-b + sqrt(radical)) / (2 * a);
-			double t2 = (-b - sqrt(radical)) / (2 * a);
-
-			double intersect_dist;
-			if (t1 < 0 && t2 < 0) goto exit_side_test; //intersection occurs behind origin
-			else if (t1 < 0) intersect_dist = t2;
-			else if (t2 < 0) intersect_dist = t1;
-			else intersect_dist = std::min<double>(t1, t2);
-
-			mthz::Vec3 intersect_point = ray_origin + intersect_dist * ray_dir;
-			double intersect_height = intersect_point.dot(height_axis);
-			if (abs(intersect_height - center.dot(height_axis)) < height / 2.0) {
-				mthz::Vec3 norm = ((intersect_point - center) - height_axis * height_axis.dot(intersect_point - center)).normalize();
-				out = RayQueryReturn{ true, intersect_point, norm, intersect_dist};
-			}
-		}
-	exit_side_test:
+		RayQueryReturn out = testRayAgainstCylinderSide(ray_origin, ray_dir, center, radius, height, height_axis);
 		//check intersection with the caps
-		RayQueryReturn top_intersection = checkDiskIntersection(ray_origin, ray_dir, center + height_axis * (height / 2.0), height_axis, radius);
-		RayQueryReturn bot_intersection = checkDiskIntersection(ray_origin, ray_dir, center + height_axis * (height / 2.0), height_axis, radius);
-		if (top_intersection.did_hit && (!out.did_hit || top_intersection.intersection_dist < out.intersection_dist)) out = top_intersection;
-		if (bot_intersection.did_hit && (!out.did_hit || bot_intersection.intersection_dist < out.intersection_dist)) out = bot_intersection;
+		bool can_intersect_with_top_disk = height_axis.dot(ray_dir) < 0;
+		double sgn = can_intersect_with_top_disk ? 1.0 : -1.0; // use this to check only the disk that we could hit.
+		RayQueryReturn disk_intersetion = checkDiskIntersection(ray_origin, ray_dir, center + sgn * height_axis * (height / 2.0), height_axis, radius);
+		if (disk_intersetion.did_hit && (!out.did_hit || disk_intersetion.intersection_dist < out.intersection_dist)) out = disk_intersetion;
 
 		return out;
 	}
@@ -284,6 +354,62 @@ namespace phyz {
 		return disk_center + u * du + v * dv + w * dw;
 	}
 
+	Capsule::Capsule(const Capsule& c) : center(c.center), radius(c.radius), drum_height(c.drum_height), height_axis(c.height_axis) {}
+
+	Capsule::Capsule(mthz::Vec3 center, double radius, double drum_height, mthz::Vec3 height_axis) 
+		: center(center), radius(radius), drum_height(drum_height), height_axis(height_axis) {}
+
+	Capsule Capsule::getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point) const {
+		Capsule out(*this);
+		mthz::Vec3 r = out.center - pivot_point;
+		out.center = q.applyRotation(r) + pivot_point;
+		out.height_axis = q.applyRotation(out.height_axis);
+		return out;
+	}
+	Capsule Capsule::getTranslated(mthz::Vec3 t) const {
+		Capsule out(*this);
+		out.center += t;
+		return out;
+	}
+
+	Capsule Capsule::getScaled(double d, mthz::Vec3 center_of_dialtion) const {
+		Capsule out(*this);
+		out.center = (center - center_of_dialtion) * d + center_of_dialtion;
+		out.radius *= d;
+		out.drum_height *= d;
+		return out;
+	}
+
+	void Capsule::recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) {
+		assert(reference.getType() == CAPSULE);
+		const Capsule& ref = static_cast<const Capsule&>(reference);
+		this->center = trans + rot * ref.center;
+		this->height_axis = rot * ref.height_axis;
+	}
+
+	AABB Capsule::gen_AABB() const {
+		mthz::Vec3 v = height_axis * drum_height/2.0;
+		//can abs due to symmetry
+		double dx = abs(v.x) + radius;
+		double dy = abs(v.y) + radius;
+		double dz = abs(v.z) + radius;
+
+		return AABB{
+			mthz::Vec3(center.x - dx, center.y - dy, center.z - dz),
+			mthz::Vec3(center.x + dx, center.y + dy, center.z + dz)
+		};
+	}
+
+	RayQueryReturn Capsule::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
+		RayQueryReturn out = testRayAgainstCylinderSide(ray_origin, ray_dir, center, radius, drum_height, height_axis);
+		RayQueryReturn top_ball_test = testRayAgainstSphere(ray_origin, ray_dir, center + height_axis * (drum_height / 2.0), radius);
+		RayQueryReturn bot_ball_test = testRayAgainstSphere(ray_origin, ray_dir, center - height_axis * (drum_height / 2.0), radius);
+
+		if (top_ball_test.did_hit && (!out.did_hit || top_ball_test.intersection_dist < out.intersection_dist)) out = top_ball_test;
+		if (bot_ball_test.did_hit && (!out.did_hit || bot_ball_test.intersection_dist < out.intersection_dist)) out = bot_ball_test;
+		return out;
+	}
+
 	Sphere::Sphere(const Sphere& c) 
 		: center(c.center), radius(c.radius)
 	{}
@@ -317,38 +443,7 @@ namespace phyz {
 	}
 
 	RayQueryReturn Sphere::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) {
-		assert(abs(1 - ray_dir.mag()) < 0.0001); //should be unit length
-
-		mthz::Vec3 rel_org = ray_origin - center;
-		//solve quadratic
-		double a = ray_dir.magSqrd();
-		double b = 2 * rel_org.dot(ray_dir);
-		double c = rel_org.magSqrd() - radius * radius;
-
-		double t;
-
-		double radical = b * b - 4 * a * c;
-		if (radical < 0) {
-			return { false }; //ray doesnt intersect circle
-		}
-		else if (radical == 0) {
-			t = -0.5 * b / a;
-
-			if (t < 0) return { false }; //intersection occurs behind origin
-		}
-		else {
-			double t1 = (-b + sqrt(radical)) / (2 * a);
-			double t2 = (-b - sqrt(radical)) / (2 * a);
-
-			if (t1 < 0 && t2 < 0) return { false }; //intersection occurs behind origin
-			else if (t1 < 0) t = t2;
-			else if (t2 < 0) t = t1;
-			else t = std::min<double>(t1, t2);
-		}
-		
-		mthz::Vec3 hit_p = ray_origin + t * ray_dir;
-		mthz::Vec3 norm = (hit_p - center).normalize();
-		return RayQueryReturn{ true, hit_p, norm, t };
+		return testRayAgainstSphere(ray_origin, ray_dir, center, radius);
 	}
 
 	Polyhedron::Polyhedron(const Polyhedron& c)

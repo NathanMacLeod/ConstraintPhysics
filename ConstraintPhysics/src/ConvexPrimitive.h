@@ -33,7 +33,7 @@ namespace phyz {
 		double static_friction_coeff;
 	};
 
-	enum ConvexGeometryType { POLYHEDRON, SPHERE, CYLINDER };
+	enum ConvexGeometryType { POLYHEDRON, SPHERE, CAPSULE, CYLINDER };
 	class ConvexGeometry {
 	public:
 		virtual void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) = 0;
@@ -102,6 +102,37 @@ namespace phyz {
 
 		mthz::Vec3 center;
 		double radius;
+	};
+
+	class Capsule : ConvexGeometry {
+	public:
+		Capsule() {}
+		Capsule(const Capsule& c);
+		Capsule(mthz::Vec3 center, double radius, double drum_height, mthz::Vec3 height_axis);
+
+		Capsule getRotated(const mthz::Quaternion q, mthz::Vec3 pivot_point = mthz::Vec3(0, 0, 0)) const;
+		Capsule getTranslated(mthz::Vec3 t) const;
+		Capsule getScaled(double d, mthz::Vec3 center_of_dialtion) const;
+		void recomputeFromReference(const ConvexGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans) override;
+		AABB gen_AABB() const override;
+		ConvexGeometryType getType() const override { return CAPSULE; };
+
+		inline double     getRadius()     const { return radius; }
+		inline double     getDrumHeight() const { return drum_height; }
+		inline mthz::Vec3 getHeightAxis() const { return height_axis; }
+		inline mthz::Vec3 getCenter()     const { return center; }
+
+		RayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir);
+
+		friend class Surface;
+		friend class Edge;
+		friend class RigidBody;
+	private:
+
+		mthz::Vec3 center;
+		double radius;
+		double drum_height;
+		mthz::Vec3 height_axis;
 	};
 
 	struct GaussArc {

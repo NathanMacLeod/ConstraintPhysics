@@ -112,6 +112,25 @@ namespace phyz {
 		return (mode != OFF && max_torque != 0) || motor_angular_position < min_motor_position || motor_angular_position > max_motor_position;
 	}
 
+	double TwistLimit::getCurrentAngle(double previous_angle, mthz::Vec3 b1_twist_axis_world, mthz::Vec3 b2_twist_axis_world, mthz::Vec3 b1_u_axis_world, mthz::Vec3 b1_w_axis_world, mthz::Vec3 b2_r_axis_world) {
+		//if needed, rotate b2 such that b2_twist_axis_world and b1_twist_axis_world are alligned
+		mthz::Vec3 b2xb1 = b2_twist_axis_world.cross(b1_twist_axis_world);
+		double angle_off = asin(b2xb1.mag());
+		mthz::Vec3 b2_r = b2_r_axis_world;
+		if (angle_off > 0.01) { b2_r = mthz::Quaternion(angle_off, b2xb1.normalize()).applyRotation(b2_r_axis_world); }
+
+		// project b2_r onto u, w axises. (in the local space u is x axis, w is y axis, b1_twist_axis z axis), get current angle based on that
+		double curr_w = b2_r_axis_world.dot(b1_u_axis_world);
+		double curr_u = b2_r_axis_world.dot(b1_w_axis_world);
+		double new_current_angle = atan2(curr_w, curr_u);
+
+		// this assumes that the rotation between the last tick and now was less than PI radians. in extreme cases this could be wrong, but we are accepting that
+		while (previous_angle - new_current_angle > PI) { new_current_angle += 2 * PI; }
+		while (previous_angle - new_current_angle < -PI) { new_current_angle -= 2 * PI; }
+
+		return new_current_angle;
+	}
+
 	Piston::Piston(RigidBody* b1, RigidBody* b2, RigidBody::PKey b1_point_key, RigidBody::PKey b2_point_key, mthz::Vec3 b1_slide_axis_body_space, double min_pos, double max_pos, double pos_correct_hardness, uint32_t id_value)
 		: PersistentConstraint(ConstraintID(ConstraintID::Type::PISTON, id_value), b1, b2), b1_point_key(b1_point_key), b2_point_key(b2_point_key), b1_slide_axis_body_space(b1_slide_axis_body_space),
 		target_velocity(0), max_force(0), target_position(0), mode(OFF), min_slide_limit(min_pos), max_slide_limit(max_pos), slide_limit_exceeded(false),
@@ -216,8 +235,7 @@ namespace phyz {
 		mthz::Vec3 b2_dir = b2->getOrientation().applyRotation(b2_allignment_axis_local);
 
 		double current_angle = acos(b1_dir.dot(b2_dir));
-		is_inactive = current_angle < max_rotation_angle; // if the current angle is within the cone, the constraint is not active.
-		printf("%f, %f\n", current_angle, max_rotation_angle);
+		is_inactive = current_angle < max_rotation_angle; // if the current angle is within the cone, the constraint is not active.		
 
 		if (is_inactive) {
 			// clear any existing warm start value
@@ -225,6 +243,31 @@ namespace phyz {
 		}
 		else {
 			constraint = ConeLimitConstraint(b1, b2, b1_dir, b2_dir, current_angle, max_rotation_angle, rot_correct_hardness, cfm.getCFMValue(global_cfm), constraint.impulse);
+		}
+	}
+
+	void TwistLimit::updateSolverConstraints(bool warm_start_disabled, double warm_start_coefficient, double step_time, double global_cfm, bool is_in_holonomic_system) {
+		mthz::Mat3 b1_rot = b1->getOrientation().getRotMatrix();
+		mthz::Mat3 b2_rot = b2->getOrientation().getRotMatrix();
+
+		mthz::Vec3 b1_twist_axis_world = b1_rot * b1_twist_axis_local;
+		mthz::Vec3 b1_u_world = b1_rot * b1_u_axis_local;
+		mthz::Vec3 b1_w_world = b1_rot * b1_w_axis_local;
+
+		mthz::Vec3 b2_twist_axis_world = b2_rot * b2_twist_axis_local;
+		mthz::Vec3 b2_r_world = b2_rot * b1_w_axis_local;
+
+		double previous_angle = current_angle;
+		current_angle = getCurrentAngle(previous_angle, b1_twist_axis_world, b2_twist_axis_world, b1_u_world, b1_w_world, b2_r_world);
+		is_inactive = min_angle <= current_angle && current_angle <= max_angle;
+
+
+		if (is_inactive) {
+			// clear any existing warm start value
+			constraint.impulse.v[0] = 0.0;
+		}
+		else {
+			constraint = TwistLimitConstraint(b1, b2, b1_twist_axis_world, b2_twist_axis_world, current_angle, min_angle, max_angle, rot_correct_hardness, cfm.getCFMValue(global_cfm), constraint.impulse);
 		}
 	}
 

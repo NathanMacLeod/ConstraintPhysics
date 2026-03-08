@@ -40,6 +40,10 @@ namespace phyz {
 		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Sphere(center, radius), material));
 	}
 
+	ConvexUnionGeometry ConvexUnionGeometry::capsule(mthz::Vec3 bot_sphere_center, double radius, double drum_height, Material material) {
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Capsule(bot_sphere_center + mthz::Vec3(0, drum_height/2.0, 0), radius, drum_height, mthz::Vec3(0, 1, 0)), material));
+	}
+
 	ConvexUnionGeometry ConvexUnionGeometry::cylinder(mthz::Vec3 pos, double radius, double height, Material material) {
 		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Cylinder(pos + mthz::Vec3(0, height/2.0, 0), radius, height), material));
 	}
@@ -239,23 +243,90 @@ namespace phyz {
 		std::vector<mthz::Vec3> points(n_faces * 2);
 		std::vector<std::vector<uint32_t>> surface_indices(2 + n_faces);
 
+		// computing the points
 		for (uint32_t i = 0; i < n_faces; i++) {
 			double theta = 2 * PI * i / n_faces;
 			points[i] = mthz::Vec3(pos.x + radius * cos(theta), pos.y, pos.z + radius * sin(theta));
 			points[i + n_faces] = mthz::Vec3(pos.x + radius * cos(theta), pos.y + height, pos.z + radius * sin(theta));
 		}
 
+		// get the indices for the flats
 		for (uint32_t i = 0; i < n_faces; i++) {
 			surface_indices[0].push_back(n_faces - 1 - i);
 			surface_indices[1].push_back(n_faces + i);
 		}
 
+		// get the indices for the sides
 		for (uint32_t i = 0; i < n_faces; i++) {
 			uint32_t j = (i + 1 == n_faces) ? 0 : i + 1;
 			surface_indices[i + 2] = { i, j, n_faces + j, n_faces + i };
 		}
 
 		return ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material);
+	}
+
+	ConvexUnionGeometry ConvexUnionGeometry::polyCapsule(mthz::Vec3 pos, double radius, double height, uint32_t detail, Material material) {
+		std::vector<mthz::Vec3> points;
+		std::vector<std::vector<uint32_t>> surface_indices;
+
+		uint32_t n_cols = detail + 4;
+		uint32_t n_rows_per_cap = 2 + detail;
+
+		//bottom cap
+		mthz::Vec3 bottom_pole = pos - mthz::Vec3(0, radius + height / 2.0, 0);
+		points.push_back(bottom_pole);
+
+		for (int row = 1; row < n_rows_per_cap; row++) {
+			for (int col = 0; col < n_cols; col++) {
+				double theta = 2 * PI * col / n_cols;
+				double phi = PI - (PI/2.0) * row / (n_rows_per_cap - 1);
+
+				points.push_back(pos + mthz::Vec3(0, -height/2.0, 0) + radius * mthz::Vec3(sin(theta) * sin(phi), cos(phi), cos(theta) * sin(phi)));
+			}
+		}
+
+		//top cap
+		for (int row = 0; row < n_rows_per_cap - 1; row++) {
+			for (int col = 0; col < n_cols; col++) {
+				double theta = 2 * PI * col / n_cols;
+				double phi = PI/2.0 - (PI / 2.0) * row / (n_rows_per_cap - 1);
+
+				points.push_back(pos + mthz::Vec3(0, height / 2.0, 0) + radius * mthz::Vec3(sin(theta) * sin(phi), cos(phi), cos(theta) * sin(phi)));
+			}
+		}
+
+		mthz::Vec3 top_pole = pos + mthz::Vec3(0, radius + height / 2.0, 0);
+		points.push_back(top_pole);
+
+		uint32_t bottom_pole_index = 0;
+		uint32_t top_pole_index = points.size() - 1;
+		uint32_t nonpole_offset = 1;
+
+		// triangles of bottom pole against the lowest row 
+		for (int col = 0; col < n_cols; col++) {
+			int i1 = col;
+			int i2 = (col + 1) % n_cols;
+
+			surface_indices.push_back({ bottom_pole_index, i2 + nonpole_offset, i1 + nonpole_offset });
+		}
+		for (int row = 1; row < 2 * n_rows_per_cap - 2; row++) {
+			for (int col = 0; col < n_cols; col++) {
+				int i1 = col;
+				int i2 = (col + 1) % n_cols;
+				int row_offset = (row - 1) * n_cols;
+
+				surface_indices.push_back({ i1 + row_offset + nonpole_offset, i2 + row_offset + nonpole_offset, i2 + n_cols + row_offset + nonpole_offset, i1 + n_cols + row_offset + nonpole_offset });
+			}
+		}
+		for (int col = 0; col < n_cols; col++) {
+			int i1 = col;
+			int i2 = (col + 1) % n_cols;
+			int row_offset = points.size() - 3 - n_cols;
+
+			surface_indices.push_back({ i1 + row_offset + nonpole_offset, i2 + row_offset + nonpole_offset, top_pole_index });
+		}
+
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
 	ConvexUnionGeometry ConvexUnionGeometry::ring(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int detail, Material material) {

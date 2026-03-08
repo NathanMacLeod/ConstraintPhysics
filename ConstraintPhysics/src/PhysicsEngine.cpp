@@ -945,6 +945,32 @@ namespace phyz {
 		return ConstraintID{ ConstraintID::CONE, uniqueID };
 	}
 
+	ConstraintID PhysicsEngine::addTwistLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 cone_direction_local, double min_limit, double max_limit, double rot_correct_strength) {
+		return addTwistLimitConstraint(b1, b2, cone_direction_local, cone_direction_local, min_limit, max_limit, rot_correct_strength);
+	}
+
+	ConstraintID PhysicsEngine::addTwistLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 cone_direction_b1_local, mthz::Vec3 cone_direction_b2_local, double min_limit, double max_limit, double rot_correct_strength) {
+		disallowCollision(b1, b2);
+		uint32_t uniqueID = nextConstraintID++;
+
+		TwistLimit* w = new TwistLimit(
+			b1, b2,
+			cone_direction_b1_local,
+			cone_direction_b2_local,
+			min_limit, max_limit,
+			rot_correct_strength,
+			uniqueID
+		);
+
+		ConstraintGraphNode* n1 = constraint_graph_nodes[b1->getID()];
+		ConstraintGraphNode* n2 = constraint_graph_nodes[b2->getID()];
+		SharedConstraintsEdge* e = n1->getOrCreateEdgeTo(n2);
+
+		e->constraints.push_back(w);
+		constraint_map[uniqueID] = e;
+		return ConstraintID{ ConstraintID::TWIST, uniqueID };
+	}
+
 	ConstraintID PhysicsEngine::addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length) {
 		uint32_t uniqueID = nextConstraintID++;
 		RigidBody::PKey b1_key = b1->trackPoint(b1_attach_pos_local);

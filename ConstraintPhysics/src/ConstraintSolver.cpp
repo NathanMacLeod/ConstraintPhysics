@@ -434,6 +434,35 @@ namespace phyz {
 	}
 
 	//******************************
+	//*****TWIST CONSTRAINT*********
+	//******************************
+	TwistLimitConstraint::TwistLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 twist_direction_a, mthz::Vec3 twist_direction_b, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse)
+		: DegreedConstraint<1>(a, b, warm_start_impulse)
+	{
+		lim_status = (current_angle > max_angle) ? ABOVE_MAX : BELOW_MIN;
+
+		mthz::NMat<1, 3> h_dot = { twist_direction_b.x, twist_direction_b.y, twist_direction_b.z }; //equiv of dot product with h
+		a_jacobian.copyInto(-mthz::NMat<1, 3>{twist_direction_a.x, twist_direction_a.y, twist_direction_a.z}, 0, 3);
+		b_jacobian.copyInto(mthz::NMat<1, 3>{twist_direction_b.x, twist_direction_b.y, twist_direction_b.z}, 0, 3);
+
+		impulse_to_a_velocity = aInvMass() * a_jacobian.transpose();
+		impulse_to_b_velocity = bInvMass() * b_jacobian.transpose();
+
+		impulse_to_value = a_jacobian * impulse_to_a_velocity + b_jacobian * impulse_to_b_velocity;
+		impulse_to_value_inverse = applyCFM(impulse_to_value, constraint_force_mixing).inverse();
+
+		double f = lim_status == ABOVE_MAX? current_angle - max_angle : min_angle - current_angle;
+		// taylor approx of 1.0 - cos(curr_ang - ang_limit). the other orientation constraints calculate their positional error using dot prod instead of angles,
+		// so mimicking that in order to be able to use the same rot_correct_hardness values
+		double error_approx = -f * f * f * f * f * f * f * f / 40320.0 + f * f * f * f * f * f / 720.0 - f * f * f * f / 24.0 + f * f / 2.0;
+		psuedo_target_val = mthz::NVec<1>{ error_approx * rot_correct_hardness };
+	}
+
+	mthz::NVec<1> TwistLimitConstraint::projectValidImpulse(mthz::NVec<1> impulse) {
+		return lim_status == ABOVE_MAX ? mthz::NVec<1>{ std::min<double>(impulse.v[0], 0) } : mthz::NVec<1>{ std::max<double>(impulse.v[0], 0) };
+	}
+
+	//******************************
 	//*****HINGE CONSTRAINT*********
 	//******************************
 	HingeConstraint::HingeConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 hinge_pos_a, mthz::Vec3 hinge_pos_b, mthz::Vec3 rot_axis_a, mthz::Vec3 rot_axis_b, double pos_correct_hardness, double rot_correct_hardness, double constraint_force_mixing, bool is_in_holonomic_system, mthz::NVec<5> warm_start_impulse, mthz::Vec3 source_u, mthz::Vec3 source_w)

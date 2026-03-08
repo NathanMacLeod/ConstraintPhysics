@@ -196,6 +196,187 @@ private:
 	float tick_frequency;
 };
 
+class TestTwistConstraint : public Test {
+public:
+	std::string getTestName() const override { return "Twist Constraint"; }
+	bool canBeRunWithGraphics() const override { return true; }
+	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
+	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		tick_frequency = 60.0f;
+		test_current_tick_count = 0;
+
+		p = new phyz::PhysicsEngine();
+		if (n_threads > 0) {
+			p->enableMultithreading(n_threads);
+		}
+		p->setStep_time(1.0 / tick_frequency);
+
+		// kinematic sphere
+		phyz::ConvexUnionGeometry kinem_body_geom = phyz::ConvexUnionGeometry::sphere(mthz::Vec3(0, 0, 0), 0.5);
+		kinem_body_r = p->createRigidBody(kinem_body_geom, phyz::RigidBody::KINEMATIC);
+		bodies->push_back(PhysBod{ fromGeometry(kinem_body_geom), kinem_body_r });
+
+		// pole attached under the fixed sphere
+		double pole_height = 3;
+		phyz::ConvexUnionGeometry swinging_pole_geom = phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(0, -pole_height, 0), 0.1, pole_height);
+		swinging_pole_r = p->createRigidBody(swinging_pole_geom, phyz::RigidBody::DYNAMIC);
+		bodies->push_back(PhysBod{ fromGeometry(swinging_pole_geom), swinging_pole_r });
+
+		// add ball socket constraint
+		p->addBallSocketConstraint(kinem_body_r, swinging_pole_r, mthz::Vec3(0, 0, 0));
+
+		// add cone rotation limit constraint
+		p->addTwistLimitConstraint(kinem_body_r, swinging_pole_r, mthz::Vec3(0, 1, 0), -PI, 3 * PI);
+		return p;
+	}
+	TestOutcome tickTestOnePhysicsStep() override {
+		test_current_tick_count++;
+		float t = test_current_tick_count / tick_frequency;
+
+		mthz::Vec3 kinem_ang_vel;
+
+		CurrentState state = get_current_state({
+			StateWithDuration{"spin_clockwise", 4.0f},
+			StateWithDuration{"spin_counterclockwise", 4.0f},
+		}, t);
+
+		// switch between moving, fixing, and shrinking the distance depending on the time interval
+		if (state.current.name == "spin_clockwise") {
+			kinem_ang_vel = mthz::Vec3(0, -3, 0);
+		}
+		else if (state.current.name == "spin_counterclockwise") {
+			kinem_ang_vel = mthz::Vec3(0, 3, 0);
+		}
+
+		if (true) {
+			kinem_body_r->setAngVel(kinem_ang_vel);
+			p->timeStep();
+		}
+
+		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
+	}
+	void teardownTest() override {
+		delete p;
+		p = nullptr;
+		kinem_body_r = nullptr;
+		swinging_pole_r = nullptr;
+	};
+	TestOutcome runWithoutGraphics() override {
+		TestOutcome outcome;
+		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
+		return outcome;
+	}
+private:
+	phyz::PhysicsEngine* p;
+	phyz::RigidBody* kinem_body_r;
+	phyz::RigidBody* swinging_pole_r;
+	uint32_t test_current_tick_count;
+	float tick_frequency;
+};
+
+class TwistConstraintStressTest : public Test {
+public:
+	std::string getTestName() const override { return "Twist Constraint"; }
+	bool canBeRunWithGraphics() const override { return true; }
+	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
+	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		tick_frequency = 60.0f;
+		test_current_tick_count = 0;
+
+		p = new phyz::PhysicsEngine();
+		if (n_threads > 0) {
+			p->enableMultithreading(n_threads);
+		}
+		p->setStep_time(1.0 / tick_frequency);
+		//p->setGravity(mthz::Vec3(0, 0, 0));
+
+		// create ground plane
+		//double ground_width = 100.0;
+		//double ground_thickness = 0.5;
+		//phyz::ConvexUnionGeometry ground_geom = phyz::ConvexUnionGeometry::box(mthz::Vec3(-ground_width / 2.0, -ground_thickness, -ground_width / 2.0), ground_width, ground_thickness, ground_width);
+		//phyz::RigidBody* ground_r = p->createRigidBody(ground_geom, phyz::RigidBody::MovementType::FIXED);
+		//bodies->push_back(PhysBod{ fromGeometry(ground_geom), ground_r });
+
+		mthz::Vec3 rope_left_start_position = mthz::Vec3(0, 0, 0);
+		
+		double wheel_attach_block_size = 0.5;
+		double wheel_thickness = 0.1;
+		
+		phyz::ConvexUnionGeometry wheel_attach_block_geom = phyz::ConvexUnionGeometry::box(rope_left_start_position + mthz::Vec3(-wheel_attach_block_size - wheel_thickness, -wheel_attach_block_size / 2.0, -wheel_attach_block_size / 2.0), wheel_attach_block_size, wheel_attach_block_size, wheel_attach_block_size);
+		phyz::RigidBody* wheel_attack_block_r = p->createRigidBody(wheel_attach_block_geom, phyz::RigidBody::FIXED);
+		bodies->push_back({ PhysBod(fromGeometry(wheel_attach_block_geom), wheel_attack_block_r) });
+
+		phyz::ConvexUnionGeometry wheel_geom = phyz::ConvexUnionGeometry::cylinder(rope_left_start_position, wheel_attach_block_size / 2.0, wheel_thickness).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), rope_left_start_position);
+		phyz::RigidBody* wheel_r = p->createRigidBody(wheel_geom);
+		bodies->push_back({ PhysBod(fromGeometry(wheel_geom), wheel_r) });
+		
+		twist_motor = p->addMotorConstraint(
+			p->addHingeConstraint(wheel_attack_block_r, wheel_r, rope_left_start_position + mthz::Vec3(-wheel_thickness, 0, 0), mthz::Vec3(1, 0, 0))
+		);
+
+		mthz::Vec3 rope_segment_dimensions = { 0.1, 0.04, 0.04 };
+		const int SEGMENT_COUNT = 100;
+		const double TWIST_LIMIT = PI / 12.0;
+
+		phyz::RigidBody* left_body = wheel_r;
+		for (int i = 0; i < SEGMENT_COUNT; i++) {
+			mthz::Vec3 segment_attach_position = rope_left_start_position + mthz::Vec3(rope_segment_dimensions.x * i, 0, 0);
+			phyz::ConvexUnionGeometry segment_geom = phyz::ConvexUnionGeometry::box(segment_attach_position + mthz::Vec3(0, -rope_segment_dimensions.y / 2.0, -rope_segment_dimensions.z / 2.0), rope_segment_dimensions.x, rope_segment_dimensions.y, rope_segment_dimensions.z);
+			phyz::RigidBody* segment_r = p->createRigidBody(segment_geom);
+			bodies->push_back({ PhysBod(fromGeometry(segment_geom), segment_r) });
+
+			p->addBallSocketConstraint(left_body, segment_r, segment_attach_position);
+			p->addTwistLimitConstraint(left_body, segment_r, mthz::Vec3(1, 0, 0), -TWIST_LIMIT, TWIST_LIMIT);
+			left_body = segment_r;
+		}
+
+		mthz::Vec3 final_attach_pos = rope_left_start_position + mthz::Vec3(rope_segment_dimensions.x * SEGMENT_COUNT, 0, 0);
+		phyz::ConvexUnionGeometry right_anchor_block_geom = phyz::ConvexUnionGeometry::box(final_attach_pos + mthz::Vec3(0, -wheel_attach_block_size / 2.0, -wheel_attach_block_size / 2.0), wheel_attach_block_size, wheel_attach_block_size, wheel_attach_block_size);
+		phyz::RigidBody* right_anchor_block_r = p->createRigidBody(right_anchor_block_geom, phyz::RigidBody::KINEMATIC);
+		bodies->push_back({ PhysBod(fromGeometry(right_anchor_block_geom), right_anchor_block_r) });
+
+		p->addBallSocketConstraint(left_body, right_anchor_block_r, final_attach_pos);
+		p->addTwistLimitConstraint(left_body, right_anchor_block_r, mthz::Vec3(1, 0, 0), -TWIST_LIMIT, TWIST_LIMIT);
+
+		//// add ball socket constraint
+		//p->addBallSocketConstraint(kinem_body_r, swinging_pole_r, mthz::Vec3(0, 0, 0));
+
+		//// add cone rotation limit constraint
+		//p->addTwistLimitConstraint(kinem_body_r, swinging_pole_r, mthz::Vec3(0, 1, 0), -PI, 3 * PI);
+		return p;
+	}
+	TestOutcome tickTestOnePhysicsStep() override {
+		test_current_tick_count++;
+		float t = test_current_tick_count / tick_frequency;
+
+		if (true) {
+			p->setMotorTargetVelocity(twist_motor, 10.0, 5.0);
+			p->timeStep();
+		}
+
+		double expected_distance;
+		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
+	}
+	void teardownTest() override {
+		delete p;
+		p = nullptr;
+		kinem_body_r = nullptr;
+		swinging_pole_r = nullptr;
+	};
+	TestOutcome runWithoutGraphics() override {
+		TestOutcome outcome;
+		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
+		return outcome;
+	}
+private:
+	phyz::PhysicsEngine* p;
+	phyz::ConstraintID twist_motor;
+	phyz::RigidBody* kinem_body_r;
+	phyz::RigidBody* swinging_pole_r;
+	uint32_t test_current_tick_count;
+	float tick_frequency;
+};
+
 class ConstraintTestsGroup : public TestGroup {
 public:
 	std::string getGroupName() const override { return "Constraints"; }
@@ -203,6 +384,8 @@ public:
 		std::vector<std::unique_ptr<Test>> out;
 		out.push_back(std::make_unique<TestDistanceConstraint>());
 		out.push_back(std::make_unique<TestConeConstraint>());
+		out.push_back(std::make_unique<TestTwistConstraint>());
+		out.push_back(std::make_unique<TwistConstraintStressTest>());
 		return out;
 	}
 };
