@@ -117,6 +117,9 @@ namespace phyz {
 		AABB gen_AABB() const override;
 		ConvexGeometryType getType() const override { return CAPSULE; };
 
+		inline int getTopCapID() const { return 0; }
+		inline int getBotCapID() const { return 1; }
+
 		inline double     getRadius()     const { return radius; }
 		inline double     getDrumHeight() const { return drum_height; }
 		inline mthz::Vec3 getHeightAxis() const { return height_axis; }

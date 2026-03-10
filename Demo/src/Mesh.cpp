@@ -134,7 +134,9 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 		case phyz::CAPSULE:
 		{
 			const phyz::Capsule& c = (const phyz::Capsule&)*prim.getGeometry();
-			double drum_height = c.getDrumHeight();
+			mthz::Vec3 pos = c.getCenter();
+			double radius = c.getRadius();
+			double height = c.getDrumHeight();
 			mthz::Vec3 height_axis = c.getHeightAxis();
 
 			mthz::Mat3 rot;
@@ -146,44 +148,80 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 				rot = mthz::Quaternion(acos(height_axis.dot(unrotated_height_axis)), unrotated_height_axis.cross(height_axis).normalize()).getRotMatrix();
 			}
 
-			int verts_per_disk = 15;
-			int n_verts = verts_per_disk * 2;
-			double d_theta = 2 * PI / verts_per_disk;
-			for (int i = 0; i < verts_per_disk; i++) {
-				mthz::Vec3 r = rot * mthz::Vec3(c.getRadius() * sin(i * d_theta), 0, c.getRadius() * cos(i * d_theta));
-				mthz::Vec3 bot_v = c.getCenter() - drum_height * height_axis / 2 + r;
-				mthz::Vec3 top_v = c.getCenter() + drum_height * height_axis / 2 + r;
+			uint32_t n_cols = 18;
+			uint32_t n_rows_per_cap = 9;
 
-				color v_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
-				vertices.push_back(Vertex{ (float)bot_v.x, (float)bot_v.y, (float)bot_v.z, v_col.r, v_col.g, v_col.b, v_col.ambient_k, v_col.diffuse_k, v_col.specular_k, v_col.specular_p, -1, 0.0f, 0.0f });
-				vertices.push_back(Vertex{ (float)top_v.x, (float)top_v.y, (float)top_v.z, v_col.r, v_col.g, v_col.b, v_col.ambient_k, v_col.diffuse_k, v_col.specular_k, v_col.specular_p, -1, 0.0f, 0.0f });
+			//bottom cap
+			mthz::Vec3 bottom_pole = pos - rot * mthz::Vec3(0, radius + height / 2.0, 0);
+			color bot_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+			
+			vertices.push_back(Vertex{ (float)bottom_pole.x, (float)bottom_pole.y, (float)bottom_pole.z, bot_col.r, bot_col.g, bot_col.b, bot_col.ambient_k, bot_col.diffuse_k, bot_col.specular_k, bot_col.specular_p, -1, 0.0f, 0.0f });
 
-				int i1 = 2 * i;
-				int i2 = (2 * i + 2) % n_verts;
-				int i3 = (2 * i + 3) % n_verts;
-				int i4 = (2 * i + 1) % n_verts;
+			for (int row = 1; row < n_rows_per_cap; row++) {
+				for (int col = 0; col < n_cols; col++) {
+					double theta = 2 * PI * col / n_cols;
+					double phi = PI - (PI / 2.0) * row / (n_rows_per_cap - 1);
 
-				indices.push_back(i1 + vertex_offset);
-				indices.push_back(i2 + vertex_offset);
-				indices.push_back(i3 + vertex_offset);
-
-				indices.push_back(i1 + vertex_offset);
-				indices.push_back(i3 + vertex_offset);
-				indices.push_back(i4 + vertex_offset);
+					mthz::Vec3 v = pos + rot * (mthz::Vec3(0, -height / 2.0, 0) + radius * mthz::Vec3(sin(theta) * sin(phi), cos(phi), cos(theta) * sin(phi)));
+					color v_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+					vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, v_col.r, v_col.g, v_col.b, v_col.ambient_k, v_col.diffuse_k, v_col.specular_k, v_col.specular_p, -1, 0.0f, 0.0f });
+				}
 			}
 
-			//for (int i = 0; i < verts_per_disk - 1; i++) {
-			//	//bottom face
-			//	indices.push_back(vertex_offset);
-			//	indices.push_back((2 * (i + 2)) % n_verts + vertex_offset);
-			//	indices.push_back(2 * (i + 1) + vertex_offset);
-			//	//top face
-			//	indices.push_back(1 + vertex_offset);
-			//	indices.push_back(1 + 2 * (i + 1) + vertex_offset);
-			//	indices.push_back((1 + 2 * (i + 2)) % n_verts + vertex_offset);
-			//}
+			//top cap
+			for (int row = 0; row < n_rows_per_cap - 1; row++) {
+				for (int col = 0; col < n_cols; col++) {
+					double theta = 2 * PI * col / n_cols;
+					double phi = PI / 2.0 - (PI / 2.0) * row / (n_rows_per_cap - 1);
 
-			//vertex_offset += n_verts;
+					mthz::Vec3 v = pos + rot * (mthz::Vec3(0, height / 2.0, 0) + radius * mthz::Vec3(sin(theta) * sin(phi), cos(phi), cos(theta) * sin(phi)));
+					color v_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+					vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, v_col.r, v_col.g, v_col.b, v_col.ambient_k, v_col.diffuse_k, v_col.specular_k, v_col.specular_p, -1, 0.0f, 0.0f });
+				}
+			}
+			
+			mthz::Vec3 top_pole = pos + rot * mthz::Vec3(0, radius + height / 2.0, 0);
+			color top_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+			vertices.push_back(Vertex{ (float)top_pole.x, (float)top_pole.y, (float)top_pole.z, top_col.r, top_col.g, top_col.b, top_col.ambient_k, top_col.diffuse_k, top_col.specular_k, top_col.specular_p, -1, 0.0f, 0.0f });
+
+			int bottom_pole_index = 0;
+			int top_pole_index = 2 * (n_rows_per_cap - 1) * n_cols - 1;
+			int nonpole_offset = 1;
+
+			// triangles of bottom pole against the lowest row 
+			for (int col = 0; col < n_cols; col++) {
+				int i1 = col;
+				int i2 = (col + 1) % n_cols;
+				indices.push_back(bottom_pole_index + vertex_offset);
+				indices.push_back(i2 + nonpole_offset + vertex_offset);
+				indices.push_back(i1 + nonpole_offset + vertex_offset);
+			}
+			for (int row = 1; row < 2 * (n_rows_per_cap - 1); row++) {
+				for (int col = 0; col < n_cols; col++) {
+					int i1 = col;
+					int i2 = (col + 1) % n_cols;
+					int row_offset = (row - 1) * n_cols;
+
+					indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i2 + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i2 + n_cols + row_offset + nonpole_offset + vertex_offset);
+
+					indices.push_back(i2 + n_cols + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i1 + n_cols + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
+				}
+			}
+			for (int col = 0; col < n_cols; col++) {
+				int i1 = col;
+				int i2 = (col + 1) % n_cols;
+				int row_offset = top_pole_index - n_cols;
+				indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
+				indices.push_back(i2 + row_offset + nonpole_offset + vertex_offset);
+				indices.push_back(top_pole_index + vertex_offset);
+			}
+
+			vertex_offset += 2 + 2 * (n_rows_per_cap - 1) * n_cols;
+			break;
 		}
 		case phyz::CYLINDER:
 		{
@@ -238,6 +276,7 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 			}
 
 			vertex_offset += n_verts;
+			break;
 		}
 		}
 	}
