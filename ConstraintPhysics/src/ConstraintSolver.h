@@ -230,6 +230,36 @@ namespace phyz {
 		mthz::Mat3 rotDirB;
 	};
 
+	class ConeLimitConstraint : public DegreedConstraint<1> {
+	public:
+		ConeLimitConstraint() {}
+		ConeLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 allignment_direction_a, mthz::Vec3 allignment_direction_b, double current_angle, double angular_limit, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
+
+		inline int getDegree() const override { return 1; }
+		inline bool isInequalityConstraint() override { return true; }
+		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
+		inline bool needsPosCorrect() override { return true; }
+
+	private:
+		double angular_limit;
+	};
+
+	class TwistLimitConstraint : public DegreedConstraint<1> {
+	public:
+		TwistLimitConstraint() {}
+		TwistLimitConstraint(RigidBody* a, RigidBody* b, mthz::Vec3 twist_axis_a, mthz::Vec3 twist_axis_b, double current_angle, double min_angle, double max_angle, double rot_correct_hardness, double constraint_force_mixing, mthz::NVec<1> warm_start_impulse = mthz::NVec<1>{ 0.0 });
+
+		inline int getDegree() const override { return 1; }
+		inline bool isInequalityConstraint() override { return true; }
+		mthz::NVec<1> projectValidImpulse(mthz::NVec<1> impulse) override;
+		inline bool needsPosCorrect() override { return true; }
+
+	private:
+		enum LimitStatus { BELOW_MIN, ABOVE_MAX };
+
+		LimitStatus lim_status;
+	};
+
 	class SlidingHingeConstraint : public DegreedConstraint<4> {
 	public:
 		SlidingHingeConstraint() {}

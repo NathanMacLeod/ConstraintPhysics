@@ -19,8 +19,10 @@ namespace phyz {
 
 	static const double M_PI = 3.14159265358979323846;
 	static const double TOL_ANG = 1 * M_PI / 180;
+	//static const double PREVIOUS_FEATURE_BIASED_COS_TOL = 1 - cos(TOL_ANG * 3);
 	static const double COS_TOL = 1 - cos(TOL_ANG);
 	static const double SIN_TOL = sin(TOL_ANG);
+	//static const double PREVIOUS_FEATURE_BIASED_SIN_TOL = sin(TOL_ANG * 3);
 	const double CUTOFF_MAG = 0.00000001;
 
 	//magicID uniquely identifies a contact point as the combination of the two features that form it, e.g. a point and a plane, or two edges
@@ -46,6 +48,7 @@ namespace phyz {
 		std::vector<ContactP> points;
 		mthz::Vec3 normal;
 		double max_pen_depth;
+		int surfaceid1, surfaceid2;
 	};
 	Manifold merge_manifold(const Manifold& m1, const Manifold& m2);
 	Manifold cull_manifold(const Manifold& m, int new_size);
@@ -67,7 +70,7 @@ namespace phyz {
 
 	inline ExtremaInfo recenter(const ExtremaInfo& info, double old_ref_value, double new_ref_value);
 	inline ExtremaInfo findExtrema(const Polyhedron& c, mthz::Vec3 axis);
-	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b);
+	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b, int surfaceid1, int surfaceid2);
 	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 	std::vector<Manifold> detectCollision(const StaticMeshGeometry& a, mthz::Vec3 a_world_position, mthz::Quaternion a_world_orientation, const ConvexPrimitive& b, AABB b_aabb);
 
@@ -77,7 +80,7 @@ namespace phyz {
 namespace std {
   template <> struct hash<phyz::MagicID> {
 		inline size_t operator()(const phyz::MagicID& key) const {
-			return key.cID * key.bID;
+			return std::hash<size_t>{}(key.cID* key.bID);
 		}
 	};
 }

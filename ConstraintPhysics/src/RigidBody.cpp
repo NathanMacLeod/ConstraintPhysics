@@ -567,6 +567,39 @@ namespace phyz {
 				*tensor += sphere_tensor;
 			}
 			break;
+			case CAPSULE:
+			{
+				const Capsule& c = (const Capsule&)*primitive.getGeometry();
+				double h = c.getDrumHeight();
+				double r = c.getRadius();
+				double r3 = r*r*r; double r4 = r3*r; double r5 = r4*r;
+				double d = primitive.material.density;
+				double capsule_mass = (4.0 / 3.0)*PI*r*r*r + PI*r*r*h; 
+
+				*mass += capsule_mass;
+				if (!override_center_of_mass) *com += capsule_mass * c.getCenter();
+
+				mthz::Mat3 capsule_tensor = mthz::Mat3::zero();
+				capsule_tensor.v[0][0] = d*PI*((8.0/15.0)*r5 + (1.0/3.0)*r3*h*h + 0.75*r4*h + (1.0/12.0)*r*r*h*h*h);
+				capsule_tensor.v[1][1] = d*PI*((8.0/15.0)*r5 + 0.5*h*r4);
+				capsule_tensor.v[2][2] = capsule_tensor.v[0][0];
+
+				double dp = c.getHeightAxis().dot(mthz::Vec3(0, 1, 0));
+				//rotate tensor to orientation
+				if (abs(dp) < 0.999999999) {
+					double rotation_angle = acos(dp);
+					mthz::Vec3 rotation_axis = mthz::Vec3(0, 1, 0).cross(c.getHeightAxis()).normalize();
+					mthz::Quaternion q(rotation_angle, rotation_axis);
+
+					mthz::Mat3 rot = q.getRotMatrix();
+					mthz::Mat3 rot_invert = q.conjugate().getRotMatrix();
+					capsule_tensor = rot * capsule_tensor * rot_invert;
+				}
+
+				capsule_tensor = recenterTensor(capsule_mass, capsule_tensor, mthz::Vec3(0, 0, 0), c.getCenter(), c.getCenter());
+				*tensor += capsule_tensor;
+			}
+			break;
 			case CYLINDER:
 			{
 				const Cylinder& c = (const Cylinder&)*primitive.getGeometry();

@@ -306,3 +306,30 @@ void set_scissor_lift_movement_input(phyz::PhysicsEngine* p, ScissorLiftConstruc
 		p->setDistanceConstraintTargetDistance(s->left_distance_constraint, current_left_dist);
 	}
 }
+
+// ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+// ~=~=~=~=Circular Tower~=~=~=~=
+// ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
+std::vector<phyz::RigidBody*> createCircularTower(phyz::PhysicsEngine* p, std::vector<PhysBod>* body_dest, mthz::Vec3 block_dim, double radius, double n_blocks_per_layer, mthz::Vec3 pos, int n_layers) {
+	std::vector<phyz::RigidBody*> out;
+	phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::box(mthz::Vec3(0.0, 0.0, -block_dim.z / 2.0), block_dim.x, block_dim.y, block_dim.z);
+
+	double dtheta = 2 * PI / n_blocks_per_layer;
+	for (int i = 0; i < n_layers; i++) {
+		double theta_offset = i * dtheta / 2;
+		for (int j = 0; j < n_blocks_per_layer; j++) {
+			double theta = theta_offset + dtheta * j;
+			mthz::Quaternion rotation(theta, mthz::Vec3(0, 1, 0));
+
+			mthz::Vec3 block_pos = pos + mthz::Vec3(0.0, block_dim.y * i, 0.0) + rotation.applyRotation(mthz::Vec3(radius, 0, 0));
+
+			phyz::ConvexUnionGeometry block_oriented = block.getRotated(rotation).getTranslated(block_pos);
+			phyz::RigidBody* r = p->createRigidBody(block_oriented);
+			Mesh m = { fromGeometry(block_oriented) };
+			body_dest->push_back(PhysBod{ m, r });
+			out.push_back(r);
+		}
+	}
+	
+	return out;
+}

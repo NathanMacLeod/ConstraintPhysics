@@ -30,6 +30,9 @@ namespace rndr {
 	bool getKeyReleased(int key);
 	int getWindowWidth();
 	int getWindowHeight();
+	bool getMouseButtonDown(int key);
+	bool getMouseButtonPressed(int key);
+	bool getMouseButtonReleased(int key);
 	MousePos getMousePosition();
 	void clear(color c);
 	void draw(const VertexArray& va, const IndexBuffer& ib, const Shader& s);

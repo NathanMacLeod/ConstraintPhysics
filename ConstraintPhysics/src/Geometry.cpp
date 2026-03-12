@@ -40,6 +40,10 @@ namespace phyz {
 		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Sphere(center, radius), material));
 	}
 
+	ConvexUnionGeometry ConvexUnionGeometry::capsule(mthz::Vec3 bot_sphere_center, double radius, double drum_height, Material material) {
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Capsule(bot_sphere_center + mthz::Vec3(0, drum_height/2.0, 0), radius, drum_height, mthz::Vec3(0, 1, 0)), material));
+	}
+
 	ConvexUnionGeometry ConvexUnionGeometry::cylinder(mthz::Vec3 pos, double radius, double height, Material material) {
 		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Cylinder(pos + mthz::Vec3(0, height/2.0, 0), radius, height), material));
 	}
@@ -239,23 +243,90 @@ namespace phyz {
 		std::vector<mthz::Vec3> points(n_faces * 2);
 		std::vector<std::vector<uint32_t>> surface_indices(2 + n_faces);
 
+		// computing the points
 		for (uint32_t i = 0; i < n_faces; i++) {
 			double theta = 2 * PI * i / n_faces;
 			points[i] = mthz::Vec3(pos.x + radius * cos(theta), pos.y, pos.z + radius * sin(theta));
 			points[i + n_faces] = mthz::Vec3(pos.x + radius * cos(theta), pos.y + height, pos.z + radius * sin(theta));
 		}
 
+		// get the indices for the flats
 		for (uint32_t i = 0; i < n_faces; i++) {
 			surface_indices[0].push_back(n_faces - 1 - i);
 			surface_indices[1].push_back(n_faces + i);
 		}
 
+		// get the indices for the sides
 		for (uint32_t i = 0; i < n_faces; i++) {
 			uint32_t j = (i + 1 == n_faces) ? 0 : i + 1;
 			surface_indices[i + 2] = { i, j, n_faces + j, n_faces + i };
 		}
 
 		return ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material);
+	}
+
+	ConvexUnionGeometry ConvexUnionGeometry::polyCapsule(mthz::Vec3 pos, double radius, double height, uint32_t detail, Material material) {
+		std::vector<mthz::Vec3> points;
+		std::vector<std::vector<uint32_t>> surface_indices;
+
+		uint32_t n_cols = detail + 4;
+		uint32_t n_rows_per_cap = 2 + detail;
+
+		//bottom cap
+		mthz::Vec3 bottom_pole = pos - mthz::Vec3(0, radius + height / 2.0, 0);
+		points.push_back(bottom_pole);
+
+		for (uint32_t row = 1; row < n_rows_per_cap; row++) {
+			for (uint32_t col = 0; col < n_cols; col++) {
+				double theta = 2 * PI * col / n_cols;
+				double phi = PI - (PI/2.0) * row / (n_rows_per_cap - 1);
+
+				points.push_back(pos + mthz::Vec3(0, -height/2.0, 0) + radius * mthz::Vec3(sin(theta) * sin(phi), cos(phi), cos(theta) * sin(phi)));
+			}
+		}
+
+		//top cap
+		for (uint32_t row = 0; row < n_rows_per_cap - 1; row++) {
+			for (uint32_t col = 0; col < n_cols; col++) {
+				double theta = 2 * PI * col / n_cols;
+				double phi = PI/2.0 - (PI / 2.0) * row / (n_rows_per_cap - 1);
+
+				points.push_back(pos + mthz::Vec3(0, height / 2.0, 0) + radius * mthz::Vec3(sin(theta) * sin(phi), cos(phi), cos(theta) * sin(phi)));
+			}
+		}
+
+		mthz::Vec3 top_pole = pos + mthz::Vec3(0, radius + height / 2.0, 0);
+		points.push_back(top_pole);
+
+		uint32_t bottom_pole_index = 0;
+		uint32_t top_pole_index = static_cast<uint32_t>(points.size()) - 1;
+		uint32_t nonpole_offset = 1;
+
+		// triangles of bottom pole against the lowest row 
+		for (uint32_t col = 0; col < n_cols; col++) {
+			uint32_t i1 = col;
+			uint32_t i2 = (col + 1) % n_cols;
+
+			surface_indices.push_back({ bottom_pole_index, i2 + nonpole_offset, i1 + nonpole_offset });
+		}
+		for (uint32_t row = 1; row < 2 * n_rows_per_cap - 2; row++) {
+			for (uint32_t col = 0; col < n_cols; col++) {
+				uint32_t i1 = col;
+				uint32_t i2 = (col + 1) % n_cols;
+				uint32_t row_offset = (row - 1) * n_cols;
+
+				surface_indices.push_back({ i1 + row_offset + nonpole_offset, i2 + row_offset + nonpole_offset, i2 + n_cols + row_offset + nonpole_offset, i1 + n_cols + row_offset + nonpole_offset });
+			}
+		}
+		for (uint32_t col = 0; col < n_cols; col++) {
+			uint32_t i1 = col;
+			uint32_t i2 = (col + 1) % n_cols;
+			uint32_t row_offset = static_cast<uint32_t>(points.size()) - 3 - n_cols;
+
+			surface_indices.push_back({ i1 + row_offset + nonpole_offset, i2 + row_offset + nonpole_offset, top_pole_index });
+		}
+
+		return ConvexUnionGeometry(ConvexPrimitive((const ConvexGeometry&)Polyhedron(points, surface_indices), material));
 	}
 
 	ConvexUnionGeometry ConvexUnionGeometry::ring(mthz::Vec3 pos, double inner_radius, double outer_radius, double height, int detail, Material material) {
@@ -515,20 +586,20 @@ namespace phyz {
 		return out;
 	}
 
-	MeshInput generateGridMeshInput(int grid_length, int grid_width, double grid_size, mthz::Vec3 position, Material material) {
+	MeshInput generateGridMeshInput(uint32_t grid_length, uint32_t grid_width, double grid_size, mthz::Vec3 position, Material material) {
 		std::vector<mthz::Vec3> points((grid_length + 1) * (grid_width + 1));
 		std::vector<TriIndices> triangle_indices(grid_length * grid_width * 2);
 
-		for (int j = 0; j < grid_width + 1; j++) {
-			for (int i = 0; i < grid_length + 1; i++) {
+		for (uint32_t j = 0; j < grid_width + 1; j++) {
+			for (uint32_t i = 0; i < grid_length + 1; i++) {
 				points[i + (grid_width + 1) * j] = position + mthz::Vec3(grid_size * i, 0, grid_size * j);
 				if (i > 0 && j > 0) {
-					int tile_indx = i - 1 + grid_width * (j - 1);
+					uint32_t tile_indx = i - 1 + grid_width * (j - 1);
 
-					unsigned int indx1 = i - 1 + (grid_width + 1) * (j - 1);
-					unsigned int indx2 = i + (grid_width + 1) * (j - 1);
-					unsigned int indx3 = i + (grid_width + 1) * j;
-					unsigned int indx4 = i - 1 + (grid_width + 1) * j;
+					uint32_t indx1 = i - 1 + (grid_width + 1) * (j - 1);
+					uint32_t indx2 = i + (grid_width + 1) * (j - 1);
+					uint32_t indx3 = i + (grid_width + 1) * j;
+					uint32_t indx4 = i - 1 + (grid_width + 1) * j;
 
 					triangle_indices[2 * tile_indx] = TriIndices{ indx3, indx2, indx1, material };
 					triangle_indices[2 * tile_indx + 1] = TriIndices{ indx4, indx3, indx1, material };
@@ -565,10 +636,10 @@ namespace phyz {
 		for (uint32_t r = 0; r < n_radial_segments - 1; r++) {
 			for (uint32_t t = 0; t < n_rot_segments; t++) {
 
-				unsigned int indx1 = (r+1) * n_rot_segments + t + offset;
-				unsigned int indx2 = (r+1) * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
-				unsigned int indx3 = r * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
-				unsigned int indx4 = r * n_rot_segments + t + offset;
+				uint32_t indx1 = (r+1) * n_rot_segments + t + offset;
+				uint32_t indx2 = (r+1) * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
+				uint32_t indx3 = r * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
+				uint32_t indx4 = r * n_rot_segments + t + offset;
 
 				triangle_indices[2 * (t + r * n_rot_segments) + n_rot_segments] = TriIndices{ indx1, indx2, indx3, Material::default_material() };
 				triangle_indices[2 * (t + r * n_rot_segments) + 1 + n_rot_segments] = TriIndices{ indx1, indx3, indx4, Material::default_material() };

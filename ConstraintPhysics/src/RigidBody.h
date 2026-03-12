@@ -46,6 +46,7 @@ namespace phyz {
 		mthz::Vec3 getAngVel() const;
 		inline GeometryType getGeometryType() const { return geometry_type; }
 		RayHitInfo checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
+		AABB getAABB() const { return aabb; }
 
 		void applyForce(mthz::Vec3 force) { vel += force * getInvMass(); }
 		void applyTorque(mthz::Vec3 torque) { ang_vel += getInvTensor() * torque; }

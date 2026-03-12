@@ -14,6 +14,7 @@ namespace phyz {
 
 		static ConvexUnionGeometry box(mthz::Vec3 pos, double dx, double dy, double dz, Material material = Material::default_material());
 		static ConvexUnionGeometry sphere(mthz::Vec3 center, double radius, Material material = Material::default_material());
+		static ConvexUnionGeometry capsule(mthz::Vec3 bot_sphere_center, double radius, double drum_height, Material material = Material::default_material());
 		static ConvexUnionGeometry cylinder(mthz::Vec3 pos, double radius, double height, Material material = Material::default_material());
 		static ConvexUnionGeometry psuedoSphere(mthz::Vec3 center, double radius, int n_rows = 15, int n_cols = 20, Material material = Material::default_material());
 		static ConvexUnionGeometry tetra(mthz::Vec3 p1, mthz::Vec3 p2, mthz::Vec3 p3, mthz::Vec3 p4, Material material = Material::default_material());
@@ -22,6 +23,7 @@ namespace phyz {
 		static ConvexUnionGeometry stellatedDodecahedron(mthz::Vec3 pos, double size, double spike_length_ratio, Material = Material::default_material());
 		static ConvexUnionGeometry triPrism(double x1, double z1, double x2, double z2, double x3, double z3, double y, double height, Material material = Material::default_material());
 		static ConvexUnionGeometry polyCylinder(mthz::Vec3 pos, double radius, double height, uint32_t detail = 10, Material material = Material::default_material());
+		static ConvexUnionGeometry polyCapsule(mthz::Vec3 pos, double radius, double drum_height, uint32_t detail = 10, Material material = Material::default_material());
 		static ConvexUnionGeometry ring(mthz::Vec3 pos, double inner_radius, double outter_radius, double height, int detail = 4, Material material = Material::default_material());
 		static ConvexUnionGeometry gear(mthz::Vec3 pos, double radius, double tooth_length, double height, int n_teeth, bool parity = false, Material material = Material::default_material(), double tooth_width = -1);
 		static ConvexUnionGeometry bevelGear(mthz::Vec3 pos, double radius, double tooth_radius, double tooth_width, double tooth_height, double height, int n_teeth, bool parity = false, Material material = Material::default_material(), double hole_radius = 0.0, int circle_detail = 7);
@@ -52,8 +54,8 @@ namespace phyz {
 		std::vector<mthz::Vec3> points;
 	};
 
-	MeshInput generateGridMeshInput(int grid_length, int grid_width, double grid_size, mthz::Vec3 positon=mthz::Vec3(), Material=Material::default_material());
-	MeshInput generateRadialMeshInput(int n_rot_segments, int n_radial_segments, double radius_size, mthz::Vec3 positon = mthz::Vec3());
+	MeshInput generateGridMeshInput(uint32_t grid_length, uint32_t grid_width, double grid_size, mthz::Vec3 positon=mthz::Vec3(), Material=Material::default_material());
+	MeshInput generateRadialMeshInput(uint32_t n_rot_segments, uint32_t n_radial_segments, double radius_size, mthz::Vec3 positon = mthz::Vec3());
 	MeshInput generateMeshInputFromMesh(const Mesh& m, mthz::Vec3 positon=mthz::Vec3(), double scaling=1.0);
 
 	struct StaticMeshVertex {

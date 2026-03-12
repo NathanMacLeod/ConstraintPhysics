@@ -110,26 +110,31 @@ namespace phyz {
 		ColActionID registerCollisionAction(CollisionTarget b1, CollisionTarget b2, const ColAction& action);
 		void removeCollisionAction(ColActionID action_key);
 
-		ConstraintID addDistanceConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double target_distance=-1, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
-		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addDistanceConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double target_distance=-1, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
+		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, mthz::Vec3 b1_rot_axis_local, mthz::Vec3 b2_rot_axis_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 		ConstraintID addMotorConstraint(ConstraintID base_constraint, double min_angle = -std::numeric_limits<double>::infinity(), double max_angle = std::numeric_limits<double>::infinity());
-		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 		ConstraintID addPistonConstraint(ConstraintID base_constraint, double negative_slide_limit = -std::numeric_limits<double>::infinity(), double positive_slide_limit = std::numeric_limits<double>::infinity());
-		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_slider_pos_local, mthz::Vec3 b2_slider_pos_local, mthz::Vec3 b1_slider_axis_local, mthz::Vec3 b2_slider_axis_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
-		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_point_local, mthz::Vec3 b2_attach_point_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_point_local, mthz::Vec3 b2_attach_point_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
+		ConstraintID addConeLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_local_cone_direction, mthz::Vec3 b2_local_cone_direction, double max_angle, double rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addConeLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 cone_center_direction, double max_angle, double rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
-		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
-		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addTwistLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_twist_direction, mthz::Vec3 b2_twist_direction, double min_angle, double max_angle, double rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addTwistLimitConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 twist_direction, double min_angle, double max_angle, double rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
-		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addBallSocketConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS);
+		ConstraintID addHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_pos_local, mthz::Vec3 rot_axis_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
-		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addSliderConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+
+		ConstraintID addSlidingHingeConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 slider_pos_local, mthz::Vec3 slider_axis_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
 		ConstraintID addSpring(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_attach_pos_local, mthz::Vec3 b2_attach_pos_local, double damping, double stiffness, double resting_length = -1);
-		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strenght = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strenght = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
+		ConstraintID addWeldConstraint(RigidBody* b1, RigidBody* b2, mthz::Vec3 attach_point_local, double pos_correct_strength = DEFAULT_JOINT_POS_CORRECTION_STIFFNESS, double  rot_correct_strength = DEFAULT_JOINT_ROT_CORRECTION_STIFFNESS);
 
 		void setConstraintUseCustomCFM(ConstraintID id, double custom_cfm);
 		void setConstraintUseGlobalCFM(ConstraintID id);
@@ -146,8 +151,10 @@ namespace phyz {
 		void setPistonTargetPosition(ConstraintID id, double max_force, double target_position);
 
 		void setPiston(ConstraintID id, double max_force, double target_velocity);
+
 		double getMotorAngularPosition(ConstraintID id);
 		double getPistonPosition(ConstraintID id);
+		double getTwistConstraintCurrentAngle(ConstraintID id);
 
 		void setDistanceConstraintTargetDistance(ConstraintID id, double target_distance);
 		void setDistanceConstraintToMoveAtTargetVelocity(ConstraintID id, double target_velocity);
@@ -165,7 +172,7 @@ namespace phyz {
 		unsigned int next_id = 1;
 
 		int substep_count = 8;
-		int pgsVelIterations = 1;
+		int pgsVelIterations = 4;
 		int pgsPosIterations = 1;
 		int pgsHolonomicIterations = 1;
 		bool using_holonomic_system_solver() { return pgsHolonomicIterations > 0; }
@@ -240,6 +247,7 @@ namespace phyz {
 			HolonomicSystemNodes* h = nullptr;
 			bool holonomic_system_scan_needed = false;
 			std::vector<PersistentConstraint*> constraints;
+			int cached_surfaceid1, cached_surfaceid2;
 
 			int visited_tag = 0;
 
@@ -283,6 +291,7 @@ namespace phyz {
 			std::mutex mutex;
 
 			SharedConstraintsEdge* getOrCreateEdgeTo(ConstraintGraphNode* n2);
+			SharedConstraintsEdge* getEdgeToMightBeNull(ConstraintGraphNode* n2);
 		private:
 			void insertNewEdge(SharedConstraintsEdge* e);
 		};

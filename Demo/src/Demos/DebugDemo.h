@@ -2,6 +2,7 @@
 #include "DemoScene.h"
 #include "../Mesh.h"
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
+#include "Common.h"
 
 class DebugDemo : public DemoScene {
 public:
@@ -9,26 +10,6 @@ public:
 
 	~DebugDemo() override {
 
-	}
-
-	static void addBrickRing(phyz::PhysicsEngine* p, std::vector<PhysBod>* bodies, mthz::Vec3 block_dim, double radius, double n_blocks, mthz::Vec3 pos, int n_layers) {
-		phyz::ConvexUnionGeometry block = phyz::ConvexUnionGeometry::box(mthz::Vec3(0.0, 0.0, -block_dim.z / 2.0), block_dim.x, block_dim.y, block_dim.z);
-
-		double dtheta = 2 * PI / n_blocks;
-		for (int i = 0; i < n_layers; i++) {
-			double theta_offset = i * dtheta / 2;
-			for (double theta = 0; theta < 2 * PI; theta += dtheta) {
-				if (theta != 0) { continue; }
-				mthz::Quaternion rotation(theta + theta_offset, mthz::Vec3(0, 1, 0));
-
-				mthz::Vec3 block_pos = pos + mthz::Vec3(0.0, block_dim.y * i, 0.0) + rotation.applyRotation(mthz::Vec3(radius, 0, 0));
-
-				phyz::ConvexUnionGeometry block_oriented = block.getRotated(rotation).getTranslated(block_pos);
-				phyz::RigidBody* r = p->createRigidBody(block_oriented);
-				Mesh m = { fromGeometry(block_oriented) };
-				bodies->push_back(PhysBod{ m, r });
-			}
-		}
 	}
 
 	std::vector<ControlDescription> controls() override {
@@ -49,8 +30,6 @@ public:
 		if (properties.n_threads != 0) {
 			p.enableMultithreading(properties.n_threads);
 		}
-		p.setPGSIterations(1, 1);
-		p.setGlobalConstraintForceMixing(0.001);
 
 		bool lock_cam = true;
 
@@ -72,19 +51,18 @@ public:
 		//*******BASE PLATE*******
 		//************************
 		double s = 100;
-		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -1, -s / 2), s, 2, s);
+		phyz::ConvexUnionGeometry geom2 = phyz::ConvexUnionGeometry::box(mthz::Vec3(-s / 2, -2, -s / 2), s, 2, s);
 		Mesh m2 = fromGeometry(geom2);
 		phyz::RigidBody* r2 = p.createRigidBody(geom2, phyz::RigidBody::FIXED);
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
-		r2->translateSoCOMAtPosition(mthz::Vec3(0, -5, 0));
 		bodies.push_back({ m2, r2 });
 
 		//*****************
 		//****OBSTACLES****
 		//*****************
-		double radius = 4;
+		double radius = 3.5;
 		mthz::Vec3 block_dim(1, 1, 2);
-		addBrickRing(&p, &bodies, block_dim, radius, 12, mthz::Vec3(0, -4, -22), 2);
+		createCircularTower(&p, &bodies, block_dim, radius, 10, mthz::Vec3(0, 0, -22), 40);
 
 		/*for (mthz::Vec3& v : grid.points) {
 			v.y += 0.01 * 2 * (0.5 - frand());
@@ -95,23 +73,65 @@ public:
 
 		Mesh contact_ball_mesh = fromGeometry(phyz::ConvexUnionGeometry::merge(phyz::ConvexUnionGeometry::sphere(mthz::Vec3(), 0.03), phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.02, 0.1)), {1.0, 0, 0});
 
+		bool color_by_manifold = false;
 		struct Contact {
 			mthz::Vec3 p;
 			mthz::Vec3 n;
+			color c;
 		};
 		std::vector<Contact> all_contact_points;
 
 		p.registerCollisionAction(phyz::CollisionTarget::all(), phyz::CollisionTarget::all(), [&](phyz::RigidBody* b1, phyz::RigidBody* b2,
 			const std::vector<phyz::Manifold>& manifold) {
 				for (const phyz::Manifold& m : manifold) {
-					for (phyz::ContactP p : m.points) {
-						all_contact_points.push_back({ p.pos, m.normal });
+					// psuedo random color for the whole manifold
+					uint64_t uid_sum = 0;
+					color manifold_color;
+					if (color_by_manifold) {
+						for (phyz::ContactP p : m.points) {
+							// generate a psuedo random color from the magicID- should make a clear visualization a contact is preserved by its magicID
+							uint64_t uid = std::hash<phyz::MagicID>{}(p.magicID);
+							uid_sum += uid;
+						}
 					}
+					uid_sum = std::hash<uint64_t>{}(uid_sum);
+					manifold_color = {
+						((uid_sum & 0x0000FF) >> 0) / 255.0f,
+						((uid_sum & 0x00FF00) >> 8) / 255.0f,
+						((uid_sum & 0xFF0000) >> 16) / 255.0f
+					};
+
+					mthz::Vec3 avg;
+
+					for (phyz::ContactP p : m.points) {
+						avg += p.pos;
+
+						color c;
+						if (color_by_manifold) {
+							c = manifold_color;
+						}
+						else {
+							// generate a psuedo random color from the magicID- should make a clear visualization a contact is preserved by its magicID
+							uint64_t uid = std::hash<phyz::MagicID>{}(p.magicID);
+							c = {
+								((uid & 0x0000FF) >> 0) / 255.0f,
+								((uid & 0x00FF00) >> 8) / 255.0f,
+								((uid & 0xFF0000) >> 16) / 255.0f
+							};
+						}
+						all_contact_points.push_back({ p.pos, m.normal, c});
+					}
+
+					avg /= static_cast<double>(m.points.size());
+					mthz::Vec3 u, w;
+					m.normal.getPerpendicularBasis(&u, &w);
+					all_contact_points.push_back({ avg, u, color{1.0f, 0.0f, 0.0f} });
+					all_contact_points.push_back({ avg, w, color{0.0f, 0.0f, 1.0f} });
 				}
 			}
 		);
 
-		mthz::Vec3 pos(0, 2, 0);
+		mthz::Vec3 pos(0, 42, 0);
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
@@ -121,25 +141,29 @@ public:
 		float fElapsedTime;
 
 		mthz::Quaternion orient;
-		double mv_speed = 2;
-		double rot_speed = 1;
+		double mv_speed = 6;
+		//double rot_speed = 1;
 
 		double phyz_time = 0;
 		double timestep = 1 / 60.0;
+		p.setPGSIterations(4, 1, 1);
+		p.setSubstepCount(8);
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -6.0, 0));
+
+
+		bool object_highlighted = false;
+		unsigned int highlighted_object_id;
 
 		bool single_step_mode = false;
 
 		bool paused = true;
 
-		while (rndr::render_loop(&fElapsedTime)) {
+		rndr::lockMouse();
+		double mouse_sensitivity = 0.0015;
+		rndr::MousePos mouse_position = rndr::getMousePosition();
 
-			/*for (phyz::RigidBody* r : p.getBodies()) {
-				if (r->getMovementType() == phyz::RigidBody::DYNAMIC) {
-					printf("position: (%f, %f, %f); orietnation: (%f, %f, %f, %f); velocity: (%f, %f, %f), angular velocity: (%f, %f, %f)\n", r->getCOM().x, r->getCOM().y, r->getCOM().z, r->getOrientation().r, r->getOrientation().i, r->getOrientation().j, r->getOrientation().k, r->getVel().x, r->getVel().y, r->getVel().z, r->getAngVel().x, r->getAngVel().y, r->getAngVel().z);
-				}
-			}*/
+		while (rndr::render_loop(&fElapsedTime)) {
 
 			if (rndr::getKeyDown(GLFW_KEY_W)) {
 				pos += orient.applyRotation(mthz::Vec3(0, 0, -1) * fElapsedTime * mv_speed);
@@ -154,7 +178,16 @@ public:
 				pos += orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
 			}
 
-			if (rndr::getKeyDown(GLFW_KEY_UP)) {
+			// mouse controlled camera movement
+			rndr::MousePos new_mouse = rndr::getMousePosition();
+			double mouse_delta_x = new_mouse.x - mouse_position.x;
+			double mouse_delta_y = new_mouse.y - mouse_position.y;
+			mouse_position = new_mouse;
+
+			orient = orient * mthz::Quaternion(mouse_sensitivity * mouse_delta_y, mthz::Vec3(1, 0, 0));
+			orient = mthz::Quaternion(-mouse_sensitivity * mouse_delta_x, mthz::Vec3(0, 1, 0)) * orient;
+
+			/*if (rndr::getKeyDown(GLFW_KEY_UP)) {
 				orient = orient * mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_DOWN)) {
@@ -165,7 +198,7 @@ public:
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_RIGHT)) {
 				orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
-			}
+			}*/
 
 			if (rndr::getKeyPressed(GLFW_KEY_B)) {
 				single_step_mode = !single_step_mode;
@@ -214,11 +247,19 @@ public:
 				bodies.push_back({ fromGeometry(block), block_r });
 			}
 
-			if (rndr::getKeyPressed(GLFW_KEY_R)) {
+			if (rndr::getMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
 				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(pos, camera_dir);
 
-				if (hit_info.did_hit) hit_info.hit_object->applyImpulse(camera_dir * 1, hit_info.hit_position);
+				if (hit_info.did_hit) {
+					object_highlighted = true;
+					highlighted_object_id = hit_info.hit_object->getID();
+					printf("selected object id: %u\n", highlighted_object_id);
+					//hit_info.hit_object->applyImpulse(camera_dir * 1, hit_info.hit_position);
+				}
+				else {
+					object_highlighted = false;
+				}
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_P)) {
@@ -239,7 +280,7 @@ public:
 
 			if (!paused) {
 				phyz_time += fElapsedTime;
-				phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+				phyz_time = std::min<double>(phyz_time, 1.0);
 			}
 			while (!single_step_mode && phyz_time > timestep) {
 				all_contact_points.clear();
@@ -265,7 +306,11 @@ public:
 
 			for (const PhysBod& b : bodies) {
 
-				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, b.r->getAsleep(), color{ 1.0f, 0.0f, 0.0f });
+				bool is_highlighted = object_highlighted && b.r->getID() ==  highlighted_object_id;
+				color override_color = is_highlighted ? color{ 1.0, 1.0, 0.0 } : color{ 1.0, 0.0, 0.0 };
+				bool color_overriden = is_highlighted || b.r->getAsleep();
+
+				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, color_overriden, override_color);
 
 				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);
@@ -286,7 +331,7 @@ public:
 					rot = mthz::Quaternion(ang, axis);
 				}
 
-				Mesh transformed_mesh = getTransformed(contact_ball_mesh, c.p, rot, cam_pos, cam_orient, false, color{1.0f, 0.0f, 0.0f});
+				Mesh transformed_mesh = getTransformed(contact_ball_mesh, c.p, rot, cam_pos, cam_orient, true, c.c);
 
 				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);

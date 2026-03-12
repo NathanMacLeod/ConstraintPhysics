@@ -10,6 +10,7 @@
 #include "Tests/CollisionTests.h"
 #include "Tests/HolonomicBlockSolvingTests.h"
 #include "Tests/ConstraintTests.h"
+#include "Tests/MassPropertyTests.h"
 
 class UnitTestsRunner : public DemoScene {
 private:
@@ -177,6 +178,7 @@ public:
 		test_groups.push_back(std::make_unique<HolonomicBlockSolverTestGroup>());
 		test_groups.push_back(std::make_unique<ConstraintTestsGroup>());
 		test_groups.push_back(std::make_unique<ThreadManagerTestGroup>());
+		test_groups.push_back(std::make_unique<MassPropertiesTestGroup>());
 	}
 
 	~UnitTestsRunner() override {}

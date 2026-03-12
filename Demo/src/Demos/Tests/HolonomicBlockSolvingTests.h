@@ -7,7 +7,7 @@
 
 class TestHeavyWeightOnChain : public Test {
 public:
-	std::string getTestName() const override { return "HolonomicBlockSolver::High mass Ratio Chain"; }
+	std::string getTestName() const override { return "High mass Ratio Chain"; }
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	void overrideCameraInitialPosition(mthz::Vec3* cam_pos, mthz::Quaternion* cam_orient) const override { cam_pos->y = -40; cam_pos->z = 100; }
@@ -135,7 +135,7 @@ public:
 		phyz::RigidBody* ground_r = p->createRigidBody(ground_geom, phyz::RigidBody::MovementType::FIXED);
 		bodies->push_back(PhysBod{ fromGeometry(ground_geom, color{0.4f, 0.4f, 0.4f}), ground_r});
 
-		scissor = create_scissor_lift(p, bodies, mthz::Vec3(0, 0, 0));
+		scissor = create_scissor_lift(p, bodies, mthz::Vec3(0, 1, 0));
 		starting_height = p->getDistanceConstraintCurrentDistance(scissor.left_distance_constraint);
 
 		return p;

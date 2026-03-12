@@ -131,6 +131,98 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 			vertex_offset += 2 + (n_rows - 1) * n_cols;
 			break;
 		}
+		case phyz::CAPSULE:
+		{
+			const phyz::Capsule& c = (const phyz::Capsule&)*prim.getGeometry();
+			mthz::Vec3 pos = c.getCenter();
+			double radius = c.getRadius();
+			double height = c.getDrumHeight();
+			mthz::Vec3 height_axis = c.getHeightAxis();
+
+			mthz::Mat3 rot;
+			mthz::Vec3 unrotated_height_axis = mthz::Vec3(0, 1, 0);
+			if (height_axis == unrotated_height_axis) {
+				rot = mthz::Mat3::iden();
+			}
+			else {
+				rot = mthz::Quaternion(acos(height_axis.dot(unrotated_height_axis)), unrotated_height_axis.cross(height_axis).normalize()).getRotMatrix();
+			}
+
+			uint32_t n_cols = 18;
+			uint32_t n_rows_per_cap = 9;
+
+			//bottom cap
+			mthz::Vec3 bottom_pole = pos - rot * mthz::Vec3(0, radius + height / 2.0, 0);
+			color bot_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+			
+			vertices.push_back(Vertex{ (float)bottom_pole.x, (float)bottom_pole.y, (float)bottom_pole.z, bot_col.r, bot_col.g, bot_col.b, bot_col.ambient_k, bot_col.diffuse_k, bot_col.specular_k, bot_col.specular_p, -1, 0.0f, 0.0f });
+
+			for (uint32_t row = 1; row < n_rows_per_cap; row++) {
+				for (uint32_t col = 0; col < n_cols; col++) {
+					double theta = 2 * PI * col / n_cols;
+					double phi = PI - (PI / 2.0) * row / (n_rows_per_cap - 1);
+
+					mthz::Vec3 v = pos + rot * (mthz::Vec3(0, -height / 2.0, 0) + radius * mthz::Vec3(sin(theta) * sin(phi), cos(phi), cos(theta) * sin(phi)));
+					color v_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+					vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, v_col.r, v_col.g, v_col.b, v_col.ambient_k, v_col.diffuse_k, v_col.specular_k, v_col.specular_p, -1, 0.0f, 0.0f });
+				}
+			}
+
+			//top cap
+			for (uint32_t row = 0; row < n_rows_per_cap - 1; row++) {
+				for (uint32_t col = 0; col < n_cols; col++) {
+					double theta = 2 * PI * col / n_cols;
+					double phi = PI / 2.0 - (PI / 2.0) * row / (n_rows_per_cap - 1);
+
+					mthz::Vec3 v = pos + rot * (mthz::Vec3(0, height / 2.0, 0) + radius * mthz::Vec3(sin(theta) * sin(phi), cos(phi), cos(theta) * sin(phi)));
+					color v_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+					vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, v_col.r, v_col.g, v_col.b, v_col.ambient_k, v_col.diffuse_k, v_col.specular_k, v_col.specular_p, -1, 0.0f, 0.0f });
+				}
+			}
+			
+			mthz::Vec3 top_pole = pos + rot * mthz::Vec3(0, radius + height / 2.0, 0);
+			color top_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
+			vertices.push_back(Vertex{ (float)top_pole.x, (float)top_pole.y, (float)top_pole.z, top_col.r, top_col.g, top_col.b, top_col.ambient_k, top_col.diffuse_k, top_col.specular_k, top_col.specular_p, -1, 0.0f, 0.0f });
+
+			uint32_t bottom_pole_index = 0;
+			uint32_t top_pole_index = 2 * (n_rows_per_cap - 1) * n_cols - 1;
+			uint32_t nonpole_offset = 1;
+
+			// triangles of bottom pole against the lowest row 
+			for (uint32_t col = 0; col < n_cols; col++) {
+				uint32_t i1 = col;
+				uint32_t i2 = (col + 1) % n_cols;
+				indices.push_back(bottom_pole_index + vertex_offset);
+				indices.push_back(i2 + nonpole_offset + vertex_offset);
+				indices.push_back(i1 + nonpole_offset + vertex_offset);
+			}
+			for (uint32_t row = 1; row < 2 * (n_rows_per_cap - 1); row++) {
+				for (uint32_t col = 0; col < n_cols; col++) {
+					uint32_t i1 = col;
+					uint32_t i2 = (col + 1) % n_cols;
+					uint32_t row_offset = (row - 1) * n_cols;
+
+					indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i2 + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i2 + n_cols + row_offset + nonpole_offset + vertex_offset);
+
+					indices.push_back(i2 + n_cols + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i1 + n_cols + row_offset + nonpole_offset + vertex_offset);
+					indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
+				}
+			}
+			for (uint32_t col = 0; col < n_cols; col++) {
+				uint32_t i1 = col;
+				uint32_t i2 = (col + 1) % n_cols;
+				uint32_t row_offset = top_pole_index - n_cols;
+				indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
+				indices.push_back(i2 + row_offset + nonpole_offset + vertex_offset);
+				indices.push_back(top_pole_index + vertex_offset);
+			}
+
+			vertex_offset += 2 + 2 * (n_rows_per_cap - 1) * n_cols;
+			break;
+		}
 		case phyz::CYLINDER:
 		{
 			const phyz::Cylinder& c = (const phyz::Cylinder&)*prim.getGeometry();
@@ -184,6 +276,7 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 			}
 
 			vertex_offset += n_verts;
+			break;
 		}
 		}
 	}
