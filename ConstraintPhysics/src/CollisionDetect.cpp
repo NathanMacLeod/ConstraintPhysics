@@ -51,6 +51,7 @@ namespace phyz {
 	static Manifold detectCapsuleCylinder(const Capsule &a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat);
 	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
+	static std::vector<Manifold> SAT_CapsuleMesh(const Capsule& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 	static std::vector<Manifold> SAT_CylinderMesh(const Cylinder& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 
 	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b, int surfaceid1, int surfaceid2) {
@@ -151,11 +152,14 @@ namespace phyz {
 	}
 
 	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
-		switch (a.getType()) {
+		switch (a.getType())
+		{
 		case POLYHEDRON:
 			return SAT_PolyMesh((const Polyhedron&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		case SPHERE:
 			return SAT_SphereMesh((const Sphere&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
+		case CAPSULE:
+			return SAT_CapsuleMesh((const Capsule&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		case CYLINDER:
 			return SAT_CylinderMesh((const Cylinder&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		}
@@ -172,6 +176,9 @@ namespace phyz {
 			break;
 		case SPHERE:
 			out = SAT_SphereMesh((const Sphere&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
+			break;
+		case CAPSULE:
+			out = SAT_CapsuleMesh((const Capsule&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
 			break;
 		case CYLINDER:
 			out = SAT_CylinderMesh((const Cylinder&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
@@ -2268,6 +2275,194 @@ namespace phyz {
 		return out;
 	}
 
+	static Manifold SAT_CapsuleTriangle(const Capsule& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
+		Manifold out;
+		out.max_pen_depth = -1;
+		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+
+		mthz::Vec3 a_height_axis = a.getHeightAxis();
+		mthz::Vec3 a_topcap_center = a.getCenter() + a_height_axis * a.getDrumHeight() / 2.0;
+		mthz::Vec3 a_botcap_center = a.getCenter() + a_height_axis * a.getDrumHeight() / 2.0;
+
+		// checking triangle norm
+		ExtremaInfo poly_info = getCapsuleExtrema(a, b.normal);
+		CheckNormResults b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, b.normal), b.normal);
+		if (b_norm_x.seprAxisExists()) {
+			out.max_pen_depth = -1;
+			return out;
+		}
+		if (b_norm_x.pen_depth < min_pen.pen_depth) {
+			min_pen = b_norm_x;
+		}
+		if (b_norm_x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -b_norm_x.norm)) {
+			min_gauss_valid_pen = b_norm_x;
+		}
+
+		//check edge collisions against the round body of the cylinder
+		for (const StaticMeshEdge& e : b.edges) {
+			mthz::Vec3 edge_dir = e.p2 - e.p1;
+			mthz::Vec3 dir = edge_dir.cross(a_height_axis);
+			if (dir.mag() < 0.00000000001) continue;
+
+			mthz::Vec3 dir_normed = dir.normalize();
+			ExtremaInfo cyl_extrema = getCapsuleExtrema(a, dir_normed);
+			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, dir_normed), dir_normed);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+				min_gauss_valid_pen = x;
+			}
+		}
+
+		//check vertex collisions against the body of the cylinder
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p = b.vertices[i].p;
+			mthz::Vec3 diff = p - a.getCenter();
+			mthz::Vec3 n = (diff - a_height_axis * a_height_axis.dot(diff)).normalize();
+			ExtremaInfo cyl_extrema = getCapsuleExtrema(a, n);
+			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, n), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+				min_gauss_valid_pen = x;
+			}
+		}
+
+		//check vertex collisions against the top cap
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p = b.vertices[i].p;
+			mthz::Vec3 n = (p - a_topcap_center).normalize();
+			ExtremaInfo sphere_extrema = getCapsuleExtrema(a, n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+				min_gauss_valid_pen = x;
+			}
+		}
+
+		//check vertex collisions against the bot cap
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p = b.vertices[i].p;
+			mthz::Vec3 n = (p - a_botcap_center).normalize();
+			ExtremaInfo sphere_extrema = getCapsuleExtrema(a, n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+				min_gauss_valid_pen = x;
+			}
+		}
+
+		//edge against the top cap
+		for (StaticMeshEdge e : b.edges) {
+			mthz::Vec3 edge_dir = (e.p2 - e.p1).normalize();
+			mthz::Vec3 sample = e.p1 - a_topcap_center;
+			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
+			ExtremaInfo sphere_extrema = getCapsuleExtrema(a, n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+				min_gauss_valid_pen = x;
+			}
+		}
+
+		//edge against the bot cap
+		for (StaticMeshEdge e : b.edges) {
+			mthz::Vec3 edge_dir = (e.p2 - e.p1).normalize();
+			mthz::Vec3 sample = e.p1 - a_botcap_center;
+			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
+			ExtremaInfo sphere_extrema = getCapsuleExtrema(a, n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
+			if (x.seprAxisExists()) {
+				out.max_pen_depth = -1;
+				return out;
+			}
+			if (x.pen_depth < min_pen.pen_depth) {
+				min_pen = x;
+			}
+			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
+				min_gauss_valid_pen = x;
+			}
+		}
+		
+
+		CheckNormResults nongauss_min_pen = min_pen;
+		if (min_gauss_valid_pen.pen_depth < min_pen.pen_depth + non_gauss_valid_penalty) min_pen = min_gauss_valid_pen;
+
+		out.normal = min_pen.norm;
+		mthz::Vec3 norm = min_pen.norm;
+		mthz::Vec3 a_maxP = a.getHeightAxis().dot(norm) > 0 ?
+			a_topcap_center + norm * a.getRadius()
+			: a_botcap_center + norm * a.getRadius();
+		mthz::Vec3 b_maxP = b.vertices[nongauss_min_pen.b_maxPID].p;
+
+		mthz::Vec3 u, w;
+		norm.getPerpendicularBasis(&u, &w);
+		ContactArea a_contact = findCapsuleContactArea(a, nongauss_min_pen.norm, u, w);
+		ContactArea b_contact = findTriangleContactArea(b, -nongauss_min_pen.norm, b_maxP, nongauss_min_pen.b_maxPID, u, w);
+
+		std::vector<ProjectedContactPoint> manifold_pool;
+		if (a_contact.origin == EDGE) {
+			manifold_pool = { ProjectedContactPoint{a_contact.ps[0], 0x0} };
+		}
+		else {
+			manifold_pool = clipContacts(a_contact, b_contact);
+		}
+
+		double a_pen = min_pen.pen_depth;
+		double a_dot_val = a_maxP.dot(norm);
+		mthz::Vec3 n_offset = norm * a_dot_val;
+
+		uint64_t cID = 0;
+		cID |= 0x00000000FFFFFFFF & a_id;
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.id) << 32);
+
+		out.points.reserve(manifold_pool.size());
+		for (ProjectedContactPoint p : manifold_pool) {
+			ContactP cp;
+			cp.pos = u * p.pos.v[0] + w * p.pos.v[1] + n_offset;
+			cp.pen_depth = cp.pos.dot(norm) - a_dot_val + a_pen;
+			cp.restitution = std::max<double>(a_mat.restitution, b.material.restitution);
+			cp.kinetic_friction_coeff = (a_mat.kinetic_friction_coeff + b.material.kinetic_friction_coeff) / 2.0;
+			cp.static_friction_coeff = (a_mat.static_friction_coeff + b.material.static_friction_coeff) / 2.0;
+			cp.s1_cfm = a_mat.cfm;
+			cp.s2_cfm = b.material.cfm;
+			cp.magicID = MagicID{ cID, p.magic };
+			out.points.push_back(cp);
+		}
+		out.max_pen_depth = min_pen.pen_depth;
+
+		return out;
+	}
+
 	static Manifold SAT_CylinderTriangle(const Cylinder& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
 		Manifold out;
 		out.max_pen_depth = -1;
@@ -2508,6 +2703,39 @@ namespace phyz {
 			double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
 			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
+			if (m.max_pen_depth > 0 && m.points.size() > 0) {
+				manifolds_out.push_back(m);
+			}
+		}
+
+		return manifolds_out;
+	}
+
+	static std::vector<Manifold> SAT_CapsuleMesh(const Capsule &a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
+		mthz::Mat3 local_to_world_rot = b_world_orientation.getRotMatrix();
+
+		std::vector<unsigned int> tri_candidates;
+		bool local_transformation_required = b_world_position != mthz::Vec3() || b_world_orientation != mthz::Quaternion();
+		if (!local_transformation_required) {
+			tri_candidates = b.getAABBTree().getCollisionCandidatesWith(a_aabb);
+		}
+		else {
+			//local basis transformed to world coordinates
+			mthz::Vec3 u = local_to_world_rot * mthz::Vec3(1, 0, 0);
+			mthz::Vec3 v = local_to_world_rot * mthz::Vec3(0, 1, 0);
+			mthz::Vec3 w = local_to_world_rot * mthz::Vec3(0, 0, 1);
+
+			AABB local_coord_aabb = AABB::conformNewBasis(a_aabb, u, v, w, b_world_position);
+			tri_candidates = b.getAABBTree().getCollisionCandidatesWith(local_coord_aabb);
+		}
+
+		std::vector<Manifold> manifolds_out;
+
+		for (unsigned int i : tri_candidates) {
+			const StaticMeshFace& tri = local_transformation_required ? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
+			double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
+
+			Manifold m = SAT_CapsuleTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
 				manifolds_out.push_back(m);
 			}

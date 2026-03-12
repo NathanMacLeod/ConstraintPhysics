@@ -54,8 +54,8 @@ namespace phyz {
 		std::vector<mthz::Vec3> points;
 	};
 
-	MeshInput generateGridMeshInput(int grid_length, int grid_width, double grid_size, mthz::Vec3 positon=mthz::Vec3(), Material=Material::default_material());
-	MeshInput generateRadialMeshInput(int n_rot_segments, int n_radial_segments, double radius_size, mthz::Vec3 positon = mthz::Vec3());
+	MeshInput generateGridMeshInput(uint32_t grid_length, uint32_t grid_width, double grid_size, mthz::Vec3 positon=mthz::Vec3(), Material=Material::default_material());
+	MeshInput generateRadialMeshInput(uint32_t n_rot_segments, uint32_t n_radial_segments, double radius_size, mthz::Vec3 positon = mthz::Vec3());
 	MeshInput generateMeshInputFromMesh(const Mesh& m, mthz::Vec3 positon=mthz::Vec3(), double scaling=1.0);
 
 	struct StaticMeshVertex {

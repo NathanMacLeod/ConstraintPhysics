@@ -276,8 +276,8 @@ namespace phyz {
 		mthz::Vec3 bottom_pole = pos - mthz::Vec3(0, radius + height / 2.0, 0);
 		points.push_back(bottom_pole);
 
-		for (int row = 1; row < n_rows_per_cap; row++) {
-			for (int col = 0; col < n_cols; col++) {
+		for (uint32_t row = 1; row < n_rows_per_cap; row++) {
+			for (uint32_t col = 0; col < n_cols; col++) {
 				double theta = 2 * PI * col / n_cols;
 				double phi = PI - (PI/2.0) * row / (n_rows_per_cap - 1);
 
@@ -286,8 +286,8 @@ namespace phyz {
 		}
 
 		//top cap
-		for (int row = 0; row < n_rows_per_cap - 1; row++) {
-			for (int col = 0; col < n_cols; col++) {
+		for (uint32_t row = 0; row < n_rows_per_cap - 1; row++) {
+			for (uint32_t col = 0; col < n_cols; col++) {
 				double theta = 2 * PI * col / n_cols;
 				double phi = PI/2.0 - (PI / 2.0) * row / (n_rows_per_cap - 1);
 
@@ -299,29 +299,29 @@ namespace phyz {
 		points.push_back(top_pole);
 
 		uint32_t bottom_pole_index = 0;
-		uint32_t top_pole_index = points.size() - 1;
+		uint32_t top_pole_index = static_cast<uint32_t>(points.size()) - 1;
 		uint32_t nonpole_offset = 1;
 
 		// triangles of bottom pole against the lowest row 
-		for (int col = 0; col < n_cols; col++) {
-			int i1 = col;
-			int i2 = (col + 1) % n_cols;
+		for (uint32_t col = 0; col < n_cols; col++) {
+			uint32_t i1 = col;
+			uint32_t i2 = (col + 1) % n_cols;
 
 			surface_indices.push_back({ bottom_pole_index, i2 + nonpole_offset, i1 + nonpole_offset });
 		}
-		for (int row = 1; row < 2 * n_rows_per_cap - 2; row++) {
-			for (int col = 0; col < n_cols; col++) {
-				int i1 = col;
-				int i2 = (col + 1) % n_cols;
-				int row_offset = (row - 1) * n_cols;
+		for (uint32_t row = 1; row < 2 * n_rows_per_cap - 2; row++) {
+			for (uint32_t col = 0; col < n_cols; col++) {
+				uint32_t i1 = col;
+				uint32_t i2 = (col + 1) % n_cols;
+				uint32_t row_offset = (row - 1) * n_cols;
 
 				surface_indices.push_back({ i1 + row_offset + nonpole_offset, i2 + row_offset + nonpole_offset, i2 + n_cols + row_offset + nonpole_offset, i1 + n_cols + row_offset + nonpole_offset });
 			}
 		}
-		for (int col = 0; col < n_cols; col++) {
-			int i1 = col;
-			int i2 = (col + 1) % n_cols;
-			int row_offset = points.size() - 3 - n_cols;
+		for (uint32_t col = 0; col < n_cols; col++) {
+			uint32_t i1 = col;
+			uint32_t i2 = (col + 1) % n_cols;
+			uint32_t row_offset = static_cast<uint32_t>(points.size()) - 3 - n_cols;
 
 			surface_indices.push_back({ i1 + row_offset + nonpole_offset, i2 + row_offset + nonpole_offset, top_pole_index });
 		}
@@ -586,20 +586,20 @@ namespace phyz {
 		return out;
 	}
 
-	MeshInput generateGridMeshInput(int grid_length, int grid_width, double grid_size, mthz::Vec3 position, Material material) {
+	MeshInput generateGridMeshInput(uint32_t grid_length, uint32_t grid_width, double grid_size, mthz::Vec3 position, Material material) {
 		std::vector<mthz::Vec3> points((grid_length + 1) * (grid_width + 1));
 		std::vector<TriIndices> triangle_indices(grid_length * grid_width * 2);
 
-		for (int j = 0; j < grid_width + 1; j++) {
-			for (int i = 0; i < grid_length + 1; i++) {
+		for (uint32_t j = 0; j < grid_width + 1; j++) {
+			for (uint32_t i = 0; i < grid_length + 1; i++) {
 				points[i + (grid_width + 1) * j] = position + mthz::Vec3(grid_size * i, 0, grid_size * j);
 				if (i > 0 && j > 0) {
-					int tile_indx = i - 1 + grid_width * (j - 1);
+					uint32_t tile_indx = i - 1 + grid_width * (j - 1);
 
-					unsigned int indx1 = i - 1 + (grid_width + 1) * (j - 1);
-					unsigned int indx2 = i + (grid_width + 1) * (j - 1);
-					unsigned int indx3 = i + (grid_width + 1) * j;
-					unsigned int indx4 = i - 1 + (grid_width + 1) * j;
+					uint32_t indx1 = i - 1 + (grid_width + 1) * (j - 1);
+					uint32_t indx2 = i + (grid_width + 1) * (j - 1);
+					uint32_t indx3 = i + (grid_width + 1) * j;
+					uint32_t indx4 = i - 1 + (grid_width + 1) * j;
 
 					triangle_indices[2 * tile_indx] = TriIndices{ indx3, indx2, indx1, material };
 					triangle_indices[2 * tile_indx + 1] = TriIndices{ indx4, indx3, indx1, material };
@@ -636,10 +636,10 @@ namespace phyz {
 		for (uint32_t r = 0; r < n_radial_segments - 1; r++) {
 			for (uint32_t t = 0; t < n_rot_segments; t++) {
 
-				unsigned int indx1 = (r+1) * n_rot_segments + t + offset;
-				unsigned int indx2 = (r+1) * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
-				unsigned int indx3 = r * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
-				unsigned int indx4 = r * n_rot_segments + t + offset;
+				uint32_t indx1 = (r+1) * n_rot_segments + t + offset;
+				uint32_t indx2 = (r+1) * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
+				uint32_t indx3 = r * n_rot_segments + ((t + 1) % n_rot_segments) + offset;
+				uint32_t indx4 = r * n_rot_segments + t + offset;
 
 				triangle_indices[2 * (t + r * n_rot_segments) + n_rot_segments] = TriIndices{ indx1, indx2, indx3, Material::default_material() };
 				triangle_indices[2 * (t + r * n_rot_segments) + 1 + n_rot_segments] = TriIndices{ indx1, indx3, indx4, Material::default_material() };

@@ -135,7 +135,7 @@ public:
 		phyz::RigidBody* ground_r = p->createRigidBody(ground_geom, phyz::RigidBody::MovementType::FIXED);
 		bodies->push_back(PhysBod{ fromGeometry(ground_geom, color{0.4f, 0.4f, 0.4f}), ground_r});
 
-		scissor = create_scissor_lift(p, bodies, mthz::Vec3(0, 0, 0));
+		scissor = create_scissor_lift(p, bodies, mthz::Vec3(0, 1, 0));
 		starting_height = p->getDistanceConstraintCurrentDistance(scissor.left_distance_constraint);
 
 		return p;

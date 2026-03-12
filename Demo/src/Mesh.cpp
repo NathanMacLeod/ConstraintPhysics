@@ -157,8 +157,8 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 			
 			vertices.push_back(Vertex{ (float)bottom_pole.x, (float)bottom_pole.y, (float)bottom_pole.z, bot_col.r, bot_col.g, bot_col.b, bot_col.ambient_k, bot_col.diffuse_k, bot_col.specular_k, bot_col.specular_p, -1, 0.0f, 0.0f });
 
-			for (int row = 1; row < n_rows_per_cap; row++) {
-				for (int col = 0; col < n_cols; col++) {
+			for (uint32_t row = 1; row < n_rows_per_cap; row++) {
+				for (uint32_t col = 0; col < n_cols; col++) {
 					double theta = 2 * PI * col / n_cols;
 					double phi = PI - (PI / 2.0) * row / (n_rows_per_cap - 1);
 
@@ -169,8 +169,8 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 			}
 
 			//top cap
-			for (int row = 0; row < n_rows_per_cap - 1; row++) {
-				for (int col = 0; col < n_cols; col++) {
+			for (uint32_t row = 0; row < n_rows_per_cap - 1; row++) {
+				for (uint32_t col = 0; col < n_cols; col++) {
 					double theta = 2 * PI * col / n_cols;
 					double phi = PI / 2.0 - (PI / 2.0) * row / (n_rows_per_cap - 1);
 
@@ -184,23 +184,23 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 			color top_col = (model_color == auto_generate) ? color{ frand(), frand(), frand() } : model_color;
 			vertices.push_back(Vertex{ (float)top_pole.x, (float)top_pole.y, (float)top_pole.z, top_col.r, top_col.g, top_col.b, top_col.ambient_k, top_col.diffuse_k, top_col.specular_k, top_col.specular_p, -1, 0.0f, 0.0f });
 
-			int bottom_pole_index = 0;
-			int top_pole_index = 2 * (n_rows_per_cap - 1) * n_cols - 1;
-			int nonpole_offset = 1;
+			uint32_t bottom_pole_index = 0;
+			uint32_t top_pole_index = 2 * (n_rows_per_cap - 1) * n_cols - 1;
+			uint32_t nonpole_offset = 1;
 
 			// triangles of bottom pole against the lowest row 
-			for (int col = 0; col < n_cols; col++) {
-				int i1 = col;
-				int i2 = (col + 1) % n_cols;
+			for (uint32_t col = 0; col < n_cols; col++) {
+				uint32_t i1 = col;
+				uint32_t i2 = (col + 1) % n_cols;
 				indices.push_back(bottom_pole_index + vertex_offset);
 				indices.push_back(i2 + nonpole_offset + vertex_offset);
 				indices.push_back(i1 + nonpole_offset + vertex_offset);
 			}
-			for (int row = 1; row < 2 * (n_rows_per_cap - 1); row++) {
-				for (int col = 0; col < n_cols; col++) {
-					int i1 = col;
-					int i2 = (col + 1) % n_cols;
-					int row_offset = (row - 1) * n_cols;
+			for (uint32_t row = 1; row < 2 * (n_rows_per_cap - 1); row++) {
+				for (uint32_t col = 0; col < n_cols; col++) {
+					uint32_t i1 = col;
+					uint32_t i2 = (col + 1) % n_cols;
+					uint32_t row_offset = (row - 1) * n_cols;
 
 					indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
 					indices.push_back(i2 + row_offset + nonpole_offset + vertex_offset);
@@ -211,10 +211,10 @@ Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color model_color) {
 					indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
 				}
 			}
-			for (int col = 0; col < n_cols; col++) {
-				int i1 = col;
-				int i2 = (col + 1) % n_cols;
-				int row_offset = top_pole_index - n_cols;
+			for (uint32_t col = 0; col < n_cols; col++) {
+				uint32_t i1 = col;
+				uint32_t i2 = (col + 1) % n_cols;
+				uint32_t row_offset = top_pole_index - n_cols;
 				indices.push_back(i1 + row_offset + nonpole_offset + vertex_offset);
 				indices.push_back(i2 + row_offset + nonpole_offset + vertex_offset);
 				indices.push_back(top_pole_index + vertex_offset);

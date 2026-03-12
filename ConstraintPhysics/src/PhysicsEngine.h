@@ -151,8 +151,10 @@ namespace phyz {
 		void setPistonTargetPosition(ConstraintID id, double max_force, double target_position);
 
 		void setPiston(ConstraintID id, double max_force, double target_velocity);
+
 		double getMotorAngularPosition(ConstraintID id);
 		double getPistonPosition(ConstraintID id);
+		double getTwistConstraintCurrentAngle(ConstraintID id);
 
 		void setDistanceConstraintTargetDistance(ConstraintID id, double target_distance);
 		void setDistanceConstraintToMoveAtTargetVelocity(ConstraintID id, double target_velocity);

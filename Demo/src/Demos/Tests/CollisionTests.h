@@ -4,22 +4,24 @@
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
 #include "../../Mesh.h"
 
-struct coltest_pair {
-	phyz::RigidBody* dynamic_body;
-	phyz::RigidBody* static_body;
-};
 struct coltest_orientation {
 	mthz::Quaternion dynamic_body_orientation;
 	mthz::Quaternion static_body_orientation;
 	std::string id;
 };
-std::map<std::string, coltest_pair> setupMultipleOrientations(phyz::PhysicsEngine* p, std::vector<PhysBod>* bodies, const phyz::ConvexUnionGeometry& dynamic_body_geom, const phyz::ConvexUnionGeometry& static_body_geom, const std::vector<coltest_orientation>& orientations_to_test, double dynamic_body_verticle_offset=5, double spacing=5);
+struct coltest_result {
+	bool collision_occured;
+	std::string id;
+	TestOutcome outcome;
+};
+
+std::vector<std::shared_ptr<coltest_result>> setupMultipleOrientations(phyz::PhysicsEngine* p, std::vector<PhysBod>* bodies, const phyz::ConvexUnionGeometry& dynamic_body_geom, const phyz::ConvexUnionGeometry& static_body_geom, const std::vector<coltest_orientation>& orientations_to_test, double dynamic_body_verticle_offset=5, double spacing=5);
 
 #ifndef MUL_ORIENTATION_IMPL
 #define MUL_ORIENTATION_IMPL
-std::map<std::string, coltest_pair> setupMultipleOrientations(phyz::PhysicsEngine* p, std::vector<PhysBod>* bodies, const phyz::ConvexUnionGeometry& dynamic_body_geom, const phyz::ConvexUnionGeometry& static_body_geom, const std::vector<coltest_orientation>& orientations_to_test, double dynamic_body_verticle_offset, double spacing) {
-	std::map<std::string, coltest_pair> out;
-	int grid_size = std::ceil(sqrt(orientations_to_test.size()));
+std::vector<std::shared_ptr<coltest_result>> setupMultipleOrientations(phyz::PhysicsEngine* p, std::vector<PhysBod>* bodies, const phyz::ConvexUnionGeometry& dynamic_body_geom, const phyz::ConvexUnionGeometry& static_body_geom, const std::vector<coltest_orientation>& orientations_to_test, double dynamic_body_verticle_offset, double spacing) {
+	std::vector<std::shared_ptr<coltest_result>> out;
+	int grid_size = static_cast<int>(std::ceil(sqrt(orientations_to_test.size())));
 	mthz::Vec3 start_corner = mthz::Vec3(-spacing * grid_size / 2.0, 0, -spacing * grid_size / 2.0);
 
 	int i = 0;
@@ -32,12 +34,40 @@ std::map<std::string, coltest_pair> setupMultipleOrientations(phyz::PhysicsEngin
 		phyz::ConvexUnionGeometry transf_static = static_body_geom.getRotated(conf.static_body_orientation).getTranslated(pos);
 		phyz::ConvexUnionGeometry transf_dynamic = dynamic_body_geom.getRotated(conf.dynamic_body_orientation).getTranslated(pos + mthz::Vec3(0, dynamic_body_verticle_offset, 0));
 
-		coltest_pair pa;
-		pa.dynamic_body = p->createRigidBody(transf_dynamic); 
-		pa.static_body = p->createRigidBody(transf_static, phyz::RigidBody::FIXED);
-		bodies->push_back(PhysBod{ fromGeometry(transf_dynamic), pa.dynamic_body });
-		bodies->push_back(PhysBod{ fromGeometry(transf_static), pa.static_body });
-		out[conf.id] = pa;
+		phyz::RigidBody* dynamic_body = p->createRigidBody(transf_dynamic); 
+		phyz::RigidBody* static_body = p->createRigidBody(transf_static, phyz::RigidBody::FIXED);
+		bodies->push_back(PhysBod{ fromGeometry(transf_dynamic), dynamic_body });
+		bodies->push_back(PhysBod{ fromGeometry(transf_static), static_body });
+		
+		std::shared_ptr<coltest_result> result = std::make_shared<coltest_result>();
+		result->collision_occured = false;
+		result->id = conf.id;
+
+		double expected_y_coord_of_contact_point = static_body->getAABB().max.y;
+
+		p->registerCollisionAction(phyz::CollisionTarget::with(dynamic_body), phyz::CollisionTarget::with(static_body), [result, expected_y_coord_of_contact_point](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifolds) {
+			if (result->collision_occured) return;
+			result->collision_occured = true;
+
+			for (const phyz::Manifold& m : manifolds) {
+				// normal is expected to be vertical
+				if (abs(m.normal.dot(mthz::Vec3(0, 1, 0))) < 0.99) {
+					result->outcome = TestOutcome{ TestOutcomeState::FAILED, std::format("for pair {} manifold had a non-vertical normal", result->id) };
+					return;
+				}
+
+				for (phyz::ContactP p : m.points) {
+					if (abs(p.pos.y - expected_y_coord_of_contact_point) > 0.1) {
+						result->outcome = TestOutcome{ TestOutcomeState::FAILED, std::format("for pair {} a contact point did not have the expected y coordinate", result->id) };
+						return;
+					}
+				}
+			}
+
+			result->outcome = TestOutcome{ TestOutcomeState::PASSED };
+		});
+
+		out.push_back(result);
 	}
 
 	return out;
@@ -134,12 +164,15 @@ private:
 	bool no_incorrect_manifolds;
 };
 
+
+// todo: these shape v shape tests are super repetetive. seems refactorable to reduce copy paste.
 class TestCapsuleAgainstSphere : public Test {
 public:
 	std::string getTestName() const override { return "Capsule vs Sphere"; }
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		running_without_graphics = false; // will be set to true later if we are not using graphics
 		double tick_frequency = 60.0;
 		test_total_tick_duration = static_cast<uint32_t>(5 * tick_frequency);
 		test_current_tick_count = 0;
@@ -158,7 +191,7 @@ public:
 		double capsule_drum_height = 1.5;
 		phyz::ConvexUnionGeometry capsule_geom = phyz::ConvexUnionGeometry::capsule(mthz::Vec3(0, - capsule_drum_height/2.0, 0), capsule_radius, capsule_drum_height);
 		
-		setupMultipleOrientations(p, bodies, sphere_geom, capsule_geom, {
+		outcomes = setupMultipleOrientations(p, bodies, sphere_geom, capsule_geom, {
 			coltest_orientation{ mthz::Quaternion(), mthz::Quaternion(), "sphere against top cap"},
 			coltest_orientation{ mthz::Quaternion(), mthz::Quaternion(PI/2.0, mthz::Vec3(0, 0, 1.0)), "sphere against barrel"},
 			coltest_orientation{ mthz::Quaternion(), mthz::Quaternion(PI, mthz::Vec3(0, 0, 1.0)), "sphere against bot cap"},
@@ -171,12 +204,34 @@ public:
 			p->timeStep();
 		}
 
+		test_current_tick_count++;
+
+		bool all_collisions_occured = true;
+		for (const std::shared_ptr<coltest_result>& r : outcomes) {
+			if (!r->collision_occured) { all_collisions_occured = false; }
+			// return any failed collisions
+			if (r->collision_occured && r->outcome.state == TestOutcomeState::FAILED) { return r->outcome; }
+		}
+
+		// if all collisions occured the test is passed based on the validations. but it's nice to run longer for visual validation.
+		if (running_without_graphics && all_collisions_occured) { return TestOutcome{ TestOutcomeState::PASSED }; }
+
+		if (test_current_tick_count >= test_total_tick_duration) {
+			if (all_collisions_occured) { return TestOutcome{ TestOutcomeState::PASSED }; }
+			
+			// missing collisions
+			for (const std::shared_ptr<coltest_result>& r : outcomes) {
+				if (!r->collision_occured) { return TestOutcome{ TestOutcomeState::FAILED, std::format("pair {} did not collide", r->id)}; }
+			}
+		}
+
 		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
 	}
 	void teardownTest() override {
 		delete p;
 	};
 	TestOutcome runWithoutGraphics() override {
+		running_without_graphics = true;
 		TestOutcome outcome;
 		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
 		return outcome;
@@ -185,6 +240,8 @@ private:
 	phyz::PhysicsEngine* p;
 	uint32_t test_total_tick_duration;
 	uint32_t test_current_tick_count;
+	bool running_without_graphics;
+	std::vector<std::shared_ptr<coltest_result>> outcomes;
 };
 
 class TestCapsuleAgainstPolyhedron : public Test {
@@ -193,6 +250,7 @@ public:
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		running_without_graphics = false; // will be set to true later if we are not using graphics
 		double tick_frequency = 60.0;
 		test_total_tick_duration = static_cast<uint32_t>(5 * tick_frequency);
 		test_current_tick_count = 0;
@@ -217,7 +275,7 @@ public:
 		mthz::Quaternion sideways = mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1.0));
 		mthz::Quaternion upside_down = mthz::Quaternion(PI, mthz::Vec3(0, 0, 1.0));
 
-		setupMultipleOrientations(p, bodies, cube_geom, capsule_geom, {
+		outcomes = setupMultipleOrientations(p, bodies, cube_geom, capsule_geom, {
 			coltest_orientation{ mthz::Quaternion(), mthz::Quaternion(), "face against top cap"},
 			coltest_orientation{ mthz::Quaternion(), sideways, "face against barrel"},
 			coltest_orientation{ mthz::Quaternion(), upside_down, "face against bot cap"},
@@ -236,12 +294,34 @@ public:
 			p->timeStep();
 		}
 
+		test_current_tick_count++;
+
+		bool all_collisions_occured = true;
+		for (const std::shared_ptr<coltest_result>& r : outcomes) {
+			if (!r->collision_occured) { all_collisions_occured = false; }
+			// return any failed collisions
+			if (r->collision_occured && r->outcome.state == TestOutcomeState::FAILED) { return r->outcome; }
+		}
+
+		// if all collisions occured the test is passed based on the validations. but it's nice to run longer for visual validation.
+		if (running_without_graphics && all_collisions_occured) { return TestOutcome{ TestOutcomeState::PASSED }; }
+
+		if (test_current_tick_count >= test_total_tick_duration) {
+			if (all_collisions_occured) { return TestOutcome{ TestOutcomeState::PASSED }; }
+
+			// missing collisions
+			for (const std::shared_ptr<coltest_result>& r : outcomes) {
+				if (!r->collision_occured) { return TestOutcome{ TestOutcomeState::FAILED, std::format("pair {} did not collide", r->id) }; }
+			}
+		}
+
 		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
 	}
 	void teardownTest() override {
 		delete p;
 	};
 	TestOutcome runWithoutGraphics() override {
+		running_without_graphics = true;
 		TestOutcome outcome;
 		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
 		return outcome;
@@ -250,6 +330,8 @@ private:
 	phyz::PhysicsEngine* p;
 	uint32_t test_total_tick_duration;
 	uint32_t test_current_tick_count;
+	bool running_without_graphics;
+	std::vector<std::shared_ptr<coltest_result>> outcomes;
 };
 
 class TestCapsuleAgainstCapsule : public Test {
@@ -258,6 +340,7 @@ public:
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		running_without_graphics = false; // will be set to true later if we are not using graphics
 		double tick_frequency = 60.0;
 		test_total_tick_duration = static_cast<uint32_t>(5 * tick_frequency);
 		test_current_tick_count = 0;
@@ -276,7 +359,7 @@ public:
 		mthz::Quaternion sideways_turned = mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 1.0, 0)) * mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1.0));
 		mthz::Quaternion upside_down = mthz::Quaternion(PI, mthz::Vec3(0, 0, 1.0));
 
-		setupMultipleOrientations(p, bodies, capsule_geom, capsule_geom, {
+		outcomes = setupMultipleOrientations(p, bodies, capsule_geom, capsule_geom, {
 			coltest_orientation{ mthz::Quaternion(), mthz::Quaternion(), "bot cap against top cap"},
 			coltest_orientation{ mthz::Quaternion(), sideways, "bot cap against barrel"},
 			coltest_orientation{ mthz::Quaternion(), upside_down, "bot cap against bot cap"},
@@ -296,12 +379,34 @@ public:
 			p->timeStep();
 		}
 
+		test_current_tick_count++;
+
+		bool all_collisions_occured = true;
+		for (const std::shared_ptr<coltest_result>& r : outcomes) {
+			if (!r->collision_occured) { all_collisions_occured = false; }
+			// return any failed collisions
+			if (r->collision_occured && r->outcome.state == TestOutcomeState::FAILED) { return r->outcome; }
+		}
+
+		// if all collisions occured the test is passed based on the validations. but it's nice to run longer for visual validation.
+		if (running_without_graphics && all_collisions_occured) { return TestOutcome{ TestOutcomeState::PASSED }; }
+
+		if (test_current_tick_count >= test_total_tick_duration) {
+			if (all_collisions_occured) { return TestOutcome{ TestOutcomeState::PASSED }; }
+
+			// missing collisions
+			for (const std::shared_ptr<coltest_result>& r : outcomes) {
+				if (!r->collision_occured) { return TestOutcome{ TestOutcomeState::FAILED, std::format("pair {} did not collide", r->id) }; }
+			}
+		}
+
 		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
 	}
 	void teardownTest() override {
 		delete p;
 	};
 	TestOutcome runWithoutGraphics() override {
+		running_without_graphics = true;
 		TestOutcome outcome;
 		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
 		return outcome;
@@ -310,6 +415,8 @@ private:
 	phyz::PhysicsEngine* p;
 	uint32_t test_total_tick_duration;
 	uint32_t test_current_tick_count;
+	bool running_without_graphics;
+	std::vector<std::shared_ptr<coltest_result>> outcomes;
 };
 
 class TestCapsuleAgainstCylinder : public Test {
@@ -318,6 +425,7 @@ public:
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		running_without_graphics = false; // will be set to true later if we are not using graphics
 		double tick_frequency = 60.0;
 		test_total_tick_duration = static_cast<uint32_t>(5 * tick_frequency);
 		test_current_tick_count = 0;
@@ -344,7 +452,7 @@ public:
 		mthz::Quaternion sideways = mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1.0));
 		mthz::Quaternion sideways_turned = mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 1.0, 0)) * mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1.0));
 
-		setupMultipleOrientations(p, bodies, cylinder_geom, capsule_geom, {
+		outcomes = setupMultipleOrientations(p, bodies, cylinder_geom, capsule_geom, {
 			coltest_orientation{ mthz::Quaternion(), mthz::Quaternion(), "bot face against top cap"},
 			coltest_orientation{ mthz::Quaternion(), sideways, "bot face against barrel"},
 			coltest_orientation{ mthz::Quaternion(), upside_down, "bot face against bot cap"},
@@ -367,10 +475,106 @@ public:
 			p->timeStep();
 		}
 
+		test_current_tick_count++;
+
+		bool all_collisions_occured = true;
+		for (const std::shared_ptr<coltest_result>& r : outcomes) {
+			if (!r->collision_occured) { all_collisions_occured = false; }
+			// return any failed collisions
+			if (r->collision_occured && r->outcome.state == TestOutcomeState::FAILED) { return r->outcome; }
+		}
+
+		// if all collisions occured the test is passed based on the validations. but it's nice to run longer for visual validation.
+		if (running_without_graphics && all_collisions_occured) { return TestOutcome{ TestOutcomeState::PASSED }; }
+
+		if (test_current_tick_count >= test_total_tick_duration) {
+			if (all_collisions_occured) { return TestOutcome{ TestOutcomeState::PASSED }; }
+
+			// missing collisions
+			for (const std::shared_ptr<coltest_result>& r : outcomes) {
+				if (!r->collision_occured) { return TestOutcome{ TestOutcomeState::FAILED, std::format("pair {} did not collide", r->id) }; }
+			}
+		}
+
 		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
 	}
 	void teardownTest() override {
 		delete p;
+	};
+	TestOutcome runWithoutGraphics() override {
+		running_without_graphics = true;
+		TestOutcome outcome;
+		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
+		return outcome;
+	}
+private:
+	phyz::PhysicsEngine* p;
+	uint32_t test_total_tick_duration;
+	uint32_t test_current_tick_count;
+	bool running_without_graphics;
+	std::vector<std::shared_ptr<coltest_result>> outcomes;
+};
+
+class TestCapsuleAgainstMeshGeometry : public Test {
+public:
+	std::string getTestName() const override { return "Capsule vs Mesh"; }
+	bool canBeRunWithGraphics() const override { return true; }
+	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
+	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		double tick_frequency = 60.0;
+		test_total_tick_duration = static_cast<uint32_t>(5 * tick_frequency);
+		test_current_tick_count = 0;
+
+		p = new phyz::PhysicsEngine();
+		if (n_threads > 0) {
+			p->enableMultithreading(n_threads);
+		}
+		p->setStep_time(1.0 / tick_frequency);
+
+		//create mesh
+		int grid_count = 30;
+		double grid_size = 0.5;
+		phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));
+		for (mthz::Vec3& v : grid.points) {
+			v.y += 0.1 * 2 * (0.5 - frand());
+		}
+		
+		bodies->push_back(PhysBod{ fromStaticMeshInput(grid, color{ 0.5, 0.5, 0.5 }), p->createRigidBody(grid)});
+
+		//create capsule
+		double capsule_radius = 0.75;
+		double capsule_drum_height = 1.5;
+		phyz::ConvexUnionGeometry capsule_geom = phyz::ConvexUnionGeometry::capsule(mthz::Vec3(0, -capsule_drum_height / 2.0, 0), capsule_radius, capsule_drum_height).getTranslated(mthz::Vec3(0, 5, 0));
+		mthz::Quaternion sideways = mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1.0));
+		mthz::Quaternion sideways_turned = mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 1.0, 0)) * mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1.0));
+
+		capsule_r = p->createRigidBody(capsule_geom);
+		bodies->push_back(PhysBod{ fromGeometry(capsule_geom), capsule_r });
+
+		return p;
+	}
+	TestOutcome tickTestOnePhysicsStep() override {
+		if (test_current_tick_count < test_total_tick_duration) {
+			p->timeStep();
+		}
+
+		test_current_tick_count++;
+
+		// keeping it very simple for this one
+		if (capsule_r->getCOM().y < -1) {
+			return TestOutcome{ TestOutcomeState::FAILED, "" };
+		}
+
+		if (test_current_tick_count >= test_total_tick_duration) {
+			return TestOutcome{ TestOutcomeState::PASSED };
+		}
+
+		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
+	}
+	void teardownTest() override {
+		delete p;
+		capsule_r = nullptr;
+		p = nullptr;
 	};
 	TestOutcome runWithoutGraphics() override {
 		TestOutcome outcome;
@@ -379,6 +583,7 @@ public:
 	}
 private:
 	phyz::PhysicsEngine* p;
+	phyz::RigidBody* capsule_r;
 	uint32_t test_total_tick_duration;
 	uint32_t test_current_tick_count;
 };
@@ -393,6 +598,7 @@ public:
 		out.push_back(std::make_unique<TestCapsuleAgainstPolyhedron>());
 		out.push_back(std::make_unique<TestCapsuleAgainstCapsule>());
 		out.push_back(std::make_unique<TestCapsuleAgainstCylinder>());
+		out.push_back(std::make_unique<TestCapsuleAgainstMeshGeometry>());
 		return out;
 	}
 };

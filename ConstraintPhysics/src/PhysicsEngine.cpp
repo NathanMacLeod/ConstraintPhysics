@@ -1929,6 +1929,15 @@ namespace phyz {
 		return p->piston_position;
 	}
 
+	double PhysicsEngine::getTwistConstraintCurrentAngle(ConstraintID id) {
+		assert(id.getType() == ConstraintID::Type::TWIST);
+
+		PersistentConstraint* pc = getConstraint(id);
+		if (pc == nullptr) return -1.0;
+		TwistLimit* p = static_cast<TwistLimit*>(pc);
+		return p->current_angle;
+	}
+
 	PhysicsEngine::SharedConstraintsEdge::~SharedConstraintsEdge() {
 		n1->constraints.erase(std::remove(n1->constraints.begin(), n1->constraints.end(), this));
 		n2->constraints.erase(std::remove(n2->constraints.begin(), n2->constraints.end(), this));

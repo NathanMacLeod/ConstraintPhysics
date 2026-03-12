@@ -122,7 +122,7 @@ public:
 						all_contact_points.push_back({ p.pos, m.normal, c});
 					}
 
-					avg /= m.points.size();
+					avg /= static_cast<double>(m.points.size());
 					mthz::Vec3 u, w;
 					m.normal.getPerpendicularBasis(&u, &w);
 					all_contact_points.push_back({ avg, u, color{1.0f, 0.0f, 0.0f} });

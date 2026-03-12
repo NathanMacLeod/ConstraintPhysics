@@ -175,7 +175,7 @@ namespace phyz {
 		// in global coordinates, unit vectors b1_allignment_axis and b2_global_allignment_axis are restricted to not deviate beyond the specified angle.
 		// angle being acos(b1_allignment_axis dot b2_global_allignment_aixs)
 		TwistLimit(RigidBody* b1, RigidBody* b2, mthz::Vec3 b1_allign_axis_local, mthz::Vec3 b2_allign_axis_local, double min_limit, double max_limit, double rot_correction_hardness, uint32_t id_value)
-			: PersistentConstraint(ConstraintID(ConstraintID::Type::CONE, id_value), b1, b2), b1_twist_axis_local(b1_allign_axis_local), b2_twist_axis_local(b2_allign_axis_local),
+			: PersistentConstraint(ConstraintID(ConstraintID::Type::TWIST, id_value), b1, b2), b1_twist_axis_local(b1_allign_axis_local), b2_twist_axis_local(b2_allign_axis_local),
 			min_angle(min_limit), max_angle(max_limit), rot_correct_hardness(rot_correction_hardness), cfm(CFM{ USE_GLOBAL }), constraint(TwistLimitConstraint()), is_inactive(true),
 			current_angle(0)
 		{
