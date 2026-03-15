@@ -48,6 +48,8 @@ namespace phyz {
 		RayHitInfo checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 		AABB getAABB() const { return aabb; }
 
+		mthz::Vec3 getWorldPosInLocalCoords(mthz::Vec3 p) const { return orientation.conjugate().applyRotation(p - com); }
+		mthz::Vec3 getLocalPosInWorldCoords(mthz::Vec3 p) const { return com + orientation.applyRotation(p); }
 		void applyForce(mthz::Vec3 force) { vel += force * getInvMass(); }
 		void applyTorque(mthz::Vec3 torque) { ang_vel += getInvTensor() * torque; }
 		void applyImpulse(mthz::Vec3 impulse, mthz::Vec3 position);

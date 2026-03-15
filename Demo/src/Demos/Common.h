@@ -42,3 +42,8 @@ void set_scissor_lift_movement_input(phyz::PhysicsEngine* p, ScissorLiftConstruc
 // ~=~=~=~=Circular Tower~=~=~=~=
 // ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=
 std::vector<phyz::RigidBody*> createCircularTower(phyz::PhysicsEngine* p, std::vector<PhysBod>* body_dest, mthz::Vec3 block_dim, double radius, double n_blocks_per_layer, mthz::Vec3 pos, int n_layers);
+
+// ~=~=~=~=~=~=~=~=~=~=~=~
+// ~=~=~=~=Ragdoll~=~=~=~=
+// ~=~=~=~=~=~=~=~=~=~=~=~
+std::vector<phyz::RigidBody*> createRagdoll(phyz::PhysicsEngine* p, std::vector<PhysBod>* body_dest, mthz::Vec3 pos, double scale=1.0);

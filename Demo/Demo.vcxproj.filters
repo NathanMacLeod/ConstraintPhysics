@@ -170,6 +170,9 @@
     <ClInclude Include="src\Demos\Tests\MassPropertyTests.h">
       <Filter>src\Demos\Tests</Filter>
     </ClInclude>
+    <ClInclude Include="RagdollTests.h">
+      <Filter>src\Demos\Tests</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\shaders\Basic.shader">

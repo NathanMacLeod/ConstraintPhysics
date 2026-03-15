@@ -237,12 +237,14 @@ namespace phyz {
 		double current_angle = acos(b1_dir.dot(b2_dir));
 		is_inactive = current_angle < max_rotation_angle; // if the current angle is within the cone, the constraint is not active.		
 
+		double rot_correct_coeff = posCorrectCoeff(rot_correct_hardness, step_time);
+
 		if (is_inactive) {
 			// clear any existing warm start value
 			constraint.impulse.v[0] = 0.0; 
 		}
 		else {
-			constraint = ConeLimitConstraint(b1, b2, b1_dir, b2_dir, current_angle, max_rotation_angle, rot_correct_hardness, cfm.getCFMValue(global_cfm), constraint.impulse);
+			constraint = ConeLimitConstraint(b1, b2, b1_dir, b2_dir, current_angle, max_rotation_angle, rot_correct_coeff, cfm.getCFMValue(global_cfm), constraint.impulse);
 		}
 	}
 
@@ -257,6 +259,8 @@ namespace phyz {
 		mthz::Vec3 b2_twist_axis_world = b2_rot * b2_twist_axis_local;
 		mthz::Vec3 b2_r_world = b2_rot * b1_w_axis_local;
 
+		double rot_correct_coeff = posCorrectCoeff(rot_correct_hardness, step_time);
+
 		double previous_angle = current_angle;
 		current_angle = getCurrentAngle(previous_angle, b1_twist_axis_world, b2_twist_axis_world, b1_u_world, b1_w_world, b2_r_world);
 		is_inactive = min_angle <= current_angle && current_angle <= max_angle;
@@ -267,7 +271,7 @@ namespace phyz {
 			constraint.impulse.v[0] = 0.0;
 		}
 		else {
-			constraint = TwistLimitConstraint(b1, b2, b1_twist_axis_world, b2_twist_axis_world, current_angle, min_angle, max_angle, rot_correct_hardness, cfm.getCFMValue(global_cfm), constraint.impulse);
+			constraint = TwistLimitConstraint(b1, b2, b1_twist_axis_world, b2_twist_axis_world, current_angle, min_angle, max_angle, rot_correct_coeff, cfm.getCFMValue(global_cfm), constraint.impulse);
 		}
 	}
 

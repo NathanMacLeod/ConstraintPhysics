@@ -62,7 +62,8 @@ public:
 		//*****************
 		double radius = 3.5;
 		mthz::Vec3 block_dim(1, 1, 2);
-		createCircularTower(&p, &bodies, block_dim, radius, 10, mthz::Vec3(0, 0, -22), 40);
+		//createCircularTower(&p, &bodies, block_dim, radius, 10, mthz::Vec3(0, 0, -22), 40);
+		createRagdoll(&p, &bodies, mthz::Vec3(0, 5, -22));
 
 		/*for (mthz::Vec3& v : grid.points) {
 			v.y += 0.01 * 2 * (0.5 - frand());
@@ -131,7 +132,7 @@ public:
 			}
 		);
 
-		mthz::Vec3 pos(0, 42, 0);
+		mthz::Vec3 pos(0, 2, 0);
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
@@ -153,16 +154,22 @@ public:
 
 
 		bool object_highlighted = false;
-		unsigned int highlighted_object_id;
+		unsigned int highlighted_object_id = -1;
 
 		bool single_step_mode = false;
 
 		bool paused = true;
 
+		phyz::RigidBody* grabbed_object = nullptr;                 // null -> no object grabbed
+		mthz::Vec3 grabbed_object_grabbed_point_local_coordinates; // what point on the objects surface we have grabbed, in local coords of the object
+		double grab_distance;                                      // what distance awway from the camera the grabbed point is. while a grab object is held, we keep this constant when moving the camera.
+		const double GRAB_PULL_STRENGTH = 1000;
+
 		rndr::lockMouse();
 		double mouse_sensitivity = 0.0015;
 		rndr::MousePos mouse_position = rndr::getMousePosition();
 
+		int tick_count = 0;
 		while (rndr::render_loop(&fElapsedTime)) {
 
 			if (rndr::getKeyDown(GLFW_KEY_W)) {
@@ -202,10 +209,6 @@ public:
 
 			if (rndr::getKeyPressed(GLFW_KEY_B)) {
 				single_step_mode = !single_step_mode;
-			}
-			if (rndr::getKeyPressed(GLFW_KEY_T)) {
-				all_contact_points.clear();
-				p.timeStep();
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_G)) {
@@ -247,18 +250,44 @@ public:
 				bodies.push_back({ fromGeometry(block), block_r });
 			}
 
+			//if (rndr::getMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
+			//	mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+			//	phyz::RayHitInfo hit_info = p.raycastFirstIntersection(pos, camera_dir);
+
+			//	if (hit_info.did_hit) {
+			//		object_highlighted = true;
+			//		highlighted_object_id = hit_info.hit_object->getID();
+			//		printf("selected object id: %u\n", highlighted_object_id);
+			//		//hit_info.hit_object->applyImpulse(camera_dir * 1, hit_info.hit_position);
+			//	}
+			//	else {
+			//		object_highlighted = false;
+			//	}
+			//}
+
 			if (rndr::getMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
 				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
 				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(pos, camera_dir);
 
-				if (hit_info.did_hit) {
-					object_highlighted = true;
-					highlighted_object_id = hit_info.hit_object->getID();
-					printf("selected object id: %u\n", highlighted_object_id);
-					//hit_info.hit_object->applyImpulse(camera_dir * 1, hit_info.hit_position);
+				if (hit_info.did_hit && hit_info.hit_object->getMovementType() == phyz::RigidBody::DYNAMIC) {
+					grabbed_object = hit_info.hit_object;
+					grabbed_object_grabbed_point_local_coordinates = grabbed_object->getWorldPosInLocalCoords(hit_info.hit_position);
+					grab_distance = hit_info.hit_distance;
 				}
-				else {
-					object_highlighted = false;
+			}
+			else if (rndr::getMouseButtonReleased(GLFW_MOUSE_BUTTON_LEFT)) {
+				grabbed_object = nullptr;
+			}
+
+			if (rndr::getKeyPressed(GLFW_KEY_F)) {
+				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+				phyz::RayHitInfo hit_info = p.raycastFirstIntersection(pos, camera_dir);
+
+				if (hit_info.did_hit) {
+					//object_highlighted = true;
+					//highlighted_object_id = hit_info.hit_object->getID();
+					//printf("selected object id: %u\n", highlighted_object_id);
+					hit_info.hit_object->applyImpulse(camera_dir * 1, hit_info.hit_position);
 				}
 			}
 
@@ -267,8 +296,9 @@ public:
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_T)) {
-				p.timeStep();
-				//printf("%d\n", tick_count++);
+				all_contact_points.clear();
+				phyz_time += timestep;
+				printf("%d\n", tick_count);
 			}
 
 			t += fElapsedTime;
@@ -278,14 +308,31 @@ public:
 				return;
 			}
 
+			//if (tick_count == 69) {
+			//	paused = true;
+			//}
+
+			// dragging grabbed object:
+			if (grabbed_object != nullptr) {
+				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+				mthz::Vec3 desired_position = pos + grab_distance * camera_dir;
+
+				mthz::Vec3 current_grabbed_position = grabbed_object->getLocalPosInWorldCoords(grabbed_object_grabbed_point_local_coordinates);
+
+				// generate a impulse that is scales linearly with the timestep, the distance between the desired position and current position, and the objects mass.
+				mthz::Vec3 pull_force = (desired_position - current_grabbed_position) * GRAB_PULL_STRENGTH * grabbed_object->getMass() * fElapsedTime;
+				grabbed_object->applyImpulse(pull_force, current_grabbed_position);
+			}
+
 			if (!paused) {
 				phyz_time += fElapsedTime;
 				phyz_time = std::min<double>(phyz_time, 1.0);
 			}
-			while (!single_step_mode && phyz_time > timestep) {
+			while (phyz_time > timestep) {
 				all_contact_points.clear();
 				phyz_time -= timestep;
 				p.timeStep();
+				tick_count++;
 			}
 
 			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));
