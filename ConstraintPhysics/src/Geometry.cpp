@@ -668,7 +668,7 @@ namespace phyz {
 	}
 
 	StaticMeshGeometry::StaticMeshGeometry(const StaticMeshGeometry& c)
-		: aabb_tree(0, AABBTree<unsigned int>::SURFACE_AREA), triangles(c.triangles)
+		: aabb_tree(0, AABBTree<unsigned int>::SURFACE_AREA), vertices(c.vertices), half_edges(c.half_edges), triangles(c.triangles)
 	{
 		for (int i = 0; i < triangles.size(); i++) {
 			aabb_tree.add(i, true, i, triangles[i].aabb);
@@ -678,167 +678,183 @@ namespace phyz {
 	StaticMeshGeometry::StaticMeshGeometry(const MeshInput& input)
 		: aabb_tree(0)
 	{
-		const int NO_ASSIGNED_ID = -1;
-		struct Edge {
-			Edge() {}
 
-			Edge(unsigned int p1_indx, unsigned int p2_indx, unsigned int opposite_point_indx) 
-				: p1_indx(p1_indx), p2_indx(p2_indx), opposite_point_indx(opposite_point_indx), assigned_id(NO_ASSIGNED_ID)
-			{
-				unsigned int edge_min_indx, edge_max_indx;
-				if (p1_indx > p2_indx) {
-					edge_max_indx = p1_indx;
-					edge_min_indx = p2_indx;
-				}
-				else {
-					edge_max_indx = p2_indx;
-					edge_min_indx = p1_indx;
-				}
+		std::unordered_map<uint64_t, uint32_t> edge_lookup_table;
+		uint32_t next_edge_id = 0;
 
-				key = ((uint64_t(edge_max_indx) << 32) & 0xFFFFFFFF00000000) + edge_min_indx;
-			}
+		vertices.reserve(input.points.size());
+		half_edges.reserve(input.triangle_indices.size() * 3);
+		triangles.reserve(input.triangle_indices.size());
 
-			unsigned int p1_indx, p2_indx;
-			unsigned int opposite_point_indx;
-			int assigned_id = NO_ASSIGNED_ID;
-			uint64_t key;
+		// initialize all of the vertices
+		int i = 0;
+		for (mthz::Vec3 p : input.points) {
+			StaticMeshVertex v{ p, i++, std::vector<mthz::Vec3>() };
+			vertices.push_back(v);
+		}
 
-			bool isCompliment(Edge e) {
-				return p1_indx == e.p2_indx && p2_indx == e.p1_indx;
-			}
-		};
-
-		struct TriangleGraphNode {
-			unsigned int p1_indx, p2_indx, p3_indx;
-			int tri_neighbor_indices[3]; //neighbor1 shares p1 p2 edge, neighbor2 shared p2 p3 edge, neighbor3 shares p3 p1 edge
-			Edge edges[3];
-			mthz::Vec3 normal;
-			Material material;
-		};
-
-		std::vector<TriangleGraphNode> neighbor_graph;
-		neighbor_graph.reserve(input.triangle_indices.size());
+		// initialize all of the faces and edges
 		for (TriIndices t : input.triangle_indices) {
+			// creating the triangle
+			StaticMeshFace triangle;
+			triangle.material = t.material;
 			mthz::Vec3 v1 = input.points[t.i2] - input.points[t.i1];
 			mthz::Vec3 v2 = input.points[t.i3] - input.points[t.i1];
-			mthz::Vec3 normal = v1.cross(v2).normalize();
-			neighbor_graph.push_back(TriangleGraphNode{ t.i1, t.i2, t.i3, {-1, -1, -1}, {Edge{t.i1, t.i2, t.i3}, Edge{t.i2, t.i3, t.i1}, Edge{t.i3, t.i1, t.i2}}, normal, t.material });
-		}
+			triangle.normal = v1.cross(v2).normalize();
+			triangle.vertex_indices[0] = t.i1; triangle.vertex_indices[1] = t.i2; triangle.vertex_indices[2] = t.i3;
+			uint32_t e1_index = half_edges.size(), e2_index = half_edges.size() + 1, e3_index = half_edges.size() + 2;
+			triangle.half_edge_indices[0] = e1_index; triangle.half_edge_indices[1] = e2_index; triangle.half_edge_indices[2] = e3_index;
+			triangle.self_index = triangles.size();
+			triangle.aabb = triangle.computeAABB(*this);
+			
 
-		std::unordered_map<uint64_t, unsigned int> edge_face_map;
+			// create the edges
+			half_edges.push_back(StaticMeshHalfEdge{ t.i1, t.i2, -1, e2_index });
+			half_edges.push_back(StaticMeshHalfEdge{ t.i2, t.i3, -1, e3_index });
+			half_edges.push_back(StaticMeshHalfEdge{ t.i3, t.i1, -1, e1_index });
 
-		for (int i = 0; i < neighbor_graph.size(); i++) {
+			// compute some of the data for the half edges
+			for (int i = 0; i < 3; i++) {
+				int self_index = triangle.half_edge_indices[i];
+				StaticMeshHalfEdge& e = half_edges[self_index];
 
-			for (int j = 0; j < 3; j++) {
-				Edge e = neighbor_graph[i].edges[j];
+				mthz::Vec3 v = vertices[e.p2_index].p - vertices[e.p1_index].p;
+				e.out_direction = v.cross(triangle.normal).normalize();
+				
+				e.self_index = self_index;
+				e.triangle_index = triangle.self_index;
 
-				auto query = edge_face_map.find(e.key);
-				if (query != edge_face_map.end()) {
-					neighbor_graph[i].tri_neighbor_indices[j] = query->second;
-
-					for (int k = 0; k < 3; k++) {
-						if (neighbor_graph[query->second].edges[k].key == e.key) {
-							neighbor_graph[query->second].tri_neighbor_indices[k] = i;
-						}
-					}
-
-					edge_face_map.erase(query);
+				// compute our hash based of of p1&p2 indices, and add ourselves to the lookup table. then try to find our twin.
+				// if our twin doesn't exist yet, then declare our id.
+				// if our twin does exist, then set our twin index to the twins index, and set the twins twin index to us. Then use our twins declared id value
+				uint64_t edge_hash = (uint64_t(e.p2_index) << 32) + uint64_t(e.p1_index);
+				edge_lookup_table[edge_hash] = self_index;
+				uint64_t twin_hash = (uint64_t(e.p1_index) << 32) + uint64_t(e.p2_index);
+				auto twin_lookup = edge_lookup_table.find(twin_hash);
+				if (twin_lookup == edge_lookup_table.end()) {
+					e.id = next_edge_id++;
 				}
 				else {
-					edge_face_map[e.key] = i;
+					int twin_index = twin_lookup->second;
+					e.twin_index = twin_index;
+					StaticMeshHalfEdge& twin = half_edges[twin_index];
+					twin.twin_index = self_index;
+					e.id = twin.id;
 				}
-
-				
 			}
 
+			//push the triangle to the vector
+			triangles.push_back(triangle);
 		}
 
-		int next_triangle_id = 0;
-		int vertex_id_offset = static_cast<int>(input.triangle_indices.size());
-		int next_edge_id = static_cast<int>(input.triangle_indices.size() + input.points.size());
-		//using the neighbor graph to compute all the finalized StaticMeshTri objects
-		//neighbor info is needed to determine the gauss arcs for valid edge collisions.
-		triangles.reserve(neighbor_graph.size());
+		// compute the gauss arc for all of the half_edges
+		for (StaticMeshHalfEdge& e : half_edges) {
+			if (e.twin_index == -1) {
+				// edge of the topology case
+				e.has_gauss_arc = true;
+				e.gauss_arc_g1 = triangles[e.triangle_index].normal;
+				e.gauss_arc_g2 = e.out_direction;
+				continue;
+			}
+			
+			// we only have a gauss arc if we are convex in relation to the neighboring triangle
+			const StaticMeshHalfEdge& twin = half_edges[e.twin_index];
+			mthz::Vec3 our_normal = triangles[e.triangle_index].normal;
+			bool is_convex = twin.out_direction.dot(our_normal) > 0;
+			e.has_gauss_arc = is_convex;
+			if (is_convex) {
+				e.gauss_arc_g1 = our_normal;
+				e.gauss_arc_g2 = triangles[twin.triangle_index].normal;
+			}
+		}
 
-		for (TriangleGraphNode t : neighbor_graph) {
+		// the neighborhoods (all directly neighboring vertices) in a counter-clockwise winding for each vertex
+		// vertex_neighborhoods[i] is the neighborhood for vertices[i]
+		std::vector<std::vector<mthz::Vec3>> vertex_neighborhoods(vertices.size());
 
-			StaticMeshFace tri;
-			tri.concave_neighbor_count = 0;
-			tri.normal = t.normal;
+		// this method will fuck up for vertices at the edge of the topology. don't really care right now
+		for (StaticMeshHalfEdge& e : half_edges) {
+			std::vector<mthz::Vec3>& neighborhood = vertex_neighborhoods[e.p2_index];
+			if (!neighborhood.empty()) { continue; } // neighborhood for this vertex was already calculated.
 
-			tri.vertices[0] = StaticMeshVertex{ input.points[t.p1_indx], (int) t.p1_indx + vertex_id_offset };
-			tri.vertices[1] = StaticMeshVertex{ input.points[t.p2_indx], (int) t.p2_indx + vertex_id_offset };
-			tri.vertices[2] = StaticMeshVertex{ input.points[t.p3_indx], (int) t.p3_indx + vertex_id_offset };
+			// use half edge structure to wind all the way around counter-clockwise
+			uint32_t curr_edge_index = e.self_index;
+			do {
+				StaticMeshHalfEdge& curr = half_edges[curr_edge_index];
+				//neighborhood.push_back(vertices[curr.p1_index].p);
+				StaticMeshHalfEdge& next = half_edges[curr.next_index];
+				neighborhood.push_back(vertices[next.p2_index].p);
+				curr_edge_index = next.twin_index;
+			} while (curr_edge_index != -1 && curr_edge_index != e.self_index);
+			std::reverse(neighborhood.begin(), neighborhood.end());
+		}
+	
+		// use the neighborhoods to calculate the gauss map for each vertex
+		for (int vertex_index = 0; vertex_index < vertex_neighborhoods.size(); vertex_index++) {
+			StaticMeshVertex& v = vertices[vertex_index];
+			std::vector<mthz::Vec3> neighborhood = vertex_neighborhoods[vertex_index];
 
-			tri.material = t.material;
-			tri.id = next_triangle_id++;
+			// first perform reduction step to smooth over any concavities.
+			// note it is possible for the reduction to eliminate all points. in this case there are no valid normals for this vertex.
+			bool reduction_done = false;
+			while (!reduction_done) {
+				reduction_done = true; // we reset back to false if we spot an issue.
+				for (int i = 0; i < neighborhood.size() && neighborhood.size() >= 3;) {
+					mthz::Vec3 p1 = neighborhood[i];
+					uint32_t p2_index = (i + 1) % neighborhood.size();
+					mthz::Vec3 p2 = neighborhood[p2_index];
+					mthz::Vec3 p3 = neighborhood[(i + 2) % neighborhood.size()];
 
-			for (int i = 0; i < 3; i++) {
-				tri.edges[i] = StaticMeshEdge{ tri.vertices[i].p, tri.vertices[(i + 1) % 3].p };
-				tri.edges[i].out_direction = (tri.edges[i].p2 - tri.edges[i].p1).cross(tri.normal).normalize();
+					// check if p1p2 is concave relative to p2p3. if it is, eliminate p2.
+					mthz::Vec3 up = (p2 - p1).cross(v.p - p2);
+					bool is_concave = (p3 - p2).dot(up) > 0;
 
-				if (t.edges[i].assigned_id == NO_ASSIGNED_ID) {
-					t.edges[i].assigned_id = next_edge_id++;
-				}
-				tri.edges[i].id = t.edges[i].assigned_id;
-
-				if (t.tri_neighbor_indices[i] == -1) { //no neighboring triangle on the edge
-					tri.gauss_region.push_back(tri.edges[i].out_direction);
-				}
-				else {
-					//neighbors version of the same edge
-					Edge complimentary_edge;
-					for (int j = 0; j < 3; j++) {
-						Edge neighbor_edge = neighbor_graph[t.tri_neighbor_indices[i]].edges[j];
-						if (t.edges[i].isCompliment(neighbor_edge)) {
-							complimentary_edge = neighbor_edge;
-						}
-					}
-
-					mthz::Vec3 this_opposite_tip = input.points[t.edges[i].opposite_point_indx];
-					mthz::Vec3 neighbor_opposite_tip = input.points[complimentary_edge.opposite_point_indx];
-
-					double EPS = 0.00001;
-					bool edge_concave = (neighbor_opposite_tip - this_opposite_tip).normalize().dot(t.normal) >= -EPS;
-					if (edge_concave) {
-						tri.concave_neighbor_count++;
-						if (tri.concave_neighbor_count <= 1) {
-							tri.gauss_region.push_back(tri.normal);
-						}
+					if (is_concave) {
+						reduction_done = false;
+						neighborhood.erase(neighborhood.begin() + p2_index);
 					}
 					else {
-						tri.gauss_region.push_back(neighbor_graph[t.tri_neighbor_indices[i]].normal);
+						i++;
 					}
 				}
 			}
 
-			tri.aabb = tri.computeAABB();
-			//tri.concave_neighbor_count = 3;
-
-			triangles.push_back(tri);
+			if (neighborhood.size() >= 3) {
+				// in this case the gauss map wasn't reduced to nothing
+				for (int i = 0; i < neighborhood.size(); i++) {
+					mthz::Vec3 p1 = neighborhood[i];
+					mthz::Vec3 p2 = neighborhood[(i + 1) % neighborhood.size()];
+					mthz::Vec3 norm = (p2 - p1).cross(v.p - p2).normalize();
+					v.valid_normal_gauss_map.push_back(norm);
+				}
+			}
 		}
+	}
+
+	AABB StaticMeshFace::computeAABB(StaticMeshGeometry& parent) const { 
+		return AABB::encapsulatePointCloud({ parent.vertices[vertex_indices[0]].p, parent.vertices[vertex_indices[1]].p, parent.vertices[vertex_indices[2]].p });
 	}
 
 	StaticMeshFace StaticMeshFace::getTransformed(const mthz::Mat3& rot, mthz::Vec3 translation, mthz::Vec3 center_of_rotation) const {
 		StaticMeshFace out = *this;
 
-		out.normal = rot * normal;
+		//out.normal = rot * normal;
 
 
-		for (int j = 0; j < gauss_region.size(); j++) {
-			out.gauss_region[j] = rot * gauss_region[j];
-		}
+		//for (int j = 0; j < gauss_region.size(); j++) {
+		//	out.gauss_region[j] = rot * gauss_region[j];
+		//}
 
-		for (int j = 0; j < 3; j++) {
-			out.vertices[j].p = translation + rot * (vertices[j].p - center_of_rotation) + center_of_rotation;
+		//for (int j = 0; j < 3; j++) {
+		//	out.vertices[j].p = translation + rot * (vertices[j].p - center_of_rotation) + center_of_rotation;
 
-			out.edges[j].p1 = translation + rot * (edges[j].p1 - center_of_rotation) + center_of_rotation;
-			out.edges[j].p2 = translation + rot * (edges[j].p2 - center_of_rotation) + center_of_rotation;
+		//	out.edges[j].p1 = translation + rot * (edges[j].p1 - center_of_rotation) + center_of_rotation;
+		//	out.edges[j].p2 = translation + rot * (edges[j].p2 - center_of_rotation) + center_of_rotation;
 
-			out.edges[j].out_direction = rot * edges[j].out_direction;
-		}
+		//	out.edges[j].out_direction = rot * edges[j].out_direction;
+		//}
 
-		out.aabb = AABB::encapsulatePointCloud({ out.vertices[0].p, out.vertices[1].p, out.vertices[2].p });
+		//out.aabb = AABB::encapsulatePointCloud({ out.vertices[0].p, out.vertices[1].p, out.vertices[2].p });
 
 		return out;
 	}
@@ -876,7 +892,8 @@ namespace phyz {
 			}
 
 			//calculate dist where ray intersects the plane the triangle sits on
-			double t = -(ray_origin - tri.vertices[1].p).dot(tri.normal) / ray_dir.dot(tri.normal);
+
+			double t = -(ray_origin - get_vertex(tri.vertex_indices[1]).p).dot(tri.normal) / ray_dir.dot(tri.normal);
 			if (t < 0 || (closest_hit.did_hit && closest_hit.intersection_dist < t)) {
 				continue;
 			}
@@ -884,9 +901,13 @@ namespace phyz {
 			mthz::Vec3 hit_pos = ray_origin + t * ray_dir;
 
 			//check the intersection point lies inside the triangle
-			if ((hit_pos - tri.edges[0].p1).dot(tri.edges[0].out_direction) > 0
-				|| (hit_pos - tri.edges[1].p1).dot(tri.edges[1].out_direction) > 0
-				|| (hit_pos - tri.edges[2].p1).dot(tri.edges[2].out_direction) > 0) {
+			StaticMeshHalfEdge e1 = get_half_edge(tri.half_edge_indices[0]);
+			StaticMeshHalfEdge e2 = get_half_edge(tri.half_edge_indices[1]);
+			StaticMeshHalfEdge e3 = get_half_edge(tri.half_edge_indices[2]);
+
+			if ((hit_pos - get_vertex(e1.p1_index).p).dot(e1.out_direction) > 0
+				|| (hit_pos - get_vertex(e2.p1_index).p).dot(e2.out_direction) > 0
+				|| (hit_pos - get_vertex(e3.p1_index).p).dot(e3.out_direction) > 0) {
 				continue;
 			}
 

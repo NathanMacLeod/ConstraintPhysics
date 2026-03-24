@@ -37,6 +37,7 @@ namespace rndr {
 	void clear(color c);
 	void draw(const VertexArray& va, const IndexBuffer& ib, const Shader& s);
 	void draw(const BatchArray& ba, const Shader& s);
+	void drawLines(const BatchArray& ba, const Shader& s);
 	void lockMouse();
 	void setMode2D();
 	void setMode3D();

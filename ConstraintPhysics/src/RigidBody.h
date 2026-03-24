@@ -9,6 +9,8 @@
 #include <Vector>
 #include <set>
 
+class DebugDemo;
+
 namespace phyz {
 	struct RayHitInfo;
 
@@ -70,6 +72,7 @@ namespace phyz {
 		void rotateExtrapolatedOrientation(mthz::Quaternion rotation) { extrapolated_orientation = rotation * extrapolated_orientation; }
 
 		friend class PhysicsEngine;
+		friend class DebugDemo;
 	private:
 		AABB aabb;
 		MovementType movement_type;

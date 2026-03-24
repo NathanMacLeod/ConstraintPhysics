@@ -339,34 +339,36 @@ std::vector<phyz::RigidBody*> createCircularTower(phyz::PhysicsEngine* p, std::v
 // ~=~=~=~=~=~=~=~=~=~=~=~
 std::vector<phyz::RigidBody*> createRagdoll(phyz::PhysicsEngine* p, std::vector<PhysBod>* body_dest, mthz::Vec3 pos, double scale) {
 
+	color col = color{ 0.8f, 0.5f, 0.1f, 0.5f, 0.5f, 0.63f, 51.2f };
+
 	// chest
 
 	double shoulder_width = 0.45 * scale;
 	double shoulder_radius = 0.288 * scale;
 	phyz::ConvexUnionGeometry shoulders_geom = phyz::ConvexUnionGeometry::capsule(pos - mthz::Vec3(0, shoulder_width / 2.0, 0), shoulder_radius, shoulder_width).getRotated(mthz::Quaternion(PI/2.0, mthz::Vec3(0, 0, 1)), pos);
 	phyz::RigidBody* shoulder_r = p->createRigidBody(shoulders_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(shoulders_geom), shoulder_r });
+	body_dest->push_back(PhysBod{ fromGeometry(shoulders_geom, col), shoulder_r });
 
 	double chest_width = 0.423 * scale;
 	double chest_radius = 0.25 * scale;
 	mthz::Vec3 chest_position = pos + mthz::Vec3(0, -0.345 * scale, 0);
 	phyz::ConvexUnionGeometry chest_geom = phyz::ConvexUnionGeometry::capsule(chest_position - mthz::Vec3(0, chest_width / 2.0, 0), chest_radius, chest_width).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), chest_position);
 	phyz::RigidBody* chest_r = p->createRigidBody(chest_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(chest_geom), chest_r });
+	body_dest->push_back(PhysBod{ fromGeometry(chest_geom, col), chest_r });
 
 	double abdomen_width = 0.345 * scale;
 	double abdomen_radius = 0.23 * scale;
 	mthz::Vec3 abdomen_position = chest_position + mthz::Vec3(0, -0.385 * scale, 0);
 	phyz::ConvexUnionGeometry abdomen_geom = phyz::ConvexUnionGeometry::capsule(abdomen_position - mthz::Vec3(0, abdomen_width / 2.0, 0), abdomen_radius, abdomen_width).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), abdomen_position);
 	phyz::RigidBody* abdomen_r = p->createRigidBody(abdomen_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(abdomen_geom), abdomen_r });
+	body_dest->push_back(PhysBod{ fromGeometry(abdomen_geom, col), abdomen_r });
 
 	double hip_width = 0.39 * scale;
 	double hip_radius = 0.2 * scale;
 	mthz::Vec3 hip_position = abdomen_position + mthz::Vec3(0, -0.288 * scale, 0);
 	phyz::ConvexUnionGeometry hip_geom = phyz::ConvexUnionGeometry::capsule(hip_position - mthz::Vec3(0, hip_width / 2.0, 0), hip_radius, hip_width).getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1)), hip_position);
 	phyz::RigidBody* hip_r = p->createRigidBody(hip_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(hip_geom), hip_r });
+	body_dest->push_back(PhysBod{ fromGeometry(hip_geom, col), hip_r });
 
 	// legs
 
@@ -379,12 +381,12 @@ std::vector<phyz::RigidBody*> createRagdoll(phyz::PhysicsEngine* p, std::vector<
 	mthz::Vec3 right_thigh_pos = hip_position + mthz::Vec3(-thigh_horz_offset, -thigh_vericle_offset, 0);
 	phyz::ConvexUnionGeometry right_thigh_geom = thigh_geom.getTranslated(right_thigh_pos);
 	phyz::RigidBody* right_thigh_r = p->createRigidBody(right_thigh_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(right_thigh_geom), right_thigh_r });
+	body_dest->push_back(PhysBod{ fromGeometry(right_thigh_geom, col), right_thigh_r });
 
 	mthz::Vec3 left_thigh_pos = hip_position + mthz::Vec3(thigh_horz_offset, -thigh_vericle_offset, 0);
 	phyz::ConvexUnionGeometry left_thigh_geom = thigh_geom.getTranslated(left_thigh_pos);
 	phyz::RigidBody* left_thigh_r = p->createRigidBody(left_thigh_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(left_thigh_geom), left_thigh_r });
+	body_dest->push_back(PhysBod{ fromGeometry(left_thigh_geom, col), left_thigh_r });
 
 	double shin_length = 0.9 * scale;
 	double shin_radius = 0.142 * scale;
@@ -394,12 +396,12 @@ std::vector<phyz::RigidBody*> createRagdoll(phyz::PhysicsEngine* p, std::vector<
 	mthz::Vec3 right_shin_pos = right_thigh_pos + mthz::Vec3(0, -shift_verticle_offset, 0);
 	phyz::ConvexUnionGeometry right_shin_geom = shin_geom.getTranslated(right_shin_pos);
 	phyz::RigidBody* right_shin_r = p->createRigidBody(right_shin_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(right_shin_geom), right_shin_r });
+	body_dest->push_back(PhysBod{ fromGeometry(right_shin_geom, col), right_shin_r });
 
 	mthz::Vec3 left_shin_pos = left_thigh_pos + mthz::Vec3(0, -shift_verticle_offset, 0);
 	phyz::ConvexUnionGeometry left_shin_geom = shin_geom.getTranslated(left_shin_pos);
 	phyz::RigidBody* left_shin_r = p->createRigidBody(left_shin_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(left_shin_geom), left_shin_r });
+	body_dest->push_back(PhysBod{ fromGeometry(left_shin_geom, col), left_shin_r });
 
 	double foot_verticle_offset = shin_length + shin_radius * 0.75;
 	double foot_height = 0.12 * scale;
@@ -412,45 +414,45 @@ std::vector<phyz::RigidBody*> createRagdoll(phyz::PhysicsEngine* p, std::vector<
 	mthz::Vec3 right_foot_pos = right_shin_pos + mthz::Vec3(0, -foot_verticle_offset, 0);
 	phyz::ConvexUnionGeometry right_foot_geom = foot_geom.getTranslated(right_foot_pos);
 	phyz::RigidBody* right_foot_r = p->createRigidBody(right_foot_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(right_foot_geom), right_foot_r });
+	body_dest->push_back(PhysBod{ fromGeometry(right_foot_geom, col), right_foot_r });
 
 	mthz::Vec3 left_foot_pos = left_shin_pos + mthz::Vec3(0, -foot_verticle_offset, 0);
 	phyz::ConvexUnionGeometry left_foot_geom = foot_geom.getTranslated(left_foot_pos);
 	phyz::RigidBody* left_foot_r = p->createRigidBody(left_foot_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(left_foot_geom), left_foot_r });
+	body_dest->push_back(PhysBod{ fromGeometry(left_foot_geom, col), left_foot_r });
 
 	// arms
 
-	double arm_length = 0.55;
-	double arm_radius = 0.138;
-	double arm_verticle_offset = 0.0962;
-	double arm_horz_offset = 0.508;
+	double arm_length = 0.55 * scale;
+	double arm_radius = 0.138 * scale;
+	double arm_verticle_offset = 0.0962 * scale;
+	double arm_horz_offset = 0.508 * scale;
 	phyz::ConvexUnionGeometry arm_geometry = phyz::ConvexUnionGeometry::capsule(mthz::Vec3(), arm_radius, arm_length);
 	
 	mthz::Vec3 right_arm_pos = pos + mthz::Vec3(-arm_horz_offset, arm_verticle_offset, 0);
 	phyz::ConvexUnionGeometry right_arm_geom = arm_geometry.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1))).getTranslated(right_arm_pos);
 	phyz::RigidBody* right_arm_r = p->createRigidBody(right_arm_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(right_arm_geom), right_arm_r });
+	body_dest->push_back(PhysBod{ fromGeometry(right_arm_geom, col), right_arm_r });
 
 	mthz::Vec3 left_arm_pos = pos + mthz::Vec3(arm_horz_offset, arm_verticle_offset, 0);
 	phyz::ConvexUnionGeometry left_arm_geom = arm_geometry.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1))).getTranslated(left_arm_pos);
 	phyz::RigidBody* left_arm_r = p->createRigidBody(left_arm_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(left_arm_geom), left_arm_r });
+	body_dest->push_back(PhysBod{ fromGeometry(left_arm_geom, col), left_arm_r });
 
 	double forearm_offset = arm_length + arm_radius;
-	double forearm_length = 0.55;
-	double forearm_radius = 0.0923;
+	double forearm_length = 0.55 * scale;
+	double forearm_radius = 0.0923 * scale;
 	phyz::ConvexUnionGeometry forearm_geom = phyz::ConvexUnionGeometry::capsule(mthz::Vec3(), forearm_radius, forearm_length);
 
 	mthz::Vec3 right_forearm_pos = right_arm_pos + mthz::Vec3(-forearm_offset, 0, 0);
 	phyz::ConvexUnionGeometry right_forearm_geom = forearm_geom.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1))).getTranslated(right_forearm_pos);
 	phyz::RigidBody* right_forearm_r = p->createRigidBody(right_forearm_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(right_forearm_geom), right_forearm_r });
+	body_dest->push_back(PhysBod{ fromGeometry(right_forearm_geom, col), right_forearm_r });
 
 	mthz::Vec3 left_forearm_pos = left_arm_pos + mthz::Vec3(forearm_offset, 0, 0);
 	phyz::ConvexUnionGeometry left_forearm_geom = forearm_geom.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1))).getTranslated(left_forearm_pos);
 	phyz::RigidBody* left_forearm_r = p->createRigidBody(left_forearm_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(left_forearm_geom), left_forearm_r });
+	body_dest->push_back(PhysBod{ fromGeometry(left_forearm_geom, col), left_forearm_r });
 
 	double hand_offset = forearm_length + forearm_radius / 2.0;
 	double hand_height = 0.12 * scale;
@@ -461,12 +463,12 @@ std::vector<phyz::RigidBody*> createRagdoll(phyz::PhysicsEngine* p, std::vector<
 	mthz::Vec3 right_hand_pos = right_forearm_pos + mthz::Vec3(-hand_offset, 0, 0);
 	phyz::ConvexUnionGeometry right_hand_geom = hand_geom.getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1))).getTranslated(right_hand_pos);
 	phyz::RigidBody* right_hand_r = p->createRigidBody(right_hand_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(right_hand_geom), right_hand_r });
+	body_dest->push_back(PhysBod{ fromGeometry(right_hand_geom, col), right_hand_r });
 
 	mthz::Vec3 left_hand_pos = left_forearm_pos + mthz::Vec3(hand_offset, 0, 0);
 	phyz::ConvexUnionGeometry left_hand_geom = hand_geom.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(0, 0, 1))).getTranslated(left_hand_pos);
 	phyz::RigidBody* left_hand_r = p->createRigidBody(left_hand_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(left_hand_geom), left_hand_r });
+	body_dest->push_back(PhysBod{ fromGeometry(left_hand_geom, col), left_hand_r });
 
 	// neck + head
 	mthz::Vec3 neck_pos = pos + mthz::Vec3(0, 0.245 * scale, 0);
@@ -474,13 +476,13 @@ std::vector<phyz::RigidBody*> createRagdoll(phyz::PhysicsEngine* p, std::vector<
 	double neck_length = 0.25 * scale;
 	phyz::ConvexUnionGeometry neck_geom = phyz::ConvexUnionGeometry::capsule(neck_pos, neck_radius, neck_length);
 	phyz::RigidBody* neck_r = p->createRigidBody(neck_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(neck_geom), neck_r });
+	body_dest->push_back(PhysBod{ fromGeometry(neck_geom, col), neck_r });
 
 	double head_radius = 0.27 * scale;
 	mthz::Vec3 head_pos = neck_pos + mthz::Vec3(0, neck_length + head_radius * 0.5, head_radius * 0.33);
 	phyz::ConvexUnionGeometry head_geom = phyz::ConvexUnionGeometry::sphere(head_pos, head_radius);
 	phyz::RigidBody* head_r = p->createRigidBody(head_geom);
-	body_dest->push_back(PhysBod{ fromGeometry(head_geom), head_r });
+	body_dest->push_back(PhysBod{ fromGeometry(head_geom, col), head_r });
 
 	// constraints
 

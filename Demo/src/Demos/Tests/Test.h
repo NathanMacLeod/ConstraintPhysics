@@ -24,7 +24,7 @@ class Test {
 public:
 	virtual std::string getTestName() const = 0;
 	virtual bool canBeRunWithGraphics() const = 0;
-	virtual void overrideCameraInitialPosition(mthz::Vec3* cam_pos, mthz::Quaternion* cam_orient) const {};
+	virtual void getCameraInitialPosition(mthz::Vec3* cam_pos, mthz::Quaternion* cam_orient) const { *cam_pos = mthz::Vec3(0, 2, 10); *cam_orient = mthz::Quaternion(); };
 	virtual TestExpectationStatus getTestExpectation() const = 0;
 	virtual phyz::PhysicsEngine* initTest(uint32_t thread_count, std::vector<PhysBod>* bodies) = 0; // if creating a physics engine instance is not applicable, this will return nullptr
 	virtual TestOutcome tickTestOnePhysicsStep() = 0; // for use when running the test with graphics.

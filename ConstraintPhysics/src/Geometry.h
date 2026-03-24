@@ -3,6 +3,8 @@
 #include "AABB_Tree.h"
 #include "HACD.h"
 
+class DebugDemo;
+
 namespace phyz {
 	class RigidBody;
 
@@ -60,28 +62,36 @@ namespace phyz {
 
 	struct StaticMeshVertex {
 		mthz::Vec3 p;
-		//Material material;
-		int id;
+		uint32_t self_index;
+
+		std::vector<mthz::Vec3> valid_normal_gauss_map;
 	};
 
-	struct StaticMeshEdge {
-		mthz::Vec3 p1, p2;
+	struct StaticMeshHalfEdge {
+		uint32_t p1_index, p2_index;
+		int32_t twin_index; // the opposite edge of the neighboring triangle. if there is no neighbor on this edge, the value is -1;
+		uint32_t next_index; // the half_edge on this triangle starting from p2_index
+		uint32_t triangle_index;
+		uint32_t self_index;
 		mthz::Vec3 out_direction;
-		//Material material;
-		int id;
+		uint32_t id;
+
+		bool has_gauss_arc;
+		mthz::Vec3 gauss_arc_g1;
+		mthz::Vec3 gauss_arc_g2;
 	};
 
 	struct StaticMeshFace {
 		mthz::Vec3 normal;
-		StaticMeshVertex vertices[3];
-		StaticMeshEdge edges[3];
-		std::vector<mthz::Vec3> gauss_region;
-		int concave_neighbor_count;
+		uint32_t vertex_indices[3]; // verts
+		uint32_t half_edge_indices[3]; //edges
+		uint32_t self_index;
+
 		Material material;
 		AABB aabb;
-		int id;
+		//int id;
 
-		inline AABB computeAABB() const { return AABB::encapsulatePointCloud({ vertices[0].p, vertices[1].p, vertices[2].p }); }
+		inline AABB computeAABB(StaticMeshGeometry& parent) const;
 		StaticMeshFace getTransformed(const mthz::Mat3& rot, mthz::Vec3 translation, mthz::Vec3 center_of_rotation) const;
 	};
 
@@ -99,10 +109,19 @@ namespace phyz {
 
 		RayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 
+		inline StaticMeshVertex get_vertex(uint32_t index) const { assert(index < vertices.size()); return vertices[index]; }
+		inline StaticMeshHalfEdge get_half_edge(uint32_t index) const { assert(index < half_edges.size()); return half_edges[index]; }
+		inline StaticMeshFace get_triangle(uint32_t index) const { assert(index < triangles.size()); return triangles[index]; }
+
 		friend class Surface;
 		friend class Edge;
 		friend class RigidBody;
+		friend class DebugDemo;
+		friend class StaticMeshHalfEdge;
+		friend class StaticMeshFace;
 	private:
+		std::vector<StaticMeshVertex> vertices;
+		std::vector<StaticMeshHalfEdge> half_edges;
 		std::vector<StaticMeshFace> triangles;
 		AABBTree<unsigned int> aabb_tree;
 	};

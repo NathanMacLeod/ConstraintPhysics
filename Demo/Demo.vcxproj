@@ -156,7 +156,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="RagdollTests.h" />
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\Demos\AngularMomentumDemo.h" />
     <ClInclude Include="src\Demos\CarDemo.h" />
@@ -180,8 +179,11 @@
     <ClInclude Include="src\Demos\Tests\ConstraintTests.h" />
     <ClInclude Include="src\Demos\Tests\HolonomicBlockSolvingTests.h" />
     <ClInclude Include="src\Demos\Tests\MassPropertyTests.h" />
+    <ClInclude Include="src\Demos\Tests\RagdollTests.h" />
+    <ClInclude Include="src\Demos\Tests\RaycastTests.h" />
     <ClInclude Include="src\Demos\Tests\Test.h" />
     <ClInclude Include="src\Demos\Tests\ThreadManagerTests.h" />
+    <ClInclude Include="src\Demos\Tests\TriangleMeshTests.h" />
     <ClInclude Include="src\Demos\TrebuchetDemo.h" />
     <ClInclude Include="src\Demos\VideoDemo.h" />
     <ClInclude Include="src\Demos\WreckingBallDemo.h" />
@@ -198,6 +200,7 @@
   <ItemGroup>
     <None Include="resources\shaders\AgentColor.shader" />
     <None Include="resources\shaders\Basic.shader" />
+    <None Include="resources\shaders\LineDraw.shader" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

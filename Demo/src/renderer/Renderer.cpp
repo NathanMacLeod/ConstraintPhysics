@@ -200,11 +200,11 @@ namespace rndr {
         glDrawElements(GL_TRIANGLES, ba.getIndexCount(), GL_UNSIGNED_INT, nullptr);
     }
 
-    //void draw(const BatchArray& ba, const Shader& s) {
-    //    ba.bind();
-    //    s.bind();
-    //    //glDrawElements(GL_TRIANGLES, ba.getIndexCount(), GL_UNSIGNED_INT, nullptr);
-    //}
+    void drawLines(const BatchArray& ba, const Shader& s) {
+        s.bind();
+        ba.bind();
+        glDrawElements(GL_LINES, ba.getIndexCount(), GL_UNSIGNED_INT, nullptr);
+    }
 
     bool render_loop(float* fElapsedTimeOut) {
         glfwSwapBuffers(window);

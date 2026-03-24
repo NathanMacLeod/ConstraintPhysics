@@ -58,150 +58,6 @@ Select which scene to run: ", { "1", "2", "3", "4"}
 		}
 	}
 
-	static void addRagdoll(phyz::PhysicsEngine* p, std::vector<PhysBod>* bodies, mthz::Vec3 pos, double scale=1.0) {
-		// TODO:
-		// 1. add cone constraints + twist constraints 
-		// 2. add capsules, and use them as the primary collider
-		// 3. segment the torso into multiple capsules
-
-		//torso
-		mthz::Vec3 torso_dim = mthz::Vec3(0.5, 2, 1.5) * scale;
-		mthz::Vec3 torso_lower_corner = pos - torso_dim / 2;
-		phyz::ConvexUnionGeometry torso_geom = phyz::ConvexUnionGeometry::box(torso_lower_corner, torso_dim.x, torso_dim.y, torso_dim.z);
-		phyz::RigidBody* torso_r = p->createRigidBody(torso_geom);
-		bodies->push_back(PhysBod{ fromGeometry(torso_geom), torso_r });
-
-		//head
-		mthz::Vec3 neck_pos = pos + mthz::Vec3(0, torso_dim.y / 2, 0);
-		double head_radius = 0.5 * scale;
-		phyz::ConvexUnionGeometry head_geom = phyz::ConvexUnionGeometry::sphere(neck_pos + mthz::Vec3(0, head_radius, 0), head_radius);
-		phyz::RigidBody* head_r = p->createRigidBody(head_geom);
-		bodies->push_back(PhysBod{ fromGeometry(head_geom), head_r });
-
-		//neck hinge
-		phyz::ConstraintID neck_hinge = p->addHingeConstraint(torso_r, head_r, neck_pos, mthz::Vec3(0, 1, 0));
-		p->addMotorConstraint(neck_hinge, -PI/2.0, PI/2.0);
-
-		//thighs
-		double thigh_radius = 0.3 * scale;
-		double thigh_length = 1.5 * scale;
-		double thigh_offset_from_center = 0.2 * torso_dim.z;
-
-		//right thigh
-		mthz::Vec3 right_thigh_bottom_center = pos + mthz::Vec3(0, -torso_dim.y / 2, 0) + mthz::Vec3(0, -thigh_length, -thigh_offset_from_center);
-		phyz::ConvexUnionGeometry right_thigh_geom = phyz::ConvexUnionGeometry::cylinder(right_thigh_bottom_center, thigh_radius, thigh_length);
-		phyz::RigidBody* right_thigh_r = p->createRigidBody(right_thigh_geom);
-		bodies->push_back(PhysBod{ fromGeometry(right_thigh_geom), right_thigh_r });
-
-		//hip joint to right thigh
-		p->addBallSocketConstraint(right_thigh_r, torso_r, right_thigh_bottom_center + mthz::Vec3(0, thigh_length, 0));
-
-		//left thigh
-		mthz::Vec3 left_thigh_bottom_center = pos + mthz::Vec3(0, -torso_dim.y / 2, 0) + mthz::Vec3(0, -thigh_length, thigh_offset_from_center);
-		phyz::ConvexUnionGeometry left_thigh_geom = phyz::ConvexUnionGeometry::cylinder(left_thigh_bottom_center, thigh_radius, thigh_length);
-		phyz::RigidBody* left_thigh_r = p->createRigidBody(left_thigh_geom);
-		bodies->push_back(PhysBod{ fromGeometry(left_thigh_geom), left_thigh_r });
-
-		//hip joint to left thigh
-		p->addBallSocketConstraint(left_thigh_r, torso_r, left_thigh_bottom_center + mthz::Vec3(0, thigh_length, 0));
-
-		// shins
-		double shin_radius = 0.25 * scale;
-		double shin_length = 1.5 * scale;
-
-		//right shin
-		mthz::Vec3 right_shin_bottom_center = right_thigh_bottom_center + mthz::Vec3(0, -shin_length, 0);
-		phyz::ConvexUnionGeometry right_shin_geom = phyz::ConvexUnionGeometry::cylinder(right_shin_bottom_center, shin_radius, shin_length);
-		phyz::RigidBody* right_shin_r = p->createRigidBody(right_shin_geom);
-		bodies->push_back(PhysBod{ fromGeometry(right_shin_geom), right_shin_r });
-
-		// right knee joint
-		phyz::ConstraintID right_knee_joint = p->addHingeConstraint(right_shin_r, right_thigh_r, right_thigh_bottom_center, mthz::Vec3(0, 0, 1));
-		p->addMotorConstraint(right_knee_joint, 0, PI * 0.9);
-
-		//left shin
-		mthz::Vec3 left_shin_bottom_center = left_thigh_bottom_center + mthz::Vec3(0, -shin_length, 0);
-		phyz::ConvexUnionGeometry left_shin_geom = phyz::ConvexUnionGeometry::cylinder(left_shin_bottom_center, shin_radius, shin_length);
-		phyz::RigidBody* left_shin_r = p->createRigidBody(left_shin_geom);
-		bodies->push_back(PhysBod{ fromGeometry(left_shin_geom), left_shin_r });
-
-		// left knee joint
-		phyz::ConstraintID left_knee_joint = p->addHingeConstraint(left_shin_r, left_thigh_r, left_thigh_bottom_center, mthz::Vec3(0, 0, 1));
-		p->addMotorConstraint(left_knee_joint, 0, PI * 0.9);
-
-		// feet
-		double foot_length = 1 * scale;
-		double foot_width = 0.5 * scale;
-		double foot_height = 0.25 * scale;
-		mthz::Vec3 foot_offset_from_bottom_of_shin = mthz::Vec3(foot_length - shin_radius, foot_height, foot_width / 2.0);
-
-		// right foot
-		phyz::ConvexUnionGeometry right_foot_geom = phyz::ConvexUnionGeometry::box(right_shin_bottom_center - foot_offset_from_bottom_of_shin, foot_length, foot_height, foot_width);
-		phyz::RigidBody* right_foot_r = p->createRigidBody(right_foot_geom);
-		bodies->push_back(PhysBod{ fromGeometry(right_foot_geom), right_foot_r });
-
-		//right ankle joint
-		p->addBallSocketConstraint(right_foot_r, right_shin_r, right_shin_bottom_center);
-
-		// left foot
-		phyz::ConvexUnionGeometry left_foot_geom = phyz::ConvexUnionGeometry::box(left_shin_bottom_center - foot_offset_from_bottom_of_shin, foot_length, foot_height, foot_width);
-		phyz::RigidBody* left_foot_r = p->createRigidBody(left_foot_geom);
-		bodies->push_back(PhysBod{ fromGeometry(left_foot_geom), left_foot_r });
-
-		// left ankle joint
-		p->addBallSocketConstraint(left_foot_r, left_shin_r, left_shin_bottom_center);
-
-		// upper arm
-		double upper_arm_radius = 0.2 * scale;
-		double upper_arm_length = 1.5 * scale;
-
-		//right upper arm
-		mthz::Vec3 right_shoulder_position = pos + mthz::Vec3(0, torso_dim.y / 2.0 - upper_arm_radius, -torso_dim.z / 2.0);
-		phyz::ConvexUnionGeometry right_upper_arm_geom = phyz::ConvexUnionGeometry::cylinder(right_shoulder_position, upper_arm_radius, upper_arm_length)
-			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(1, 0, 0)), right_shoulder_position);
-		phyz::RigidBody* right_upper_arm_r = p->createRigidBody(right_upper_arm_geom);
-		bodies->push_back(PhysBod{ fromGeometry(right_upper_arm_geom), right_upper_arm_r });
-
-		// right shoulder joint
-		p->addBallSocketConstraint(right_upper_arm_r, torso_r, right_shoulder_position);
-
-		//left upper arm
-		mthz::Vec3 left_shoulder_position = pos + mthz::Vec3(0, torso_dim.y / 2.0 - upper_arm_radius, torso_dim.z / 2.0);
-		phyz::ConvexUnionGeometry left_upper_arm_geom = phyz::ConvexUnionGeometry::cylinder(left_shoulder_position, upper_arm_radius, upper_arm_length)
-																				  .getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), left_shoulder_position);
-		phyz::RigidBody* left_upper_arm_r = p->createRigidBody(left_upper_arm_geom);
-		bodies->push_back(PhysBod{ fromGeometry(left_upper_arm_geom), left_upper_arm_r });
-
-		// left shoulder joint
-		p->addBallSocketConstraint(left_upper_arm_r, torso_r, left_shoulder_position);
-
-		// forearm
-		double fore_arm_radius = 0.15 * scale;
-		double fore_arm_length = 1.5 * scale;
-
-		// right forearm
-		mthz::Vec3 right_elbow_position = right_shoulder_position + mthz::Vec3(0, 0, -upper_arm_length);
-		phyz::ConvexUnionGeometry right_fore_arm_geom = phyz::ConvexUnionGeometry::cylinder(right_elbow_position, upper_arm_radius, upper_arm_length)
-			.getRotated(mthz::Quaternion(-PI / 2.0, mthz::Vec3(1, 0, 0)), right_elbow_position);
-		phyz::RigidBody* right_fore_arm_r = p->createRigidBody(right_fore_arm_geom);
-		bodies->push_back(PhysBod{ fromGeometry(right_fore_arm_geom), right_fore_arm_r });
-
-		// right elbow joint
-		phyz::ConstraintID right_elbow_constraint = p->addHingeConstraint(right_upper_arm_r, right_fore_arm_r, right_elbow_position, mthz::Vec3(0, 1, 0));
-		p->addMotorConstraint(right_elbow_constraint, -PI * 0.9, 0);
-
-		// left forearm
-		mthz::Vec3 left_elbow_position = left_shoulder_position + mthz::Vec3(0, 0, upper_arm_length);
-		phyz::ConvexUnionGeometry left_fore_arm_geom = phyz::ConvexUnionGeometry::cylinder(left_elbow_position, upper_arm_radius, upper_arm_length)
-			                                                                     .getRotated(mthz::Quaternion(PI / 2.0, mthz::Vec3(1, 0, 0)), left_elbow_position);
-		phyz::RigidBody* left_fore_arm_r = p->createRigidBody(left_fore_arm_geom);
-		bodies->push_back(PhysBod{ fromGeometry(left_fore_arm_geom), left_fore_arm_r });
-
-		// left elbow joint
-		phyz::ConstraintID left_elbow_constraint = p->addHingeConstraint(left_upper_arm_r, left_fore_arm_r, left_elbow_position, mthz::Vec3(0, 1, 0));
-		p->addMotorConstraint(left_elbow_constraint, 0, PI * 0.9);
-	}
-
 	enum SceneOptions { BLOCK_PILE, BLOCK_TOWER, RAGDOLL_PILE, DISPERSED_RAGDOLLS };
 
 	void run() override {
@@ -238,12 +94,7 @@ Select which scene to run: ", { "1", "2", "3", "4"}
 		phyz::RigidBody::PKey draw_p = r2->trackPoint(mthz::Vec3(0, -2, 0));
 		bodies.push_back({ m2, r2 });
 
-
-		double height_max = 4.45;
-		double height_min = 1;
-		double height_delta_vel = 1.5;
-		phyz::ConstraintID scissor_height_right;
-		phyz::ConstraintID scissor_height_left;
+		double ragdoll_scale = 0.4;
 
 		// setup for specific scenes
 		if (selected_scene == BLOCK_PILE) {
@@ -271,7 +122,7 @@ Select which scene to run: ", { "1", "2", "3", "4"}
 
 			double y_offset = 6;
 			for (int i = 0; i < 50; i++) {
-				addRagdoll(&p, &bodies, pos + mthz::Vec3(0, y_offset * i, 0));
+				createRagdoll(&p, &bodies, pos + mthz::Vec3(0, y_offset * i, 0), ragdoll_scale);
 			}
 		}
 		else if (selected_scene == DISPERSED_RAGDOLLS) {
@@ -283,7 +134,7 @@ Select which scene to run: ", { "1", "2", "3", "4"}
 			for (int x_offset = 0; x_offset < 5; x_offset++) {
 				for (int y_offset = 0; y_offset < 10; y_offset++) {
 					for (int z_offset = 0; z_offset < 4; z_offset++) {
-						addRagdoll(&p, &bodies, pos + mthz::Vec3(x_offset * pile_spacing, y_offset * y_spacing, z_offset * pile_spacing));
+						createRagdoll(&p, &bodies, pos + mthz::Vec3(x_offset * pile_spacing, y_offset * y_spacing, z_offset * pile_spacing), ragdoll_scale);
 					}
 				}
 			}

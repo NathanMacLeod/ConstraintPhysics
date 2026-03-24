@@ -11,6 +11,8 @@
 #include "Tests/HolonomicBlockSolvingTests.h"
 #include "Tests/ConstraintTests.h"
 #include "Tests/MassPropertyTests.h"
+#include "Tests/RagdollTests.h"
+#include "Tests/RaycastTests.h"
 
 class UnitTestsRunner : public DemoScene {
 private:
@@ -23,10 +25,9 @@ private:
 
 		assert(test_pengine != nullptr); // cant think of a need for a non-physics based right now.
 		// basic rendering stuff
-		mthz::Vec3 pos(0, 2, 10);
+		mthz::Vec3 pos;
 		mthz::Quaternion orient;
-		// optional, test can choose if it wants a different camera
-		test->overrideCameraInitialPosition(&pos, &orient);
+		test->getCameraInitialPosition(&pos, &orient);
 		double mv_speed = 2;
 		double rot_speed = 1;
 
@@ -34,15 +35,21 @@ private:
 		rndr::Shader shader("resources/shaders/Basic.shader");
 		shader.bind();
 
+		bool object_highlighted = false;
+		unsigned int highlighted_object_id = -1;
+
 		float fElapsedTime;
 		double phyz_time = 0;
 		double timestep_duration = test_pengine->getStep_time();
 
 		// adding rendering for contact points
 		Mesh contact_ball_mesh = fromGeometry(phyz::ConvexUnionGeometry::merge(phyz::ConvexUnionGeometry::sphere(mthz::Vec3(), 0.03), phyz::ConvexUnionGeometry::cylinder(mthz::Vec3(), 0.02, 0.1)), { 1.0, 0, 0 });
+
+		bool color_by_manifold = false;
 		struct Contact {
 			mthz::Vec3 p;
 			mthz::Vec3 n;
+			color c;
 		};
 		std::vector<Contact> all_contact_points;
 
@@ -50,13 +57,26 @@ private:
 			const std::vector<phyz::Manifold>& manifold) {
 				for (const phyz::Manifold& m : manifold) {
 					for (phyz::ContactP p : m.points) {
-						all_contact_points.push_back({ p.pos, m.normal });
+
+						// generate a psuedo random color from the magicID- should make a clear visualization a contact is preserved by its magicID
+						uint64_t uid = std::hash<phyz::MagicID>{}(p.magicID);
+						color c = {
+							((uid & 0x0000FF) >> 0) / 255.0f,
+							((uid & 0x00FF00) >> 8) / 255.0f,
+							((uid & 0xFF0000) >> 16) / 255.0f
+						};
+						
+						all_contact_points.push_back({ p.pos, m.normal, c });
 					}
 				}
 			}
 		);
 
 		int tick_count = 0;
+
+		rndr::lockMouse();
+		double mouse_sensitivity = 0.0015;
+		rndr::MousePos mouse_position = rndr::getMousePosition();
 
 		while (rndr::render_loop(&fElapsedTime)) {
 			// Listening to user input
@@ -73,18 +93,14 @@ private:
 				pos += orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
 			}
 
-			if (rndr::getKeyDown(GLFW_KEY_UP)) {
-				orient = orient * mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
-			}
-			else if (rndr::getKeyDown(GLFW_KEY_DOWN)) {
-				orient = orient * mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
-			}
-			if (rndr::getKeyDown(GLFW_KEY_LEFT)) {
-				orient = mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
-			}
-			else if (rndr::getKeyDown(GLFW_KEY_RIGHT)) {
-				orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
-			}
+			// mouse controlled camera movement
+			rndr::MousePos new_mouse = rndr::getMousePosition();
+			double mouse_delta_x = new_mouse.x - mouse_position.x;
+			double mouse_delta_y = new_mouse.y - mouse_position.y;
+			mouse_position = new_mouse;
+
+			orient = orient * mthz::Quaternion(mouse_sensitivity * mouse_delta_y, mthz::Vec3(1, 0, 0));
+			orient = mthz::Quaternion(-mouse_sensitivity * mouse_delta_x, mthz::Vec3(0, 1, 0)) * orient;
 
 			if (rndr::getKeyPressed(GLFW_KEY_R)) {
 				return TestOutcome{ TestOutcomeState::RESET };
@@ -93,9 +109,31 @@ private:
 				paused = !paused;
 			}
 
-			//if (tick_count == 565) {
-			//	paused = true;
-			//}
+			if (rndr::getMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
+				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
+				phyz::RayHitInfo hit_info = test_pengine->raycastFirstIntersection(pos, camera_dir);
+
+				if (hit_info.did_hit) {
+					object_highlighted = true;
+					highlighted_object_id = hit_info.hit_object->getID();
+					printf("selected object id: %u\n", highlighted_object_id);
+				}
+				else {
+					object_highlighted = false;
+				}
+			}
+
+			if (tick_count == 135) {
+				for (auto itr = active_models.begin(); itr != active_models.end();) {
+					PhysBod& pb = *itr;
+					if (pb.r->getID() == 70 || pb.r->getMovementType() == phyz::RigidBody::FIXED) { itr++; }
+					else {
+						test_pengine->removeRigidBody(pb.r);
+						itr = active_models.erase(itr); 
+					}
+				}
+				paused = true;
+			}
 
 			// running the test
 			if (!paused) {
@@ -104,13 +142,14 @@ private:
 			}
 			else if (rndr::getKeyPressed(GLFW_KEY_T)) {
 				phyz_time += timestep_duration; //advance exactly one frame
+				printf("tick: %d\n", tick_count);
 			}
 
 			while (outcome.state == TestOutcomeState::STILL_RUNNING && phyz_time > timestep_duration) {
-				//printf("%d\n", tick_count++);
 				all_contact_points.clear();
 				phyz_time -= timestep_duration;
 				outcome = test->tickTestOnePhysicsStep();
+				tick_count++;
 			}
 
 			// rendering
@@ -125,14 +164,18 @@ private:
 
 			float aspect_ratio = (float)properties.window_height / properties.window_width;
 			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 500.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
-			shader.setUniform3f("u_ambient_light", 0.8f, 0.8f, 0.8f);
+			shader.setUniform3f("u_ambient_light", 1.0f, 1.0f, 1.0f);
 			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
-			shader.setUniform3f("u_pointlight_col", 0.2f, 0.2f, 0.2f);
+			shader.setUniform3f("u_pointlight_col", 1.0f, 1.0f, 1.0f);
 			shader.setUniform1i("u_Asleep", false);
 
 			for (const PhysBod& b : active_models) {
 
-				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, b.r->getAsleep(), color{ 1.0f, 0.0f, 0.0f });
+				bool is_highlighted = object_highlighted && b.r->getID() == highlighted_object_id;
+				color override_color = is_highlighted ? color{ 1.0, 1.0, 0.0 } : color{ 1.0, 0.0, 0.0 };
+				bool color_overriden = is_highlighted || b.r->getAsleep();
+
+				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, color_overriden, override_color);
 
 				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);
@@ -153,7 +196,7 @@ private:
 					rot = mthz::Quaternion(ang, axis);
 				}
 
-				Mesh transformed_mesh = getTransformed(contact_ball_mesh, c.p, rot, cam_pos, cam_orient, false, color{ 1.0f, 0.0f, 0.0f });
+				Mesh transformed_mesh = getTransformed(contact_ball_mesh, c.p, rot, cam_pos, cam_orient, true, c.c);
 
 				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);
@@ -179,6 +222,8 @@ public:
 		test_groups.push_back(std::make_unique<ConstraintTestsGroup>());
 		test_groups.push_back(std::make_unique<ThreadManagerTestGroup>());
 		test_groups.push_back(std::make_unique<MassPropertiesTestGroup>());
+		test_groups.push_back(std::make_unique<RagdollTestGroup>());
+		test_groups.push_back(std::make_unique<RaycastTestGroup>());
 	}
 
 	~UnitTestsRunner() override {}
@@ -201,17 +246,22 @@ public:
 		// if only running a specific test group, also choose to all tests in the group, or only a specific test
 		int selected_indx = std::stoi(out["selected_test_group"]);
 		if (selected_indx != test_groups.size()) {
-			std::string test_options = "The available tests in the selected group are the following:\n";
 			const std::unique_ptr<TestGroup>& selected_grp = test_groups[selected_indx];
-			for (int i = 0; i <= selected_grp->getTests().size(); i++) {
-				std::string option_name = (i == selected_grp->getTests().size()) ? "Run All Tests" : selected_grp->getTests()[i]->getTestName();
-				test_options += std::format("({}) {}\n", i, option_name);
+			if (selected_grp->getTests().size() == 1) {
+				out["selected_tests"] = "0";
 			}
-			test_options += "\n";
+			else {
+				std::string test_options = "The available tests in the selected group are the following:\n";
+				for (int i = 0; i <= selected_grp->getTests().size(); i++) {
+					std::string option_name = (i == selected_grp->getTests().size()) ? "Run All Tests" : selected_grp->getTests()[i]->getTestName();
+					test_options += std::format("({}) {}\n", i, option_name);
+				}
+				test_options += "\n";
 
-			out["selected_tests"] = pickInteger(
-				test_options + "Choose to run one, or all of the above tests: ", 0, static_cast<int>(selected_grp->getTests().size())
-			);
+				out["selected_tests"] = pickInteger(
+					test_options + "Choose to run one, or all of the above tests: ", 0, static_cast<int>(selected_grp->getTests().size())
+				);
+			}
 		}
 
 		// choose whether to run in interactive mode with graphics

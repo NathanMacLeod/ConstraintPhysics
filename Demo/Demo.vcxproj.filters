@@ -170,7 +170,13 @@
     <ClInclude Include="src\Demos\Tests\MassPropertyTests.h">
       <Filter>src\Demos\Tests</Filter>
     </ClInclude>
-    <ClInclude Include="RagdollTests.h">
+    <ClInclude Include="src\Demos\Tests\RagdollTests.h">
+      <Filter>src\Demos\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\Tests\RaycastTests.h">
+      <Filter>src\Demos\Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\Tests\TriangleMeshTests.h">
       <Filter>src\Demos\Tests</Filter>
     </ClInclude>
   </ItemGroup>
@@ -179,6 +185,9 @@
       <Filter>resources\shaders</Filter>
     </None>
     <None Include="resources\shaders\AgentColor.shader">
+      <Filter>resources\shaders</Filter>
+    </None>
+    <None Include="resources\shaders\LineDraw.shader">
       <Filter>resources\shaders</Filter>
     </None>
   </ItemGroup>

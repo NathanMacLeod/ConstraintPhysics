@@ -10,7 +10,6 @@ public:
 	std::string getTestName() const override { return "High mass Ratio Chain"; }
 	bool canBeRunWithGraphics() const override { return true; }
 	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
-	void overrideCameraInitialPosition(mthz::Vec3* cam_pos, mthz::Quaternion* cam_orient) const override { cam_pos->y = -40; cam_pos->z = 100; }
 	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
 		double tick_frequency = 60.0;
 		test_total_tick_duration = static_cast<uint32_t>(30 * tick_frequency);

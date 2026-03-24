@@ -594,7 +594,6 @@ namespace phyz {
 		RayHitInfo closest_hit_info = { false };
 		RigidBody* closest_hit_body = nullptr;
 		for (RigidBody* b : candidates) {
-
 			if (std::find(ignore_list.begin(), ignore_list.end(), b) != ignore_list.end()) continue;
 
 			RayHitInfo hit_info = b->checkRayIntersection(ray_origin, ray_dir);
@@ -602,7 +601,6 @@ namespace phyz {
 				closest_hit_info = hit_info;
 				closest_hit_body = b;
 			}
-
 		}
 
 		return closest_hit_info;

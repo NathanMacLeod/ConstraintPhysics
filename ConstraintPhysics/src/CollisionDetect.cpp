@@ -279,54 +279,54 @@ namespace phyz {
 		
 	}
 
-	static inline ContactArea projectTriangleFace(const StaticMeshFace& s, mthz::Vec3 u, mthz::Vec3 w) {
-		ContactArea out = { std::vector<mthz::NVec<2>>(3), std::vector<int>(3), s.id, FACE };
+	//static inline ContactArea projectTriangleFace(const StaticMeshFace& s, mthz::Vec3 u, mthz::Vec3 w) {
+	//	ContactArea out = { std::vector<mthz::NVec<2>>(3), std::vector<int>(3), s.id, FACE };
 
-		for (int i = 0; i < 3; i++) {
-			mthz::Vec3 v = s.vertices[i].p;
-			out.ps[i] = mthz::NVec<2>{ v.dot(u), v.dot(w) };
-			out.p_IDs[i] = i;
-		}
+	//	for (int i = 0; i < 3; i++) {
+	//		mthz::Vec3 v = s.vertices[i].p;
+	//		out.ps[i] = mthz::NVec<2>{ v.dot(u), v.dot(w) };
+	//		out.p_IDs[i] = i;
+	//	}
 
-		return out;
-	}
+	//	return out;
+	//}
 
-	static inline ContactArea projectTriangleEdge(const StaticMeshEdge& e, mthz::Vec3 n, mthz::Vec3 p, mthz::Vec3 u, mthz::Vec3 w) {
-		ContactArea out = { std::vector<mthz::NVec<2>>(), std::vector<int>(), -1, EDGE };
+	//static inline ContactArea projectTriangleEdge(const StaticMeshEdge& e, mthz::Vec3 n, mthz::Vec3 p, mthz::Vec3 u, mthz::Vec3 w) {
+	//	ContactArea out = { std::vector<mthz::NVec<2>>(), std::vector<int>(), -1, EDGE };
 
-		out.ps = { mthz::NVec<2>{ e.p1.dot(u), e.p1.dot(w) }, mthz::NVec<2>{ e.p2.dot(u), e.p2.dot(w) } };
-		out.p_IDs = { e.id, e.id };
+	//	out.ps = { mthz::NVec<2>{ e.p1.dot(u), e.p1.dot(w) }, mthz::NVec<2>{ e.p2.dot(u), e.p2.dot(w) } };
+	//	out.p_IDs = { e.id, e.id };
 
-		return out;
-	}
+	//	return out;
+	//}
 
-	static ContactArea findTriangleContactArea(const StaticMeshFace& t, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
+	//static ContactArea findTriangleContactArea(const StaticMeshFace& t, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
 
-		double cos_ang = t.normal.dot(n);
-		if (1 - cos_ang <= COS_TOL) {
-			return projectTriangleFace(t, u, w);
-		}
+	//	double cos_ang = t.normal.dot(n);
+	//	if (1 - cos_ang <= COS_TOL) {
+	//		return projectTriangleFace(t, u, w);
+	//	}
 
-		for (int i = 0; i < 3; i++) {
-			if (i != p_ID && (i + 1) % 3 != p_ID) {
-				continue;
-			}
+	//	for (int i = 0; i < 3; i++) {
+	//		if (i != p_ID && (i + 1) % 3 != p_ID) {
+	//			continue;
+	//		}
 
-			StaticMeshEdge e = t.edges[i];
-			double sin_ang = abs((e.p2 - e.p1).normalize().dot(n));
-			if (sin_ang <= SIN_TOL) {
-				return projectTriangleEdge(e, n, p, u, w);
-			}
-		}
+	//		StaticMeshEdge e = t.edges[i];
+	//		double sin_ang = abs((e.p2 - e.p1).normalize().dot(n));
+	//		if (sin_ang <= SIN_TOL) {
+	//			return projectTriangleEdge(e, n, p, u, w);
+	//		}
+	//	}
 
-		return ContactArea{
-			{ mthz::NVec<2>{ p.dot(u), p.dot(w) } },
-			{ p_ID },
-			-1,
-			VERTEX
-		};
+	//	return ContactArea{
+	//		{ mthz::NVec<2>{ p.dot(u), p.dot(w) } },
+	//		{ p_ID },
+	//		-1,
+	//		VERTEX
+	//	};
 
-	}
+	//}
 
 	static inline ContactArea projectCylinderFace(const std::vector<mthz::Vec3> face_verts, mthz::Vec3 u, mthz::Vec3 w, int face_id, int point_id_offset) {
 		uint32_t n_points = static_cast<int>(face_verts.size());
@@ -2004,18 +2004,18 @@ namespace phyz {
 	static ExtremaInfo findTriangleExtrema(const StaticMeshFace& tri, mthz::Vec3 dir) {
 		ExtremaInfo extrema;
 
-		for (int i = 0; i < 3; i++) {
-			mthz::Vec3 p = tri.vertices[i].p;
-			double val = p.dot(dir);
-			if (val < extrema.min_val) {
-				extrema.min_pID = i;
-				extrema.min_val = val;
-			}
-			if (val > extrema.max_val) {
-				extrema.max_pID = i;
-				extrema.max_val = val;
-			}
-		}
+		//for (int i = 0; i < 3; i++) {
+		//	mthz::Vec3 p = tri.vertices[i].p;
+		//	double val = p.dot(dir);
+		//	if (val < extrema.min_val) {
+		//		extrema.min_pID = i;
+		//		extrema.min_val = val;
+		//	}
+		//	if (val > extrema.max_val) {
+		//		extrema.max_pID = i;
+		//		extrema.max_val = val;
+		//	}
+		//}
 
 		return extrema;
 	}
@@ -2025,43 +2025,43 @@ namespace phyz {
 		//return true;
 		double EPS = 0.0001;
 
-		switch (s.concave_neighbor_count) {
-		case 0:
-		case 1:
-			//the three points in counter-clockwise widning define a region on the surface of the sphere. the normal should lie in that surface to be valid
-			assert(s.gauss_region.size() == 3);
-			for (int i = 0; i < s.gauss_region.size(); i++) {
-				mthz::Vec3 inner_region_direction = s.gauss_region[i].cross(s.gauss_region[(i + 1) % s.gauss_region.size()]);
-				if (normal.dot(inner_region_direction) < -EPS) return false;
-			}
-			break;
-		case 2:
-		{
-			//the normal should lie on the arc defined by the two points
-			assert(s.gauss_region.size() == 2);
-			mthz::Vec3 arc_normal = s.gauss_region[0].cross(s.gauss_region[1]);
-			//check vector lies close to the plane
-			if (abs(normal.dot(arc_normal)) > EPS) return false;
-			mthz::Vec3 v0_up = arc_normal.cross(s.gauss_region[0]);
+		//switch (s.concave_neighbor_count) {
+		//case 0:
+		//case 1:
+		//	//the three points in counter-clockwise widning define a region on the surface of the sphere. the normal should lie in that surface to be valid
+		//	assert(s.gauss_region.size() == 3);
+		//	for (int i = 0; i < s.gauss_region.size(); i++) {
+		//		mthz::Vec3 inner_region_direction = s.gauss_region[i].cross(s.gauss_region[(i + 1) % s.gauss_region.size()]);
+		//		if (normal.dot(inner_region_direction) < -EPS) return false;
+		//	}
+		//	break;
+		//case 2:
+		//{
+		//	//the normal should lie on the arc defined by the two points
+		//	assert(s.gauss_region.size() == 2);
+		//	mthz::Vec3 arc_normal = s.gauss_region[0].cross(s.gauss_region[1]);
+		//	//check vector lies close to the plane
+		//	if (abs(normal.dot(arc_normal)) > EPS) return false;
+		//	mthz::Vec3 v0_up = arc_normal.cross(s.gauss_region[0]);
 
-			//check vector doesnt lie outside the arc within the plane
-			if (normal.dot(v0_up) < -EPS) return false;
-			mthz::Vec3 v1_down = s.gauss_region[1].cross(arc_normal);
-			if (normal.dot(v1_down) < -EPS) return false;
-			break;
-		}
-		case 3:
-			assert(s.gauss_region.size() == 1);
-			if (normal.dot(s.normal) < 1 - EPS) return false; //s.normal is only valid direction
-			break;
-		}
+		//	//check vector doesnt lie outside the arc within the plane
+		//	if (normal.dot(v0_up) < -EPS) return false;
+		//	mthz::Vec3 v1_down = s.gauss_region[1].cross(arc_normal);
+		//	if (normal.dot(v1_down) < -EPS) return false;
+		//	break;
+		//}
+		//case 3:
+		//	assert(s.gauss_region.size() == 1);
+		//	if (normal.dot(s.normal) < 1 - EPS) return false; //s.normal is only valid direction
+		//	break;
+		//}
 		
 		return true;
 	}
 
 	static Manifold SAT_PolyTriangle(const Polyhedron& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
 		Manifold out;
-		out.max_pen_depth = -1;
+/*		out.max_pen_depth = -1;
 		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		const GaussMap& ag = a.getGaussMap();
@@ -2188,14 +2188,14 @@ namespace phyz {
 			cp.magicID = MagicID{ cID, p.magic };
 			out.points.push_back(cp);
 		}
-		out.max_pen_depth = min_pen.pen_depth;
+		out.max_pen_depth = min_pen.pen_depth;*/
 
 		return out;
 	}
 
 	static Manifold SAT_SphereTriangle(const Sphere& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
 		Manifold out;
-		out.max_pen_depth = -1;
+/*		out.max_pen_depth = -1;
 		uint32_t a_feature_id = -1;
 		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
@@ -2270,14 +2270,14 @@ namespace phyz {
 
 		out.points.push_back(cp);
 
-		out.max_pen_depth = min_pen.pen_depth;
+		out.max_pen_depth = min_pen.pen_depth;*/
 
 		return out;
 	}
 
 	static Manifold SAT_CapsuleTriangle(const Capsule& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
 		Manifold out;
-		out.max_pen_depth = -1;
+/*		out.max_pen_depth = -1;
 		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
@@ -2458,14 +2458,14 @@ namespace phyz {
 			cp.magicID = MagicID{ cID, p.magic };
 			out.points.push_back(cp);
 		}
-		out.max_pen_depth = min_pen.pen_depth;
+		out.max_pen_depth = min_pen.pen_depth;*/
 
 		return out;
 	}
 
 	static Manifold SAT_CylinderTriangle(const Cylinder& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
 		Manifold out;
-		out.max_pen_depth = -1;
+/*		out.max_pen_depth = -1;
 		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
@@ -2640,7 +2640,7 @@ namespace phyz {
 			cp.magicID = MagicID{ cID, p.magic };
 			out.points.push_back(cp);
 		}
-		out.max_pen_depth = min_pen.pen_depth;
+		out.max_pen_depth = min_pen.pen_depth;*/
 
 		return out;
 	}
