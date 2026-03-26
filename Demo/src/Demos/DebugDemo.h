@@ -88,6 +88,7 @@ public:
 			}
 		}
 		if (selected_vertex_index != -1) {
+			printf("index: %d\n", hit_mesh_face->vertex_indices[selected_vertex_index]);
 			phyz::StaticMeshVertex v = geom.get_vertex(hit_mesh_face->vertex_indices[selected_vertex_index]);
 			mthz::Vec3 p = v.p;
 			float delta = 0.0001f;
@@ -229,11 +230,16 @@ public:
 		Mesh highlighted_gauss_map_lines;
 		Mesh highlighted_gauss_map_triangles;
 
-		//phyz::Mesh bunny_mesh = phyz::readOBJ("resources/mesh/bunny.obj", 50.0);
-		phyz::Mesh bunny_mesh = phyz::readOBJ("resources/mesh/weird_cases.obj", 1.0);
-		phyz::MeshInput bunny_mesh_input = phyz::generateMeshInputFromMesh(bunny_mesh, mthz::Vec3(0, 0, 0));
+		phyz::Mesh bunny_mesh = phyz::readOBJ("resources/mesh/bunny.obj", 50.0);
+		//phyz::Mesh bunny_mesh = phyz::readOBJ("resources/mesh/weird_cases.obj", 1.0);
+		phyz::MeshInput bunny_mesh_input = phyz::generateMeshInputFromMesh(bunny_mesh, mthz::Vec3(20, 0, 0));
 		phyz::RigidBody* bunny_mesh_r = p.createRigidBody(bunny_mesh_input);
 		bodies.push_back({ fromStaticMeshInput(bunny_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), bunny_mesh_r });
+
+		phyz::Mesh stress_test_cases_mesh = phyz::readOBJ("resources/mesh/weird_cases.obj", 1.0);
+		phyz::MeshInput stress_test_cases_mesh_input = phyz::generateMeshInputFromMesh(stress_test_cases_mesh, mthz::Vec3(0, 0, 0));
+		phyz::RigidBody* stress_test_cases_mesh_r = p.createRigidBody(stress_test_cases_mesh_input);
+		bodies.push_back({ fromStaticMeshInput(stress_test_cases_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), stress_test_cases_mesh_r });
 
 		bool something_hovered = false;
 		mthz::Vec3 hover_pos;

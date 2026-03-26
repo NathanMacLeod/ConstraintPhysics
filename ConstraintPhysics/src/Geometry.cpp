@@ -770,29 +770,38 @@ namespace phyz {
 
 		// the neighborhoods (all directly neighboring vertices) in a counter-clockwise winding for each vertex
 		// vertex_neighborhoods[i] is the neighborhood for vertices[i]
-		std::vector<std::vector<mthz::Vec3>> vertex_neighborhoods(vertices.size());
+		std::vector<std::vector<uint32_t>> vertex_neighborhoods(vertices.size());
 
 		// this method will fuck up for vertices at the edge of the topology. don't really care right now
 		for (StaticMeshHalfEdge& e : half_edges) {
-			std::vector<mthz::Vec3>& neighborhood = vertex_neighborhoods[e.p2_index];
+			std::vector<uint32_t>& neighborhood = vertex_neighborhoods[e.p2_index];
+			mthz::Vec3 neighborhood_of = vertices[e.p2_index].p;
 			if (!neighborhood.empty()) { continue; } // neighborhood for this vertex was already calculated.
 
 			// use half edge structure to wind all the way around counter-clockwise
 			uint32_t curr_edge_index = e.self_index;
 			do {
 				StaticMeshHalfEdge& curr = half_edges[curr_edge_index];
-				//neighborhood.push_back(vertices[curr.p1_index].p);
-				StaticMeshHalfEdge& next = half_edges[curr.next_index];
-				neighborhood.push_back(vertices[next.p2_index].p);
-				curr_edge_index = next.twin_index;
-			} while (curr_edge_index != -1 && curr_edge_index != e.self_index);
-			std::reverse(neighborhood.begin(), neighborhood.end());
+				mthz::Vec3 p = vertices[curr.p1_index].p;
+				mthz::Vec3 rhs = (neighborhood_of - p).cross(triangles[curr.triangle_index].normal); // vector pointing in the direction of the winding
+				neighborhood.push_back(curr.p1_index);
+				if (curr.twin_index != -1) {
+					// we are currently on the right side of a triangle. flip to twin (on the left side, of neighboring triangle),
+					// then follow next_index twice to get curr to the right side of that triangle
+					curr_edge_index = half_edges[half_edges[curr.twin_index].next_index].next_index;
+				}
+				else {
+					// only would happen if we are at the edge of the topology
+					break;
+				}
+			} while (curr_edge_index != e.self_index);
 		}
 	
 		// use the neighborhoods to calculate the gauss map for each vertex
 		for (int vertex_index = 0; vertex_index < vertex_neighborhoods.size(); vertex_index++) {
 			StaticMeshVertex& v = vertices[vertex_index];
-			std::vector<mthz::Vec3> neighborhood = vertex_neighborhoods[vertex_index];
+			std::vector<uint32_t> neighborhood = vertex_neighborhoods[vertex_index];
+			std::vector<uint32_t> unreduced_neighborhood = vertex_neighborhoods[vertex_index]; // copy we will use later for verification
 
 			// first perform reduction step to smooth over any concavities.
 			// note it is possible for the reduction to eliminate all points. in this case there are no valid normals for this vertex.
@@ -800,10 +809,10 @@ namespace phyz {
 			while (!reduction_done) {
 				reduction_done = true; // we reset back to false if we spot an issue.
 				for (int i = 0; i < neighborhood.size() && neighborhood.size() >= 3;) {
-					mthz::Vec3 p1 = neighborhood[i];
+					mthz::Vec3 p1 = vertices[neighborhood[i]].p;
 					uint32_t p2_index = (i + 1) % neighborhood.size();
-					mthz::Vec3 p2 = neighborhood[p2_index];
-					mthz::Vec3 p3 = neighborhood[(i + 2) % neighborhood.size()];
+					mthz::Vec3 p2 = vertices[neighborhood[p2_index]].p;
+					mthz::Vec3 p3 = vertices[neighborhood[(i + 2) % neighborhood.size()]].p;
 
 					// check if p1p2 is concave relative to p2p3. if it is, eliminate p2.
 					mthz::Vec3 up = (p2 - p1).cross(v.p - p2);
@@ -820,12 +829,33 @@ namespace phyz {
 			}
 
 			if (neighborhood.size() >= 3) {
-				// in this case the gauss map wasn't reduced to nothing
+				// verification step. we can sometimes still have >= 3 points left, but the solution is not valid relative to points in the neighborhood
+				bool invalid = false;
 				for (int i = 0; i < neighborhood.size(); i++) {
-					mthz::Vec3 p1 = neighborhood[i];
-					mthz::Vec3 p2 = neighborhood[(i + 1) % neighborhood.size()];
-					mthz::Vec3 norm = (p2 - p1).cross(v.p - p2).normalize();
-					v.valid_normal_gauss_map.push_back(norm);
+					uint32_t p1_index = neighborhood[i];
+					uint32_t p2_index = neighborhood[(i + 1) % neighborhood.size()];
+					mthz::Vec3 p1 = vertices[p1_index].p;
+					mthz::Vec3 p2 = vertices[p2_index].p;
+					mthz::Vec3 up = (p2 - p1).cross(v.p - p2);
+					for (int j = 0; j < unreduced_neighborhood.size(); j++) {
+						uint32_t pj_index = unreduced_neighborhood[j];
+						if (pj_index == p1_index || pj_index == p2_index) { continue; }
+
+						mthz::Vec3 pjp1 = vertices[pj_index].p - p1;
+						if (pjp1.dot(up) > 0) {
+							invalid = true;
+							break;
+						}
+					}
+				}
+				if (!invalid) {
+					// in this case the gauss map wasn't reduced to nothing and is valid
+					for (int i = 0; i < neighborhood.size(); i++) {
+						mthz::Vec3 p1 = vertices[neighborhood[i]].p;
+						mthz::Vec3 p2 = vertices[neighborhood[(i + 1) % neighborhood.size()]].p;
+						mthz::Vec3 norm = (p2 - p1).cross(v.p - p2).normalize();
+						v.valid_normal_gauss_map.push_back(norm);
+					}
 				}
 			}
 		}
