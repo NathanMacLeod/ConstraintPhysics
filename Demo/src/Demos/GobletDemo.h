@@ -1,0 +1,188 @@
+#pragma once
+#include "DemoScene.h"
+#include "../Mesh.h"
+#include "../../../ConstraintPhysics/src/PhysicsEngine.h"
+
+class GobletDemo : public DemoScene {
+public:
+	GobletDemo(DemoManager* manager, DemoProperties properties) : DemoScene(manager, properties) {}
+
+	~GobletDemo() override {
+
+	}
+
+	std::vector<ControlDescription> controls() override {
+		return {
+			ControlDescription{"W, A, S, D", "Move the camera around when in free-look"},
+			ControlDescription{"UP, DOWN, LEFT, RIGHT", "Rotate the camera"},
+			ControlDescription{"R", "Reset"},
+			ControlDescription{"ESC", "Return to main menu"},
+		};
+	}
+
+	void run() override {
+
+		rndr::init(properties.window_width, properties.window_height, "Goblet Demo");
+
+		phyz::PhysicsEngine p;
+		if (properties.n_threads != 0) {
+			p.enableMultithreading(properties.n_threads);
+		}
+
+		std::vector<PhysBod> bodies;
+		std::vector<phyz::ConstraintID> constraints;
+
+		phyz::Mesh bunny_mesh = phyz::readOBJ("resources/mesh/bunny.obj", 35.0);
+		phyz::MeshInput bunny_mesh_input = phyz::generateMeshInputFromMesh(bunny_mesh, mthz::Vec3(1, 8, 0));
+		phyz::RigidBody* bunny_mesh_r = p.createRigidBody(bunny_mesh_input, false);
+		bodies.push_back({ fromStaticMeshInput(bunny_mesh_input, color{ 0.4f, 1.0f, 0.8f, 0.5f, 0.5f, 0.63f, 51.2f }), bunny_mesh_r });
+
+		bunny_mesh_r->setAngVel(mthz::Vec3(0, 0.5, 0));
+
+		phyz::Mesh goblet_mesh = phyz::readOBJ("resources/mesh/goblet.obj", 0.3);
+		phyz::MeshInput goblet_mesh_input = phyz::generateMeshInputFromMesh(goblet_mesh, mthz::Vec3(0, 0, 0));
+		phyz::RigidBody* goblet_mesh_r = p.createRigidBody(goblet_mesh_input);
+		bodies.push_back({ fromStaticMeshInput(goblet_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), goblet_mesh_r });
+
+		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
+		rndr::Shader shader("resources/shaders/Basic.shader");
+		shader.bind();
+
+		float t = 0;
+		float fElapsedTime;
+
+		mthz::Vec3 pos(0, 20, 15);
+		mthz::Quaternion orient;
+		double mv_speed = 2;
+		double rot_speed = 1;
+
+		double phyz_time = 0;
+		double timestep = 1 / 90.0;
+		p.setStep_time(timestep);
+		p.setGravity(mthz::Vec3(0, -16.0, 0));
+
+		const int source_count = 7;
+		double source_drop_rate = 5;
+		double source_radius = 1;
+		double source_y = 20;
+		double ball_radius = 0.2;
+
+		std::vector<mthz::Vec3> ball_sources;
+		for (int i = 0; i < source_count; i++) {
+			double theta = 2 * PI * i / source_count;
+			ball_sources.push_back(mthz::Vec3(sin(theta) * source_radius, source_y, cos(theta) * source_radius));
+		}
+
+		double next_drop_timer = 1.0 / source_drop_rate;
+
+		double delete_box_height = -50;
+		double delete_box_dim = 10000;
+		phyz::ConvexUnionGeometry delete_box = phyz::ConvexUnionGeometry::box(mthz::Vec3(-delete_box_dim / 2.0, delete_box_height - delete_box_dim, -delete_box_dim / 2.0), delete_box_dim, delete_box_dim, delete_box_dim);
+		phyz::RigidBody* delete_box_r = p.createRigidBody(delete_box, phyz::RigidBody::FIXED);
+
+		while (rndr::render_loop(&fElapsedTime)) {
+
+			next_drop_timer -= fElapsedTime;
+			if (next_drop_timer < 0) {
+				next_drop_timer += 1.0 / source_drop_rate;
+				
+				for (mthz::Vec3 v : ball_sources) {
+					phyz::ConvexUnionGeometry ball = phyz::ConvexUnionGeometry::sphere(v, ball_radius);
+					phyz::RigidBody* ball_r = p.createRigidBody(ball);
+					bodies.push_back({ fromGeometry(ball, color{1.0f, 0.4f, 0.4f}), ball_r});
+
+					p.registerCollisionAction(phyz::CollisionTarget::with(ball_r), phyz::CollisionTarget::with(delete_box_r), [&, ball_r](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
+						p.removeRigidBody(ball_r);
+
+						for (int i = 0; i < bodies.size(); i++) {
+							if (bodies[i].r == ball_r) {
+								bodies.erase(bodies.begin() + i);
+								break;
+							}
+						}
+					});
+				}
+			}
+
+			if (rndr::getKeyDown(GLFW_KEY_W)) {
+				pos += orient.applyRotation(mthz::Vec3(0, 0, -1) * fElapsedTime * mv_speed);
+			}
+			else if (rndr::getKeyDown(GLFW_KEY_S)) {
+				pos += orient.applyRotation(mthz::Vec3(0, 0, 1) * fElapsedTime * mv_speed);
+			}
+			if (rndr::getKeyDown(GLFW_KEY_A)) {
+				pos += orient.applyRotation(mthz::Vec3(-1, 0, 0) * fElapsedTime * mv_speed);
+			}
+			else if (rndr::getKeyDown(GLFW_KEY_D)) {
+				pos += orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
+			}
+
+			if (rndr::getKeyDown(GLFW_KEY_UP)) {
+				orient = orient * mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
+			}
+			else if (rndr::getKeyDown(GLFW_KEY_DOWN)) {
+				orient = orient * mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(1, 0, 0));
+			}
+			if (rndr::getKeyDown(GLFW_KEY_LEFT)) {
+				orient = mthz::Quaternion(fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
+			}
+			else if (rndr::getKeyDown(GLFW_KEY_RIGHT)) {
+				orient = mthz::Quaternion(-fElapsedTime * rot_speed, mthz::Vec3(0, 1, 0)) * orient;
+			}
+
+			t += fElapsedTime;
+
+			if (rndr::getKeyPressed(GLFW_KEY_R)) {
+				for (PhysBod& p : bodies) {
+					phyz::RigidBody* r = p.r;
+					r->setOrientation(mthz::Quaternion());
+					r->setToPosition(mthz::Vec3());
+					r->setAngVel(mthz::Vec3());
+					r->setVel(mthz::Vec3());
+				}
+			}
+			if (rndr::getKeyPressed(GLFW_KEY_ESCAPE)) {
+				manager->deselectCurrentScene();
+				return;
+			}
+
+
+			phyz_time += fElapsedTime;
+			phyz_time = std::min<double>(phyz_time, 1.0 / 30.0);
+			while (phyz_time > timestep) {
+				phyz_time -= timestep;
+				p.timeStep();
+			}
+
+
+			rndr::clear(rndr::color(0.0f, 0.0f, 0.0f));
+			batch_array.flush();
+
+			mthz::Vec3 cam_pos = pos;
+			mthz::Quaternion cam_orient = orient;
+
+			mthz::Vec3 pointlight_pos(0.0, 225.0, 0.0);
+			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
+
+			float aspect_ratio = (float)properties.window_height / properties.window_width;
+			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 500.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
+			shader.setUniform3f("u_ambient_light", 0.4f, 0.4f, 0.4f);
+			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
+			shader.setUniform3f("u_pointlight_col", 0.6f, 0.6f, 0.6f);
+			shader.setUniform1i("u_Asleep", false);
+
+			for (const PhysBod& b : bodies) {
+
+				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, b.r->getAsleep(), color{ 1.0f, 0.0f, 0.0f });
+
+				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
+					rndr::draw(batch_array, shader);
+					batch_array.flush();
+				}
+				batch_array.push(transformed_mesh.vertices.data(), static_cast<int>(transformed_mesh.vertices.size()), transformed_mesh.indices);
+			}
+
+			rndr::draw(batch_array, shader);
+		}
+	}
+};

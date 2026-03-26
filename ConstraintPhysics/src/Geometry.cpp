@@ -671,7 +671,7 @@ namespace phyz {
 		: aabb_tree(0, AABBTree<unsigned int>::SURFACE_AREA), vertices(c.vertices), half_edges(c.half_edges), triangles(c.triangles)
 	{
 		for (int i = 0; i < triangles.size(); i++) {
-			aabb_tree.add(i, true, i, triangles[i].aabb);
+			aabb_tree.add(i, true, i, getAABBOfTriangle(triangles[i]));
 		}
 	}
 
@@ -705,9 +705,7 @@ namespace phyz {
 			uint32_t e1_index = half_edges.size(), e2_index = half_edges.size() + 1, e3_index = half_edges.size() + 2;
 			triangle.half_edge_indices[0] = e1_index; triangle.half_edge_indices[1] = e2_index; triangle.half_edge_indices[2] = e3_index;
 			triangle.self_index = triangles.size();
-			triangle.aabb = triangle.computeAABB(*this);
 			
-
 			// create the edges
 			half_edges.push_back(StaticMeshHalfEdge{ t.i1, t.i2, -1, e2_index });
 			half_edges.push_back(StaticMeshHalfEdge{ t.i2, t.i3, -1, e3_index });
@@ -861,50 +859,60 @@ namespace phyz {
 		}
 	}
 
-	AABB StaticMeshFace::computeAABB(StaticMeshGeometry& parent) const { 
-		return AABB::encapsulatePointCloud({ parent.vertices[vertex_indices[0]].p, parent.vertices[vertex_indices[1]].p, parent.vertices[vertex_indices[2]].p });
+	StaticMeshVertex StaticMeshGeometry::get_transformed_vertex(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) const {
+		assert(index < vertices.size());
+		StaticMeshVertex v = vertices[index];
+		v.p = rot * (v.p - center_of_rotation) + center_of_rotation + trans;
+		for (mthz::Vec3& g : v.valid_normal_gauss_map) {
+			g = rot * g;
+		}
+		return v;
 	}
 
-	StaticMeshFace StaticMeshFace::getTransformed(const mthz::Mat3& rot, mthz::Vec3 translation, mthz::Vec3 center_of_rotation) const {
-		StaticMeshFace out = *this;
+	StaticMeshHalfEdge StaticMeshGeometry::get_transformed_half_edge(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const {
+		assert(index < half_edges.size());
+		StaticMeshHalfEdge e = half_edges[index];
+		e.out_direction = rot * e.out_direction;
+		if (e.has_gauss_arc) {
+			e.gauss_arc_g1 = rot * e.gauss_arc_g1;
+			e.gauss_arc_g2 = rot * e.gauss_arc_g2;
+		}
+		return e;
+	}
 
-		//out.normal = rot * normal;
-
-
-		//for (int j = 0; j < gauss_region.size(); j++) {
-		//	out.gauss_region[j] = rot * gauss_region[j];
-		//}
-
-		//for (int j = 0; j < 3; j++) {
-		//	out.vertices[j].p = translation + rot * (vertices[j].p - center_of_rotation) + center_of_rotation;
-
-		//	out.edges[j].p1 = translation + rot * (edges[j].p1 - center_of_rotation) + center_of_rotation;
-		//	out.edges[j].p2 = translation + rot * (edges[j].p2 - center_of_rotation) + center_of_rotation;
-
-		//	out.edges[j].out_direction = rot * edges[j].out_direction;
-		//}
-
-		//out.aabb = AABB::encapsulatePointCloud({ out.vertices[0].p, out.vertices[1].p, out.vertices[2].p });
-
-		return out;
+	StaticMeshFace StaticMeshGeometry::get_transformed_face(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const {
+		assert(index < triangles.size());
+		StaticMeshFace triangle = triangles[index];
+		triangle.normal = rot * triangle.normal;
+		return triangle;
 	}
 
 	void StaticMeshGeometry::recomputeFromReference(const StaticMeshGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) {
 		aabb_tree = AABBTree<unsigned int>(0, AABBTree<unsigned int>::SURFACE_AREA); //reset tree
 
 		assert(triangles.size() == reference.triangles.size());
-		for (int i = 0; i < triangles.size(); i++) {
-			triangles[i] = reference.triangles[i].getTransformed(rot, trans, center_of_rotation);
-			aabb_tree.add(i, true, i, triangles[i].aabb);
+		for (unsigned int i = 0; i < vertices.size(); i++) {
+			vertices[i] = reference.get_transformed_vertex(i, rot, trans, center_of_rotation);
 		}
+		for (unsigned int i = 0; i < half_edges.size(); i++) {
+			half_edges[i] = reference.get_transformed_half_edge(i, rot, trans);
+		}
+		for (unsigned int i = 0; i < triangles.size(); i++) {
+			triangles[i] = reference.get_transformed_face(i, rot, trans);
+			aabb_tree.add(i, true, i, getAABBOfTriangle(triangles[i]));
+		}
+	}
+
+	AABB StaticMeshGeometry::getAABBOfTriangle(const StaticMeshFace& t) const {
+		return AABB::encapsulatePointCloud({ vertices[t.vertex_indices[0]].p, vertices[t.vertex_indices[1]].p, vertices[t.vertex_indices[2]].p });
 	}
 
 	AABB StaticMeshGeometry::genAABB() const {
 		assert(triangles.size() > 0);
 
-		AABB out = triangles[0].aabb;
+		AABB out = getAABBOfTriangle(triangles[0]);
 		for (int i = 1; i < triangles.size(); i++) {
-			out = AABB::combine(out, triangles[i].aabb);
+			out = AABB::combine(out, getAABBOfTriangle(triangles[i]));
 		}
 
 		return out;

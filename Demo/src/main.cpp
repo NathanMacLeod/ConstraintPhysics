@@ -18,6 +18,7 @@
 #include "Demos/MarbleMachineDemo.h"
 #include "Demos/StanfordArmadillo.h"
 #include "Demos/RaycastCarDemo.h"
+#include "Demos/GobletDemo.h"
 #include "Demos/PerformanceProfilingScenes.h"
 #include "Demos/RunTests.h"
 
@@ -39,6 +40,7 @@ int main() {
 	manager.registerScene("Marble Machine", "A functioning marble machine downloaded from a 3d printing site.", [](DemoManager* m, DemoProperties p) { return new MarbleMachineDemo(m, p); });
 	manager.registerScene("Stanford Armadillo", "oh yeah", [](DemoManager* m, DemoProperties p) { return new StanfordArmadillo(m, p); });
 	manager.registerScene("Raycast car", "Drive a car that uses raycasts rather than constraint based wheels. Credit to shazammm for the car 3d model: https://skfb.ly/oPPLV, license: https://creativecommons.org/licenses/by/4.0/", [](DemoManager* m, DemoProperties p) { return new HovercraftDemo(m, p); });
+	manager.registerScene("Goblet", "Many objects in a static mesh goblet, being pushed by a kinematic object", [](DemoManager* m, DemoProperties p) { return new GobletDemo(m, p); });
 	manager.registerScene("Performance Profiling Scenes", "baselines scenes for collecting perormance metrics", [](DemoManager* m, DemoProperties p) { return new PerformanceProfilingScenes(m, p); });
 	manager.registerScene("Unit Tests", "Tests to make sure everything works as intended.", [](DemoManager* m, DemoProperties p) { return new UnitTestsRunner(m, p); });
 	manager.registerScene("Debug demo", "for setting up debug scenes", [](DemoManager* m, DemoProperties p) { return new DebugDemo(m, p); });

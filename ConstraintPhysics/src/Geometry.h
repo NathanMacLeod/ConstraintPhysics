@@ -88,11 +88,6 @@ namespace phyz {
 		uint32_t self_index;
 
 		Material material;
-		AABB aabb;
-		//int id;
-
-		inline AABB computeAABB(StaticMeshGeometry& parent) const;
-		StaticMeshFace getTransformed(const mthz::Mat3& rot, mthz::Vec3 translation, mthz::Vec3 center_of_rotation) const;
 	};
 
 	class StaticMeshGeometry {
@@ -109,9 +104,16 @@ namespace phyz {
 
 		RayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 
+		inline StaticMeshVertex get_transformed_vertex(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) const;
+		inline StaticMeshHalfEdge get_transformed_half_edge(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const;
+		inline StaticMeshFace get_transformed_face(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const;
 		inline StaticMeshVertex get_vertex(uint32_t index) const { assert(index < vertices.size()); return vertices[index]; }
 		inline StaticMeshHalfEdge get_half_edge(uint32_t index) const { assert(index < half_edges.size()); return half_edges[index]; }
 		inline StaticMeshFace get_triangle(uint32_t index) const { assert(index < triangles.size()); return triangles[index]; }
+
+		inline uint32_t getVertexId(uint32_t vertex_index) const { return vertex_index; }
+		//inline uint32_t getEdgeId(uint32_t halfedge_index) { return hal; }
+		inline uint32_t getTriangleId(uint32_t triangle_index) const { return triangle_index + vertices.size() + half_edges.size(); }
 
 		friend class Surface;
 		friend class Edge;
@@ -120,6 +122,8 @@ namespace phyz {
 		friend class StaticMeshHalfEdge;
 		friend class StaticMeshFace;
 	private:
+		AABB getAABBOfTriangle(const StaticMeshFace& triangle) const;
+
 		std::vector<StaticMeshVertex> vertices;
 		std::vector<StaticMeshHalfEdge> half_edges;
 		std::vector<StaticMeshFace> triangles;

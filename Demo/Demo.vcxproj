@@ -159,6 +159,7 @@
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\Demos\AngularMomentumDemo.h" />
     <ClInclude Include="src\Demos\CarDemo.h" />
+    <ClInclude Include="src\Demos\GobletDemo.h" />
     <ClInclude Include="src\Demos\ColActionDemo.h" />
     <ClInclude Include="src\Demos\Common.h" />
     <ClInclude Include="src\Demos\DebugDemo.h" />

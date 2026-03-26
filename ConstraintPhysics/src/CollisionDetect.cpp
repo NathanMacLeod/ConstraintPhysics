@@ -2001,27 +2001,59 @@ namespace phyz {
 		return out;
 	}
 
-	static ExtremaInfo findTriangleExtrema(const StaticMeshFace& tri, mthz::Vec3 dir) {
+	struct TransformedTriangle {
+		StaticMeshVertex vertices[3];
+		StaticMeshHalfEdge edges[3];
+		mthz::Vec3 normal;
+		uint32_t original_triangle_id;
+		Material material;
+	};
+
+	TransformedTriangle initTriangle(const StaticMeshGeometry& geom, const StaticMeshFace& og_triangle, bool transformation_required, mthz::Mat3  rot, mthz::Vec3 trans) {
+		TransformedTriangle out;
+		out.original_triangle_id = geom.getTriangleId(og_triangle.self_index);
+		out.material = og_triangle.material;
+		if (transformation_required) {
+			out.normal = rot * og_triangle.normal;
+			for (int i = 0; i < 3; i++) {
+				out.vertices[i] = geom.get_transformed_vertex(og_triangle.vertex_indices[i], rot, trans, mthz::Vec3());
+				out.edges[i] = geom.get_transformed_half_edge(og_triangle.half_edge_indices[i], rot, trans);
+			}
+		}
+		else {
+			for (int i = 0; i < 3; i++) {
+				out.normal = og_triangle.normal;
+				out.vertices[i] = geom.get_vertex(og_triangle.vertex_indices[i]);
+				out.edges[i] = geom.get_half_edge(og_triangle.half_edge_indices[i]);
+			}
+		}
+		return out;
+	}
+
+	
+	static ExtremaInfo findTriangleExtrema(const TransformedTriangle& tri, mthz::Vec3 dir) {
 		ExtremaInfo extrema;
 
-		//for (int i = 0; i < 3; i++) {
-		//	mthz::Vec3 p = tri.vertices[i].p;
-		//	double val = p.dot(dir);
-		//	if (val < extrema.min_val) {
-		//		extrema.min_pID = i;
-		//		extrema.min_val = val;
-		//	}
-		//	if (val > extrema.max_val) {
-		//		extrema.max_pID = i;
-		//		extrema.max_val = val;
-		//	}
-		//}
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p = tri.vertices[i].p;
+			double val = p.dot(dir);
+			if (val < extrema.min_val) {
+				extrema.min_pID = i;
+				extrema.min_val = val;
+			}
+			if (val > extrema.max_val) {
+				extrema.max_pID = i;
+				extrema.max_val = val;
+			}
+		}
 
 		return extrema;
 	}
 
+	//static bool checkTriangle
+
 	//consider neighboring triangles when picking the axis of least penetration
-	static bool normalDirectionValid(const StaticMeshFace& s, mthz::Vec3 normal) {
+	static bool normalDirectionValid(const TransformedTriangle& s, mthz::Vec3 normal) {
 		//return true;
 		double EPS = 0.0001;
 
@@ -2059,7 +2091,36 @@ namespace phyz {
 		return true;
 	}
 
-	static Manifold SAT_PolyTriangle(const Polyhedron& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
+	static bool normSatisfiesVertexGaussMap(const StaticMeshVertex& s, mthz::Vec3 normal) {
+		if (s.valid_normal_gauss_map.empty()) return false;
+
+		for (int i = 0; i < s.valid_normal_gauss_map.size(); i++) {
+			//TODO: just save these vectors rather than doing a cross product everytime
+			mthz::Vec3 inner_region_direction = s.valid_normal_gauss_map[i].cross(s.valid_normal_gauss_map[(i + 1) % s.valid_normal_gauss_map.size()]);
+			if (normal.dot(inner_region_direction) < 0) return false;
+		}
+		return true;
+	}
+
+	static bool normSatisfiesEdgeGaussArc(const StaticMeshHalfEdge& e, mthz::Vec3 normal) {
+		if (e.has_gauss_arc) return false;
+		const double EPS = 0.0001;
+
+		//the normal should lie on the arc defined by the two points
+		mthz::Vec3 arc_normal = e.gauss_arc_g1.cross(e.gauss_arc_g2);
+		//check vector lies close to the plane
+		if (abs(normal.dot(arc_normal)) > EPS) return false;
+		mthz::Vec3 v0_up = arc_normal.cross(e.gauss_arc_g1);
+
+		//check vector doesnt lie outside the arc within the plane
+		if (normal.dot(v0_up) < -EPS) return false;
+		mthz::Vec3 v1_down = e.gauss_arc_g2.cross(arc_normal);
+		if (normal.dot(v1_down) < -EPS) return false;
+
+		return true;
+	}
+
+	static Manifold SAT_PolyTriangle(const Polyhedron& a, int a_id, const Material& a_mat, const TransformedTriangle& b, double non_gauss_valid_penalty) {
 		Manifold out;
 /*		out.max_pen_depth = -1;
 		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
@@ -2193,11 +2254,10 @@ namespace phyz {
 		return out;
 	}
 
-	static Manifold SAT_SphereTriangle(const Sphere& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
+	//unoptimizeed, but just doing a minimal refactor of this existing (also not particularly optimized) code to get it working
+	static Manifold SAT_SphereTriangle(const Sphere& a, int a_id, const Material& a_mat, const TransformedTriangle& b) {
 		Manifold out;
-/*		out.max_pen_depth = -1;
-		uint32_t a_feature_id = -1;
-		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
 		ExtremaInfo sphere_extrema = getSphereExtrema(a, b.normal);
@@ -2209,9 +2269,6 @@ namespace phyz {
 		if (b_norm_x.pen_depth < min_pen.pen_depth) {
 			min_pen = b_norm_x;
 		}
-		if (b_norm_x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -b_norm_x.norm)) {
-			min_gauss_valid_pen = b_norm_x;
-		}
 
 		for (int i = 0; i < 3; i++) {
 			mthz::Vec3 p = b.vertices[i].p;
@@ -2222,17 +2279,17 @@ namespace phyz {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			if (x.pen_depth < min_pen.pen_depth) {
+			if (x.pen_depth < min_pen.pen_depth && normSatisfiesVertexGaussMap(b.vertices[i], -x.norm)) {
 				min_pen = x;
-				a_feature_id = i;
-			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
 			}
 		}
-		for (StaticMeshEdge e : b.edges) {
-			mthz::Vec3 edge_dir = (e.p2 - e.p1).normalize();
-			mthz::Vec3 sample = e.p1 - a.getCenter();
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p1 = b.vertices[i].p;
+			mthz::Vec3 p2 = b.vertices[(i + 1) % 3].p;
+			const StaticMeshHalfEdge& e = b.edges[i];
+
+			mthz::Vec3 edge_dir = (p2 - p1).normalize();
+			mthz::Vec3 sample = p1 - a.getCenter();
 			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
 			ExtremaInfo sphere_extrema = getSphereExtrema(a, n);
 			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
@@ -2240,17 +2297,11 @@ namespace phyz {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			if (x.pen_depth < min_pen.pen_depth) {
+			if (x.pen_depth < min_pen.pen_depth && normSatisfiesEdgeGaussArc(e, -x.norm)) {
 				min_pen = x;
-				a_feature_id = e.id;
-			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
 			}
 		}
 
-		CheckNormResults nongauss_min_pen = min_pen;
-		if (min_gauss_valid_pen.pen_depth < min_pen.pen_depth + non_gauss_valid_penalty) min_pen = min_gauss_valid_pen;
 		out.normal = min_pen.norm;
 
 		ContactP cp;
@@ -2264,18 +2315,18 @@ namespace phyz {
 
 		uint64_t cID = 0;
 		cID |= 0x00000000FFFFFFFF & a_id;
-		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.id) << 32);
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.original_triangle_id) << 32);
 
-		cp.magicID = MagicID{ cID, a_feature_id }; //not bothering with featureid
+		cp.magicID = MagicID{ cID, static_cast<uint64_t>(- 1)}; //not bothering with featureid
 
 		out.points.push_back(cp);
 
-		out.max_pen_depth = min_pen.pen_depth;*/
+		out.max_pen_depth = min_pen.pen_depth;
 
 		return out;
 	}
 
-	static Manifold SAT_CapsuleTriangle(const Capsule& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
+	static Manifold SAT_CapsuleTriangle(const Capsule& a, int a_id, const Material& a_mat, const TransformedTriangle& b, double non_gauss_valid_penalty) {
 		Manifold out;
 /*		out.max_pen_depth = -1;
 		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
@@ -2645,6 +2696,8 @@ namespace phyz {
 		return out;
 	}
 
+	// TODO: there is a lot of room for caching optimizations here. for kinematic objects the transformation to world coordinates of each vertex and edge can be calculated once and reused for an entire substep.
+	//       whithin each check between a primitive and the mesh, the same edges, vertices, etc may be checked multiple times. the result of of checking that feature against the primitive can be cached and reused.
 	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
 		mthz::Mat3 local_to_world_rot = b_world_orientation.getRotMatrix();
 
@@ -2665,15 +2718,15 @@ namespace phyz {
 
 		std::vector<Manifold> manifolds_out;
 
-		for (unsigned int i : tri_candidates) {
-			StaticMeshFace tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
-			double non_gauss_valid_normal_penalty = 0 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
+		//for (unsigned int i : tri_candidates) {
+		//	StaticMeshFace tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
+		//	double non_gauss_valid_normal_penalty = 0 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
-			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
-			if (m.max_pen_depth > 0 && m.points.size() > 0) {
-				manifolds_out.push_back(m);
-			}
-		}
+		//	Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
+		//	if (m.max_pen_depth > 0 && m.points.size() > 0) {
+		//		manifolds_out.push_back(m);
+		//	}
+		//}
 
 		return manifolds_out;
 	}
@@ -2699,10 +2752,8 @@ namespace phyz {
 		std::vector<Manifold> manifolds_out;
 
 		for (unsigned int i : tri_candidates) {
-			const StaticMeshFace& tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
-			double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
-
-			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
+			TransformedTriangle tri = initTriangle(b, b.getTriangles()[i], local_transformation_required, local_to_world_rot, b_world_position);
+			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
 				manifolds_out.push_back(m);
 			}
@@ -2731,15 +2782,15 @@ namespace phyz {
 
 		std::vector<Manifold> manifolds_out;
 
-		for (unsigned int i : tri_candidates) {
-			const StaticMeshFace& tri = local_transformation_required ? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
-			double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
+		//for (unsigned int i : tri_candidates) {
+		//	const StaticMeshFace& tri = local_transformation_required ? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
+		//	double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
-			Manifold m = SAT_CapsuleTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
-			if (m.max_pen_depth > 0 && m.points.size() > 0) {
-				manifolds_out.push_back(m);
-			}
-		}
+		//	Manifold m = SAT_CapsuleTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
+		//	if (m.max_pen_depth > 0 && m.points.size() > 0) {
+		//		manifolds_out.push_back(m);
+		//	}
+		//}
 
 		return manifolds_out;
 	}
@@ -2764,15 +2815,15 @@ namespace phyz {
 
 		std::vector<Manifold> manifolds_out;
 
-		for (unsigned int i : tri_candidates) {
-			const StaticMeshFace& tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
-			double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
+		//for (unsigned int i : tri_candidates) {
+		//	const StaticMeshFace& tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
+		//	double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
 
-			Manifold m = SAT_CylinderTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
-			if (m.max_pen_depth > 0 && m.points.size() > 0) {
-				manifolds_out.push_back(m);
-			}
-		}
+		//	Manifold m = SAT_CylinderTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
+		//	if (m.max_pen_depth > 0 && m.points.size() > 0) {
+		//		manifolds_out.push_back(m);
+		//	}
+		//}
 
 		return manifolds_out;
 	}
