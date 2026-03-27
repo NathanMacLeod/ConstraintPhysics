@@ -702,6 +702,11 @@ namespace phyz {
 		return out;
 	}
 
+	static CheckNormResults sat_checknorm_nonreversable(const ExtremaInfo& a_info, const ExtremaInfo& b_info, mthz::Vec3 n) {
+		double forward_pen_depth = a_info.max_val - b_info.min_val;
+		return CheckNormResults{ a_info.max_pID, b_info.min_pID, n, forward_pen_depth };
+	}
+
 	static CheckNormResults sat_checknorm(const ExtremaInfo& a_info, const ExtremaInfo& b_info, mthz::Vec3 n) {
 		double forward_pen_depth = a_info.max_val - b_info.min_val;
 		double reverse_pen_depth = b_info.max_val - a_info.min_val;
@@ -2103,7 +2108,7 @@ namespace phyz {
 	}
 
 	static bool normSatisfiesEdgeGaussArc(const StaticMeshHalfEdge& e, mthz::Vec3 normal) {
-		if (e.has_gauss_arc) return false;
+		if (!e.has_gauss_arc) return false;
 		const double EPS = 0.0001;
 
 		//the normal should lie on the arc defined by the two points
@@ -2260,8 +2265,8 @@ namespace phyz {
 		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
-		ExtremaInfo sphere_extrema = getSphereExtrema(a, b.normal);
-		CheckNormResults b_norm_x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, b.normal), b.normal);
+		ExtremaInfo sphere_extrema = getSphereExtrema(a, -b.normal);
+		CheckNormResults b_norm_x = sat_checknorm_nonreversable(sphere_extrema, findTriangleExtrema(b, -b.normal), -b.normal);
 		if (b_norm_x.seprAxisExists()) {
 			out.max_pen_depth = -1;
 			return out;
@@ -2274,7 +2279,7 @@ namespace phyz {
 			mthz::Vec3 p = b.vertices[i].p;
 			mthz::Vec3 n = (p - a.getCenter()).normalize();
 			ExtremaInfo sphere_extrema = getSphereExtrema(a, n);
-			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
+			CheckNormResults x = sat_checknorm_nonreversable(sphere_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
@@ -2292,7 +2297,7 @@ namespace phyz {
 			mthz::Vec3 sample = p1 - a.getCenter();
 			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
 			ExtremaInfo sphere_extrema = getSphereExtrema(a, n);
-			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
+			CheckNormResults x = sat_checknorm_nonreversable(sphere_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
@@ -2754,6 +2759,9 @@ namespace phyz {
 		for (unsigned int i : tri_candidates) {
 			TransformedTriangle tri = initTriangle(b, b.getTriangles()[i], local_transformation_required, local_to_world_rot, b_world_position);
 			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri);
+			//if (m.points.size() > 0) {
+			//	m = SAT_SphereTriangle(a, a_id, a_mat, tri);
+			//}
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
 				manifolds_out.push_back(m);
 			}
