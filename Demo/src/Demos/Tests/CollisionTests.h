@@ -515,79 +515,6 @@ private:
 	std::vector<std::shared_ptr<coltest_result>> outcomes;
 };
 
-class TestCapsuleAgainstMeshGeometry : public Test {
-public:
-	std::string getTestName() const override { return "Capsule vs Mesh"; }
-	bool canBeRunWithGraphics() const override { return true; }
-	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
-	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
-		double tick_frequency = 60.0;
-		test_total_tick_duration = static_cast<uint32_t>(5 * tick_frequency);
-		test_current_tick_count = 0;
-
-		p = new phyz::PhysicsEngine();
-		if (n_threads > 0) {
-			p->enableMultithreading(n_threads);
-		}
-		p->setStep_time(1.0 / tick_frequency);
-
-		//create mesh
-		int grid_count = 30;
-		double grid_size = 0.5;
-		phyz::MeshInput grid = phyz::generateGridMeshInput(grid_count, grid_count, grid_size, mthz::Vec3(-grid_count * grid_size / 2.0, 0, -grid_count * grid_size / 2.0));
-		for (mthz::Vec3& v : grid.points) {
-			v.y += 0.1 * 2 * (0.5 - frand());
-		}
-		
-		bodies->push_back(PhysBod{ fromStaticMeshInput(grid, color{ 0.5, 0.5, 0.5 }), p->createRigidBody(grid)});
-
-		//create capsule
-		double capsule_radius = 0.75;
-		double capsule_drum_height = 1.5;
-		phyz::ConvexUnionGeometry capsule_geom = phyz::ConvexUnionGeometry::capsule(mthz::Vec3(0, -capsule_drum_height / 2.0, 0), capsule_radius, capsule_drum_height).getTranslated(mthz::Vec3(0, 5, 0));
-		mthz::Quaternion sideways = mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1.0));
-		mthz::Quaternion sideways_turned = mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 1.0, 0)) * mthz::Quaternion(PI / 2.0, mthz::Vec3(0, 0, 1.0));
-
-		capsule_r = p->createRigidBody(capsule_geom);
-		bodies->push_back(PhysBod{ fromGeometry(capsule_geom), capsule_r });
-
-		return p;
-	}
-	TestOutcome tickTestOnePhysicsStep() override {
-		if (test_current_tick_count < test_total_tick_duration) {
-			p->timeStep();
-		}
-
-		test_current_tick_count++;
-
-		// keeping it very simple for this one
-		if (capsule_r->getCOM().y < -1) {
-			return TestOutcome{ TestOutcomeState::FAILED, "" };
-		}
-
-		if (test_current_tick_count >= test_total_tick_duration) {
-			return TestOutcome{ TestOutcomeState::PASSED };
-		}
-
-		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
-	}
-	void teardownTest() override {
-		delete p;
-		capsule_r = nullptr;
-		p = nullptr;
-	};
-	TestOutcome runWithoutGraphics() override {
-		TestOutcome outcome;
-		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
-		return outcome;
-	}
-private:
-	phyz::PhysicsEngine* p;
-	phyz::RigidBody* capsule_r;
-	uint32_t test_total_tick_duration;
-	uint32_t test_current_tick_count;
-};
-
 class CollisionTestGroup : public TestGroup {
 public:
 	std::string getGroupName() const override { return "Collision"; }
@@ -598,7 +525,6 @@ public:
 		out.push_back(std::make_unique<TestCapsuleAgainstPolyhedron>());
 		out.push_back(std::make_unique<TestCapsuleAgainstCapsule>());
 		out.push_back(std::make_unique<TestCapsuleAgainstCylinder>());
-		out.push_back(std::make_unique<TestCapsuleAgainstMeshGeometry>());
 		return out;
 	}
 };

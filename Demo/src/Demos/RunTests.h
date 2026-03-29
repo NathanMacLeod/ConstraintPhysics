@@ -13,6 +13,7 @@
 #include "Tests/MassPropertyTests.h"
 #include "Tests/RagdollTests.h"
 #include "Tests/RaycastTests.h"
+#include "Tests/TriangleMeshTests.h"
 
 class UnitTestsRunner : public DemoScene {
 private:
@@ -123,17 +124,17 @@ private:
 				}
 			}
 
-			if (tick_count == 135) {
-				for (auto itr = active_models.begin(); itr != active_models.end();) {
-					PhysBod& pb = *itr;
-					if (pb.r->getID() == 70 || pb.r->getMovementType() == phyz::RigidBody::FIXED) { itr++; }
-					else {
-						test_pengine->removeRigidBody(pb.r);
-						itr = active_models.erase(itr); 
-					}
-				}
-				paused = true;
-			}
+			//if (tick_count == 135) {
+			//	for (auto itr = active_models.begin(); itr != active_models.end();) {
+			//		PhysBod& pb = *itr;
+			//		if (pb.r->getID() == 70 || pb.r->getMovementType() == phyz::RigidBody::FIXED) { itr++; }
+			//		else {
+			//			test_pengine->removeRigidBody(pb.r);
+			//			itr = active_models.erase(itr); 
+			//		}
+			//	}
+			//	paused = true;
+			//}
 
 			// running the test
 			if (!paused) {
@@ -224,6 +225,7 @@ public:
 		test_groups.push_back(std::make_unique<MassPropertiesTestGroup>());
 		test_groups.push_back(std::make_unique<RagdollTestGroup>());
 		test_groups.push_back(std::make_unique<RaycastTestGroup>());
+		test_groups.push_back(std::make_unique<TriangleMeshTestGroup>());
 	}
 
 	~UnitTestsRunner() override {}

@@ -38,12 +38,12 @@ public:
 		bodies.push_back({ fromStaticMeshInput(bunny_mesh_input, color{ 0.4f, 1.0f, 0.8f, 0.5f, 0.5f, 0.63f, 51.2f }), bunny_mesh_r });
 
 		bunny_mesh_r->setAngVel(mthz::Vec3(0, 0.501, 0));
-		//bunny_mesh_r->setOrientation(mthz::Quaternion(-0.64976663306785586993, 0.00000000000000000000, 0.76013375306696018274, 0.00000000000000000000));
+		//bunny_mesh_r->setOrientation(mthz::Quaternion(0.35456637759088915907, 0.00000000000000000000, 0.93503084648693557401, 0.00000000000000000000));
 
-		phyz::Mesh goblet_mesh = phyz::readOBJ("resources/mesh/goblet.obj", 0.3);
-		phyz::MeshInput goblet_mesh_input = phyz::generateMeshInputFromMesh(goblet_mesh, mthz::Vec3(0, 0, 0));
-		phyz::RigidBody* goblet_mesh_r = p.createRigidBody(goblet_mesh_input);
-		bodies.push_back({ fromStaticMeshInput(goblet_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), goblet_mesh_r });
+		//phyz::Mesh goblet_mesh = phyz::readOBJ("resources/mesh/goblet.obj", 0.3);
+		//phyz::MeshInput goblet_mesh_input = phyz::generateMeshInputFromMesh(goblet_mesh, mthz::Vec3(0, 0, 0));
+		//phyz::RigidBody* goblet_mesh_r = p.createRigidBody(goblet_mesh_input);
+		//bodies.push_back({ fromStaticMeshInput(goblet_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), goblet_mesh_r });
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
@@ -60,24 +60,24 @@ public:
 		};
 		std::vector<Contact> all_contact_points;
 
-		//p.registerCollisionAction(phyz::CollisionTarget::all(), phyz::CollisionTarget::all(), [&](phyz::RigidBody* b1, phyz::RigidBody* b2,
-		//	const std::vector<phyz::Manifold>& manifold) {
-		//		for (const phyz::Manifold& m : manifold) {
-		//			for (phyz::ContactP p : m.points) {
+		p.registerCollisionAction(phyz::CollisionTarget::all(), phyz::CollisionTarget::all(), [&](phyz::RigidBody* b1, phyz::RigidBody* b2,
+			const std::vector<phyz::Manifold>& manifold) {
+				for (const phyz::Manifold& m : manifold) {
+					for (phyz::ContactP p : m.points) {
 
-		//				// generate a psuedo random color from the magicID- should make a clear visualization a contact is preserved by its magicID
-		//				uint64_t uid = std::hash<phyz::MagicID>{}(p.magicID);
-		//				color c = {
-		//					((uid & 0x0000FF) >> 0) / 255.0f,
-		//					((uid & 0x00FF00) >> 8) / 255.0f,
-		//					((uid & 0xFF0000) >> 16) / 255.0f
-		//				};
+						// generate a psuedo random color from the magicID- should make a clear visualization a contact is preserved by its magicID
+						uint64_t uid = std::hash<phyz::MagicID>{}(p.magicID);
+						color c = {
+							((uid & 0x0000FF) >> 0) / 255.0f,
+							((uid & 0x00FF00) >> 8) / 255.0f,
+							((uid & 0xFF0000) >> 16) / 255.0f
+						};
 
-		//				all_contact_points.push_back({ p.pos, m.normal, c });
-		//			}
-		//		}
-		//	}
-		//);
+						all_contact_points.push_back({ p.pos, m.normal, c });
+					}
+				}
+			}
+		);
 
 		float t = 0;
 		float fElapsedTime;
@@ -92,9 +92,9 @@ public:
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -16.0, 0));
 
-		const int source_count = 7;
-		double source_drop_rate = 3;
-		double source_radius = 1;
+		const int source_count = 1;
+		double source_drop_rate = 1;
+		double source_radius = 1.2;
 		double source_y = 30;
 		double ball_radius = 0.2;
 
@@ -124,15 +124,16 @@ public:
 				next_drop_timer += 1.0 / source_drop_rate;
 				
 				for (mthz::Vec3 v : ball_sources) {
-					phyz::ConvexUnionGeometry ball = phyz::ConvexUnionGeometry::sphere(v, ball_radius);
-					phyz::RigidBody* ball_r = p.createRigidBody(ball);
-					bodies.push_back({ fromGeometry(ball, color{1.0f, 0.4f, 0.4f}), ball_r});
+					//phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::sphere(v, ball_radius);
+					phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::regDodecahedron(v, 2 * ball_radius);
+					phyz::RigidBody* r = p.createRigidBody(geom);
+					bodies.push_back({ fromGeometry(geom, color{1.0f, 0.4f, 0.4f}), r});
 
-					p.registerCollisionAction(phyz::CollisionTarget::with(ball_r), phyz::CollisionTarget::with(delete_box_r), [&, ball_r](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
-						p.removeRigidBody(ball_r);
+					p.registerCollisionAction(phyz::CollisionTarget::with(r), phyz::CollisionTarget::with(delete_box_r), [&, r](phyz::RigidBody* b1, phyz::RigidBody* b2, const std::vector<phyz::Manifold>& manifold) {
+						p.removeRigidBody(r);
 
 						for (int i = 0; i < bodies.size(); i++) {
-							if (bodies[i].r == ball_r) {
+							if (bodies[i].r == r) {
 								bodies.erase(bodies.begin() + i);
 								break;
 							}
