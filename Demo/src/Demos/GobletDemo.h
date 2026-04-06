@@ -29,6 +29,7 @@ public:
 			p.enableMultithreading(properties.n_threads);
 		}
 
+
 		std::vector<PhysBod> bodies;
 		std::vector<phyz::ConstraintID> constraints;
 
@@ -38,7 +39,7 @@ public:
 		bodies.push_back({ fromStaticMeshInput(bunny_mesh_input, color{ 0.4f, 1.0f, 0.8f, 0.5f, 0.5f, 0.63f, 51.2f }), bunny_mesh_r });
 
 		bunny_mesh_r->setAngVel(mthz::Vec3(0, 0.501, 0));
-		//bunny_mesh_r->setOrientation(mthz::Quaternion(0.35456637759088915907, 0.00000000000000000000, 0.93503084648693557401, 0.00000000000000000000));
+		bunny_mesh_r->setOrientation(mthz::Quaternion(-0.60668597361459974948, 0.00000000000000000000, 0.79494158868391417982, 0.00000000000000000000));
 
 		//phyz::Mesh goblet_mesh = phyz::readOBJ("resources/mesh/goblet.obj", 0.3);
 		//phyz::MeshInput goblet_mesh_input = phyz::generateMeshInputFromMesh(goblet_mesh, mthz::Vec3(0, 0, 0));
@@ -88,14 +89,14 @@ public:
 		double rot_speed = 1;
 
 		double phyz_time = 0;
-		double timestep = 1 / 90.0;
+		double timestep = 1 / 60.0;
 		p.setStep_time(timestep);
 		p.setGravity(mthz::Vec3(0, -16.0, 0));
 
 		const int source_count = 1;
 		double source_drop_rate = 1;
 		double source_radius = 1.2;
-		double source_y = 30;
+		double source_y = 20;
 		double ball_radius = 0.2;
 
 		std::vector<mthz::Vec3> ball_sources;
@@ -124,8 +125,8 @@ public:
 				next_drop_timer += 1.0 / source_drop_rate;
 				
 				for (mthz::Vec3 v : ball_sources) {
-					//phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::sphere(v, ball_radius);
-					phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::regDodecahedron(v, 2 * ball_radius);
+					phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::sphere(v, ball_radius);
+					//phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::regDodecahedron(v, 2 * ball_radius);
 					phyz::RigidBody* r = p.createRigidBody(geom);
 					bodies.push_back({ fromGeometry(geom, color{1.0f, 0.4f, 0.4f}), r});
 
@@ -176,6 +177,7 @@ public:
 				mthz::Quaternion orient = bunny_mesh_r->getOrientation();
 				printf("%f.20 %f.20 %f.20 %f.20\n", orient.r, orient.i, orient.j, orient.k);
 				phyz_time += timestep;
+				next_drop_timer -= timestep;
 			}
 
 			if (rndr::getKeyPressed(GLFW_KEY_R)) {

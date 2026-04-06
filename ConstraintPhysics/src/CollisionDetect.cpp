@@ -341,11 +341,13 @@ namespace phyz {
 
 		double cos_ang = t.normal.dot(n);
 		if (1 - cos_ang <= COS_TOL) {
+			*did_closest_feature_satisfy_gauss_map = true;
 			return projectTriangleFace(t, u, w);
 		}
 
 		for (int i = 0; i < 3; i++) {
-			if (i != p_ID && (i + 1) % 3 != p_ID) {
+			// todo make not terrible
+			if (t.edges[i].p1_index != p_ID && t.edges[i].p2_index != p_ID) {
 				continue;
 			}
 
@@ -2194,8 +2196,9 @@ namespace phyz {
 		bool did_closest_feature_satisfy_gauss_map;
 		ContactArea b_contact = findTriangleContactAreaAndCheckGaussMapSatisfied(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w, &did_closest_feature_satisfy_gauss_map);
 		if (!did_closest_feature_satisfy_gauss_map) {
-			out.max_pen_depth = -1;
-			return out;
+			1 + 2;
+			//out.max_pen_depth = -1;
+			//return out;
 		}
 		ContactArea a_contact = findContactArea(a, min_pen.norm, a_maxP, min_pen.a_maxPID, u, w);
 		
@@ -2233,9 +2236,9 @@ namespace phyz {
 		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
-		ContactAreaOrigin feature_type;
-		const StaticMeshVertex* closest_vertex = nullptr;
-		const StaticMeshHalfEdge* closest_edge = nullptr;
+		//ContactAreaOrigin feature_type;
+		//const StaticMeshVertex* closest_vertex = nullptr;
+		//const StaticMeshHalfEdge* closest_edge = nullptr;
 
 		ExtremaInfo sphere_extrema = getSphereExtrema(a, -b.normal);
 		CheckNormResults b_norm_x = sat_checknorm_nonreversable(sphere_extrema, findTriangleExtrema(b, -b.normal), -b.normal);
@@ -2244,7 +2247,7 @@ namespace phyz {
 			return out;
 		}
 		if (b_norm_x.pen_depth < min_pen.pen_depth) {
-			feature_type = FACE;
+			//feature_type = FACE;
 			min_pen = b_norm_x;
 		}
 
@@ -2257,9 +2260,9 @@ namespace phyz {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			if (x.pen_depth < min_pen.pen_depth) {
-				feature_type = VERTEX;
-				closest_vertex = &b.vertices[i];
+			if (x.pen_depth < min_pen.pen_depth && normSatisfiesVertexGaussMap(b.vertices[i], -n)) {
+				//feature_type = VERTEX;
+				//closest_vertex = &b.vertices[i];
 				min_pen = x;
 			}
 		}
@@ -2277,28 +2280,37 @@ namespace phyz {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			if (x.pen_depth < min_pen.pen_depth) {
-				feature_type = EDGE;
-				closest_edge = &e;
+			if (x.pen_depth < min_pen.pen_depth && normSatisfiesEdgeGaussArc(e, -n)) {
+				//feature_type = EDGE;
+				//closest_edge = &e;
 				min_pen = x;
 			}
 		}
 
 		// if the feature for the minimum penetration axis is not gauss valid, discard the contact
-		if (feature_type == VERTEX) {
-			if (!normSatisfiesVertexGaussMap(*closest_vertex, -min_pen.norm)) {
-				out.max_pen_depth = -1;
-				return out;
-			}
-		}
-		else if (feature_type == EDGE) {
-			if (!normSatisfiesEdgeGaussArc(*closest_edge, -min_pen.norm)) {
-				out.max_pen_depth = -1;
-				return out;
-			}
-		}
+		//if (feature_type == VERTEX) {
+		//	if (!normSatisfiesVertexGaussMap(*closest_vertex, -min_pen.norm)) {
+		//		out.max_pen_depth = -1;
+		//		return out;
+		//	}
+		//}
+		//else if (feature_type == EDGE) {
+		//	if (!normSatisfiesEdgeGaussArc(*closest_edge, -min_pen.norm)) {
+		//		out.max_pen_depth = -1;
+		//		return out;
+		//	}
+		//}
 
 		out.normal = min_pen.norm;
+
+		// basically performing backface culling. but not doing it upfront like we should.
+		ExtremaInfo extra_bextra = getSphereExtrema(a, min_pen.norm);
+		double max_pen_depth = (extra_bextra.max_val - extra_bextra.min_val) / 2.0;
+		if (min_pen.pen_depth > max_pen_depth) {
+			//printf("%f, %f\n", max_pen_depth, min_pen.pen_depth);
+			out.max_pen_depth = -1;
+			return out;
+		}
 
 		ContactP cp;
 		cp.pos = a.getCenter() + min_pen.norm * a.getRadius();
@@ -2719,6 +2731,7 @@ namespace phyz {
 
 			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
+				m = SAT_PolyTriangle(a, a_id, a_mat, tri);
 				manifolds_out.push_back(m);
 			}
 		}
@@ -2749,9 +2762,6 @@ namespace phyz {
 		for (unsigned int i : tri_candidates) {
 			TransformedTriangle tri = initTriangle(b, b.getTriangles()[i], local_transformation_required, local_to_world_rot, b_world_position);
 			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri);
-			if (m.points.size() > 0) {
-				m = SAT_SphereTriangle(a, a_id, a_mat, tri);
-			}
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
 				manifolds_out.push_back(m);
 			}

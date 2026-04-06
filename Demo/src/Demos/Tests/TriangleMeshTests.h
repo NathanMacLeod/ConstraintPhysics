@@ -194,16 +194,24 @@ public:
 		// simple poly against mesh
 		phyz::ConvexUnionGeometry polyhedron = phyz::ConvexUnionGeometry::regDodecahedron(mthz::Vec3(), 1.0);
 		out.push_back(std::make_unique<TestGeomAgainstSingleSquareMesh>(polyhedron, "Polyhedron vs Square Mesh"));
+		out.push_back(std::make_unique<TestGeomAgainstBumpyMesh>(polyhedron, flat, "Polyhedron vs Flat Mesh"));
+		out.push_back(std::make_unique<TestGeomAgainstBumpyMesh>(polyhedron, minor_rough, "Polyhedron vs Minor Rough"));
+		out.push_back(std::make_unique<TestGeomAgainstBumpyMesh>(polyhedron, medium_rough, "Polyhedron vs Medium Rough"));
+		out.push_back(std::make_unique<TestGeomAgainstBumpyMesh>(polyhedron, extreme_rough, "Polyhedron vs Extreme Rough"));
 
 
 		//composite bovine 
-		MeshColliderOutput cow_mc = readMeshAndColliders("resources/mesh/cow_col.obj", 0.15);
-		phyz::ConvexUnionGeometry cow_geom = {
-			cow_mc.colliders["back_left"], cow_mc.colliders["back_right"], cow_mc.colliders["body"], cow_mc.colliders["ear_left"], cow_mc.colliders["ear_right"],
-			cow_mc.colliders["front_left"], cow_mc.colliders["front_right"], cow_mc.colliders["head"], cow_mc.colliders["horn_base"], cow_mc.colliders["horn_tip_left"],
-			cow_mc.colliders["horn_tip_right"], cow_mc.colliders["neck"], cow_mc.colliders["tail"]
-		};
-		out.push_back(std::make_unique<TestGeomAgainstSingleSquareMesh>(cow_geom, "Bovine vs Square Mesh"));
+		//MeshColliderOutput cow_mc = readMeshAndColliders("resources/mesh/cow_col_fixed.obj", 0.15);
+		//phyz::ConvexUnionGeometry cow_geom = {
+		//	cow_mc.colliders["back_left"], cow_mc.colliders["back_right"], cow_mc.colliders["body"], cow_mc.colliders["ear_left"], cow_mc.colliders["ear_right"],
+		//	cow_mc.colliders["front_left"], cow_mc.colliders["front_right"], cow_mc.colliders["head"], cow_mc.colliders["horn_base"], cow_mc.colliders["horn_tip_left"],
+		//	cow_mc.colliders["horn_tip_right"], cow_mc.colliders["neck"], cow_mc.colliders["tail"]
+		//};
+		//out.push_back(std::make_unique<TestGeomAgainstSingleSquareMesh>(cow_geom, "Bovine vs Square Mesh"));
+		//out.push_back(std::make_unique<TestGeomAgainstBumpyMesh>(cow_geom, flat, "Bovine vs Flat Mesh"));
+		//out.push_back(std::make_unique<TestGeomAgainstBumpyMesh>(cow_geom, minor_rough, "Bovine vs Minor Rough"));
+		//out.push_back(std::make_unique<TestGeomAgainstBumpyMesh>(cow_geom, medium_rough, "Bovine vs Medium Rough"));
+		//out.push_back(std::make_unique<TestGeomAgainstBumpyMesh>(cow_geom, extreme_rough, "Bovine vs Extreme Rough"));
 		return out;
 	}
 };

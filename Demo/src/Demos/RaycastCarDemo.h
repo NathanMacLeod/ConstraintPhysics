@@ -201,7 +201,7 @@ public:
 			double stiffness_modifier = 30;
 			double wheel_height = 0.35;
 
-			MeshColliderOutput mc = readMeshAndColliders("resources/mesh/car.obj", car_model_scale);
+			MeshColliderOutput mc = readMeshAndColliders("resources/mesh/car_fixed.obj", car_model_scale);
 
 			phyz::ConvexUnionGeometry car_geom = { mc.colliders["upper"], mc.colliders["lower"] };
 			car_mesh = mc.meshes["car"];
@@ -326,7 +326,7 @@ public:
 		phyz::RigidBody* raceway_r = p.createRigidBody(raceway_input, false);
 		bodies.push_back({ fromStaticMeshInput(raceway_input, auto_generate), raceway_r });
 
-		MeshColliderOutput cow_mc = readMeshAndColliders("resources/mesh/cow_col.obj", 0.15);
+		MeshColliderOutput cow_mc = readMeshAndColliders("resources/mesh/cow_col_fixed.obj", 0.15);
 		phyz::ConvexUnionGeometry cow_geom = {
 			cow_mc.colliders["back_left"], cow_mc.colliders["back_right"], cow_mc.colliders["body"], cow_mc.colliders["ear_left"], cow_mc.colliders["ear_right"],
 			cow_mc.colliders["front_left"], cow_mc.colliders["front_right"], cow_mc.colliders["head"], cow_mc.colliders["horn_base"], cow_mc.colliders["horn_tip_left"],

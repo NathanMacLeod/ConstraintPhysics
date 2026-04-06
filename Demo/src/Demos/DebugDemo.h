@@ -593,7 +593,7 @@ public:
 			if (something_hovered) {
 				Mesh transformed_mesh = getTransformed(hover_ball, hover_pos, mthz::Quaternion(), cam_pos, cam_orient);
 
-				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
+				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() <  transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);
 					batch_array.flush();
 				}
