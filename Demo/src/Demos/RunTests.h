@@ -93,6 +93,15 @@ private:
 			else if (rndr::getKeyDown(GLFW_KEY_D)) {
 				pos += orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
 			}
+			
+			if (rndr::getKeyDown(GLFW_KEY_ESCAPE)) {
+				outcome.state = TestOutcomeState::CANCELED;
+				return outcome;
+			}
+			if (rndr::getKeyDown(GLFW_KEY_LEFT_CONTROL) && rndr::getKeyPressed(GLFW_KEY_S)) {
+				outcome.state = TestOutcomeState::SKIPPED;
+				return outcome;
+			}
 
 			// mouse controlled camera movement
 			rndr::MousePos new_mouse = rndr::getMousePosition();
@@ -326,10 +335,10 @@ public:
 		std::vector<std::string> skipped_tests;
 
 
-		
+		bool skip_all_remaining_tests = false;
 		for (std::unique_ptr<Test>& t : tests) {
 			std::string test_name = t->getTestName();
-			if (t->getTestExpectation() == TestExpectationStatus::SKIP) {
+			if (skip_all_remaining_tests || t->getTestExpectation() == TestExpectationStatus::SKIP) {
 				printf("(%s): SKIPPED\n", test_name.c_str());
 				skipped_tests.push_back(t->getTestName());
 				continue;
@@ -367,6 +376,17 @@ public:
 			else if (outcome.state == FAILED) {
 				printf("(%s): %sFAILED%s | duration %fms\n", test_name.c_str(), START_RED_TEXT, END_TEXT_COLORING, duration);
 				failed_tests.push_back(std::pair(test_name, outcome.reason));
+			}
+			else if (outcome.state == TestOutcomeState::SKIPPED) {
+				// user input indicated to skip this specific test:
+				printf("(%s): %sSKIPPED%s | duration %fms\n", test_name.c_str(), START_YELLOW_TEXT, END_TEXT_COLORING, duration);
+				skipped_tests.push_back(t->getTestName());
+			}
+			else if (outcome.state == TestOutcomeState::CANCELED) {
+				// user input indicated they want to stop running remaining tests:
+				skip_all_remaining_tests = true;
+				printf("(%s): %sCANCELED%s | duration %fms\n", test_name.c_str(), START_YELLOW_TEXT, END_TEXT_COLORING, duration);
+				skipped_tests.push_back(t->getTestName());
 			}
 		}
 

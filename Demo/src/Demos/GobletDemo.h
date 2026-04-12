@@ -39,12 +39,12 @@ public:
 		bodies.push_back({ fromStaticMeshInput(bunny_mesh_input, color{ 0.4f, 1.0f, 0.8f, 0.5f, 0.5f, 0.63f, 51.2f }), bunny_mesh_r });
 
 		bunny_mesh_r->setAngVel(mthz::Vec3(0, 0.501, 0));
-		bunny_mesh_r->setOrientation(mthz::Quaternion(-0.60668597361459974948, 0.00000000000000000000, 0.79494158868391417982, 0.00000000000000000000));
+		bunny_mesh_r->setOrientation(mthz::Quaternion(-0.19256282997935361689, 0.00000000000000000000, 0.98128464601783238486, 0.00000000000000000000));
 
-		//phyz::Mesh goblet_mesh = phyz::readOBJ("resources/mesh/goblet.obj", 0.3);
-		//phyz::MeshInput goblet_mesh_input = phyz::generateMeshInputFromMesh(goblet_mesh, mthz::Vec3(0, 0, 0));
-		//phyz::RigidBody* goblet_mesh_r = p.createRigidBody(goblet_mesh_input);
-		//bodies.push_back({ fromStaticMeshInput(goblet_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), goblet_mesh_r });
+		/*phyz::Mesh goblet_mesh = phyz::readOBJ("resources/mesh/goblet.obj", 0.3);
+		phyz::MeshInput goblet_mesh_input = phyz::generateMeshInputFromMesh(goblet_mesh, mthz::Vec3(0, 0, 0));
+		phyz::RigidBody* goblet_mesh_r = p.createRigidBody(goblet_mesh_input);
+		bodies.push_back({ fromStaticMeshInput(goblet_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), goblet_mesh_r });*/
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
@@ -125,8 +125,8 @@ public:
 				next_drop_timer += 1.0 / source_drop_rate;
 				
 				for (mthz::Vec3 v : ball_sources) {
-					phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::sphere(v, ball_radius);
-					//phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::regDodecahedron(v, 2 * ball_radius);
+					//phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::sphere(v, ball_radius);
+					phyz::ConvexUnionGeometry geom = phyz::ConvexUnionGeometry::regDodecahedron(v, 2 * ball_radius);
 					phyz::RigidBody* r = p.createRigidBody(geom);
 					bodies.push_back({ fromGeometry(geom, color{1.0f, 0.4f, 0.4f}), r});
 

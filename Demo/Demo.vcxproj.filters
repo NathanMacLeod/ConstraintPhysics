@@ -176,11 +176,11 @@
     <ClInclude Include="src\Demos\Tests\RaycastTests.h">
       <Filter>src\Demos\Tests</Filter>
     </ClInclude>
-    <ClInclude Include="src\Demos\Tests\TriangleMeshTests.h">
-      <Filter>src\Demos\Tests</Filter>
-    </ClInclude>
     <ClInclude Include="src\Demos\GobletDemo.h">
       <Filter>src\Demos</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Demos\Tests\TriangleMeshTests.h">
+      <Filter>src\Demos\Tests</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

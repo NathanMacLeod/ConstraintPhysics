@@ -707,7 +707,7 @@ namespace phyz {
 		for (int i = 0; i < points.size(); i++) {
 			copy.points[i] = (copy.points[i] - center_of_dialation) * d + center_of_dialation;
 		}
-		copy.interior_point = (copy.interior_point - center_of_dialation) * d + center_of_dialation;;
+		copy.interior_point = (copy.interior_point - center_of_dialation) * d + center_of_dialation;
 
 		return copy;
 	}

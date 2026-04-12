@@ -245,7 +245,7 @@ namespace phyz {
 		std::vector<mthz::Vec3> points;
 		std::vector<Surface> surfaces;
 		std::vector<Edge> edges;
-	public: mthz::Vec3 interior_point;
+	public: mthz::Vec3 interior_point; // default is the average of all vertices. Rigid bodies reset this to be the centroid.
 	};
 
 	class Edge {

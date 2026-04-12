@@ -287,6 +287,77 @@ namespace phyz {
 		
 	}
 
+	static mthz::Vec3 acceptOrSnapNormalAgainstVertexGaussMap(const StaticMeshVertex& s, mthz::Vec3 normal) {
+		assert(!s.valid_normal_gauss_map.empty()); // nothing to snap to. Rejected!
+
+		mthz::Vec3 out_vector = normal;
+		double closest_feature_dist = std::numeric_limits<double>::infinity(); // if normal is outside, the best feature we could snap to.
+
+		//TODO: profile and determine which of these cross products should be cached, if any
+
+		for (int i = 0; i < s.valid_normal_gauss_map.size(); i++) {
+			mthz::Vec3 p1 = s.valid_normal_gauss_map[i], p2 = s.valid_normal_gauss_map[(i + 1) % s.valid_normal_gauss_map.size()];
+			mthz::Vec3 inner_region_direction = p1.cross(p2);
+			if (normal.dot(inner_region_direction) >= 0) { continue; } // norm appears inside according to this edge.
+
+			// norm is outside. evaluate whether this edges features might be the best to snap to.
+			mthz::Vec3 p1_to_p2_dir = inner_region_direction.cross(p1);
+			if (p1_to_p2_dir.dot(normal) < 0) {
+				// snap to p1.
+				double snap_to_p1_dist = normal.cross(p1).mag();
+				if (snap_to_p1_dist < closest_feature_dist) {
+					closest_feature_dist = snap_to_p1_dist;
+					out_vector = p1;
+				}
+			}
+			else if (mthz::Vec3 p2_to_p1_dir = p2.cross(inner_region_direction); p2_to_p1_dir.dot(normal) >= 0) {
+				// snap to edge
+				// to snap to edge, delete component parallel to the edge in direction, then normalize. can only be done if normal is within the edges arc
+				mthz::Vec3 inner_dir_normalized = inner_region_direction.normalize();
+				mthz::Vec3 snapped = (normal - inner_dir_normalized * inner_dir_normalized.dot(normal)).normalize();
+				double snap_dist = normal.cross(snapped).mag();
+				if (snap_dist < closest_feature_dist) {
+					closest_feature_dist = snap_dist;
+					out_vector = snapped;
+				}
+			}
+			else {
+				//todo debug whether this is really needed
+				//snap to p2
+				double snap_to_p2_dist = normal.cross(p2).mag();
+				if (snap_to_p2_dist < closest_feature_dist) {
+					closest_feature_dist = snap_to_p2_dist;
+					out_vector = p2;
+				}
+			}
+			// else snap to p2. but we will let the next segment handle that in it's "snap to p1" case.
+		}
+
+		return out_vector;
+	}
+
+	static mthz::Vec3 acceptOrSnapNormalAgainstEdgeGaussArc(const StaticMeshHalfEdge& e, mthz::Vec3 normal) {
+		assert(e.has_gauss_arc);
+
+		//the normal should lie on the arc defined by the two points
+		mthz::Vec3 arc_normal = e.gauss_arc_g1.cross(e.gauss_arc_g2);
+		mthz::Vec3 p1_to_p2_dir = arc_normal.cross(e.gauss_arc_g1);
+
+		if (p1_to_p2_dir.dot(normal) < 0) {
+			//snap to p1
+			return e.gauss_arc_g1;
+		}
+		else if (mthz::Vec3 p2_to_p1_dir = e.gauss_arc_g2.cross(arc_normal); p2_to_p1_dir.dot(normal) < 0) {
+			//snap to p2
+			return e.gauss_arc_g2;
+		}
+		else {
+			//snap to arc edge
+			arc_normal = arc_normal.normalize();
+			return (normal - arc_normal * arc_normal.dot(normal)).normalize();
+		}
+	}
+
 	static bool normSatisfiesVertexGaussMap(const StaticMeshVertex& s, mthz::Vec3 normal) {
 		if (s.valid_normal_gauss_map.empty()) return false;
 
@@ -337,6 +408,36 @@ namespace phyz {
 		return out;
 	}
 
+	static void findTriangleContactFeature(const TransformedTriangle& t, mthz::Vec3 n, int max_p_id, ContactAreaOrigin* feature_type_out, int* closest_feature_index_out) {
+		double cos_ang = -t.normal.dot(n);
+
+		// check if face
+		if (1 - cos_ang <= COS_TOL) {
+			*feature_type_out = FACE;
+			return;
+		}
+
+		//check if edge
+		for (int i = 0; i < 3; i++) {
+			if (i != max_p_id && (i+1)%3 != max_p_id) {
+				continue;
+			}
+
+			mthz::Vec3 p1 = t.vertices[i].p;
+			mthz::Vec3 p2 = t.vertices[(i + 1) % 3].p;
+			double sin_ang = abs((p2 - p1).normalize().dot(n));
+			if (sin_ang <= SIN_TOL) {
+				*feature_type_out = EDGE;
+				*closest_feature_index_out = i;
+				return;
+			}
+		}
+
+		//is vertex
+		*feature_type_out = VERTEX;
+		*closest_feature_index_out = max_p_id;
+	}
+
 	static ContactArea findTriangleContactAreaAndCheckGaussMapSatisfied(const TransformedTriangle& t, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w, bool* did_closest_feature_satisfy_gauss_map) {
 
 		double cos_ang = t.normal.dot(n);
@@ -347,7 +448,7 @@ namespace phyz {
 
 		for (int i = 0; i < 3; i++) {
 			// todo make not terrible
-			if (t.edges[i].p1_index != p_ID && t.edges[i].p2_index != p_ID) {
+			if (i != p_ID && (i+1)%3 != p_ID) {
 				continue;
 			}
 
@@ -745,17 +846,6 @@ namespace phyz {
 		out.max_pID = -1;
 
 		return out;
-	}
-
-	static CheckNormResults sat_checknorm_nonreversable(const ExtremaInfo& a_info, const ExtremaInfo& b_info, mthz::Vec3 n) {
-		double forward_pen_depth = a_info.max_val - b_info.min_val;
-		double reverse_pen_depth = b_info.max_val - a_info.min_val;
-
-		if (reverse_pen_depth < 0) {
-			// still want to use this value if it indiacates a separating axis
-			return CheckNormResults{ a_info.max_pID, b_info.min_pID, n, forward_pen_depth }; 
-		}
-		return CheckNormResults{ a_info.max_pID, b_info.min_pID, n, forward_pen_depth };
 	}
 
 	static CheckNormResults sat_checknorm(const ExtremaInfo& a_info, const ExtremaInfo& b_info, mthz::Vec3 n) {
@@ -2086,11 +2176,11 @@ namespace phyz {
 			const StaticMeshVertex& v = tri.vertices[i];
 			double val = v.p.dot(dir);
 			if (val < extrema.min_val) {
-				extrema.min_pID = v.self_index; // not really following the interface correctly but technically works
+				extrema.min_pID = i;
 				extrema.min_val = val;
 			}
 			if (val > extrema.max_val) {
-				extrema.max_pID = v.self_index;
+				extrema.max_pID = i;
 				extrema.max_val = val;
 			}
 		}
@@ -2104,8 +2194,14 @@ namespace phyz {
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		const GaussMap& ag = a.getGaussMap();
 
+		// backface culling
+		if (b.normal.dot(a.interior_point - b.vertices[0].p) < 0) {
+			out.max_pen_depth = -1;
+			return out;
+		}
+
 		ExtremaInfo poly_info = findExtrema(a, -b.normal);
-		CheckNormResults b_norm_x = sat_checknorm_nonreversable(poly_info, findTriangleExtrema(b, -b.normal), -b.normal);
+		CheckNormResults b_norm_x = sat_checknorm(poly_info, findTriangleExtrema(b, -b.normal), -b.normal);
 		if (b_norm_x.seprAxisExists()) {
 			out.max_pen_depth = -1;
 			return out;
@@ -2182,24 +2278,35 @@ namespace phyz {
 			}
 		}
 
+		ContactAreaOrigin triangle_closest_feature_type;
+		int closest_feature_index;
+		findTriangleContactFeature(b, min_pen.norm, min_pen.b_maxPID, &triangle_closest_feature_type, &closest_feature_index);
+
+		if (triangle_closest_feature_type != FACE) {
+			mthz::Vec3 snapped_norm;
+			if (triangle_closest_feature_type == VERTEX) {
+				const StaticMeshVertex& v = b.vertices[closest_feature_index];
+				snapped_norm = v.valid_normal_gauss_map.size() > 0 ? -acceptOrSnapNormalAgainstVertexGaussMap(v, -min_pen.norm) : -b.normal;
+			}
+			else if (triangle_closest_feature_type == EDGE) {
+				const StaticMeshHalfEdge& e = b.edges[closest_feature_index];
+				snapped_norm = e.has_gauss_arc? -acceptOrSnapNormalAgainstEdgeGaussArc(e, -min_pen.norm) : -b.normal;
+			}
+			ExtremaInfo poly_extrema = findExtrema(a, snapped_norm);
+			min_pen = sat_checknorm(poly_extrema, findTriangleExtrema(b, snapped_norm), snapped_norm);
+		}
+
+		//ContactArea b_contact = findTriangleContactArea(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w);
+
 		out.normal = min_pen.norm;
 		mthz::Vec3 norm = min_pen.norm;
 		mthz::Vec3 a_maxP = a.getPoints()[min_pen.a_maxPID];
 		//todo: make this not terrible
-		mthz::Vec3 b_maxP;
-		for (const StaticMeshVertex& v : b.vertices) {
-			if (v.self_index == min_pen.b_maxPID) { b_maxP = v.p; }
-		};
-
+		mthz::Vec3 b_maxP = b.vertices[min_pen.b_maxPID].p;
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
 		bool did_closest_feature_satisfy_gauss_map;
 		ContactArea b_contact = findTriangleContactAreaAndCheckGaussMapSatisfied(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w, &did_closest_feature_satisfy_gauss_map);
-		if (!did_closest_feature_satisfy_gauss_map) {
-			1 + 2;
-			//out.max_pen_depth = -1;
-			//return out;
-		}
 		ContactArea a_contact = findContactArea(a, min_pen.norm, a_maxP, min_pen.a_maxPID, u, w);
 		
 		std::vector<ProjectedContactPoint> manifold_pool = clipContacts(a_contact, b_contact);
@@ -2236,36 +2343,48 @@ namespace phyz {
 		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
-		//ContactAreaOrigin feature_type;
-		//const StaticMeshVertex* closest_vertex = nullptr;
-		//const StaticMeshHalfEdge* closest_edge = nullptr;
+		ContactAreaOrigin triangle_closest_feature_type;
+		int closest_edge_index = -1; int closest_vertex_index = -1;
+		// backface culling
+		if (b.normal.dot(a.getCenter() - b.vertices[0].p) < 0) {
+			out.max_pen_depth = -1;
+			return out;
+		}
 
+		// check triangle norm
 		ExtremaInfo sphere_extrema = getSphereExtrema(a, -b.normal);
-		CheckNormResults b_norm_x = sat_checknorm_nonreversable(sphere_extrema, findTriangleExtrema(b, -b.normal), -b.normal);
+		CheckNormResults b_norm_x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, -b.normal), -b.normal);
 		if (b_norm_x.seprAxisExists()) {
 			out.max_pen_depth = -1;
 			return out;
 		}
 		if (b_norm_x.pen_depth < min_pen.pen_depth) {
-			//feature_type = FACE;
+			triangle_closest_feature_type = FACE;
 			min_pen = b_norm_x;
 		}
 
+		// check against vertices
 		for (int i = 0; i < 3; i++) {
+			const StaticMeshVertex& v = b.vertices[i];
+
 			mthz::Vec3 p = b.vertices[i].p;
 			mthz::Vec3 n = (p - a.getCenter()).normalize();
 			ExtremaInfo sphere_extrema = getSphereExtrema(a, n);
-			CheckNormResults x = sat_checknorm_nonreversable(sphere_extrema, findTriangleExtrema(b, n), n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			if (x.pen_depth < min_pen.pen_depth && normSatisfiesVertexGaussMap(b.vertices[i], -n)) {
-				//feature_type = VERTEX;
-				//closest_vertex = &b.vertices[i];
+
+			if (v.valid_normal_gauss_map.empty()) continue; // no valid collisions with this vertex
+			if (x.pen_depth < min_pen.pen_depth) {
+				triangle_closest_feature_type = VERTEX;
+				closest_vertex_index = i;
 				min_pen = x;
 			}
 		}
+
+		//check against edges
 		for (int i = 0; i < 3; i++) {
 			mthz::Vec3 p1 = b.vertices[i].p;
 			mthz::Vec3 p2 = b.vertices[(i + 1) % 3].p;
@@ -2275,42 +2394,33 @@ namespace phyz {
 			mthz::Vec3 sample = p1 - a.getCenter();
 			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
 			ExtremaInfo sphere_extrema = getSphereExtrema(a, n);
-			CheckNormResults x = sat_checknorm_nonreversable(sphere_extrema, findTriangleExtrema(b, n), n);
+			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
-			if (x.pen_depth < min_pen.pen_depth && normSatisfiesEdgeGaussArc(e, -n)) {
-				//feature_type = EDGE;
-				//closest_edge = &e;
+
+			if (!e.has_gauss_arc) { continue; } // cant collide against this edge
+			if (x.pen_depth < min_pen.pen_depth) {
+				triangle_closest_feature_type = EDGE;
+				closest_edge_index = i;
 				min_pen = x;
 			}
 		}
 
-		// if the feature for the minimum penetration axis is not gauss valid, discard the contact
-		//if (feature_type == VERTEX) {
-		//	if (!normSatisfiesVertexGaussMap(*closest_vertex, -min_pen.norm)) {
-		//		out.max_pen_depth = -1;
-		//		return out;
-		//	}
-		//}
-		//else if (feature_type == EDGE) {
-		//	if (!normSatisfiesEdgeGaussArc(*closest_edge, -min_pen.norm)) {
-		//		out.max_pen_depth = -1;
-		//		return out;
-		//	}
-		//}
+		// if our min_pen axis comes from a vertex or edge, snap it to a valid normal according to the gauss map
+		if (triangle_closest_feature_type == VERTEX) {
+			mthz::Vec3 n_snapped = -acceptOrSnapNormalAgainstVertexGaussMap(b.vertices[closest_vertex_index], -min_pen.norm);
+			ExtremaInfo sphere_extrema = getSphereExtrema(a, n_snapped);
+			min_pen = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n_snapped), n_snapped);
+		}
+		else if (triangle_closest_feature_type == EDGE) {
+			mthz::Vec3 n_snapped = -acceptOrSnapNormalAgainstEdgeGaussArc(b.edges[closest_edge_index], -min_pen.norm);
+			ExtremaInfo sphere_extrema = getSphereExtrema(a, n_snapped);
+			min_pen = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n_snapped), n_snapped);
+		}
 
 		out.normal = min_pen.norm;
-
-		// basically performing backface culling. but not doing it upfront like we should.
-		ExtremaInfo extra_bextra = getSphereExtrema(a, min_pen.norm);
-		double max_pen_depth = (extra_bextra.max_val - extra_bextra.min_val) / 2.0;
-		if (min_pen.pen_depth > max_pen_depth) {
-			//printf("%f, %f\n", max_pen_depth, min_pen.pen_depth);
-			out.max_pen_depth = -1;
-			return out;
-		}
 
 		ContactP cp;
 		cp.pos = a.getCenter() + min_pen.norm * a.getRadius();
@@ -2334,10 +2444,9 @@ namespace phyz {
 		return out;
 	}
 
-	static Manifold SAT_CapsuleTriangle(const Capsule& a, int a_id, const Material& a_mat, const TransformedTriangle& b, double non_gauss_valid_penalty) {
+	static Manifold SAT_CapsuleTriangle(const Capsule& a, int a_id, const Material& a_mat, const TransformedTriangle& b) {
 		Manifold out;
-/*		out.max_pen_depth = -1;
-		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
 		mthz::Vec3 a_height_axis = a.getHeightAxis();
@@ -2354,13 +2463,14 @@ namespace phyz {
 		if (b_norm_x.pen_depth < min_pen.pen_depth) {
 			min_pen = b_norm_x;
 		}
-		if (b_norm_x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -b_norm_x.norm)) {
-			min_gauss_valid_pen = b_norm_x;
-		}
 
-		//check edge collisions against the round body of the cylinder
-		for (const StaticMeshEdge& e : b.edges) {
-			mthz::Vec3 edge_dir = e.p2 - e.p1;
+		// check edge against the drum section
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p1 = b.vertices[i].p;
+			mthz::Vec3 p2 = b.vertices[(i + 1) % 3].p;
+			const StaticMeshHalfEdge& e = b.edges[i];
+
+			mthz::Vec3 edge_dir = p2 - p1;
 			mthz::Vec3 dir = edge_dir.cross(a_height_axis);
 			if (dir.mag() < 0.00000000001) continue;
 
@@ -2371,17 +2481,17 @@ namespace phyz {
 				out.max_pen_depth = -1;
 				return out;
 			}
+
+			if (!e.has_gauss_arc) { continue; } // cant collide against this edge
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
-			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
 			}
 		}
 
 		//check vertex collisions against the body of the cylinder
 		for (int i = 0; i < 3; i++) {
-			mthz::Vec3 p = b.vertices[i].p;
+			const StaticMeshVertex& v = b.vertices[i];
+			mthz::Vec3 p = v.p;
 			mthz::Vec3 diff = p - a.getCenter();
 			mthz::Vec3 n = (diff - a_height_axis * a_height_axis.dot(diff)).normalize();
 			ExtremaInfo cyl_extrema = getCapsuleExtrema(a, n);
@@ -2390,103 +2500,98 @@ namespace phyz {
 				out.max_pen_depth = -1;
 				return out;
 			}
+
+			if (v.valid_normal_gauss_map.empty()) continue; // no valid collisions with this vertex
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
-			}
 		}
 
-		//check vertex collisions against the top cap
+		//check vertex collisions against the caps
 		for (int i = 0; i < 3; i++) {
-			mthz::Vec3 p = b.vertices[i].p;
-			mthz::Vec3 n = (p - a_topcap_center).normalize();
-			ExtremaInfo sphere_extrema = getCapsuleExtrema(a, n);
-			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
+			const StaticMeshVertex& v = b.vertices[i];
+			mthz::Vec3 p = v.p;
+			// determine which cap this vertex could collide against
+			double vh = (p - a.getCenter()).dot(a_height_axis);
+			mthz::Vec3 collidable_cap_center;
+			if (vh >= a.getDrumHeight() / 2.0)       { collidable_cap_center = a_topcap_center; }
+			else if (vh <= -a.getDrumHeight() / 2.0) { collidable_cap_center = a_botcap_center; }
+			else                                     { continue; } // vertex is inbetween the two caps, so can't collide against either
+
+			mthz::Vec3 n = (p - collidable_cap_center).normalize();
+			ExtremaInfo capsule_extrema = getCapsuleExtrema(a, n);
+			CheckNormResults x = sat_checknorm(capsule_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
+
+			if (v.valid_normal_gauss_map.empty()) continue; // no valid collisions with this vertex
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
-			}
 		}
 
-		//check vertex collisions against the bot cap
+		//edge against the caps
 		for (int i = 0; i < 3; i++) {
-			mthz::Vec3 p = b.vertices[i].p;
-			mthz::Vec3 n = (p - a_botcap_center).normalize();
-			ExtremaInfo sphere_extrema = getCapsuleExtrema(a, n);
-			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
-			if (x.seprAxisExists()) {
-				out.max_pen_depth = -1;
-				return out;
-			}
-			if (x.pen_depth < min_pen.pen_depth) {
-				min_pen = x;
-			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
-			}
-		}
+			mthz::Vec3 p1 = b.vertices[i].p;
+			mthz::Vec3 p2 = b.vertices[(i + 1) % 3].p;
+			const StaticMeshHalfEdge& e = b.edges[i];
 
-		//edge against the top cap
-		for (StaticMeshEdge e : b.edges) {
-			mthz::Vec3 edge_dir = (e.p2 - e.p1).normalize();
-			mthz::Vec3 sample = e.p1 - a_topcap_center;
-			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
-			ExtremaInfo sphere_extrema = getCapsuleExtrema(a, n);
-			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
-			if (x.seprAxisExists()) {
-				out.max_pen_depth = -1;
-				return out;
-			}
-			if (x.pen_depth < min_pen.pen_depth) {
-				min_pen = x;
-			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
-			}
-		}
 
-		//edge against the bot cap
-		for (StaticMeshEdge e : b.edges) {
-			mthz::Vec3 edge_dir = (e.p2 - e.p1).normalize();
-			mthz::Vec3 sample = e.p1 - a_botcap_center;
-			mthz::Vec3 n = (sample - edge_dir * edge_dir.dot(sample)).normalize();
-			ExtremaInfo sphere_extrema = getCapsuleExtrema(a, n);
-			CheckNormResults x = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n), n);
+			mthz::Vec3 edge_dir = (p2 - p1).normalize();
+
+			// check whether the edge could 
+			mthz::Vec3 n;
+			mthz::Vec3 topcap_sample = p1 - a_topcap_center;
+			mthz::Vec3 botcap_sample = p1 - a_botcap_center;
+			if (mthz::Vec3 n_top = topcap_sample - edge_dir * edge_dir.dot(topcap_sample); n_top.dot(a_height_axis) <= 0)      { n = n_top; }
+			else if (mthz::Vec3 n_bot = botcap_sample - edge_dir * edge_dir.dot(botcap_sample); n_bot.dot(a_height_axis) >= 0) { n = n_bot; }
+			else                                                                                                               { continue; }
+
+			n = n.normalize();
+			ExtremaInfo capsule_extrema = getCapsuleExtrema(a, n);
+			CheckNormResults x = sat_checknorm(capsule_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
-			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
 			}
 		}
 		
+		ContactAreaOrigin triangle_closest_feature_type;
+		int closest_feature_index;
+		findTriangleContactFeature(b, min_pen.norm, min_pen.b_maxPID, &triangle_closest_feature_type, &closest_feature_index);
 
-		CheckNormResults nongauss_min_pen = min_pen;
-		if (min_gauss_valid_pen.pen_depth < min_pen.pen_depth + non_gauss_valid_penalty) min_pen = min_gauss_valid_pen;
+		// if our min_pen axis comes from a vertex or edge, snap it to a valid normal according to the gauss map
+		if (triangle_closest_feature_type != FACE) {
+			mthz::Vec3 snapped_norm;
+			if (triangle_closest_feature_type == VERTEX) {
+				const StaticMeshVertex& v = b.vertices[closest_feature_index];
+				snapped_norm = v.valid_normal_gauss_map.size() > 0 ? -acceptOrSnapNormalAgainstVertexGaussMap(v, -min_pen.norm) : -b.normal;
+			}
+			else if (triangle_closest_feature_type == EDGE) {
+				const StaticMeshHalfEdge& e = b.edges[closest_feature_index];
+				snapped_norm = e.has_gauss_arc ? -acceptOrSnapNormalAgainstEdgeGaussArc(e, -min_pen.norm) : -b.normal;
+			}
+			ExtremaInfo poly_extrema = getCapsuleExtrema(a, snapped_norm);
+			min_pen = sat_checknorm(poly_extrema, findTriangleExtrema(b, snapped_norm), snapped_norm);
+		}
 
 		out.normal = min_pen.norm;
 		mthz::Vec3 norm = min_pen.norm;
 		mthz::Vec3 a_maxP = a.getHeightAxis().dot(norm) > 0 ?
 			a_topcap_center + norm * a.getRadius()
 			: a_botcap_center + norm * a.getRadius();
-		mthz::Vec3 b_maxP = b.vertices[nongauss_min_pen.b_maxPID].p;
+		mthz::Vec3 b_maxP = b.vertices[min_pen.b_maxPID].p;
 
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
-		ContactArea a_contact = findCapsuleContactArea(a, nongauss_min_pen.norm, u, w);
-		ContactArea b_contact = findTriangleContactArea(b, -nongauss_min_pen.norm, b_maxP, nongauss_min_pen.b_maxPID, u, w);
+		ContactArea a_contact = findCapsuleContactArea(a, min_pen.norm, u, w);
+		bool did_closest_feature_satisfy_gauss_map;
+		ContactArea b_contact = findTriangleContactAreaAndCheckGaussMapSatisfied(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w, &did_closest_feature_satisfy_gauss_map);
 
 		std::vector<ProjectedContactPoint> manifold_pool;
 		if (a_contact.origin == EDGE) {
@@ -2502,7 +2607,7 @@ namespace phyz {
 
 		uint64_t cID = 0;
 		cID |= 0x00000000FFFFFFFF & a_id;
-		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.id) << 32);
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.original_triangle_id) << 32);
 
 		out.points.reserve(manifold_pool.size());
 		for (ProjectedContactPoint p : manifold_pool) {
@@ -2517,15 +2622,14 @@ namespace phyz {
 			cp.magicID = MagicID{ cID, p.magic };
 			out.points.push_back(cp);
 		}
-		out.max_pen_depth = min_pen.pen_depth;*/
+		out.max_pen_depth = min_pen.pen_depth;
 
 		return out;
 	}
 
-	static Manifold SAT_CylinderTriangle(const Cylinder& a, int a_id, const Material& a_mat, const StaticMeshFace& b, double non_gauss_valid_penalty) {
+	static Manifold SAT_CylinderTriangle(const Cylinder& a, int a_id, const Material& a_mat, const TransformedTriangle& b) {
 		Manifold out;
-/*		out.max_pen_depth = -1;
-		CheckNormResults min_gauss_valid_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
+		out.max_pen_depth = -1;
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 
 		//check cylinder face axis
@@ -2540,9 +2644,6 @@ namespace phyz {
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
-			}
 		}
 
 		ExtremaInfo poly_info = getCylinderExtrema(a, b.normal);
@@ -2554,13 +2655,14 @@ namespace phyz {
 		if (b_norm_x.pen_depth < min_pen.pen_depth) {
 			min_pen = b_norm_x;
 		}
-		if (b_norm_x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -b_norm_x.norm)) {
-			min_gauss_valid_pen = b_norm_x;
-		}
 
 		//check edge collisions against the round body of the cylinder
-		for (const StaticMeshEdge& e : b.edges) {
-			mthz::Vec3 edge_dir = e.p2 - e.p1;
+		for (int i = 0; i < 3; i++) {
+			mthz::Vec3 p1 = b.vertices[i].p;
+			mthz::Vec3 p2 = b.vertices[(i + 1) % 3].p;
+			const StaticMeshHalfEdge& e = b.edges[i];
+
+			mthz::Vec3 edge_dir = p2 - p1;
 			mthz::Vec3 dir = edge_dir.cross(a_height_axis);
 			if (dir.mag() < 0.00000000001) continue;
 
@@ -2574,27 +2676,25 @@ namespace phyz {
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
 			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
-			}
 		}
 
 		//check vertex collisions against the body of the cylinder
 		for (int i = 0; i < 3; i++) {
-			mthz::Vec3 p = b.vertices[i].p;
+			const StaticMeshVertex& v = b.vertices[i];
+			mthz::Vec3 p = v.p;
 			mthz::Vec3 diff = p - a.getCenter();
 			mthz::Vec3 n = (diff - a_height_axis * a_height_axis.dot(diff)).normalize();
+			if (n == mthz::Vec3(0, 0, 0)) { continue; }
 			ExtremaInfo cyl_extrema = getCylinderExtrema(a, n);
 			CheckNormResults x = sat_checknorm(cyl_extrema, findTriangleExtrema(b, n), n);
 			if (x.seprAxisExists()) {
 				out.max_pen_depth = -1;
 				return out;
 			}
+
+			if (v.valid_normal_gauss_map.empty()) continue; // no valid collisions with this vertex
 			if (x.pen_depth < min_pen.pen_depth) {
 				min_pen = x;
-			}
-			if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-				min_gauss_valid_pen = x;
 			}
 		}
 
@@ -2649,26 +2749,40 @@ namespace phyz {
 				if (x.pen_depth < min_pen.pen_depth) {
 					min_pen = x;
 				}
-				if (x.pen_depth < min_gauss_valid_pen.pen_depth && normalDirectionValid(b, -x.norm)) {
-					min_gauss_valid_pen = x;
-				}
 			}
 		}
 
-		CheckNormResults nongauss_min_pen = min_pen;
-		if (min_gauss_valid_pen.pen_depth < min_pen.pen_depth + non_gauss_valid_penalty) min_pen = min_gauss_valid_pen;
+		ContactAreaOrigin triangle_closest_feature_type;
+		int closest_feature_index;
+		findTriangleContactFeature(b, min_pen.norm, min_pen.b_maxPID, &triangle_closest_feature_type, &closest_feature_index);
+
+		// if our min_pen axis comes from a vertex or edge, snap it to a valid normal according to the gauss map
+		if (triangle_closest_feature_type != FACE) {
+			mthz::Vec3 snapped_norm;
+			if (triangle_closest_feature_type == VERTEX) {
+				const StaticMeshVertex& v = b.vertices[closest_feature_index];
+				snapped_norm = v.valid_normal_gauss_map.size() > 0 ? -acceptOrSnapNormalAgainstVertexGaussMap(v, -min_pen.norm) : -b.normal;
+			}
+			else if (triangle_closest_feature_type == EDGE) {
+				const StaticMeshHalfEdge& e = b.edges[closest_feature_index];
+				snapped_norm = e.has_gauss_arc ? -acceptOrSnapNormalAgainstEdgeGaussArc(e, -min_pen.norm) : -b.normal;
+			}
+			ExtremaInfo poly_extrema = getCylinderExtrema(a, snapped_norm);
+			min_pen = sat_checknorm(poly_extrema, findTriangleExtrema(b, snapped_norm), snapped_norm);
+		}
 
 		out.normal = min_pen.norm;
 		mthz::Vec3 norm = min_pen.norm;
 		mthz::Vec3 a_maxP = a_height_axis.dot(norm) > 0 ?
 			Cylinder::getExtremaOfDisk(a.getTopDiskCenter(), a_height_axis, a.getRadius(), norm)
 			: Cylinder::getExtremaOfDisk(a.getBotDiskCenter(), a_height_axis, a.getRadius(), norm);
-		mthz::Vec3 b_maxP = b.vertices[nongauss_min_pen.b_maxPID].p;
+		mthz::Vec3 b_maxP = b.vertices[min_pen.b_maxPID].p;
 
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
-		ContactArea a_contact = findCylinderContactArea(a, nongauss_min_pen.norm, u, w);
-		ContactArea b_contact = findTriangleContactArea(b, -nongauss_min_pen.norm, b_maxP, nongauss_min_pen.b_maxPID, u, w);
+		ContactArea a_contact = findCylinderContactArea(a, min_pen.norm, u, w);
+		bool did_closest_feature_satisfy_gauss_map;
+		ContactArea b_contact = findTriangleContactAreaAndCheckGaussMapSatisfied(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w, &did_closest_feature_satisfy_gauss_map);
 
 		std::vector<ProjectedContactPoint> manifold_pool;
 		if (a_contact.origin == EDGE) {
@@ -2684,7 +2798,7 @@ namespace phyz {
 
 		uint64_t cID = 0;
 		cID |= 0x00000000FFFFFFFF & a_id;
-		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.id) << 32);
+		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.original_triangle_id) << 32);
 
 		out.points.reserve(manifold_pool.size());
 		for (ProjectedContactPoint p : manifold_pool) {
@@ -2699,7 +2813,7 @@ namespace phyz {
 			cp.magicID = MagicID{ cID, p.magic };
 			out.points.push_back(cp);
 		}
-		out.max_pen_depth = min_pen.pen_depth;*/
+		out.max_pen_depth = min_pen.pen_depth;
 
 		return out;
 	}
@@ -2731,7 +2845,7 @@ namespace phyz {
 
 			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
-				m = SAT_PolyTriangle(a, a_id, a_mat, tri);
+				//m = SAT_PolyTriangle(a, a_id, a_mat, tri);
 				manifolds_out.push_back(m);
 			}
 		}
@@ -2763,6 +2877,7 @@ namespace phyz {
 			TransformedTriangle tri = initTriangle(b, b.getTriangles()[i], local_transformation_required, local_to_world_rot, b_world_position);
 			Manifold m = SAT_SphereTriangle(a, a_id, a_mat, tri);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
+				//m = SAT_SphereTriangle(a, a_id, a_mat, tri);
 				manifolds_out.push_back(m);
 			}
 		}
@@ -2790,16 +2905,14 @@ namespace phyz {
 
 		std::vector<Manifold> manifolds_out;
 
-		//for (unsigned int i : tri_candidates) {
-		//	const StaticMeshFace& tri = local_transformation_required ? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
-		//	double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
-
-		//	Manifold m = SAT_CapsuleTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
-		//	if (m.max_pen_depth > 0 && m.points.size() > 0) {
-		//		manifolds_out.push_back(m);
-		//	}
-		//}
-
+		for (unsigned int i : tri_candidates) {
+			TransformedTriangle tri = initTriangle(b, b.getTriangles()[i], local_transformation_required, local_to_world_rot, b_world_position);
+			Manifold m = SAT_CapsuleTriangle(a, a_id, a_mat, tri);
+			if (m.max_pen_depth > 0 && m.points.size() > 0) {
+				//m = SAT_SphereTriangle(a, a_id, a_mat, tri);
+				manifolds_out.push_back(m);
+			}
+		}
 		return manifolds_out;
 	}
 
@@ -2823,16 +2936,14 @@ namespace phyz {
 
 		std::vector<Manifold> manifolds_out;
 
-		//for (unsigned int i : tri_candidates) {
-		//	const StaticMeshFace& tri = local_transformation_required? b.getTriangles()[i].getTransformed(local_to_world_rot, b_world_position, mthz::Vec3()) : b.getTriangles()[i];
-		//	double non_gauss_valid_normal_penalty = 0.15 * std::min<double>(AABB::longestDimension(a_aabb), AABB::longestDimension(tri.aabb)); //soft penalty to avoid internal collisions
-
-		//	Manifold m = SAT_CylinderTriangle(a, a_id, a_mat, tri, non_gauss_valid_normal_penalty);
-		//	if (m.max_pen_depth > 0 && m.points.size() > 0) {
-		//		manifolds_out.push_back(m);
-		//	}
-		//}
-
+		for (unsigned int i : tri_candidates) {
+			TransformedTriangle tri = initTriangle(b, b.getTriangles()[i], local_transformation_required, local_to_world_rot, b_world_position);
+			Manifold m = SAT_CylinderTriangle(a, a_id, a_mat, tri);
+			if (m.max_pen_depth > 0 && m.points.size() > 0) {
+				//m = SAT_SphereTriangle(a, a_id, a_mat, tri);
+				manifolds_out.push_back(m);
+			}
+		}
 		return manifolds_out;
 	}
 

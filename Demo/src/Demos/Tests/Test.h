@@ -11,6 +11,7 @@ enum TestOutcomeState {
 	XFAILED,       // test has failed, but this is expected
 	FAILED,        // test has finished and failed
 	SKIPPED,       // test was never run
+	CANCELED,      // user exited before test finished. in progress test is stopped, all remaining tests are skipped
 	STILL_RUNNING, // test is still running. only used when running interactively
 	RESET,         // user has requested to re-run the test. only used for running interactively
 };

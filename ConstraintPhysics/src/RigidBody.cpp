@@ -7,7 +7,7 @@
 
 namespace phyz {
 
-	static void calculateMassProperties(const ConvexUnionGeometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass, bool override_center_of_mass, mthz::Vec3 center_of_mass_override);
+	static void calculateMassProperties(std::vector<ConvexPrimitive>& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass, bool override_center_of_mass, mthz::Vec3 center_of_mass_override);
 	static mthz::Mat3 recenterTensor(double mass, const mthz::Mat3& tensor, mthz::Vec3 new_center_of_rotation, mthz::Vec3 old_center_of_rotation, mthz::Vec3 true_center_of_mass_of_geometry);
 
 	RigidBody::RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id, bool overide_center_of_mass = false, mthz::Vec3 local_coords_com_override = mthz::Vec3(0, 0, 0))
@@ -15,12 +15,13 @@ namespace phyz {
 		psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0), asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), com_type(PHYSICALLY_BASED), id(id)
 	{
 		movement_type = DYNAMIC;
-		calculateMassProperties(source_geometry, &this->com, &this->reference_tensor, &this->mass, overide_center_of_mass, local_coords_com_override);
+		calculateMassProperties(reference_geometry, &this->com, &this->reference_tensor, &this->mass, overide_center_of_mass, local_coords_com_override);
 		reference_invTensor = reference_tensor.inverse();
 		tensor = reference_tensor;
 		invTensor = reference_invTensor;
 
 		for (ConvexPrimitive& c : reference_geometry) {
+			// make the reference geometry positions relative to the center of mass
 			c.recomputeFromReference(*c.getGeometry(), mthz::Mat3::iden(), -com);
 		}
 
@@ -424,16 +425,17 @@ namespace phyz {
 	}
 
 	//based off of 'Fast and Accurate Computation of Polyhedral Mass Properties' (Brian Miritch)
-	static void calculateMassProperties(const ConvexUnionGeometry& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass, bool override_center_of_mass, mthz::Vec3 center_of_mass_override) {
+	static void calculateMassProperties(std::vector<ConvexPrimitive>& geometry, mthz::Vec3* com, mthz::Mat3* tensor, double* mass, bool override_center_of_mass, mthz::Vec3 center_of_mass_override) {
 		*com = override_center_of_mass? center_of_mass_override : mthz::Vec3(0, 0, 0);
 		*mass = 0;
 		*tensor = mthz::Mat3(); //default zeroed
-		for (const ConvexPrimitive& primitive : geometry.getPolyhedra()) {
+		for (const ConvexPrimitive& primitive : geometry) {
 
 			switch (primitive.getType()) {
 			case POLYHEDRON:
 			{
-				const Polyhedron& g = (const Polyhedron&)*primitive.getGeometry();
+				Polyhedron& g = (Polyhedron&)*primitive.getGeometry();
+				g.interior_point = mthz::Vec3(0, 0, 0); // will be set to centroid
 				double vol = 0, vol_x = 0, vol_y = 0, vol_z = 0, vol_xy = 0, vol_yz = 0, vol_zx = 0, vol_x2 = 0, vol_y2 = 0, vol_z2 = 0;
 
 				for (const Surface& s : g.getSurfaces()) {
@@ -542,7 +544,9 @@ namespace phyz {
 					vol_z2 += n.z * z.v3 / 3.0;
 				}
 
+
 				*mass += primitive.material.density * vol;
+				g.interior_point = mthz::Vec3(vol_x, vol_y, vol_z) / vol;
 				if (!override_center_of_mass) *com += mthz::Vec3(vol_x, vol_y, vol_z) * primitive.material.density;
 
 				tensor->v[0][0] += (vol_y2 + vol_z2) * primitive.material.density;

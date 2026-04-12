@@ -26,7 +26,7 @@ public:
 		p->setGlobalConstraintForceMixing(0.00000001);
 
 		// create boat
-		phyz::Mesh bunny_mesh = phyz::readOBJ("resources/mesh/bunny.obj", 50.0);
+		phyz::Mesh bunny_mesh = phyz::readOBJ("resources/mesh/bunny.obj", 60.0);
 		phyz::MeshInput bunny_mesh_input = phyz::generateMeshInputFromMesh(bunny_mesh, mthz::Vec3(0, 0, 0));
 		boat_mesh_r = p->createRigidBody(bunny_mesh_input);
 		bodies->push_back({ fromStaticMeshInput(bunny_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), boat_mesh_r });
