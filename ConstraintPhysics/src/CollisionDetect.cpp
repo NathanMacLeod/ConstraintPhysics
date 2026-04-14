@@ -438,11 +438,10 @@ namespace phyz {
 		*closest_feature_index_out = max_p_id;
 	}
 
-	static ContactArea findTriangleContactAreaAndCheckGaussMapSatisfied(const TransformedTriangle& t, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w, bool* did_closest_feature_satisfy_gauss_map) {
+	static ContactArea findTriangleContactArea(const TransformedTriangle& t, mthz::Vec3 n, mthz::Vec3 p, int p_ID, mthz::Vec3 u, mthz::Vec3 w) {
 
 		double cos_ang = t.normal.dot(n);
 		if (1 - cos_ang <= COS_TOL) {
-			*did_closest_feature_satisfy_gauss_map = true;
 			return projectTriangleFace(t, u, w);
 		}
 
@@ -456,14 +455,8 @@ namespace phyz {
 			mthz::Vec3 p2 = t.vertices[(i+1)%3].p;
 			double sin_ang = abs((p2 - p1).normalize().dot(n));
 			if (sin_ang <= SIN_TOL) {
-				*did_closest_feature_satisfy_gauss_map = normSatisfiesEdgeGaussArc(t.edges[i], n);
 				return projectTriangleEdge(p1, p2, t.edges[i].id, n, p, u, w);
 			}
-		}
-
-		for (const StaticMeshVertex& v : t.vertices) {
-			if (v.self_index != static_cast<uint32_t>(p_ID)) continue;
-			*did_closest_feature_satisfy_gauss_map = normSatisfiesVertexGaussMap(v, n);
 		}
 
 		return ContactArea{
@@ -2305,8 +2298,7 @@ namespace phyz {
 		mthz::Vec3 b_maxP = b.vertices[min_pen.b_maxPID].p;
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
-		bool did_closest_feature_satisfy_gauss_map;
-		ContactArea b_contact = findTriangleContactAreaAndCheckGaussMapSatisfied(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w, &did_closest_feature_satisfy_gauss_map);
+		ContactArea b_contact = findTriangleContactArea(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w);
 		ContactArea a_contact = findContactArea(a, min_pen.norm, a_maxP, min_pen.a_maxPID, u, w);
 		
 		std::vector<ProjectedContactPoint> manifold_pool = clipContacts(a_contact, b_contact);
@@ -2590,8 +2582,7 @@ namespace phyz {
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
 		ContactArea a_contact = findCapsuleContactArea(a, min_pen.norm, u, w);
-		bool did_closest_feature_satisfy_gauss_map;
-		ContactArea b_contact = findTriangleContactAreaAndCheckGaussMapSatisfied(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w, &did_closest_feature_satisfy_gauss_map);
+		ContactArea b_contact = findTriangleContactArea(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w);
 
 		std::vector<ProjectedContactPoint> manifold_pool;
 		if (a_contact.origin == EDGE) {
@@ -2781,8 +2772,7 @@ namespace phyz {
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
 		ContactArea a_contact = findCylinderContactArea(a, min_pen.norm, u, w);
-		bool did_closest_feature_satisfy_gauss_map;
-		ContactArea b_contact = findTriangleContactAreaAndCheckGaussMapSatisfied(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w, &did_closest_feature_satisfy_gauss_map);
+		ContactArea b_contact = findTriangleContactArea(b, -min_pen.norm, b_maxP, min_pen.b_maxPID, u, w);
 
 		std::vector<ProjectedContactPoint> manifold_pool;
 		if (a_contact.origin == EDGE) {
@@ -2845,7 +2835,7 @@ namespace phyz {
 
 			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
-				//m = SAT_PolyTriangle(a, a_id, a_mat, tri);
+				m = SAT_PolyTriangle(a, a_id, a_mat, tri);
 				manifolds_out.push_back(m);
 			}
 		}

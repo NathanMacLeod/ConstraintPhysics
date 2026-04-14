@@ -133,17 +133,17 @@ private:
 				}
 			}
 
-			//if (tick_count == 135) {
-			//	for (auto itr = active_models.begin(); itr != active_models.end();) {
-			//		PhysBod& pb = *itr;
-			//		if (pb.r->getID() == 70 || pb.r->getMovementType() == phyz::RigidBody::FIXED) { itr++; }
-			//		else {
-			//			test_pengine->removeRigidBody(pb.r);
-			//			itr = active_models.erase(itr); 
-			//		}
-			//	}
-			//	paused = true;
-			//}
+			if (tick_count == 96) {
+				for (auto itr = active_models.begin(); itr != active_models.end();) {
+					PhysBod& pb = *itr;
+					if (pb.r->getID() == 10 || pb.r->getMovementType() == phyz::RigidBody::FIXED) { itr++; }
+					else {
+						test_pengine->removeRigidBody(pb.r);
+						itr = active_models.erase(itr); 
+					}
+				}
+				paused = true;
+			}
 
 			// running the test
 			if (!paused) {
