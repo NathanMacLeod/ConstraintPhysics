@@ -634,9 +634,6 @@ public:
 				batch_array.push(transformed_mesh.vertices.data(), static_cast<uint32_t>(transformed_mesh.vertices.size()), transformed_mesh.indices);
 			}
 
-			rndr::drawLines(batch_array, line_shader);
-			batch_array.flush();
-
 			rndr::draw(batch_array, shader);
 			batch_array.flush();
 

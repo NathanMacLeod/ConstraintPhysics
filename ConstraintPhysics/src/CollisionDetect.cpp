@@ -732,7 +732,20 @@ namespace phyz {
 		else if (poly1.size() == 2 && poly2.size() == 2) {
 			mthz::NVec<2> norm = getInDirOfEdge(poly2[0].pos, poly2[1].pos);
 			ClipEvaluationPoint intersection = getEdgeIntersectionWithClippingEdge(poly1[0], poly1[1], norm, poly2[0].pos, getEdgeID(poly2[0].source_id, poly2[1].source_id), false);
-			out_poly = { intersection };
+			
+			// confirm the intersection actually exists within the bounding boxes of both edges
+			double iu = intersection.pos.v[0];
+			double iw = intersection.pos.v[1];
+			if ((iu < poly1[0].pos.v[0] && iu < poly1[1].pos.v[0]) ||
+				(iu > poly1[0].pos.v[0] && iu > poly1[1].pos.v[0]) ||
+				(iw < poly1[0].pos.v[1] && iw < poly1[1].pos.v[1]) ||
+				(iw > poly1[0].pos.v[1] && iw > poly1[1].pos.v[1]))
+			{
+				out_poly = {};
+			}
+			else {
+				out_poly = { intersection };
+			}
 		}
 		//edge v poly
 		else if (poly1.size() == 2) {
@@ -2275,6 +2288,8 @@ namespace phyz {
 		int closest_feature_index;
 		findTriangleContactFeature(b, min_pen.norm, min_pen.b_maxPID, &triangle_closest_feature_type, &closest_feature_index);
 
+		CheckNormResults og_min_pen = min_pen;
+
 		if (triangle_closest_feature_type != FACE) {
 			mthz::Vec3 snapped_norm;
 			if (triangle_closest_feature_type == VERTEX) {
@@ -2302,6 +2317,10 @@ namespace phyz {
 		ContactArea a_contact = findContactArea(a, min_pen.norm, a_maxP, min_pen.a_maxPID, u, w);
 		
 		std::vector<ProjectedContactPoint> manifold_pool = clipContacts(a_contact, b_contact);
+		if (manifold_pool.empty()) {
+			out.max_pen_depth = -1;
+			return out;
+		}
 
 		double a_pen = min_pen.pen_depth;
 		double a_dot_val = a_maxP.dot(norm);

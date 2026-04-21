@@ -34,6 +34,7 @@ private:
 
 		rndr::BatchArray batch_array(Vertex::generateLayout(), 1024 * 1024);
 		rndr::Shader shader("resources/shaders/Basic.shader");
+		rndr::Shader line_shader("resources/shaders/LineDraw.shader");
 		shader.bind();
 
 		bool object_highlighted = false;
@@ -134,15 +135,15 @@ private:
 			}
 
 			if (tick_count == 96) {
-				for (auto itr = active_models.begin(); itr != active_models.end();) {
-					PhysBod& pb = *itr;
-					if (pb.r->getID() == 10 || pb.r->getMovementType() == phyz::RigidBody::FIXED) { itr++; }
-					else {
-						test_pengine->removeRigidBody(pb.r);
-						itr = active_models.erase(itr); 
-					}
-				}
-				paused = true;
+				//for (auto itr = active_models.begin(); itr != active_models.end();) {
+				//	PhysBod& pb = *itr;
+				//	if (pb.r->getID() == 10 || pb.r->getMovementType() == phyz::RigidBody::FIXED) { itr++; }
+				//	else {
+				//		test_pengine->removeRigidBody(pb.r);
+				//		itr = active_models.erase(itr); 
+				//	}
+				//}
+				//paused = true;
 			}
 
 			// running the test
@@ -165,6 +166,7 @@ private:
 			// rendering
 			rndr::clear(rndr::color(0.9f, 0.9f, 0.95f));
 			batch_array.flush();
+			shader.bind();
 
 			mthz::Vec3 cam_pos = pos;
 			mthz::Quaternion cam_orient = orient;
@@ -173,7 +175,8 @@ private:
 			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
 
 			float aspect_ratio = (float)properties.window_height / properties.window_width;
-			shader.setUniformMat4f("u_P", rndr::Mat4::proj(0.1f, 500.0f, 2.0f, 2.0f * aspect_ratio, 60.0f));
+			rndr::Mat4 proj_mat = rndr::Mat4::proj(0.1f, 500.0f, 2.0f, 2.0f * aspect_ratio, 60.0f);
+			shader.setUniformMat4f("u_P", proj_mat);
 			shader.setUniform3f("u_ambient_light", 1.0f, 1.0f, 1.0f);
 			shader.setUniform3f("u_pointlight_pos", static_cast<float>(trnsfm_light_pos.x), static_cast<float>(trnsfm_light_pos.y), static_cast<float>(trnsfm_light_pos.z));
 			shader.setUniform3f("u_pointlight_col", 1.0f, 1.0f, 1.0f);
@@ -216,6 +219,34 @@ private:
 			}
 
 			rndr::draw(batch_array, shader);
+
+			batch_array.flush();
+
+			/*line_shader.bind();
+			line_shader.setUniformMat4f("u_P", proj_mat);
+			glDisable(GL_POLYGON_OFFSET_FILL);
+			glLineWidth(2.0f);
+
+
+			if (true) {
+				Mesh edges = Mesh{
+					{
+						Vertex{-3.1089156000000000, 9.8355491999999991, 0.10493279999999999, 1.0, 1.0, 0.0}, Vertex{-3.4512372000000000, 9.5265599999999999, 0.24972720000000001, 1.0, 1.0, 0.0},
+						Vertex{-3.1825814563085406, 9.7093974791596374, -0.022384997013314950, 1.0, 1.0, 0.0}, Vertex{-3.3588569939835584, 9.5546154101378953, 0.048286396964247719, 1.0, 1.0, 0.0}
+					},
+					{0, 1, 2, 3}
+				};
+
+				Mesh transformed_mesh = getTransformed(edges, mthz::Vec3(), mthz::Quaternion(), cam_pos, cam_orient);
+				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
+					rndr::draw(batch_array, shader);
+					batch_array.flush();
+				}
+				batch_array.push(transformed_mesh.vertices.data(), static_cast<uint32_t>(transformed_mesh.vertices.size()), transformed_mesh.indices);
+			}
+
+			rndr::drawLines(batch_array, line_shader);
+			batch_array.flush();*/
 
 			if (outcome.state != TestOutcomeState::STILL_RUNNING) { return outcome; }
 		}

@@ -28,6 +28,17 @@ public:
 		// create boat
 		phyz::Mesh bunny_mesh = phyz::readOBJ("resources/mesh/bunny.obj", 60.0);
 		phyz::MeshInput bunny_mesh_input = phyz::generateMeshInputFromMesh(bunny_mesh, mthz::Vec3(0, 0, 0));
+		phyz::StaticMeshGeometry bunny_geom = phyz::StaticMeshGeometry(bunny_mesh_input);
+
+		//phyz::MeshInput that_one_triangle = {
+		//	{phyz::TriIndices{0, 1, 2}},
+		//	{
+		//		mthz::Vec3(-3.3883770000000002, 9.4670436000000002, 0.49071900000000007),
+		//		mthz::Vec3(-3.1089156000000000, 9.8355491999999991, 0.10493279999999999),
+		//		mthz::Vec3(-3.4512372000000000, 9.5265599999999999, 0.24972720000000001)
+		//	}
+		//};
+
 		boat_mesh_r = p->createRigidBody(bunny_mesh_input);
 		bodies->push_back({ fromStaticMeshInput(bunny_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), boat_mesh_r });
 
