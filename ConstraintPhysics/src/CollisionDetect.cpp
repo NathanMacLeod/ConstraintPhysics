@@ -736,10 +736,11 @@ namespace phyz {
 			// confirm the intersection actually exists within the bounding boxes of both edges
 			double iu = intersection.pos.v[0];
 			double iw = intersection.pos.v[1];
-			if ((iu < poly1[0].pos.v[0] && iu < poly1[1].pos.v[0]) ||
-				(iu > poly1[0].pos.v[0] && iu > poly1[1].pos.v[0]) ||
-				(iw < poly1[0].pos.v[1] && iw < poly1[1].pos.v[1]) ||
-				(iw > poly1[0].pos.v[1] && iw > poly1[1].pos.v[1]))
+			const double EPS = 0.0001;
+			if ((iu + EPS < poly1[0].pos.v[0] && iu + EPS < poly1[1].pos.v[0]) ||
+				(iu - EPS > poly1[0].pos.v[0] && iu - EPS > poly1[1].pos.v[0]) ||
+				(iw + EPS < poly1[0].pos.v[1] && iw + EPS < poly1[1].pos.v[1]) ||
+				(iw - EPS > poly1[0].pos.v[1] && iw - EPS > poly1[1].pos.v[1]))
 			{
 				out_poly = {};
 			}
@@ -2854,7 +2855,7 @@ namespace phyz {
 
 			Manifold m = SAT_PolyTriangle(a, a_id, a_mat, tri);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
-				m = SAT_PolyTriangle(a, a_id, a_mat, tri);
+				//m = SAT_PolyTriangle(a, a_id, a_mat, tri);
 				manifolds_out.push_back(m);
 			}
 		}
