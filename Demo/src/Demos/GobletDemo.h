@@ -1,6 +1,7 @@
 #pragma once
 #include "DemoScene.h"
 #include "../Mesh.h"
+#include "Common.h"
 #include "../../../ConstraintPhysics/src/PhysicsEngine.h"
 
 class GobletDemo : public DemoScene {

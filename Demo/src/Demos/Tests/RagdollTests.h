@@ -103,7 +103,7 @@ public:
 		p->setGlobalConstraintForceMixing(0.00000001);
 
 		// create boat
-		phyz::Mesh boat_mesh = phyz::readOBJ("resources/mesh/benchy.obj", 0.2);
+		phyz::Mesh boat_mesh = phyz::readOBJ("resources/mesh/benchy_reduced.obj", 0.2);
 		phyz::MeshInput boat_mesh_input = phyz::generateMeshInputFromMesh(boat_mesh, mthz::Vec3(0, 0, 0));
 		boat_mesh_r = p->createRigidBody(boat_mesh_input, false);
 		bodies->push_back({ fromStaticMeshInput(boat_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), boat_mesh_r });
