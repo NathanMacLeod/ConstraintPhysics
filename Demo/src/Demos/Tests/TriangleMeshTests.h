@@ -246,6 +246,84 @@ private:
 	std::string test_name;
 };
 
+class TestCollisionScenario : public Test {
+// intended for testing specific problematic collisions encountered 
+public:
+	TestCollisionScenario(const phyz::StaticMeshGeometry& mesh, phyz::ConvexUnionGeometry body_geom, mthz::Vec3 body_com, mthz::Quaternion body_orientation, const std::string& test_name)
+		: mesh(mesh), body_geom(body_geom), body_com(body_com), body_orientation(body_orientation), test_name(test_name)
+	{}
+
+	std::string getTestName() const override { return test_name; }
+	bool canBeRunWithGraphics() const override { return true; }
+	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
+	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		double tick_frequency = 60.0;
+		test_total_tick_duration = static_cast<uint32_t>(30 * tick_frequency);
+		test_current_tick_count = 0;
+
+		p = new phyz::PhysicsEngine();
+		if (n_threads > 0) {
+			p->enableMultithreading(n_threads);
+		}
+		p->setStep_time(1.0 / tick_frequency);
+
+		// create static mesh body
+		bodies->push_back(PhysBod{ fromStaticMeshGeometry(mesh, color{0.8f, 0.0f, 0.0f}), p->createRigidBody(mesh) });
+
+		// create dynamic body
+		phyz::RigidBody* r = p->createRigidBody(body_geom);
+		r->translate(body_com - r->getCOM());
+		r->setOrientation(body_orientation);
+		bodies->push_back(PhysBod{ fromGeometry(body_geom, color{0.8f, 0.8f, 0.0f}), r });
+
+		return p;
+	}
+	TestOutcome tickTestOnePhysicsStep() override {
+		if (test_current_tick_count < test_total_tick_duration) {
+			p->timeStep();
+		}
+
+		test_current_tick_count++;
+
+		//// just check that if anything fell off, it fell off the edge.
+		//for (phyz::RigidBody* r : rigid_bodies) {
+		//	mthz::Vec3 com = r->getCOM();
+		//	if (com.y < -10) {
+		//		double radius2 = com.x * com.x + com.z * com.z;
+		//		if (radius2 < RADIUS * RADIUS) {
+		//			return TestOutcome{ TestOutcomeState::FAILED, "Body fell through the mesh" };
+		//		}
+		//	}
+		//}
+
+
+		//if (test_current_tick_count >= test_total_tick_duration) {
+		//	return TestOutcome{ TestOutcomeState::PASSED };
+		//}
+		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
+
+	}
+	void teardownTest() override {
+		delete p;
+	};
+	TestOutcome runWithoutGraphics() override {
+		TestOutcome outcome;
+		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
+		return outcome;
+	}
+private:
+	phyz::PhysicsEngine* p;
+	uint32_t test_total_tick_duration;
+	uint32_t test_current_tick_count;
+	std::vector<phyz::RigidBody*> rigid_bodies;
+
+	phyz::StaticMeshGeometry mesh;
+	phyz::ConvexUnionGeometry body_geom;
+	mthz::Vec3 body_com;
+	mthz::Quaternion body_orientation;
+	std::string test_name;
+};
+
 class TriangleMeshTestGroup : public TestGroup {
 public:
 	std::string getGroupName() const override { return "Static Triangle Mesh"; }
@@ -319,6 +397,15 @@ public:
 			out.push_back(std::make_unique<TestGeomAgainstSimpleMesh>(polyhedron, corner_up_mesh, "Polyhedron vs Mesh Corner"));
 		}
 
+		{ // thin geometry that wants to produce bad normals
+			phyz::Mesh thin_double_edge_mesh = phyz::readOBJ("resources/mesh/thin_double_edge.obj", 1.0);
+			phyz::MeshInput thin_double_edge_mesh_input = phyz::generateMeshInputFromMesh(thin_double_edge_mesh, mthz::Vec3(0, 0, 0));
+			
+			out.push_back(std::make_unique<TestGeomAgainstSimpleMesh>(sphere, thin_double_edge_mesh_input, "Sphere vs Thin Double Edge"));
+			out.push_back(std::make_unique<TestGeomAgainstSimpleMesh>(box, thin_double_edge_mesh_input, "Box vs Thin Double Edge"));
+			out.push_back(std::make_unique<TestGeomAgainstSimpleMesh>(polyhedron, thin_double_edge_mesh_input, "Polyhedron vs Thin Double Edge"));
+		}
+
 		{ // spawning many geom objects against bumpy terrain
 			double flat = 0;
 			double minor_rough = 0.1;
@@ -343,6 +430,14 @@ public:
 
 		{ // square corner against a vertex on a nearly flat mesh. 
 			out.push_back(std::make_unique<TestVertexVsVertexCollision>());
+		}
+		
+		{ // specific buggy collisions encountered
+			phyz::StaticMeshGeometry triangle = phyz::StaticMeshGeometry({ {phyz::StaticMeshVertex{mthz::Vec3(-1.2529014,6.8457168,2.2723794),0,{{-0.18947441501813175,0.5095956717394634,0.8392923789704884},{-0.23906658664882463,0.6388858795320327,0.7312126914124651},{-0.3595480493499593,0.6183748441425382,0.6988116715827882},{-0.30895847175544644,0.4983278658549185,0.8100703678341907}}},phyz::StaticMeshVertex{mthz::Vec3(-1.232553,7.1877108,1.9802202),0,{{-0.3339057575041416,0.624484618672288,0.7060636700378462},{-0.26558707475014487,0.7730895726185697,0.5760173768508189},{-0.29017078097685123,0.7804695381124557,0.5537763248332437}}},phyz::StaticMeshVertex{mthz::Vec3(-1.4940954,6.7266828,2.2536144),0,{}}} }, { {phyz::StaticMeshHalfEdge{0,0,0,0,0,0,mthz::Vec3(0.9320315454704989,0.20171960433382008,0.301042188862758),0,true,mthz::Vec3(-0.3595480493499594,0.6183748441425382,0.6988116715827882),mthz::Vec3(-0.23906658664882463,0.6388858795320327,0.7312126914124651)},phyz::StaticMeshHalfEdge{0,0,0,0,0,0,mthz::Vec3(-0.8236586146906478,0.14163348943995194,-0.5491142332110378),0,true,mthz::Vec3(-0.3595480493499594,0.6183748441425382,0.6988116715827882),mthz::Vec3(-0.37670769337000637,0.6212036527523198,0.6871661629933655)},phyz::StaticMeshHalfEdge{0,0,0,0,0,0,mthz::Vec3(0.26547786163239007,-0.6501561948693659,0.7119118114317817),0,true,mthz::Vec3(-0.3595480493499594,0.6183748441425382,0.6988116715827882),mthz::Vec3(-0.3089584717554464,0.4983278658549185,0.8100703678341908)}} });
+			phyz::ConvexUnionGeometry dynam_body_geom = phyz::ConvexUnionGeometry::box(mthz::Vec3(), 0.13999999999999999, 0.27999999999999997, 0.083999999999999991);
+			mthz::Vec3 com = mthz::Vec3(-1.5131150008972392, 6.8508797406676178, 2.2328776064792226);
+			mthz::Quaternion orient = mthz::Quaternion(-0.51573142875896161, 0.12493228966206957, 0.46444106178517419, 0.70901869969549658);
+			out.push_back(std::make_unique<TestCollisionScenario>(triangle, dynam_body_geom, com, orient, "missed collision rabbit"));
 		}
 		
 		//out.push_back(std::make_unique<TestGeomAgainstSingleSquareMesh>(cow_geom, "Bovine vs Square Mesh"));

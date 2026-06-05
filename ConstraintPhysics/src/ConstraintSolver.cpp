@@ -132,6 +132,7 @@ namespace phyz {
 		}
 		auto a = getDistanceOfCurrentValuesFromTargetValues(constraint_island, true);
 		auto b = getDistanceOfCurrentValuesFromTargetValues(constraint_island, false);
+
 #endif
 
 		for (int i = 0; i < n_itr_vel; i++) {

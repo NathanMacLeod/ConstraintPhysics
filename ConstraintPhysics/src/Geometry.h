@@ -2,6 +2,7 @@
 #include "ConvexPrimitive.h"
 #include "AABB_Tree.h"
 #include "HACD.h"
+#include <array>
 
 class DebugDemo;
 
@@ -90,19 +91,28 @@ namespace phyz {
 		Material material;
 	};
 
+	struct TriMeshRayQueryReturn {
+		RayQueryReturn hit_info;
+		uint32_t hit_triangle_inedex;
+	};
+
 	class StaticMeshGeometry {
 	public:
 		StaticMeshGeometry() : aabb_tree(0) {}
 		StaticMeshGeometry(const StaticMeshGeometry& c);
 		StaticMeshGeometry(const MeshInput& input);
 
+		// exists for debugging only really
+		StaticMeshGeometry(const std::array<StaticMeshVertex, 3>& vertices, const std::array<StaticMeshHalfEdge, 3>& half_edges);
+
 		void recomputeFromReference(const StaticMeshGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation=mthz::Vec3(0, 0, 0));
 		AABB genAABB() const;
 
 		inline const std::vector<StaticMeshFace>& getTriangles() const { return triangles; }
+		inline const std::vector<StaticMeshVertex>& getVertices() const { return vertices; }
 		inline const AABBTree<unsigned int>& getAABBTree() const { return aabb_tree; }
 
-		RayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
+		TriMeshRayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 
 		inline StaticMeshVertex get_transformed_vertex(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) const;
 		inline StaticMeshHalfEdge get_transformed_half_edge(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const;
@@ -118,7 +128,6 @@ namespace phyz {
 		friend class Surface;
 		friend class Edge;
 		friend class RigidBody;
-		friend class DebugDemo;
 		friend class StaticMeshHalfEdge;
 		friend class StaticMeshFace;
 	private:

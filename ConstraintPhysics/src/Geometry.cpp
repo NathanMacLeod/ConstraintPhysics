@@ -859,6 +859,37 @@ namespace phyz {
 		}
 	}
 
+	StaticMeshGeometry::StaticMeshGeometry(const std::array<StaticMeshVertex, 3>& in_vertices, const std::array<StaticMeshHalfEdge, 3>& in_half_edges)
+		: aabb_tree(0)
+	{
+		// create a static mesh with a single triangle, containing predefined gauss map info for the vertices / half_edges. exists for debug only really.
+		for (int i = 0; i < 3; i++) {
+			vertices.push_back(in_vertices[i]);
+			vertices[i].self_index = i;
+			half_edges.push_back(in_half_edges[i]);
+			half_edges[i].self_index = i;
+			half_edges[i].p1_index = i;
+			half_edges[i].p2_index = (i + 1) % 3;
+			half_edges[i].twin_index = -1;
+			half_edges[i].next_index = (i + 1) % 3;
+
+		}
+
+		StaticMeshFace triangle;
+		//triangle.material = t.material;
+		mthz::Vec3 v1 = in_vertices[1].p - in_vertices[0].p;
+		mthz::Vec3 v2 = in_vertices[2].p - in_vertices[0].p;
+		triangle.normal = v1.cross(v2).normalize();
+
+		for (int i = 0; i < 3; i++) {
+			triangle.vertex_indices[i] = i;
+			triangle.half_edge_indices[i] = i;
+		}
+		triangle.self_index = 0;
+
+		triangles.push_back(triangle);
+	}
+
 	StaticMeshVertex StaticMeshGeometry::get_transformed_vertex(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) const {
 		assert(index < vertices.size());
 		StaticMeshVertex v = vertices[index];
@@ -918,10 +949,10 @@ namespace phyz {
 		return out;
 	}
 
-	RayQueryReturn StaticMeshGeometry::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
+	TriMeshRayQueryReturn StaticMeshGeometry::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
 		std::vector<unsigned int> hit_candidates = aabb_tree.raycastHitCandidates(ray_origin, ray_dir);
 		
-		RayQueryReturn closest_hit{ false }; //false signifies no confirmed hit so far
+		TriMeshRayQueryReturn closest_hit{ RayQueryReturn {false } }; //false signifies no confirmed hit so far
 
 		for (unsigned int i : hit_candidates) {
 			const StaticMeshFace& tri = triangles[i];
@@ -932,7 +963,7 @@ namespace phyz {
 			//calculate dist where ray intersects the plane the triangle sits on
 
 			double t = -(ray_origin - get_vertex(tri.vertex_indices[1]).p).dot(tri.normal) / ray_dir.dot(tri.normal);
-			if (t < 0 || (closest_hit.did_hit && closest_hit.intersection_dist < t)) {
+			if (t < 0 || (closest_hit.hit_info.did_hit && closest_hit.hit_info.intersection_dist < t)) {
 				continue;
 			}
 
@@ -949,7 +980,7 @@ namespace phyz {
 				continue;
 			}
 
-			closest_hit = RayQueryReturn{ true, hit_pos, tri.normal, t };
+			closest_hit = TriMeshRayQueryReturn{ RayQueryReturn{ true, hit_pos, tri.normal, t}, i };
 		}
 
 		return closest_hit;

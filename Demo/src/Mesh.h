@@ -66,5 +66,6 @@ float frand();
 Mesh fromPhyzMesh(const phyz::Mesh& m);
 Mesh fromGeometry(const phyz::ConvexUnionGeometry& g, color c=auto_generate);
 Mesh fromStaticMeshInput(const phyz::MeshInput& g, color c=auto_generate);
+Mesh fromStaticMeshGeometry(const phyz::StaticMeshGeometry& g, color c=auto_generate);
 Mesh getTransformed(const Mesh& m, mthz::Vec3 model_position, mthz::Quaternion model_orientation, mthz::Vec3 camera_position, mthz::Quaternion camera_orientation, bool recolor = false, color new_color=auto_generate);
 void writeTransformedTo(const Mesh& m, Mesh* out, mthz::Vec3 model_position, mthz::Quaternion model_orientation, mthz::Vec3 camera_position, mthz::Quaternion camera_orientation, bool recolor = false, color new_color = auto_generate);

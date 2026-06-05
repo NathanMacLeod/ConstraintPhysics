@@ -26,7 +26,7 @@ namespace rndr {
 
     static bool first_tick;
 
-    int init(int width, int height, const std::string& name) {
+    int init(int width, int height, const std::string& name, bool backface_culling_enabled) {
         window_width = width;
         window_height = height;
         if (!glfwInit()) {
@@ -65,7 +65,7 @@ namespace rndr {
         glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LESS);
-        glEnable(GL_CULL_FACE);
+        if (backface_culling_enabled) { glEnable(GL_CULL_FACE); }
 
         std::printf("%s\n", glGetString(GL_VERSION));
 

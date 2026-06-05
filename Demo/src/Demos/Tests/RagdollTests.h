@@ -54,8 +54,6 @@ public:
 		return p;
 	}
 	TestOutcome tickTestOnePhysicsStep() override {
-		test_current_tick_count++;
-
 		float t = test_current_tick_count / tick_frequency;
 
 		if (true) {
@@ -120,8 +118,6 @@ public:
 		return p;
 	}
 	TestOutcome tickTestOnePhysicsStep() override {
-		test_current_tick_count++;
-
 		float t = test_current_tick_count / tick_frequency;
 
 		// animating motionm of the boat with sin waves
@@ -161,6 +157,70 @@ private:
 	uint32_t test_current_tick_count;
 };
 
+class TestRagdollHardImpactWithGround : public Test {
+public:
+	std::string getTestName() const override { return "Ragdoll Hard Impact With Ground"; }
+	bool canBeRunWithGraphics() const override { return true; }
+	void getCameraInitialPosition(mthz::Vec3* cam_pos, mthz::Quaternion* cam_orient) const override { *cam_pos = mthz::Vec3(0, 7, 15); *cam_orient = mthz::Quaternion(); }
+	TestExpectationStatus getTestExpectation() const override { return TestExpectationStatus::REQUIRED; }
+	phyz::PhysicsEngine* initTest(uint32_t n_threads, std::vector<PhysBod>* bodies) override {
+		tick_frequency = 60.0f;
+		test_total_tick_duration = static_cast<uint32_t>(500 * tick_frequency);
+		test_current_tick_count = 0;
+
+		p = new phyz::PhysicsEngine();
+		if (n_threads > 0) {
+			p->enableMultithreading(n_threads);
+		}
+		p->setStep_time(1.0 / tick_frequency);
+		p->setPGSIterations(4, 1, 1);
+		p->setSubstepCount(8);
+		p->setGlobalConstraintForceMixing(0.00000001);
+
+		// create ground plane
+		double ground_width = 100.0;
+		double ground_thickness = 3.5;
+		phyz::ConvexUnionGeometry ground_geom = phyz::ConvexUnionGeometry::box(mthz::Vec3(-ground_width / 2.0, -ground_thickness, -ground_width / 2.0), ground_width, ground_thickness, ground_width);
+		phyz::RigidBody* ground_r = p->createRigidBody(ground_geom, phyz::RigidBody::MovementType::FIXED);
+		bodies->push_back(PhysBod{ fromGeometry(ground_geom, color{0.4f, 0.4f, 0.4f}), ground_r });
+
+		std::vector<mthz::Vec3> body_create_positions = {
+			mthz::Vec3(-4, 15, -1), mthz::Vec3(-2, 15, 1), mthz::Vec3(0, 15, -1),
+			mthz::Vec3(2, 15, 1), mthz::Vec3(4, 15, -1),
+		};
+
+		std::vector<phyz::RigidBody*> ragdoll_bodies = createRagdoll(p, bodies, mthz::Vec3(0, 10, 0), 0.7);
+		for (phyz::RigidBody* r : ragdoll_bodies) {
+			r->setVel(mthz::Vec3(0, -100, 0));
+		}
+
+		return p;
+	}
+	TestOutcome tickTestOnePhysicsStep() override {
+		float t = test_current_tick_count / tick_frequency;
+
+		p->timeStep();
+
+		test_current_tick_count++;
+		return TestOutcome{ TestOutcomeState::STILL_RUNNING };
+	}
+	void teardownTest() override {
+		delete p;
+		p = nullptr;
+	};
+	TestOutcome runWithoutGraphics() override {
+		TestOutcome outcome;
+		while ((outcome = tickTestOnePhysicsStep()).state == TestOutcomeState::STILL_RUNNING);
+		return outcome;
+	}
+private:
+	float tick_frequency;
+	phyz::PhysicsEngine* p;
+	phyz::RigidBody* boat_mesh_r;
+	uint32_t test_total_tick_duration;
+	uint32_t test_current_tick_count;
+};
+
 class RagdollTestGroup : public TestGroup {
 public:
 	std::string getGroupName() const override { return "RagdollTests"; }
@@ -168,6 +228,7 @@ public:
 		std::vector<std::unique_ptr<Test>> out;
 		out.push_back(std::make_unique<TestRagdollsOnKinematicMesh>());
 		out.push_back(std::make_unique<TestRagdollsOnStaticMesh>());
+		out.push_back(std::make_unique<TestRagdollHardImpactWithGround>());
 		return out;
 	}
 };

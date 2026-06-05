@@ -10,6 +10,7 @@
 #include <set>
 
 class DebugDemo;
+class UnitTestsRunner;
 
 namespace phyz {
 	struct RayHitInfo;
@@ -48,6 +49,7 @@ namespace phyz {
 		mthz::Vec3 getAngVel() const;
 		inline GeometryType getGeometryType() const { return geometry_type; }
 		RayHitInfo checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
+		TriMeshRayQueryReturn checkInterrsectionAgainstStaticMesh(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 		AABB getAABB() const { return aabb; }
 
 		mthz::Vec3 getWorldPosInLocalCoords(mthz::Vec3 p) const { return orientation.conjugate().applyRotation(p - com); }
@@ -73,6 +75,7 @@ namespace phyz {
 
 		friend class PhysicsEngine;
 		friend class DebugDemo;
+		friend class UnitTestsRunner;
 	private:
 		AABB aabb;
 		MovementType movement_type;

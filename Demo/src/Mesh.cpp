@@ -302,6 +302,25 @@ Mesh fromStaticMeshInput(const phyz::MeshInput& g, color c) {
 	return Mesh{ vertices, indices };
 }
 
+Mesh fromStaticMeshGeometry(const phyz::StaticMeshGeometry& g, color c) {
+	std::vector<Vertex> vertices;
+	std::vector<unsigned int> indices;
+
+	for (const phyz::StaticMeshVertex& vrt : g.getVertices()) {
+		mthz::Vec3 v = vrt.p;
+		color col = (c == auto_generate) ? color{ frand(), frand(), frand() } : c;
+		vertices.push_back(Vertex{ (float)v.x, (float)v.y, (float)v.z, col.r, col.g, col.b, col.ambient_k, col.diffuse_k, col.specular_k, col.specular_p, -1, 0.0f, 0.0f });
+	}
+
+	for (const phyz::StaticMeshFace& f : g.getTriangles()) {
+		indices.push_back(f.vertex_indices[0]);
+		indices.push_back(f.vertex_indices[1]);
+		indices.push_back(f.vertex_indices[2]);
+	}
+
+	return Mesh{ vertices, indices };
+}
+
 Mesh getTransformed(const Mesh& m, mthz::Vec3 model_position, mthz::Quaternion model_orientation, mthz::Vec3 camera_position, mthz::Quaternion camera_orientation, bool recolor, color new_color) {
 	Mesh out = m;
 	writeTransformedTo(m, &out, model_position, model_orientation, camera_position, camera_orientation, recolor, new_color);

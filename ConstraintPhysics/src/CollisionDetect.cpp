@@ -2201,7 +2201,7 @@ namespace phyz {
 		CheckNormResults min_pen = { -1, -1, mthz::Vec3(), std::numeric_limits<double>::infinity() };
 		const GaussMap& ag = a.getGaussMap();
 
-		// backface culling
+		//backface culling
 		if (b.normal.dot(a.interior_point - b.vertices[0].p) < 0) {
 			out.max_pen_depth = -1;
 			return out;
@@ -2358,10 +2358,10 @@ namespace phyz {
 		ContactAreaOrigin triangle_closest_feature_type;
 		int closest_edge_index = -1; int closest_vertex_index = -1;
 		// backface culling
-		if (b.normal.dot(a.getCenter() - b.vertices[0].p) < 0) {
-			out.max_pen_depth = -1;
-			return out;
-		}
+		//if (b.normal.dot(a.getCenter() - b.vertices[0].p) < 0) {
+		//	out.max_pen_depth = -1;
+		//	return out;
+		//}
 
 		// check triangle norm
 		ExtremaInfo sphere_extrema = getSphereExtrema(a, -b.normal);
@@ -2432,7 +2432,21 @@ namespace phyz {
 			min_pen = sat_checknorm(sphere_extrema, findTriangleExtrema(b, n_snapped), n_snapped);
 		}
 
+
+		// check if contact is valid after clipping
+		if (abs(min_pen.norm.dot(b.normal)) > 0.999) {
+			for (int i = 0; i < 3; i++) {
+				mthz::Vec3 p1 = b.vertices[i].p;
+				const StaticMeshHalfEdge& e = b.edges[i];
+				if (e.out_direction.dot(a.getCenter() - p1) > 0) {
+					out.max_pen_depth = -1;
+					return out;
+				}
+			}
+		}
+
 		out.normal = min_pen.norm;
+		
 
 		ContactP cp;
 		cp.pos = a.getCenter() + min_pen.norm * a.getRadius();
@@ -2447,7 +2461,7 @@ namespace phyz {
 		cID |= 0x00000000FFFFFFFF & a_id;
 		cID |= 0xFFFFFFFF00000000 & (uint64_t(b.original_triangle_id) << 32);
 
-		cp.magicID = MagicID{ cID, static_cast<uint64_t>(- 1)}; //not bothering with featureid
+		cp.magicID = MagicID{ cID, static_cast<uint64_t>(-1)}; //not bothering with featureid
 
 		out.points.push_back(cp);
 
@@ -2950,7 +2964,6 @@ namespace phyz {
 			TransformedTriangle tri = initTriangle(b, b.getTriangles()[i], local_transformation_required, local_to_world_rot, b_world_position);
 			Manifold m = SAT_CylinderTriangle(a, a_id, a_mat, tri);
 			if (m.max_pen_depth > 0 && m.points.size() > 0) {
-				//m = SAT_SphereTriangle(a, a_id, a_mat, tri);
 				manifolds_out.push_back(m);
 			}
 		}

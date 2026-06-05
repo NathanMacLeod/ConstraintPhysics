@@ -198,10 +198,35 @@ namespace phyz {
 			}
 		}
 		else {
-			closest_hit_info = mesh.testRayIntersection(ray_origin, ray_dir);
+			closest_hit_info = checkInterrsectionAgainstStaticMesh(ray_origin, ray_dir).hit_info;
 		}
 
 		return RayHitInfo{ closest_hit_info.did_hit, (phyz::RigidBody*)this, closest_hit_info.intersection_point, closest_hit_info.surface_norm, closest_hit_info.intersection_dist };
+	}
+
+	TriMeshRayQueryReturn RigidBody::checkInterrsectionAgainstStaticMesh(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
+		assert(geometry_type == STATIC_MESH);
+
+		if (movement_type == KINEMATIC) {
+			// static mesh geometry for kinematic meshes are stored in local coords. need to convert the ray to local coords, then convert the answer back to world coords
+			mthz::Mat3 to_local = orientation.conjugate().getRotMatrix();
+			mthz::Mat3 to_world = orientation.getRotMatrix();
+
+			mthz::Vec3 local_ray_origin = to_local * (ray_origin - getCOM());
+			mthz::Vec3 local_ray_dir = to_local * ray_dir;
+
+			TriMeshRayQueryReturn ray_ret = reference_mesh.testRayIntersection(local_ray_origin, local_ray_dir);
+
+			if (!ray_ret.hit_info.did_hit) return ray_ret; // no need to correct positions, they aren't used if did_hit is false anyway
+			
+			ray_ret.hit_info.intersection_point = to_world * ray_ret.hit_info.intersection_point + getCOM();
+			ray_ret.hit_info.surface_norm = to_world * ray_ret.hit_info.surface_norm;
+
+			return ray_ret;
+		}
+		else {
+			return mesh.testRayIntersection(ray_origin, ray_dir);
+		}
 	}
 
 	//implicit integration method from Erin Catto, https://www.gdcvault.com/play/1022196/Physics-for-Game-Programmers-Numerical

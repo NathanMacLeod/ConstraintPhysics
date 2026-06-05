@@ -20,15 +20,18 @@ private:
 	bool paused;
 	std::vector<PhysBod> active_models;
 	std::vector<std::unique_ptr<TestGroup>> test_groups;
+
+	mthz::Vec3 camera_pos;
+	mthz::Quaternion camera_orient;
 	
-	TestOutcome runTestWithGraphics(phyz::PhysicsEngine* test_pengine, std::unique_ptr<Test>& test) {
+	TestOutcome runTestWithGraphics(phyz::PhysicsEngine* test_pengine, std::unique_ptr<Test>& test, bool reset_camera) {
 		TestOutcome outcome = TestOutcome{ TestOutcomeState::STILL_RUNNING };
 
 		assert(test_pengine != nullptr); // cant think of a need for a non-physics based right now.
 		// basic rendering stuff
-		mthz::Vec3 pos;
-		mthz::Quaternion orient;
-		test->getCameraInitialPosition(&pos, &orient);
+		if (reset_camera) {
+			test->getCameraInitialPosition(&camera_pos, &camera_orient);
+		}
 		double mv_speed = 2;
 		double rot_speed = 1;
 
@@ -40,6 +43,10 @@ private:
 		bool object_highlighted = false;
 		unsigned int highlighted_object_id = -1;
 
+		bool something_hovered;
+		mthz::Vec3 hover_pos;
+		Mesh hover_ball = fromGeometry(phyz::ConvexUnionGeometry::sphere(mthz::Vec3(), 0.01), { 1.0, 1.0, 1.0 });
+		
 		float fElapsedTime;
 		double phyz_time = 0;
 		double timestep_duration = test_pengine->getStep_time();
@@ -74,6 +81,8 @@ private:
 			}
 		);
 
+		
+
 		int tick_count = 0;
 
 		rndr::lockMouse();
@@ -83,16 +92,16 @@ private:
 		while (rndr::render_loop(&fElapsedTime)) {
 			// Listening to user input
 			if (rndr::getKeyDown(GLFW_KEY_W)) {
-				pos += orient.applyRotation(mthz::Vec3(0, 0, -1) * fElapsedTime * mv_speed);
+				camera_pos += camera_orient.applyRotation(mthz::Vec3(0, 0, -1) * fElapsedTime * mv_speed);
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_S)) {
-				pos += orient.applyRotation(mthz::Vec3(0, 0, 1) * fElapsedTime * mv_speed);
+				camera_pos += camera_orient.applyRotation(mthz::Vec3(0, 0, 1) * fElapsedTime * mv_speed);
 			}
 			if (rndr::getKeyDown(GLFW_KEY_A)) {
-				pos += orient.applyRotation(mthz::Vec3(-1, 0, 0) * fElapsedTime * mv_speed);
+				camera_pos += camera_orient.applyRotation(mthz::Vec3(-1, 0, 0) * fElapsedTime * mv_speed);
 			}
 			else if (rndr::getKeyDown(GLFW_KEY_D)) {
-				pos += orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
+				camera_pos += camera_orient.applyRotation(mthz::Vec3(1, 0, 0) * fElapsedTime * mv_speed);
 			}
 			
 			if (rndr::getKeyDown(GLFW_KEY_ESCAPE)) {
@@ -110,8 +119,8 @@ private:
 			double mouse_delta_y = new_mouse.y - mouse_position.y;
 			mouse_position = new_mouse;
 
-			orient = orient * mthz::Quaternion(mouse_sensitivity * mouse_delta_y, mthz::Vec3(1, 0, 0));
-			orient = mthz::Quaternion(-mouse_sensitivity * mouse_delta_x, mthz::Vec3(0, 1, 0)) * orient;
+			camera_orient = camera_orient * mthz::Quaternion(mouse_sensitivity * mouse_delta_y, mthz::Vec3(1, 0, 0));
+			camera_orient = mthz::Quaternion(-mouse_sensitivity * mouse_delta_x, mthz::Vec3(0, 1, 0)) * camera_orient;
 
 			if (rndr::getKeyPressed(GLFW_KEY_R)) {
 				return TestOutcome{ TestOutcomeState::RESET };
@@ -120,14 +129,62 @@ private:
 				paused = !paused;
 			}
 
+			mthz::Vec3 camera_dir = camera_orient.applyRotation(mthz::Vec3(0, 0, -1));
+			phyz::RayHitInfo hit_info = test_pengine->raycastFirstIntersection(camera_pos, camera_dir);
+			if (hit_info.did_hit) {
+				something_hovered = true;
+				hover_pos = hit_info.hit_position;
+			}
+			else {
+				something_hovered = false;
+			}
+
 			if (rndr::getMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
-				mthz::Vec3 camera_dir = orient.applyRotation(mthz::Vec3(0, 0, -1));
-				phyz::RayHitInfo hit_info = test_pengine->raycastFirstIntersection(pos, camera_dir);
 
 				if (hit_info.did_hit) {
 					object_highlighted = true;
 					highlighted_object_id = hit_info.hit_object->getID();
 					printf("selected object id: %u\n", highlighted_object_id);
+
+					if (hit_info.hit_object->geometry_type == phyz::RigidBody::STATIC_MESH) {
+						phyz::RigidBody* r = hit_info.hit_object;
+						phyz::StaticMeshGeometry& body_mesh = r->mesh;
+						uint32_t hit_face_index = body_mesh.testRayIntersection(camera_pos, camera_dir).hit_triangle_inedex;
+						printf("\thit triangle index: %u\n", hit_face_index);
+
+						// print c++ code to construct a new static mesh of just this triangle, preseving the gauss map info
+						phyz::StaticMeshFace hit_mesh_face = body_mesh.get_triangle(hit_face_index);
+						std::string verts_argument = "{";
+						std::string half_edges_argument = "{";
+						for (int i = 0; i < 3; i++) {
+							char suffix = i == 2 ? '}' : ',';
+							phyz::StaticMeshVertex vert = body_mesh.get_vertex(hit_mesh_face.vertex_indices[i]);
+							// construct gauss map arg
+							std::string vert_gauss_map_arg = "{}";
+							if (vert.valid_normal_gauss_map.size() > 0) {
+								vert_gauss_map_arg = "{";
+								for (mthz::Vec3 v : vert.valid_normal_gauss_map) {
+									vert_gauss_map_arg += std::format("{{{},{},{}}},", v.x, v.y, v.z);
+								}
+								vert_gauss_map_arg[vert_gauss_map_arg.size() - 1] = '}'; // replace final , with a }
+							}
+							// add the whole vert struct to the arg
+							verts_argument += std::format("phyz::StaticMeshVertex{{mthz::Vec3({},{},{}),0,{}}}{}", vert.p.x, vert.p.y, vert.p.z, vert_gauss_map_arg, suffix);
+
+							phyz::StaticMeshHalfEdge edge = body_mesh.get_half_edge(hit_mesh_face.half_edge_indices[i]);
+							//add the half edge struct to the arg. all the 0s are args that are not needed, as the debug StaticMeshConstructor replaces them anyways
+							half_edges_argument += std::format(
+								"phyz::StaticMeshHalfEdge{{0,0,0,0,0,0,mthz::Vec3({},{},{}),0,{},mthz::Vec3({},{},{}),mthz::Vec3({},{},{})}}{}",
+								edge.out_direction.x, edge.out_direction.y, edge.out_direction.z,
+								edge.has_gauss_arc,
+								edge.gauss_arc_g1.x, edge.gauss_arc_g1.y, edge.gauss_arc_g1.z,
+								edge.gauss_arc_g2.x, edge.gauss_arc_g2.y, edge.gauss_arc_g2.z,
+								suffix
+							);
+						}
+
+						printf("phyz::StaticMeshGeometry({%s}, {%s});\n", verts_argument.c_str(), half_edges_argument.c_str());
+					}
 				}
 				else {
 					object_highlighted = false;
@@ -168,11 +225,8 @@ private:
 			batch_array.flush();
 			shader.bind();
 
-			mthz::Vec3 cam_pos = pos;
-			mthz::Quaternion cam_orient = orient;
-
 			mthz::Vec3 pointlight_pos(0.0, 25.0, 0.0);
-			mthz::Vec3 trnsfm_light_pos = cam_orient.conjugate().applyRotation(pointlight_pos - cam_pos);
+			mthz::Vec3 trnsfm_light_pos = camera_orient.conjugate().applyRotation(pointlight_pos - camera_pos);
 
 			float aspect_ratio = (float)properties.window_height / properties.window_width;
 			rndr::Mat4 proj_mat = rndr::Mat4::proj(0.1f, 500.0f, 2.0f, 2.0f * aspect_ratio, 60.0f);
@@ -188,7 +242,7 @@ private:
 				color override_color = is_highlighted ? color{ 1.0, 1.0, 0.0 } : color{ 1.0, 0.0, 0.0 };
 				bool color_overriden = is_highlighted || b.r->getAsleep();
 
-				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), cam_pos, cam_orient, color_overriden, override_color);
+				Mesh transformed_mesh = getTransformed(b.mesh, b.r->getPos(), b.r->getOrientation(), camera_pos, camera_orient, color_overriden, override_color);
 
 				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);
@@ -209,7 +263,17 @@ private:
 					rot = mthz::Quaternion(ang, axis);
 				}
 
-				Mesh transformed_mesh = getTransformed(contact_ball_mesh, c.p, rot, cam_pos, cam_orient, true, c.c);
+				Mesh transformed_mesh = getTransformed(contact_ball_mesh, c.p, rot, camera_pos, camera_orient, true, c.c);
+
+				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
+					rndr::draw(batch_array, shader);
+					batch_array.flush();
+				}
+				batch_array.push(transformed_mesh.vertices.data(), static_cast<uint32_t>(transformed_mesh.vertices.size()), transformed_mesh.indices);
+			}
+
+			if (something_hovered) {
+				Mesh transformed_mesh = getTransformed(hover_ball, hover_pos, mthz::Quaternion(), camera_pos, camera_orient);
 
 				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
 					rndr::draw(batch_array, shader);
@@ -221,32 +285,6 @@ private:
 			rndr::draw(batch_array, shader);
 
 			batch_array.flush();
-
-			/*line_shader.bind();
-			line_shader.setUniformMat4f("u_P", proj_mat);
-			glDisable(GL_POLYGON_OFFSET_FILL);
-			glLineWidth(2.0f);
-
-
-			if (true) {
-				Mesh edges = Mesh{
-					{
-						Vertex{-3.1089156000000000, 9.8355491999999991, 0.10493279999999999, 1.0, 1.0, 0.0}, Vertex{-3.4512372000000000, 9.5265599999999999, 0.24972720000000001, 1.0, 1.0, 0.0},
-						Vertex{-3.1825814563085406, 9.7093974791596374, -0.022384997013314950, 1.0, 1.0, 0.0}, Vertex{-3.3588569939835584, 9.5546154101378953, 0.048286396964247719, 1.0, 1.0, 0.0}
-					},
-					{0, 1, 2, 3}
-				};
-
-				Mesh transformed_mesh = getTransformed(edges, mthz::Vec3(), mthz::Quaternion(), cam_pos, cam_orient);
-				if (batch_array.remainingVertexCapacity() <= transformed_mesh.vertices.size() || batch_array.remainingIndexCapacity() < transformed_mesh.indices.size()) {
-					rndr::draw(batch_array, shader);
-					batch_array.flush();
-				}
-				batch_array.push(transformed_mesh.vertices.data(), static_cast<uint32_t>(transformed_mesh.vertices.size()), transformed_mesh.indices);
-			}
-
-			rndr::drawLines(batch_array, line_shader);
-			batch_array.flush();*/
 
 			if (outcome.state != TestOutcomeState::STILL_RUNNING) { return outcome; }
 		}
@@ -330,7 +368,8 @@ public:
 
 		if (rendering_enabled) {
 			paused = false;
-			rndr::init(properties.window_width, properties.window_height, "Performance Demos");
+			bool backface_culling_enabled = false;
+			rndr::init(properties.window_width, properties.window_height, "Performance Demos", backface_culling_enabled);
 		}
 		
 		std::vector<std::unique_ptr<Test>> tests;
@@ -365,7 +404,6 @@ public:
 		std::vector<std::string> xfailed_tests;
 		std::vector<std::string> skipped_tests;
 
-
 		bool skip_all_remaining_tests = false;
 		for (std::unique_ptr<Test>& t : tests) {
 			std::string test_name = t->getTestName();
@@ -377,12 +415,14 @@ public:
 
 			auto t1 = std::chrono::system_clock::now();
 			TestOutcome outcome;
+			bool reset_camera_on_test_start = true;
 			do {
 				phyz::PhysicsEngine* test_pengine = t->initTest(properties.n_threads, &active_models);
-				if (rendering_enabled && t->canBeRunWithGraphics()) { outcome = runTestWithGraphics(test_pengine, t); }
+				if (rendering_enabled && t->canBeRunWithGraphics()) { outcome = runTestWithGraphics(test_pengine, t, reset_camera_on_test_start); }
 				else { outcome = t->runWithoutGraphics(); }
 				t->teardownTest();
 				active_models.clear();
+				if (outcome.state == TestOutcomeState::RESET) { reset_camera_on_test_start = false; }
 			} while (outcome.state == TestOutcomeState::RESET);
 			auto t2 = std::chrono::system_clock::now();
 			float duration = std::chrono::duration<float, std::milli>(t2 - t1).count();

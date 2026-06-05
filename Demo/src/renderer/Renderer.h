@@ -24,7 +24,7 @@ namespace rndr {
 		double x, y;
 	};
 
-	int init(int width, int height, const std::string& name);
+	int init(int width, int height, const std::string& name, bool backface_culling_enabled=true);
 	bool getKeyDown(int key);
 	bool getKeyPressed(int key);
 	bool getKeyReleased(int key);

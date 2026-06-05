@@ -56,9 +56,7 @@ public:
 		lines_out->vertices.push_back(Vertex{ (float)v2.x, (float)v2.y, (float)v2.z, gl_c.r, gl_c.g, gl_c.b, gl_c.ambient_k, gl_c.diffuse_k, gl_c.specular_k, gl_c.specular_p, -1, 0.0f, 0.0f });
 	}
 
-	static void createGaussMapVisualization(phyz::StaticMeshGeometry& geom, phyz::StaticMeshFace* hit_mesh_face, mthz::Vec3 hit_pos, Mesh* lines_out, Mesh* triangles_out) {
-		assert(hit_mesh_face != nullptr);
-
+	static void createGaussMapVisualization(phyz::StaticMeshGeometry& geom, const phyz::StaticMeshFace& hit_mesh_face, mthz::Vec3 hit_pos, Mesh* lines_out, Mesh* triangles_out) {
 		lines_out->indices.clear();
 		lines_out->vertices.clear();
 		triangles_out->indices.clear();
@@ -68,7 +66,7 @@ public:
 		//check if we have selected a vertex
 		int selected_vertex_index = -1;
 		for (int i = 0; i < 3; i++) {
-			double dist = (hit_pos - geom.get_vertex(hit_mesh_face->vertex_indices[i]).p).mag();
+			double dist = (hit_pos - geom.get_vertex(hit_mesh_face.vertex_indices[i]).p).mag();
 			if (dist < tolerance) {
 				selected_vertex_index = i;
 				break;
@@ -78,7 +76,7 @@ public:
 		// check if we have selected an edge
 		int selected_edge_index = -1;
 		for (int i = 0; i < 3; i++) {
-			phyz::StaticMeshHalfEdge e = geom.get_half_edge(hit_mesh_face->half_edge_indices[i]);
+			phyz::StaticMeshHalfEdge e = geom.get_half_edge(hit_mesh_face.half_edge_indices[i]);
 			mthz::Vec3 diff = hit_pos - geom.get_vertex(e.p1_index).p;
 			mthz::Vec3 edge_dir = (geom.get_vertex(e.p2_index).p - geom.get_vertex(e.p1_index).p).normalize();
 			double dist = (diff - edge_dir * edge_dir.dot(diff)).mag();
@@ -88,8 +86,8 @@ public:
 			}
 		}
 		if (selected_vertex_index != -1) {
-			printf("index: %d\n", hit_mesh_face->vertex_indices[selected_vertex_index]);
-			phyz::StaticMeshVertex v = geom.get_vertex(hit_mesh_face->vertex_indices[selected_vertex_index]);
+			//printf("index: %d\n", hit_mesh_face.vertex_indices[selected_vertex_index]);
+			phyz::StaticMeshVertex v = geom.get_vertex(hit_mesh_face.vertex_indices[selected_vertex_index]);
 			mthz::Vec3 p = v.p;
 			float delta = 0.0001f;
 
@@ -108,7 +106,7 @@ public:
 		}
 
 		else if (selected_edge_index != -1) {
-			phyz::StaticMeshHalfEdge e = geom.get_half_edge(hit_mesh_face->half_edge_indices[selected_edge_index]);
+			phyz::StaticMeshHalfEdge e = geom.get_half_edge(hit_mesh_face.half_edge_indices[selected_edge_index]);
 			mthz::Vec3 p1 = geom.get_vertex(e.p1_index).p;
 			mthz::Vec3 p2 = geom.get_vertex(e.p2_index).p;
 
@@ -118,12 +116,12 @@ public:
 			lines_out->vertices.push_back(Vertex{ (float)p1.x, (float)p1.y, (float)p1.z, c.r, c.g, c.b, c.ambient_k, c.diffuse_k, c.specular_k, c.specular_p, -1, 0.0f, 0.0f });
 			lines_out->vertices.push_back(Vertex{ (float)p2.x, (float)p2.y, (float)p2.z, c.r, c.g, c.b, c.ambient_k, c.diffuse_k, c.specular_k, c.specular_p, -1, 0.0f, 0.0f });
 
-			printf("this face index: %d\n", hit_mesh_face->self_index);
-			printf("this_face_norm: %f %f %f\n", hit_mesh_face->normal.x, hit_mesh_face->normal.y, hit_mesh_face->normal.z);
-			printf("twin index: %d\n", e.twin_index);
+			//printf("this face index: %d\n", hit_mesh_face.self_index);
+			//printf("this_face_norm: %f %f %f\n", hit_mesh_face.normal.x, hit_mesh_face.normal.y, hit_mesh_face.normal.z);
+			//printf("twin index: %d\n", e.twin_index);
 			if (e.twin_index != -1) {
 				phyz::StaticMeshFace twin_face = geom.get_triangle(geom.get_half_edge(e.twin_index).triangle_index);
-				printf("twin_face_norm: %f %f %f\n", twin_face.normal.x, twin_face.normal.y, twin_face.normal.z);
+				//printf("twin_face_norm: %f %f %f\n", twin_face.normal.x, twin_face.normal.y, twin_face.normal.z);
 			}
 
 			if (!e.has_gauss_arc) { return; }
@@ -132,19 +130,19 @@ public:
 		}
 		else {
 			// highlight the selected triangle
-			mthz::Vec3 centroid = (geom.get_vertex(hit_mesh_face->vertex_indices[0]).p + geom.get_vertex(hit_mesh_face->vertex_indices[1]).p + geom.get_vertex(hit_mesh_face->vertex_indices[2]).p) / 3.0;
+			mthz::Vec3 centroid = (geom.get_vertex(hit_mesh_face.vertex_indices[0]).p + geom.get_vertex(hit_mesh_face.vertex_indices[1]).p + geom.get_vertex(hit_mesh_face.vertex_indices[2]).p) / 3.0;
 
 			lines_out->indices = { 0, 1, 1, 2, 2, 0 };
 			
 			color c = color{ 1.0f, 1.0f, 0.0f };
 			for (int i = 0; i < 3; i++) {
-				mthz::Vec3 p = geom.get_vertex(hit_mesh_face->vertex_indices[i]).p;
+				mthz::Vec3 p = geom.get_vertex(hit_mesh_face.vertex_indices[i]).p;
 				lines_out->vertices.push_back(Vertex{ (float)p.x, (float)p.y, (float)p.z, c.r, c.g, c.b, c.ambient_k, c.diffuse_k, c.specular_k, c.specular_p, -1, 0.0f, 0.0f });
 			}
 
 			// draw the triangles normal
 			double normal_line_length = 0.33;
-			mthz::Vec3 normal_tip = centroid + hit_mesh_face->normal * normal_line_length;
+			mthz::Vec3 normal_tip = centroid + hit_mesh_face.normal * normal_line_length;
 
 			unsigned int offset = lines_out->vertices.size();
 			lines_out->indices.push_back(offset++); lines_out->indices.push_back(offset++);
@@ -240,6 +238,12 @@ public:
 		phyz::MeshInput stress_test_cases_mesh_input = phyz::generateMeshInputFromMesh(stress_test_cases_mesh, mthz::Vec3(0, 0, 0));
 		phyz::RigidBody* stress_test_cases_mesh_r = p.createRigidBody(stress_test_cases_mesh_input);
 		bodies.push_back({ fromStaticMeshInput(stress_test_cases_mesh_input, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), stress_test_cases_mesh_r });
+
+
+
+		phyz::StaticMeshGeometry debug_triangle = phyz::StaticMeshGeometry({ {phyz::StaticMeshVertex{mthz::Vec3(-1.852056,5.8148808,2.679084),0,{{-0.18252588896589894,-0.0495553526478906,0.9819514075967056},{0.25626361951928267,0.21967775768334097,0.9413132529026115},{0.22637476228717268,0.2937103556041531,0.9287026940901528},{-0.17152432073827417,0.41471967390272857,0.89363695059755},{-0.2490493918615823,0.30071020441214585,0.9206235785465097}}},phyz::StaticMeshVertex{mthz::Vec3(-1.7490708,6.118421400000001,2.5579836),0,{}},phyz::StaticMeshVertex{mthz::Vec3(-2.1558894000000004,5.9885969999999995,2.540148),0,{}}} }, { {phyz::StaticMeshHalfEdge{0,0,0,0,0,0,mthz::Vec3(0.9382139308016109,-0.20796725449296471,0.27659400049250626),0,true,mthz::Vec3(-0.1715243207382742,0.41471967390272857,0.8936369505975501),mthz::Vec3(0.22637476228717274,0.29371035560415304,0.9287026940901528)},phyz::StaticMeshHalfEdge{0,0,0,0,0,0,mthz::Vec3(-0.2541370754085847,0.85775448026749,-0.44684628059749976),0,true,mthz::Vec3(-0.1715243207382742,0.41471967390272857,0.8936369505975501),mthz::Vec3(-0.18271394311417108,0.4526506544976601,0.872767437508132)},phyz::StaticMeshHalfEdge{0,0,0,0,0,0,mthz::Vec3(-0.5652760128979365,-0.7843369300699666,0.2554967893548416),0,true,mthz::Vec3(-0.1715243207382742,0.41471967390272857,0.8936369505975501),mthz::Vec3(-0.2490493918615823,0.30071020441214585,0.9206235785465097)}} });
+		phyz::RigidBody* that_one_triangle_r = p.createRigidBody(debug_triangle);
+		bodies.push_back({ fromStaticMeshGeometry(debug_triangle, color{ 0.8f, 1.0f, 1.0f, 0.5f, 0.5f, 0.63f, 51.2f }), that_one_triangle_r });
 
 		bool something_hovered = false;
 		mthz::Vec3 hover_pos;
@@ -483,29 +487,31 @@ public:
 				else {
 					phyz::RigidBody* r = hit_info.hit_object;
 					phyz::StaticMeshGeometry& body_mesh = r->mesh;
-					
-					
-					phyz::StaticMeshFace* hit_mesh_face = nullptr;
-					// copy-pasta from StaticMeshGeometry::testRayIntersection
-					// get the triangle that we hit. (very ugly use of internal methods, but since it's only needed for this debug visualization don't see a need to add a proper interface).
-					std::vector<unsigned int> hit_candidates = body_mesh.aabb_tree.raycastHitCandidates(pos, camera_dir);
+					uint32_t hit_face_index = body_mesh.testRayIntersection(pos, camera_dir).hit_triangle_inedex;
+					phyz::StaticMeshFace hit_mesh_face = body_mesh.get_triangle(hit_face_index);
+					//
+					//
+					//phyz::StaticMeshFace* hit_mesh_face = nullptr;
+					//// copy-pasta from StaticMeshGeometry::testRayIntersection
+					//// get the triangle that we hit. (very ugly use of internal methods, but since it's only needed for this debug visualization don't see a need to add a proper interface).
+					//std::vector<unsigned int> hit_candidates = body_mesh.aabb_tree.raycastHitCandidates(pos, camera_dir);
 
-					for (unsigned int i : hit_candidates) {
-						phyz::StaticMeshFace& tri = body_mesh.triangles[i];
-						if (abs(tri.normal.dot(camera_dir)) < 0.0000000001) {
-							continue;
-						}
+					//for (unsigned int i : hit_candidates) {
+					//	phyz::StaticMeshFace& tri = body_mesh.triangles[i];
+					//	if (abs(tri.normal.dot(camera_dir)) < 0.0000000001) {
+					//		continue;
+					//	}
 
-						//calculate dist where ray intersects the plane the triangle sits on
-						double t = -(pos - body_mesh.get_vertex(tri.vertex_indices[1]).p).dot(tri.normal) / camera_dir.dot(tri.normal);
-						if (t == hit_info.hit_distance) {
-							hit_mesh_face = &tri;
-							break;
-						}
-					}
+					//	//calculate dist where ray intersects the plane the triangle sits on
+					//	double t = -(pos - body_mesh.get_vertex(tri.vertex_indices[1]).p).dot(tri.normal) / camera_dir.dot(tri.normal);
+					//	if (t == hit_info.hit_distance) {
+					//		hit_mesh_face = &tri;
+					//		break;
+					//	}
+					//}
 
-					assert(hit_mesh_face != nullptr);
-					//printf("wow!: <%f %f %f>\n", hit_mesh_face->normal.x, hit_mesh_face->normal.y, hit_mesh_face->normal.z);
+					//assert(hit_mesh_face != nullptr);
+					////printf("wow!: <%f %f %f>\n", hit_mesh_face->normal.x, hit_mesh_face->normal.y, hit_mesh_face->normal.z);
 					createGaussMapVisualization(body_mesh, hit_mesh_face, hit_info.hit_position, &highlighted_gauss_map_lines, &highlighted_gauss_map_triangles);
 					gauss_map_highlighted = true;
 				}
