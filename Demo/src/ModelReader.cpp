@@ -15,7 +15,7 @@ static bool stringStartsWith(std::string s, std::string prefix) {
 
 static char* getToken(char* s, const char* delim, char** next_token) {
 	assert(*next_token != NULL);
-	char* token = strtok_s(s, delim, next_token);
+	char* token = strtok_r(s, delim, next_token);
 	return token;
 }
 
@@ -53,13 +53,13 @@ MeshColliderOutput readMeshAndColliders(std::string formatted_obj_path, double s
 
 	static char buff[2048];
 	while (std::getline(in, line)) {
-		sprintf_s(buff, "%s", line.c_str());
+		sprintf(buff, "%s", line.c_str());
 
 		
 		char* token;
 		char* next_token;
 		const char* delim = " ";
-		if ((token = strtok_s(buff, delim, &next_token)) != NULL) {
+		if ((token = strtok_r(buff, delim, &next_token)) != NULL) {
 
 			if (strcmp(token, "g") == 0) { //new group
 				if (!no_current_object) {
@@ -94,7 +94,7 @@ MeshColliderOutput readMeshAndColliders(std::string formatted_obj_path, double s
 				assert(!no_current_object);
 
 				std::vector<uint32_t> indices;
-				while ((token = strtok_s(NULL, delim, &next_token)) != NULL) {
+				while ((token = strtok_r(NULL, delim, &next_token)) != NULL) {
 					int index = atoi(token) - vertex_offset;
 					assert(index >= 0 && index < current_vertices.size());
 					indices.push_back(index);

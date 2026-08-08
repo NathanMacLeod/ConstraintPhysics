@@ -32,7 +32,7 @@ namespace phyz {
 
 		std::vector<int> block_location_table;
 		std::vector<int> vector_location_lookup;
-		const static int BLOCK_EMPTY = -1;
+		static constexpr int  BLOCK_EMPTY = -1;
 		int getFirstNonEmptyBlockBelowDiagonal(int column);
 		int getBlockBufferLocation(int block_row, int block_column);
 		int getBlockDiagonalElemBufferLocation(int block_row, int block_column);

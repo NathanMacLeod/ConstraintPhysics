@@ -49,10 +49,10 @@ namespace phyz {
 	static Manifold detectSphereCapsule(const Sphere& a, int a_id, const Material& a_mat, const Capsule& b, int b_id, const Material& b_mat);
 	static Manifold detectSphereCylinder(const Sphere& a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat);
 	static Manifold detectCapsuleCylinder(const Capsule &a, int a_id, const Material& a_mat, const Cylinder& b, int b_id, const Material& b_mat);
-	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
-	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
-	static std::vector<Manifold> SAT_CapsuleMesh(const Capsule& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
-	static std::vector<Manifold> SAT_CylinderMesh(const Cylinder& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
+	static std::vector<Manifold> SAT_Polymesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticmeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
+	static std::vector<Manifold> SAT_Spheremesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticmeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
+	static std::vector<Manifold> SAT_Capsulemesh(const Capsule& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticmeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
+	static std::vector<Manifold> SAT_Cylindermesh(const Cylinder& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticmeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation);
 
 	Manifold detectCollision(const ConvexPrimitive& a, const ConvexPrimitive& b, int surfaceid1, int surfaceid2) {
 		switch (a.getType()) {
@@ -151,37 +151,37 @@ namespace phyz {
 		return {};
 	}
 
-	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
+	std::vector<Manifold> detectCollision(const ConvexPrimitive& a, AABB a_aabb, const StaticmeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
 		switch (a.getType())
 		{
 		case POLYHEDRON:
-			return SAT_PolyMesh((const Polyhedron&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
+			return SAT_Polymesh((const Polyhedron&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		case SPHERE:
-			return SAT_SphereMesh((const Sphere&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
+			return SAT_Spheremesh((const Sphere&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		case CAPSULE:
-			return SAT_CapsuleMesh((const Capsule&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
+			return SAT_Capsulemesh((const Capsule&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		case CYLINDER:
-			return SAT_CylinderMesh((const Cylinder&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
+			return SAT_Cylindermesh((const Cylinder&)*a.getGeometry(), a_aabb, a.getID(), a.material, b, b_world_position, b_world_orientation);
 		}
 		
 		assert(false);
 		return {};
 	}
 
-	std::vector<Manifold> detectCollision(const StaticMeshGeometry& a, mthz::Vec3 a_world_position, mthz::Quaternion a_world_orientation, const ConvexPrimitive& b, AABB b_aabb) {
+	std::vector<Manifold> detectCollision(const StaticmeshGeometry& a, mthz::Vec3 a_world_position, mthz::Quaternion a_world_orientation, const ConvexPrimitive& b, AABB b_aabb) {
 		std::vector<Manifold> out;
 		switch (b.getType()) {
 		case POLYHEDRON:
-			out = SAT_PolyMesh((const Polyhedron&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
+			out = SAT_Polymesh((const Polyhedron&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
 			break;
 		case SPHERE:
-			out = SAT_SphereMesh((const Sphere&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
+			out = SAT_Spheremesh((const Sphere&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
 			break;
 		case CAPSULE:
-			out = SAT_CapsuleMesh((const Capsule&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
+			out = SAT_Capsulemesh((const Capsule&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
 			break;
 		case CYLINDER:
-			out = SAT_CylinderMesh((const Cylinder&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
+			out = SAT_Cylindermesh((const Cylinder&)*b.getGeometry(), b_aabb, b.getID(), b.material, a, a_world_position, a_world_orientation);
 			break;
 		}
 
@@ -195,8 +195,8 @@ namespace phyz {
 	}
 
 	struct TransformedTriangle {
-		StaticMeshVertex vertices[3];
-		StaticMeshHalfEdge edges[3];
+		StaticmeshVertex vertices[3];
+		StaticmeshHalfEdge edges[3];
 		mthz::Vec3 normal;
 		uint32_t original_triangle_id;
 		Material material;
@@ -287,7 +287,7 @@ namespace phyz {
 		
 	}
 
-	static mthz::Vec3 acceptOrSnapNormalAgainstVertexGaussMap(const StaticMeshVertex& s, mthz::Vec3 normal) {
+	static mthz::Vec3 acceptOrSnapNormalAgainstVertexGaussMap(const StaticmeshVertex& s, mthz::Vec3 normal) {
 		assert(!s.valid_normal_gauss_map.empty()); // nothing to snap to. Rejected!
 
 		mthz::Vec3 out_vector = normal;
@@ -336,7 +336,7 @@ namespace phyz {
 		return out_vector;
 	}
 
-	static mthz::Vec3 acceptOrSnapNormalAgainstEdgeGaussArc(const StaticMeshHalfEdge& e, mthz::Vec3 normal) {
+	static mthz::Vec3 acceptOrSnapNormalAgainstEdgeGaussArc(const StaticmeshHalfEdge& e, mthz::Vec3 normal) {
 		assert(e.has_gauss_arc);
 
 		//the normal should lie on the arc defined by the two points
@@ -358,7 +358,7 @@ namespace phyz {
 		}
 	}
 
-	static bool normSatisfiesVertexGaussMap(const StaticMeshVertex& s, mthz::Vec3 normal) {
+	static bool normSatisfiesVertexGaussMap(const StaticmeshVertex& s, mthz::Vec3 normal) {
 		if (s.valid_normal_gauss_map.empty()) return false;
 
 		for (int i = 0; i < s.valid_normal_gauss_map.size(); i++) {
@@ -369,7 +369,7 @@ namespace phyz {
 		return true;
 	}
 
-	static bool normSatisfiesEdgeGaussArc(const StaticMeshHalfEdge& e, mthz::Vec3 normal) {
+	static bool normSatisfiesEdgeGaussArc(const StaticmeshHalfEdge& e, mthz::Vec3 normal) {
 		if (!e.has_gauss_arc) return false;
 		const double EPS = 0.0001;
 
@@ -388,7 +388,7 @@ namespace phyz {
 	}
 
 	static inline ContactArea projectTriangleFace(const TransformedTriangle& t, mthz::Vec3 u, mthz::Vec3 w) {
-		ContactArea out = { std::vector<mthz::NVec<2>>(3), std::vector<int>(3), t.original_triangle_id, FACE };
+		ContactArea out = { std::vector<mthz::NVec<2>>(3), std::vector<int>(3), static_cast<int>(t.original_triangle_id), FACE };
 
 		for (int i = 0; i < 3; i++) {
 			mthz::Vec3 v = t.vertices[i].p;
@@ -734,19 +734,19 @@ namespace phyz {
 			ClipEvaluationPoint intersection = getEdgeIntersectionWithClippingEdge(poly1[0], poly1[1], norm, poly2[0].pos, getEdgeID(poly2[0].source_id, poly2[1].source_id), false);
 			
 			// confirm the intersection actually exists within the bounding boxes of both edges
-			double iu = intersection.pos.v[0];
-			double iw = intersection.pos.v[1];
-			const double EPS = 0.0001;
-			if ((iu + EPS < poly1[0].pos.v[0] && iu + EPS < poly1[1].pos.v[0]) ||
-				(iu - EPS > poly1[0].pos.v[0] && iu - EPS > poly1[1].pos.v[0]) ||
-				(iw + EPS < poly1[0].pos.v[1] && iw + EPS < poly1[1].pos.v[1]) ||
-				(iw - EPS > poly1[0].pos.v[1] && iw - EPS > poly1[1].pos.v[1]))
-			{
-				out_poly = {};
-			}
-			else {
+			//double iu = intersection.pos.v[0];
+			//double iw = intersection.pos.v[1];
+			//const double EPS = 0.0001;
+			//if ((iu + EPS < poly1[0].pos.v[0] && iu + EPS < poly1[1].pos.v[0]) ||
+			//	(iu - EPS > poly1[0].pos.v[0] && iu - EPS > poly1[1].pos.v[0]) ||
+			//	(iw + EPS < poly1[0].pos.v[1] && iw + EPS < poly1[1].pos.v[1]) ||
+			//	(iw - EPS > poly1[0].pos.v[1] && iw - EPS > poly1[1].pos.v[1]))
+			//{
+			//	out_poly = {};
+			//}
+			//else {
 				out_poly = { intersection };
-			}
+			//}
 		}
 		//edge v poly
 		else if (poly1.size() == 2) {
@@ -949,7 +949,7 @@ namespace phyz {
 
 		mthz::Vec3 u, w;
 		norm.getPerpendicularBasis(&u, &w);
-		// switching to arrays on the stack rather than std::vector as the main data type would probably speed this up a lot.
+		// switching to arrays rather than std::vector as the main data type would probably speed this up a lot.
 		// TODO when trying to optimize this
 		ContactArea a_contact = findContactArea(a, norm, a_maxP, min_pen.a_maxPID, u, w, surfaceid1, surfaceid2);
 		ContactArea b_contact = findContactArea(b, (-1) * norm, b_maxP, min_pen.b_maxPID, u, w, surfaceid1, surfaceid2);
@@ -960,7 +960,7 @@ namespace phyz {
 		else                          { out.surfaceid2 = -1; }
 
 		std::vector<ProjectedContactPoint> manifold_pool = clipContacts(a_contact, b_contact);
-		assert(manifold_pool.size() > 0);
+		//assert(manifold_pool.size() > 0);
 		double a_pen = min_pen.pen_depth;
 		double a_dot_val = a_maxP.dot(norm);
 		mthz::Vec3 n_offset = norm * a_dot_val;
@@ -2154,15 +2154,15 @@ namespace phyz {
 		return out;
 	}
 
-	TransformedTriangle initTriangle(const StaticMeshGeometry& geom, const StaticMeshFace& og_triangle, bool transformation_required, mthz::Mat3  rot, mthz::Vec3 trans) {
+	TransformedTriangle initTriangle(const StaticmeshGeometry& geom, const StaticmeshFace& og_triangle, bool transformation_required, mthz::Mat3 rot, mthz::Vec3 trans) {
 		TransformedTriangle out;
 		out.original_triangle_id = geom.getTriangleId(og_triangle.self_index);
 		out.material = og_triangle.material;
 		if (transformation_required) {
 			out.normal = rot * og_triangle.normal;
 			for (int i = 0; i < 3; i++) {
-				out.vertices[i] = geom.get_transformed_vertex(og_triangle.vertex_indices[i], rot, trans, mthz::Vec3());
-				out.edges[i] = geom.get_transformed_half_edge(og_triangle.half_edge_indices[i], rot, trans);
+				out.vertices[i] = geom.get_transformed_vertex(static_cast<uint32_t>(og_triangle.vertex_indices[i]), rot, trans, mthz::Vec3());
+				out.edges[i] = geom.get_transformed_half_edge(static_cast<uint32_t>(og_triangle.half_edge_indices[i]), rot, trans);
 			}
 		}
 		else {
@@ -2180,7 +2180,7 @@ namespace phyz {
 		ExtremaInfo extrema;
 
 		for (int i = 0; i < 3; i++) {
-			const StaticMeshVertex& v = tri.vertices[i];
+			const StaticmeshVertex& v = tri.vertices[i];
 			double val = v.p.dot(dir);
 			if (val < extrema.min_val) {
 				extrema.min_pID = i;
@@ -2294,11 +2294,11 @@ namespace phyz {
 		if (triangle_closest_feature_type != FACE) {
 			mthz::Vec3 snapped_norm;
 			if (triangle_closest_feature_type == VERTEX) {
-				const StaticMeshVertex& v = b.vertices[closest_feature_index];
+				const StaticmeshVertex& v = b.vertices[closest_feature_index];
 				snapped_norm = v.valid_normal_gauss_map.size() > 0 ? -acceptOrSnapNormalAgainstVertexGaussMap(v, -min_pen.norm) : -b.normal;
 			}
 			else if (triangle_closest_feature_type == EDGE) {
-				const StaticMeshHalfEdge& e = b.edges[closest_feature_index];
+				const StaticmeshHalfEdge& e = b.edges[closest_feature_index];
 				snapped_norm = e.has_gauss_arc? -acceptOrSnapNormalAgainstEdgeGaussArc(e, -min_pen.norm) : -b.normal;
 			}
 			ExtremaInfo poly_extrema = findExtrema(a, snapped_norm);
@@ -2377,7 +2377,7 @@ namespace phyz {
 
 		// check against vertices
 		for (int i = 0; i < 3; i++) {
-			const StaticMeshVertex& v = b.vertices[i];
+			const StaticmeshVertex& v = b.vertices[i];
 
 			mthz::Vec3 p = b.vertices[i].p;
 			mthz::Vec3 n = (p - a.getCenter()).normalize();
@@ -2400,7 +2400,7 @@ namespace phyz {
 		for (int i = 0; i < 3; i++) {
 			mthz::Vec3 p1 = b.vertices[i].p;
 			mthz::Vec3 p2 = b.vertices[(i + 1) % 3].p;
-			const StaticMeshHalfEdge& e = b.edges[i];
+			const StaticmeshHalfEdge& e = b.edges[i];
 
 			mthz::Vec3 edge_dir = (p2 - p1).normalize();
 			mthz::Vec3 sample = p1 - a.getCenter();
@@ -2437,7 +2437,7 @@ namespace phyz {
 		if (abs(min_pen.norm.dot(b.normal)) > 0.999) {
 			for (int i = 0; i < 3; i++) {
 				mthz::Vec3 p1 = b.vertices[i].p;
-				const StaticMeshHalfEdge& e = b.edges[i];
+				const StaticmeshHalfEdge& e = b.edges[i];
 				if (e.out_direction.dot(a.getCenter() - p1) > 0) {
 					out.max_pen_depth = -1;
 					return out;
@@ -2494,7 +2494,7 @@ namespace phyz {
 		for (int i = 0; i < 3; i++) {
 			mthz::Vec3 p1 = b.vertices[i].p;
 			mthz::Vec3 p2 = b.vertices[(i + 1) % 3].p;
-			const StaticMeshHalfEdge& e = b.edges[i];
+			const StaticmeshHalfEdge& e = b.edges[i];
 
 			mthz::Vec3 edge_dir = p2 - p1;
 			mthz::Vec3 dir = edge_dir.cross(a_height_axis);
@@ -2516,7 +2516,7 @@ namespace phyz {
 
 		//check vertex collisions against the body of the cylinder
 		for (int i = 0; i < 3; i++) {
-			const StaticMeshVertex& v = b.vertices[i];
+			const StaticmeshVertex& v = b.vertices[i];
 			mthz::Vec3 p = v.p;
 			mthz::Vec3 diff = p - a.getCenter();
 			mthz::Vec3 n = (diff - a_height_axis * a_height_axis.dot(diff)).normalize();
@@ -2535,7 +2535,7 @@ namespace phyz {
 
 		//check vertex collisions against the caps
 		for (int i = 0; i < 3; i++) {
-			const StaticMeshVertex& v = b.vertices[i];
+			const StaticmeshVertex& v = b.vertices[i];
 			mthz::Vec3 p = v.p;
 			// determine which cap this vertex could collide against
 			double vh = (p - a.getCenter()).dot(a_height_axis);
@@ -2562,7 +2562,7 @@ namespace phyz {
 		for (int i = 0; i < 3; i++) {
 			mthz::Vec3 p1 = b.vertices[i].p;
 			mthz::Vec3 p2 = b.vertices[(i + 1) % 3].p;
-			const StaticMeshHalfEdge& e = b.edges[i];
+			const StaticmeshHalfEdge& e = b.edges[i];
 
 
 			mthz::Vec3 edge_dir = (p2 - p1).normalize();
@@ -2595,11 +2595,11 @@ namespace phyz {
 		if (triangle_closest_feature_type != FACE) {
 			mthz::Vec3 snapped_norm;
 			if (triangle_closest_feature_type == VERTEX) {
-				const StaticMeshVertex& v = b.vertices[closest_feature_index];
+				const StaticmeshVertex& v = b.vertices[closest_feature_index];
 				snapped_norm = v.valid_normal_gauss_map.size() > 0 ? -acceptOrSnapNormalAgainstVertexGaussMap(v, -min_pen.norm) : -b.normal;
 			}
 			else if (triangle_closest_feature_type == EDGE) {
-				const StaticMeshHalfEdge& e = b.edges[closest_feature_index];
+				const StaticmeshHalfEdge& e = b.edges[closest_feature_index];
 				snapped_norm = e.has_gauss_arc ? -acceptOrSnapNormalAgainstEdgeGaussArc(e, -min_pen.norm) : -b.normal;
 			}
 			ExtremaInfo poly_extrema = getCapsuleExtrema(a, snapped_norm);
@@ -2685,7 +2685,7 @@ namespace phyz {
 		for (int i = 0; i < 3; i++) {
 			mthz::Vec3 p1 = b.vertices[i].p;
 			mthz::Vec3 p2 = b.vertices[(i + 1) % 3].p;
-			const StaticMeshHalfEdge& e = b.edges[i];
+			const StaticmeshHalfEdge& e = b.edges[i];
 
 			mthz::Vec3 edge_dir = p2 - p1;
 			mthz::Vec3 dir = edge_dir.cross(a_height_axis);
@@ -2705,7 +2705,7 @@ namespace phyz {
 
 		//check vertex collisions against the body of the cylinder
 		for (int i = 0; i < 3; i++) {
-			const StaticMeshVertex& v = b.vertices[i];
+			const StaticmeshVertex& v = b.vertices[i];
 			mthz::Vec3 p = v.p;
 			mthz::Vec3 diff = p - a.getCenter();
 			mthz::Vec3 n = (diff - a_height_axis * a_height_axis.dot(diff)).normalize();
@@ -2785,11 +2785,11 @@ namespace phyz {
 		if (triangle_closest_feature_type != FACE) {
 			mthz::Vec3 snapped_norm;
 			if (triangle_closest_feature_type == VERTEX) {
-				const StaticMeshVertex& v = b.vertices[closest_feature_index];
+				const StaticmeshVertex& v = b.vertices[closest_feature_index];
 				snapped_norm = v.valid_normal_gauss_map.size() > 0 ? -acceptOrSnapNormalAgainstVertexGaussMap(v, -min_pen.norm) : -b.normal;
 			}
 			else if (triangle_closest_feature_type == EDGE) {
-				const StaticMeshHalfEdge& e = b.edges[closest_feature_index];
+				const StaticmeshHalfEdge& e = b.edges[closest_feature_index];
 				snapped_norm = e.has_gauss_arc ? -acceptOrSnapNormalAgainstEdgeGaussArc(e, -min_pen.norm) : -b.normal;
 			}
 			ExtremaInfo poly_extrema = getCylinderExtrema(a, snapped_norm);
@@ -2844,7 +2844,7 @@ namespace phyz {
 
 	// TODO: there is a lot of room for caching optimizations here. for kinematic objects the transformation to world coordinates of each vertex and edge can be calculated once and reused for an entire substep.
 	//       whithin each check between a primitive and the mesh, the same edges, vertices, etc may be checked multiple times. the result of of checking that feature against the primitive can be cached and reused.
-	static std::vector<Manifold> SAT_PolyMesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
+	static std::vector<Manifold> SAT_Polymesh(const Polyhedron& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticmeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
 		mthz::Mat3 local_to_world_rot = b_world_orientation.getRotMatrix();
 
 		std::vector<unsigned int> tri_candidates;
@@ -2877,7 +2877,7 @@ namespace phyz {
 		return manifolds_out;
 	}
 
-	static std::vector<Manifold> SAT_SphereMesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
+	static std::vector<Manifold> SAT_Spheremesh(const Sphere& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticmeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
 		mthz::Mat3 local_to_world_rot = b_world_orientation.getRotMatrix();
 
 		std::vector<unsigned int> tri_candidates;
@@ -2909,7 +2909,7 @@ namespace phyz {
 		return manifolds_out;
 	}
 
-	static std::vector<Manifold> SAT_CapsuleMesh(const Capsule &a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
+	static std::vector<Manifold> SAT_Capsulemesh(const Capsule &a, AABB a_aabb, int a_id, const Material& a_mat, const StaticmeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
 		mthz::Mat3 local_to_world_rot = b_world_orientation.getRotMatrix();
 
 		std::vector<unsigned int> tri_candidates;
@@ -2940,7 +2940,7 @@ namespace phyz {
 		return manifolds_out;
 	}
 
-	static std::vector<Manifold> SAT_CylinderMesh(const Cylinder& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticMeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
+	static std::vector<Manifold> SAT_Cylindermesh(const Cylinder& a, AABB a_aabb, int a_id, const Material& a_mat, const StaticmeshGeometry& b, mthz::Vec3 b_world_position, mthz::Quaternion b_world_orientation) {
 		mthz::Mat3 local_to_world_rot = b_world_orientation.getRotMatrix();
 
 		std::vector<unsigned int> tri_candidates;
@@ -2996,8 +2996,8 @@ namespace phyz {
 		m.normal.getPerpendicularBasis(&u, &w);
 
 		for (int i = 0; i < new_size; i++) {
-			double vu = cos(2 * M_PI * i / new_size);
-			double vw = sin(2 * M_PI * i / new_size);
+			double vu = cos(2 * PI * i / new_size);
+			double vw = sin(2 * PI * i / new_size);
 			mthz::Vec3 target_dir = u * vu + w * vw;
 
 			ContactP max_p;

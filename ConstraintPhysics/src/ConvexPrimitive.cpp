@@ -459,7 +459,7 @@ namespace phyz {
 
 	Polyhedron Polyhedron::getPolyAfterFindMergedCoplanarFaces(const Polyhedron& p) {
 		struct SurfaceGroup {
-			mthz::Vec3 shared_norm;
+			std::vector<mthz::Vec3> norms;
 			std::vector<Surface> surfaces;
 		};
 
@@ -467,15 +467,24 @@ namespace phyz {
 		for (const Surface& s : p.getSurfaces()) {
 			bool not_added_to_group = true;
 			for (SurfaceGroup& g : groups) {
-				if (1 - g.shared_norm.dot(s.normal()) < EPS) {
-					g.surfaces.push_back(s);
-					not_added_to_group = false;
-					break;
+
+				// check norm is within tolerance for all norms in the group
+				for (mthz::Vec3 norm : g.norms) {
+					if (1 - norm.dot(s.normal()) >= EPS) {
+						goto break_nested;
+					}
 				}
+
+				// surface was coplanar enough
+				g.surfaces.push_back(s);
+				not_added_to_group = false;
+
+				break_nested:
+				break;
 			}
 
 			if (not_added_to_group) {
-				groups.push_back(SurfaceGroup{ s.normal(), {s} });
+				groups.push_back(SurfaceGroup{ {s.normal()}, {s} });
 			}
 		}
 
@@ -496,7 +505,7 @@ namespace phyz {
 				};
 				std::vector<FaceCoordP> all_points;
 				mthz::Vec3 u, v;
-				g.shared_norm.getPerpendicularBasis(&u, &v);
+				g.norms[0].getPerpendicularBasis(&u, &v);
 
 				for (const Surface& s : g.surfaces) {
 					for (uint32_t vert_indx : s.point_indexes) {

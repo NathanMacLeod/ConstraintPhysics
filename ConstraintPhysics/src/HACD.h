@@ -18,5 +18,5 @@ namespace phyz {
 	};
 
 	Mesh readOBJ(const std::string& file_path, double scale=1.0);
-	//ConvexPoly getConvexHull(const Mesh& m);
+	//ConvexPoly getConvexHull(const mesh& m);
 }

@@ -39,8 +39,8 @@ namespace phyz {
 		custom_com_referenceTensor = reference_invTensor;
 	}
 
-	RigidBody::RigidBody(const StaticMeshGeometry& source_geometry, unsigned int id)
-		: geometry_type(STATIC_MESH), reference_mesh(source_geometry), mesh(source_geometry), vel(0, 0, 0), ang_vel(0, 0, 0), psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0),
+	RigidBody::RigidBody(const StaticmeshGeometry& source_geometry, unsigned int id)
+		: geometry_type(STATIC_mesh), reference_mesh(source_geometry), mesh(source_geometry), vel(0, 0, 0), ang_vel(0, 0, 0), psuedo_vel(0, 0, 0), psuedo_ang_vel(0, 0, 0),
 		asleep(false), sleep_ready_counter(0), non_sleepy_tick_count(0), id(id)
 	{
 		movement_type = FIXED;
@@ -101,7 +101,7 @@ namespace phyz {
 		alertWakingAction();
 	}
 
-	void RigidBody::setOrientation(const mthz::Quaternion orientation) {
+	void RigidBody::set_orientation(const mthz::Quaternion orientation) {
 		this->orientation = orientation;
 		updateGeometry();
 		alertWakingAction();
@@ -119,7 +119,7 @@ namespace phyz {
 	}
 
 	void RigidBody::setMovementType(MovementType type) {
-		assert(geometry_type != STATIC_MESH || type != DYNAMIC);
+		assert(geometry_type != STATIC_mesh || type != DYNAMIC);
 
 		this->movement_type = type;
 		if (type != FIXED) {
@@ -198,14 +198,14 @@ namespace phyz {
 			}
 		}
 		else {
-			closest_hit_info = checkInterrsectionAgainstStaticMesh(ray_origin, ray_dir).hit_info;
+			closest_hit_info = checkInterrsectionAgainstStaticmesh(ray_origin, ray_dir).hit_info;
 		}
 
 		return RayHitInfo{ closest_hit_info.did_hit, (phyz::RigidBody*)this, closest_hit_info.intersection_point, closest_hit_info.surface_norm, closest_hit_info.intersection_dist };
 	}
 
-	TriMeshRayQueryReturn RigidBody::checkInterrsectionAgainstStaticMesh(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
-		assert(geometry_type == STATIC_MESH);
+	TrimeshRayQueryReturn RigidBody::checkInterrsectionAgainstStaticmesh(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
+		assert(geometry_type == STATIC_mesh);
 
 		if (movement_type == KINEMATIC) {
 			// static mesh geometry for kinematic meshes are stored in local coords. need to convert the ray to local coords, then convert the answer back to world coords
@@ -215,7 +215,7 @@ namespace phyz {
 			mthz::Vec3 local_ray_origin = to_local * (ray_origin - getCOM());
 			mthz::Vec3 local_ray_dir = to_local * ray_dir;
 
-			TriMeshRayQueryReturn ray_ret = reference_mesh.testRayIntersection(local_ray_origin, local_ray_dir);
+			TrimeshRayQueryReturn ray_ret = reference_mesh.testRayIntersection(local_ray_origin, local_ray_dir);
 
 			if (!ray_ret.hit_info.did_hit) return ray_ret; // no need to correct positions, they aren't used if did_hit is false anyway
 			
@@ -320,7 +320,7 @@ namespace phyz {
 			}
 			aabb = AABB::combine(geometry_AABB);
 		}
-		else if (geometry_type == STATIC_MESH) {
+		else if (geometry_type == STATIC_mesh) {
 			if (movement_type == FIXED) {
 				mesh.recomputeFromReference(reference_mesh, rot, com);
 				aabb = mesh.genAABB();

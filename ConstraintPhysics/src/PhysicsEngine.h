@@ -68,7 +68,7 @@ namespace phyz {
 		void timeStep();
 		void extrapolateObjectPositions(double time_elapsed);
 		RigidBody* createRigidBody(const ConvexUnionGeometry& geometry, RigidBody::MovementType movement_type=RigidBody::DYNAMIC, mthz::Vec3 position=mthz::Vec3(), mthz::Quaternion orientation=mthz::Quaternion(), bool override_center_of_mass=false, mthz::Vec3 center_of_mass_override=mthz::Vec3());
-		RigidBody* createRigidBody(const StaticMeshGeometry& geometry, bool fixed=true);
+		RigidBody* createRigidBody(const StaticmeshGeometry& geometry, bool fixed=true);
 		void removeRigidBody(RigidBody* r);
 		void applyVelocityChange(RigidBody* b, const mthz::Vec3& delta_vel, const mthz::Vec3& delta_ang_vel, const mthz::Vec3& delta_psuedo_vel=mthz::Vec3(), const mthz::Vec3&delta_psuedo_ang_vel=mthz::Vec3());
 		void disallowCollisionSet(const std::initializer_list<RigidBody*>& bodies);

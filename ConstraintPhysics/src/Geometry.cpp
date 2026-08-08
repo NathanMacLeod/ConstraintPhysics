@@ -549,7 +549,7 @@ namespace phyz {
 		return out;
 	}
 
-	ConvexUnionGeometry ConvexUnionGeometry::getNewMaterial(Material material) {
+	ConvexUnionGeometry ConvexUnionGeometry::getNewMaterial(Material material) const {
 		ConvexUnionGeometry out;
 		out.polyhedra.reserve(polyhedra.size());
 		for (const ConvexPrimitive& c : polyhedra) {
@@ -649,7 +649,7 @@ namespace phyz {
 		return MeshInput{ triangle_indices, points };
 	}
 
-	MeshInput generateMeshInputFromMesh(const Mesh& m, mthz::Vec3 position, double scaling) {
+	MeshInput generateMeshInputFrommesh(const Mesh& m, mthz::Vec3 position, double scaling) {
 		std::vector<mthz::Vec3> points;
 		std::vector<TriIndices> triangle_indices;
 
@@ -667,7 +667,7 @@ namespace phyz {
 		return MeshInput{ triangle_indices, points };
 	}
 
-	StaticMeshGeometry::StaticMeshGeometry(const StaticMeshGeometry& c)
+	StaticmeshGeometry::StaticmeshGeometry(const StaticmeshGeometry& c)
 		: aabb_tree(0, AABBTree<unsigned int>::SURFACE_AREA), vertices(c.vertices), half_edges(c.half_edges), triangles(c.triangles)
 	{
 		for (int i = 0; i < triangles.size(); i++) {
@@ -675,7 +675,7 @@ namespace phyz {
 		}
 	}
 
-	StaticMeshGeometry::StaticMeshGeometry(const MeshInput& input)
+	StaticmeshGeometry::StaticmeshGeometry(const MeshInput& input)
 		: aabb_tree(0)
 	{
 
@@ -687,16 +687,16 @@ namespace phyz {
 		triangles.reserve(input.triangle_indices.size());
 
 		// initialize all of the vertices
-		int i = 0;
+		uint32_t i = 0;
 		for (mthz::Vec3 p : input.points) {
-			StaticMeshVertex v{ p, i++, std::vector<mthz::Vec3>() };
+			StaticmeshVertex v{ p, i++, std::vector<mthz::Vec3>() };
 			vertices.push_back(v);
 		}
 
 		// initialize all of the faces and edges
 		for (TriIndices t : input.triangle_indices) {
 			// creating the triangle
-			StaticMeshFace triangle;
+			StaticmeshFace triangle;
 			triangle.material = t.material;
 			mthz::Vec3 v1 = input.points[t.i2] - input.points[t.i1];
 			mthz::Vec3 v2 = input.points[t.i3] - input.points[t.i1];
@@ -707,14 +707,14 @@ namespace phyz {
 			triangle.self_index = triangles.size();
 			
 			// create the edges
-			half_edges.push_back(StaticMeshHalfEdge{ t.i1, t.i2, -1, e2_index });
-			half_edges.push_back(StaticMeshHalfEdge{ t.i2, t.i3, -1, e3_index });
-			half_edges.push_back(StaticMeshHalfEdge{ t.i3, t.i1, -1, e1_index });
+			half_edges.push_back(StaticmeshHalfEdge{ t.i1, t.i2, -1, e2_index });
+			half_edges.push_back(StaticmeshHalfEdge{ t.i2, t.i3, -1, e3_index });
+			half_edges.push_back(StaticmeshHalfEdge{ t.i3, t.i1, -1, e1_index });
 
 			// compute some of the data for the half edges
 			for (int i = 0; i < 3; i++) {
 				int self_index = triangle.half_edge_indices[i];
-				StaticMeshHalfEdge& e = half_edges[self_index];
+				StaticmeshHalfEdge& e = half_edges[self_index];
 
 				mthz::Vec3 v = vertices[e.p2_index].p - vertices[e.p1_index].p;
 				e.out_direction = v.cross(triangle.normal).normalize();
@@ -735,7 +735,7 @@ namespace phyz {
 				else {
 					int twin_index = twin_lookup->second;
 					e.twin_index = twin_index;
-					StaticMeshHalfEdge& twin = half_edges[twin_index];
+					StaticmeshHalfEdge& twin = half_edges[twin_index];
 					twin.twin_index = self_index;
 					e.id = twin.id;
 				}
@@ -746,7 +746,7 @@ namespace phyz {
 		}
 
 		// compute the gauss arc for all of the half_edges
-		for (StaticMeshHalfEdge& e : half_edges) {
+		for (StaticmeshHalfEdge& e : half_edges) {
 			if (e.twin_index == -1) {
 				// edge of the topology case
 				e.has_gauss_arc = true;
@@ -756,7 +756,7 @@ namespace phyz {
 			}
 			
 			// we only have a gauss arc if we are convex in relation to the neighboring triangle
-			const StaticMeshHalfEdge& twin = half_edges[e.twin_index];
+			const StaticmeshHalfEdge& twin = half_edges[e.twin_index];
 			mthz::Vec3 our_normal = triangles[e.triangle_index].normal;
 			bool is_convex = twin.out_direction.dot(our_normal) > 0;
 			e.has_gauss_arc = is_convex;
@@ -771,7 +771,7 @@ namespace phyz {
 		std::vector<std::vector<uint32_t>> vertex_neighborhoods(vertices.size());
 
 		// this method will fuck up for vertices at the edge of the topology. don't really care right now
-		for (StaticMeshHalfEdge& e : half_edges) {
+		for (StaticmeshHalfEdge& e : half_edges) {
 			std::vector<uint32_t>& neighborhood = vertex_neighborhoods[e.p2_index];
 			mthz::Vec3 neighborhood_of = vertices[e.p2_index].p;
 			if (!neighborhood.empty()) { continue; } // neighborhood for this vertex was already calculated.
@@ -779,7 +779,7 @@ namespace phyz {
 			// use half edge structure to wind all the way around counter-clockwise
 			uint32_t curr_edge_index = e.self_index;
 			do {
-				StaticMeshHalfEdge& curr = half_edges[curr_edge_index];
+				StaticmeshHalfEdge& curr = half_edges[curr_edge_index];
 				mthz::Vec3 p = vertices[curr.p1_index].p;
 				mthz::Vec3 rhs = (neighborhood_of - p).cross(triangles[curr.triangle_index].normal); // vector pointing in the direction of the winding
 				neighborhood.push_back(curr.p1_index);
@@ -797,7 +797,7 @@ namespace phyz {
 	
 		// use the neighborhoods to calculate the gauss map for each vertex
 		for (int vertex_index = 0; vertex_index < vertex_neighborhoods.size(); vertex_index++) {
-			StaticMeshVertex& v = vertices[vertex_index];
+			StaticmeshVertex& v = vertices[vertex_index];
 			std::vector<uint32_t> neighborhood = vertex_neighborhoods[vertex_index];
 			std::vector<uint32_t> unreduced_neighborhood = vertex_neighborhoods[vertex_index]; // copy we will use later for verification
 
@@ -859,7 +859,7 @@ namespace phyz {
 		}
 	}
 
-	StaticMeshGeometry::StaticMeshGeometry(const std::array<StaticMeshVertex, 3>& in_vertices, const std::array<StaticMeshHalfEdge, 3>& in_half_edges)
+	StaticmeshGeometry::StaticmeshGeometry(const std::array<StaticmeshVertex, 3>& in_vertices, const std::array<StaticmeshHalfEdge, 3>& in_half_edges)
 		: aabb_tree(0)
 	{
 		// create a static mesh with a single triangle, containing predefined gauss map info for the vertices / half_edges. exists for debug only really.
@@ -875,7 +875,7 @@ namespace phyz {
 
 		}
 
-		StaticMeshFace triangle;
+		StaticmeshFace triangle;
 		//triangle.material = t.material;
 		mthz::Vec3 v1 = in_vertices[1].p - in_vertices[0].p;
 		mthz::Vec3 v2 = in_vertices[2].p - in_vertices[0].p;
@@ -890,9 +890,9 @@ namespace phyz {
 		triangles.push_back(triangle);
 	}
 
-	StaticMeshVertex StaticMeshGeometry::get_transformed_vertex(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) const {
+	StaticmeshVertex StaticmeshGeometry::get_transformed_vertex(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) const {
 		assert(index < vertices.size());
-		StaticMeshVertex v = vertices[index];
+		StaticmeshVertex v = vertices[index];
 		v.p = rot * (v.p - center_of_rotation) + center_of_rotation + trans;
 		for (mthz::Vec3& g : v.valid_normal_gauss_map) {
 			g = rot * g;
@@ -900,9 +900,9 @@ namespace phyz {
 		return v;
 	}
 
-	StaticMeshHalfEdge StaticMeshGeometry::get_transformed_half_edge(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const {
+	StaticmeshHalfEdge StaticmeshGeometry::get_transformed_half_edge(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const {
 		assert(index < half_edges.size());
-		StaticMeshHalfEdge e = half_edges[index];
+		StaticmeshHalfEdge e = half_edges[index];
 		e.out_direction = rot * e.out_direction;
 		if (e.has_gauss_arc) {
 			e.gauss_arc_g1 = rot * e.gauss_arc_g1;
@@ -911,34 +911,34 @@ namespace phyz {
 		return e;
 	}
 
-	StaticMeshFace StaticMeshGeometry::get_transformed_face(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const {
+	StaticmeshFace StaticmeshGeometry::get_transformed_face(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const {
 		assert(index < triangles.size());
-		StaticMeshFace triangle = triangles[index];
+		StaticmeshFace triangle = triangles[index];
 		triangle.normal = rot * triangle.normal;
 		return triangle;
 	}
 
-	void StaticMeshGeometry::recomputeFromReference(const StaticMeshGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) {
+	void StaticmeshGeometry::recomputeFromReference(const StaticmeshGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) {
 		aabb_tree = AABBTree<unsigned int>(0, AABBTree<unsigned int>::SURFACE_AREA); //reset tree
 
 		assert(triangles.size() == reference.triangles.size());
-		for (unsigned int i = 0; i < vertices.size(); i++) {
+		for (uint32_t i = 0; i < vertices.size(); i++) {
 			vertices[i] = reference.get_transformed_vertex(i, rot, trans, center_of_rotation);
 		}
-		for (unsigned int i = 0; i < half_edges.size(); i++) {
+		for (uint32_t i = 0; i < half_edges.size(); i++) {
 			half_edges[i] = reference.get_transformed_half_edge(i, rot, trans);
 		}
-		for (unsigned int i = 0; i < triangles.size(); i++) {
+		for (uint32_t i = 0; i < triangles.size(); i++) {
 			triangles[i] = reference.get_transformed_face(i, rot, trans);
 			aabb_tree.add(i, true, i, getAABBOfTriangle(triangles[i]));
 		}
 	}
 
-	AABB StaticMeshGeometry::getAABBOfTriangle(const StaticMeshFace& t) const {
+	AABB StaticmeshGeometry::getAABBOfTriangle(const StaticmeshFace& t) const {
 		return AABB::encapsulatePointCloud({ vertices[t.vertex_indices[0]].p, vertices[t.vertex_indices[1]].p, vertices[t.vertex_indices[2]].p });
 	}
 
-	AABB StaticMeshGeometry::genAABB() const {
+	AABB StaticmeshGeometry::genAABB() const {
 		assert(triangles.size() > 0);
 
 		AABB out = getAABBOfTriangle(triangles[0]);
@@ -949,13 +949,13 @@ namespace phyz {
 		return out;
 	}
 
-	TriMeshRayQueryReturn StaticMeshGeometry::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
+	TrimeshRayQueryReturn StaticmeshGeometry::testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const {
 		std::vector<unsigned int> hit_candidates = aabb_tree.raycastHitCandidates(ray_origin, ray_dir);
 		
-		TriMeshRayQueryReturn closest_hit{ RayQueryReturn {false } }; //false signifies no confirmed hit so far
+		TrimeshRayQueryReturn closest_hit{ RayQueryReturn {false } }; //false signifies no confirmed hit so far
 
 		for (unsigned int i : hit_candidates) {
-			const StaticMeshFace& tri = triangles[i];
+			const StaticmeshFace& tri = triangles[i];
 			if (abs(tri.normal.dot(ray_dir)) < 0.0000000001) {
 				continue;
 			}
@@ -970,9 +970,9 @@ namespace phyz {
 			mthz::Vec3 hit_pos = ray_origin + t * ray_dir;
 
 			//check the intersection point lies inside the triangle
-			StaticMeshHalfEdge e1 = get_half_edge(tri.half_edge_indices[0]);
-			StaticMeshHalfEdge e2 = get_half_edge(tri.half_edge_indices[1]);
-			StaticMeshHalfEdge e3 = get_half_edge(tri.half_edge_indices[2]);
+			StaticmeshHalfEdge e1 = get_half_edge(tri.half_edge_indices[0]);
+			StaticmeshHalfEdge e2 = get_half_edge(tri.half_edge_indices[1]);
+			StaticmeshHalfEdge e3 = get_half_edge(tri.half_edge_indices[2]);
 
 			if ((hit_pos - get_vertex(e1.p1_index).p).dot(e1.out_direction) > 0
 				|| (hit_pos - get_vertex(e2.p1_index).p).dot(e2.out_direction) > 0
@@ -980,7 +980,7 @@ namespace phyz {
 				continue;
 			}
 
-			closest_hit = TriMeshRayQueryReturn{ RayQueryReturn{ true, hit_pos, tri.normal, t}, i };
+			closest_hit = TrimeshRayQueryReturn{ RayQueryReturn{ true, hit_pos, tri.normal, t}, i };
 		}
 
 		return closest_hit;

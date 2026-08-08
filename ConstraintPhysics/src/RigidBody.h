@@ -18,10 +18,10 @@ namespace phyz {
 	class RigidBody {
 	private:
 		RigidBody(const ConvexUnionGeometry& source_geometry, const mthz::Vec3& pos, const mthz::Quaternion& orientation, unsigned int id, bool overide_center_of_mass, mthz::Vec3 local_coords_com_override);
-		RigidBody(const StaticMeshGeometry& source_geometry, unsigned int id);
+		RigidBody(const StaticmeshGeometry& source_geometry, unsigned int id);
 	public:
 		typedef int PKey;
-		enum GeometryType { CONVEX_UNION, STATIC_MESH };
+		enum GeometryType { CONVEX_UNION, STATIC_mesh };
 		enum MovementType { DYNAMIC, FIXED, KINEMATIC };
 		enum CenterOfMassType { CUSTOM, PHYSICALLY_BASED };
 
@@ -49,7 +49,7 @@ namespace phyz {
 		mthz::Vec3 getAngVel() const;
 		inline GeometryType getGeometryType() const { return geometry_type; }
 		RayHitInfo checkRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
-		TriMeshRayQueryReturn checkInterrsectionAgainstStaticMesh(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
+		TrimeshRayQueryReturn checkInterrsectionAgainstStaticmesh(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 		AABB getAABB() const { return aabb; }
 
 		mthz::Vec3 getWorldPosInLocalCoords(mthz::Vec3 p) const { return orientation.conjugate().applyRotation(p - com); }
@@ -64,7 +64,7 @@ namespace phyz {
 		void setMass(double mass, bool adjust_inertia_tensor_proportionally = true);
 		void rotate(mthz::Quaternion q);
 		void translate(const mthz::Vec3& v);
-		void setOrientation(const mthz::Quaternion orientation);
+		void set_orientation(const mthz::Quaternion orientation);
 		void setVel(mthz::Vec3 vel);
 		void setAngVel(mthz::Vec3 ang_vel);
 		void setMovementType(MovementType type);
@@ -139,9 +139,9 @@ namespace phyz {
 		std::vector<ConvexPrimitive> reference_geometry;
 
 		//for static mesh
-		StaticMeshGeometry reference_mesh;
+		StaticmeshGeometry reference_mesh;
 		AABB reference_aabb;
-		StaticMeshGeometry mesh;
+		StaticmeshGeometry mesh;
 		
 		std::vector<mthz::Vec3> track_p;
 	};

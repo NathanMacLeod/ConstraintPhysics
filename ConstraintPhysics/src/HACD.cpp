@@ -8,6 +8,11 @@
 #include <set>
 #include <unordered_map>
 
+#ifdef __EMSCRIPTEN__
+#define strtok_s strtok_r
+#define sprintf_s sprintf
+#endif
+
 namespace phyz {
 
 	AABB Mesh::getAABB() {
@@ -35,6 +40,7 @@ namespace phyz {
 	}
 
 	Mesh readOBJ(const std::string& file_path, double scale) {
+		printf("Reading file %s\n", file_path.c_str());
 		Mesh out = { std::vector<mthz::Vec3>(), std::vector<std::vector<unsigned int>>() };
 
 		std::ifstream in(file_path);
@@ -62,6 +68,7 @@ namespace phyz {
 				else if (strcmp(token, "f") == 0) {
 					std::vector<unsigned int> indices;
 					while ((token = strtok_s(NULL, delim, &next_token)) != NULL) {
+						if (token[0] < '0' || token[0] > '9') { continue; } // for emscripten specific bug
 						int index = atoi(token) - 1;
 						referenced_index.insert(index);
 						assert(index >= 0 && index < out.vertices.size());

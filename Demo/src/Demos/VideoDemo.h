@@ -112,7 +112,7 @@ public:
 
 	olc::Sprite getFrame(int frame_count) {
 		char url[256];
-		sprintf_s(url, "resources/bad_apple/bad_apple_frames/bad_apple_frame%d.png", frame_count);
+		sprintf(url, "resources/bad_apple/bad_apple_frames/bad_apple_frame%d.png", frame_count);
 
 		return olc::Sprite(url);
 	}

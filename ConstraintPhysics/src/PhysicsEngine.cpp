@@ -177,7 +177,7 @@ namespace phyz {
 
 				std::vector<Manifold> manifolds;
 
-				if (b1->getGeometryType() == RigidBody::STATIC_MESH && b2->getGeometryType() == RigidBody::STATIC_MESH) return;
+				if (b1->getGeometryType() == RigidBody::STATIC_mesh && b2->getGeometryType() == RigidBody::STATIC_mesh) return;
 
 				if (b1->getGeometryType() == RigidBody::CONVEX_UNION && b2->getGeometryType() == RigidBody::CONVEX_UNION) {
 					for (int i = 0; i < b1->geometry.size(); i++) {
@@ -495,7 +495,7 @@ namespace phyz {
 		return r;
 	}
 
-	RigidBody* PhysicsEngine::createRigidBody(const StaticMeshGeometry& geometry, bool fixed) {
+	RigidBody* PhysicsEngine::createRigidBody(const StaticmeshGeometry& geometry, bool fixed) {
 		RigidBody* r = new RigidBody(geometry, next_id++);
 		if (fixed) {
 			r->setMovementType(RigidBody::FIXED);

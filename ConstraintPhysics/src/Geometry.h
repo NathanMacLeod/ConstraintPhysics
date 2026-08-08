@@ -35,7 +35,7 @@ namespace phyz {
 		static ConvexUnionGeometry funnel(mthz::Vec3 pos, double tube_radius, double tube_height, double bowl_radius, double bowl_angle, double thickness, int n_segments = 15, Material material = Material::default_material());
 
 		static ConvexUnionGeometry merge(const ConvexUnionGeometry& g1, const ConvexUnionGeometry& g2);
-		ConvexUnionGeometry getNewMaterial(Material material);
+		ConvexUnionGeometry getNewMaterial(Material material) const;
 		ConvexUnionGeometry getTranslated(const mthz::Vec3 v) const;
 		ConvexUnionGeometry getRotated(const mthz::Quaternion q, const mthz::Vec3& rot_point=mthz::Vec3(0, 0, 0)) const;
 		ConvexUnionGeometry getScaled(double d, mthz::Vec3 center_of_dialation=mthz::Vec3(0, 0, 0)) const;
@@ -57,18 +57,18 @@ namespace phyz {
 		std::vector<mthz::Vec3> points;
 	};
 
-	MeshInput generateGridMeshInput(uint32_t grid_length, uint32_t grid_width, double grid_size, mthz::Vec3 positon=mthz::Vec3(), Material=Material::default_material());
-	MeshInput generateRadialMeshInput(uint32_t n_rot_segments, uint32_t n_radial_segments, double radius_size, mthz::Vec3 positon = mthz::Vec3());
-	MeshInput generateMeshInputFromMesh(const Mesh& m, mthz::Vec3 positon=mthz::Vec3(), double scaling=1.0);
+	MeshInput generateGridmeshInput(uint32_t grid_length, uint32_t grid_width, double grid_size, mthz::Vec3 positon=mthz::Vec3(), Material=Material::default_material());
+	MeshInput generateRadialmeshInput(uint32_t n_rot_segments, uint32_t n_radial_segments, double radius_size, mthz::Vec3 positon = mthz::Vec3());
+	MeshInput generatemeshInputFrommesh(const Mesh& m, mthz::Vec3 positon=mthz::Vec3(), double scaling=1.0);
 
-	struct StaticMeshVertex {
+	struct StaticmeshVertex {
 		mthz::Vec3 p;
 		uint32_t self_index;
 
 		std::vector<mthz::Vec3> valid_normal_gauss_map;
 	};
 
-	struct StaticMeshHalfEdge {
+	struct StaticmeshHalfEdge {
 		uint32_t p1_index, p2_index;
 		int32_t twin_index; // the opposite edge of the neighboring triangle. if there is no neighbor on this edge, the value is -1;
 		uint32_t next_index; // the half_edge on this triangle starting from p2_index
@@ -82,7 +82,7 @@ namespace phyz {
 		mthz::Vec3 gauss_arc_g2;
 	};
 
-	struct StaticMeshFace {
+	struct StaticmeshFace {
 		mthz::Vec3 normal;
 		uint32_t vertex_indices[3]; // verts
 		uint32_t half_edge_indices[3]; //edges
@@ -91,35 +91,35 @@ namespace phyz {
 		Material material;
 	};
 
-	struct TriMeshRayQueryReturn {
+	struct TrimeshRayQueryReturn {
 		RayQueryReturn hit_info;
 		uint32_t hit_triangle_inedex;
 	};
 
-	class StaticMeshGeometry {
+	class StaticmeshGeometry {
 	public:
-		StaticMeshGeometry() : aabb_tree(0) {}
-		StaticMeshGeometry(const StaticMeshGeometry& c);
-		StaticMeshGeometry(const MeshInput& input);
+		StaticmeshGeometry() : aabb_tree(0) {}
+		StaticmeshGeometry(const StaticmeshGeometry& c);
+		StaticmeshGeometry(const MeshInput& input);
 
 		// exists for debugging only really
-		StaticMeshGeometry(const std::array<StaticMeshVertex, 3>& vertices, const std::array<StaticMeshHalfEdge, 3>& half_edges);
+		StaticmeshGeometry(const std::array<StaticmeshVertex, 3>& vertices, const std::array<StaticmeshHalfEdge, 3>& half_edges);
 
-		void recomputeFromReference(const StaticMeshGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation=mthz::Vec3(0, 0, 0));
+		void recomputeFromReference(const StaticmeshGeometry& reference, const mthz::Mat3& rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation=mthz::Vec3(0, 0, 0));
 		AABB genAABB() const;
 
-		inline const std::vector<StaticMeshFace>& getTriangles() const { return triangles; }
-		inline const std::vector<StaticMeshVertex>& getVertices() const { return vertices; }
+		inline const std::vector<StaticmeshFace>& getTriangles() const { return triangles; }
+		inline const std::vector<StaticmeshVertex>& getVertices() const { return vertices; }
 		inline const AABBTree<unsigned int>& getAABBTree() const { return aabb_tree; }
 
-		TriMeshRayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
+		TrimeshRayQueryReturn testRayIntersection(mthz::Vec3 ray_origin, mthz::Vec3 ray_dir) const;
 
-		inline StaticMeshVertex get_transformed_vertex(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) const;
-		inline StaticMeshHalfEdge get_transformed_half_edge(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const;
-		inline StaticMeshFace get_transformed_face(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const;
-		inline StaticMeshVertex get_vertex(uint32_t index) const { assert(index < vertices.size()); return vertices[index]; }
-		inline StaticMeshHalfEdge get_half_edge(uint32_t index) const { assert(index < half_edges.size()); return half_edges[index]; }
-		inline StaticMeshFace get_triangle(uint32_t index) const { assert(index < triangles.size()); return triangles[index]; }
+		StaticmeshVertex get_transformed_vertex(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans, mthz::Vec3 center_of_rotation) const;
+		StaticmeshHalfEdge get_transformed_half_edge(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const;
+		StaticmeshFace get_transformed_face(uint32_t index, mthz::Mat3 rot, mthz::Vec3 trans) const;
+		inline StaticmeshVertex get_vertex(uint32_t index) const { assert(index < vertices.size()); return vertices[index]; }
+		inline StaticmeshHalfEdge get_half_edge(uint32_t index) const { assert(index < half_edges.size()); return half_edges[index]; }
+		inline StaticmeshFace get_triangle(uint32_t index) const { assert(index < triangles.size()); return triangles[index]; }
 
 		inline uint32_t getVertexId(uint32_t vertex_index) const { return vertex_index; }
 		//inline uint32_t getEdgeId(uint32_t halfedge_index) { return hal; }
@@ -128,14 +128,14 @@ namespace phyz {
 		friend class Surface;
 		friend class Edge;
 		friend class RigidBody;
-		friend class StaticMeshHalfEdge;
-		friend class StaticMeshFace;
+		friend class StaticmeshHalfEdge;
+		friend class StaticmeshFace;
 	private:
-		AABB getAABBOfTriangle(const StaticMeshFace& triangle) const;
+		AABB getAABBOfTriangle(const StaticmeshFace& triangle) const;
 
-		std::vector<StaticMeshVertex> vertices;
-		std::vector<StaticMeshHalfEdge> half_edges;
-		std::vector<StaticMeshFace> triangles;
+		std::vector<StaticmeshVertex> vertices;
+		std::vector<StaticmeshHalfEdge> half_edges;
+		std::vector<StaticmeshFace> triangles;
 		AABBTree<unsigned int> aabb_tree;
 	};
 }
